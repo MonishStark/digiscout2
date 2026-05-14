@@ -13,10 +13,7 @@ import {
 	provisionWordPressMultisiteSite,
 	ProvisionWordPressSiteRequest,
 } from "./src/lib/wordpress-provisioning";
-import {
-	provisionLocalWordPressSite,
-	deleteLocalWordPressSite,
-} from "./src/lib/laragon-local-provisioner";
+
 import { WebsiteSchema } from "./src/types";
 import {
 	sendOutreachViaCallHippo,
@@ -24,7 +21,7 @@ import {
 	OutreachResponse,
 } from "./src/lib/callhippo-service";
 
-dotenv.config({ path: ".env.local" });
+dotenv.config({ path: process.env.NODE_ENV === "production" ? ".env.production" : ".env.local" });
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -220,150 +217,7 @@ async function readRequestBody(req: Request): Promise<Buffer> {
 	return Buffer.concat(chunks);
 }
 
-async function proxyLocalWordPressRequest(req: Request, res: Response) {
-	try {
-		const siteSlug = req.params.siteSlug;
-		if (!siteSlug) {
-			return res.status(400).json({ error: "Missing siteSlug" });
-		}
 
-		const localDomain = process.env.LARAGON_LOCAL_DOMAIN || "test";
-		const targetHost = `${siteSlug}.${localDomain}`;
-		const proxyTargetHost =
-			process.env.LOCAL_WORDPRESS_PROXY_HOST || "127.0.0.1";
-		const proxyTargetPort = process.env.LOCAL_WORDPRESS_PROXY_PORT || "80";
-		const originalUrl = new URL(req.originalUrl, `http://localhost:${PORT}`);
-		const proxyPrefix = `/api/local-wordpress/${siteSlug}`;
-		const targetPath = originalUrl.pathname.startsWith(proxyPrefix)
-			? originalUrl.pathname.slice(proxyPrefix.length) || "/"
-			: "/";
-		const targetUrl = `http://${proxyTargetHost}:${proxyTargetPort}${targetPath}${originalUrl.search}`;
-
-		const escapeRegExp = (value: string) =>
-			value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-		const targetHostPattern = escapeRegExp(targetHost);
-		const absoluteHostRegex = new RegExp(`https?://${targetHostPattern}`, "g");
-		const protocolRelativeHostRegex = new RegExp(`//${targetHostPattern}`, "g");
-
-		const method = req.method.toUpperCase();
-		const outgoingHeaders: Record<string, string> = {};
-		for (const [key, value] of Object.entries(req.headers)) {
-			if (!value || key === "host" || key === "content-length") {
-				continue;
-			}
-			if (Array.isArray(value)) {
-				outgoingHeaders[key] = value.join(", ");
-			} else {
-				outgoingHeaders[key] = value;
-			}
-		}
-		outgoingHeaders["Host"] = targetHost;
-		outgoingHeaders["Connection"] = "close";
-
-		const requestBody =
-			method !== "GET" && method !== "HEAD"
-				? await readRequestBody(req)
-				: undefined;
-
-		const response = await new Promise<http.IncomingMessage>(
-			(resolve, reject) => {
-				const target = new URL(targetUrl);
-				const requestOptions: http.RequestOptions = {
-					protocol: target.protocol,
-					hostname: target.hostname,
-					port: Number(target.port) || undefined,
-					path: `${target.pathname}${target.search}`,
-					method,
-					headers: outgoingHeaders,
-				};
-
-				const proxyReq = http.request(requestOptions, resolve);
-				proxyReq.on("error", reject);
-				if (requestBody) {
-					proxyReq.write(requestBody);
-				}
-				proxyReq.end();
-			},
-		);
-
-		res.statusCode = response.statusCode || 502;
-
-		const contentType =
-			(typeof response.headers["content-type"] === "string"
-				? response.headers["content-type"]
-				: Array.isArray(response.headers["content-type"])
-					? response.headers["content-type"][0]
-					: "") || "";
-		const setCookieHeaders: string[] = [];
-
-		for (const [key, value] of Object.entries(response.headers)) {
-			const lowerKey = key.toLowerCase();
-			if (lowerKey === "location" && typeof value === "string") {
-				const rewrittenLocation = value
-					.replace(
-						`http://${targetHost}`,
-						`http://localhost:${PORT}/api/local-wordpress/${siteSlug}`,
-					)
-					.replace(
-						`https://${targetHost}`,
-						`http://localhost:${PORT}/api/local-wordpress/${siteSlug}`,
-					);
-				res.setHeader(key, rewrittenLocation);
-				continue;
-			}
-
-			if (lowerKey === "set-cookie") {
-				const rawCookies = Array.isArray(value) ? value : [value as string];
-				for (const rawCookie of rawCookies) {
-					if (!rawCookie) continue;
-					setCookieHeaders.push(rawCookie.replace(/;\s*Domain=[^;]+/gi, ""));
-				}
-				continue;
-			}
-
-			if (lowerKey === "content-type" || lowerKey === "cache-control") {
-				res.setHeader(key, value as string | string[]);
-			}
-		}
-
-		if (setCookieHeaders.length > 0) {
-			res.setHeader("Set-Cookie", setCookieHeaders);
-		}
-
-		const chunks: Buffer[] = [];
-		for await (const chunk of response) {
-			chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-		}
-		const buffer = Buffer.concat(chunks);
-
-		if (contentType.includes("text/html")) {
-			const text = buffer.toString("utf-8");
-			const rewrittenHtml = text
-				.replace(
-					absoluteHostRegex,
-					`http://localhost:${PORT}/api/local-wordpress/${siteSlug}`,
-				)
-				.replace(
-					protocolRelativeHostRegex,
-					`http://localhost:${PORT}/api/local-wordpress/${siteSlug}`,
-				);
-			return res.send(rewrittenHtml);
-		}
-
-		return res.send(buffer);
-	} catch (error) {
-		console.error("[proxyLocalWordPressRequest] Error:", error);
-		return res.status(502).json({
-			error:
-				error instanceof Error ? error.message : "Local WordPress proxy failed",
-		});
-	}
-}
-
-if (process.env.NODE_ENV !== "production") {
-	app.all("/api/local-wordpress/:siteSlug", proxyLocalWordPressRequest);
-	app.all("/api/local-wordpress/:siteSlug/*", proxyLocalWordPressRequest);
-}
 
 const GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_API_KEY;
 const genai = GENAI_KEY ? new GoogleGenAI({ apiKey: GENAI_KEY }) : null;
@@ -2732,11 +2586,12 @@ app.post(
 				});
 			}
 
-			// Use local WordPress provisioner for Laragon
-			const result = await provisionLocalWordPressSite({
+			// Use Namecheap WordPress Multisite provisioner
+			const result = await provisionWordPressMultisiteSite({
 				projectId,
 				business,
 				websiteSchema,
+				provisioningPlan
 			});
 			return res.json(result);
 		} catch (error) {
@@ -2778,8 +2633,8 @@ app.delete("/api/wordpress/site/:siteId", async (req, res) => {
 			return res.status(400).json({ error: "Missing siteId" });
 		}
 
-		// Use local provisioner to delete the site
-		await deleteLocalWordPressSite(siteId);
+		// Use multisite provisioner to delete the site
+		await deleteProvisionedWordPressMultisiteSite(siteId);
 		return res.json({
 			success: true,
 			message: `WordPress site ${siteId} deleted successfully`,

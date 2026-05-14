@@ -4,13 +4,16 @@
 	"version": "0.0.0",
 	"type": "module",
 	"scripts": {
-		"start": "npx tsx server.ts",
+		"start": "node build/server.js",
+		"start:prod": "NODE_ENV=production node build/server.js",
 		"dev": "vite --port=3000 --host=0.0.0.0",
 		"dev:server": "tsx watch server.ts",
 		"dev:all": "concurrently \"npm run dev:server\" \"npm run dev\"",
 		"build": "vite build",
+		"build:server": "esbuild server.ts --bundle --platform=node --target=node18 --format=esm --packages=external --outfile=build/server.js --define:import.meta.env=process.env",
+		"build:all": "npm run build && npm run build:server",
 		"preview": "vite preview",
-		"clean": "rm -rf dist",
+		"clean": "rm -rf dist build",
 		"lint": "tsc --noEmit"
 	},
 	"dependencies": {
