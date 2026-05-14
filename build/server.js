@@ -330,7 +330,7 @@ import crypto from "crypto";
 import fs3 from "fs";
 
 // src/lib/cpanel-uapi.ts
-import fetch2 from "node-fetch";
+import https from "https";
 function getCpanelConfig() {
   const host = process.env.CPANEL_HOST;
   const user = process.env.CPANEL_USERNAME;
@@ -341,34 +341,54 @@ function getCpanelConfig() {
     );
   }
   return {
+    host,
+    user,
+    token,
     baseUrl: `https://${host}:2083/execute`,
     authHeader: `cpanel ${user}:${token}`
   };
 }
 async function callUapi(module, func, params) {
-  const { baseUrl, authHeader } = getCpanelConfig();
-  const url = new URL(`${baseUrl}/${module}/${func}`);
-  for (const [key, value] of Object.entries(params)) {
-    url.searchParams.append(key, value);
-  }
-  const response = await fetch2(url.toString(), {
-    method: "GET",
-    // UAPI generally accepts GET for execute unless strictly required
-    headers: {
-      Authorization: authHeader
-    }
+  const { host, authHeader } = getCpanelConfig();
+  const path3 = `/execute/${module}/${func}`;
+  const query = new URLSearchParams(params).toString();
+  const fullPath = query ? `${path3}?${query}` : path3;
+  return new Promise((resolve, reject) => {
+    const req = https.get({
+      hostname: host,
+      port: 2083,
+      path: fullPath,
+      headers: {
+        Authorization: authHeader
+      },
+      timeout: 3e4
+    }, (res) => {
+      let data = "";
+      res.on("data", (chunk) => data += chunk);
+      res.on("end", () => {
+        if (res.statusCode && res.statusCode >= 400) {
+          return reject(new Error(`cPanel API HTTP Error: ${res.statusCode} ${data}`));
+        }
+        try {
+          const json = JSON.parse(data);
+          if (json.errors && json.errors.length > 0) {
+            reject(new Error(`cPanel UAPI Error (${module}::${func}): ${json.errors.join(", ")}`));
+          } else if (json.status === 0) {
+            reject(new Error(`cPanel UAPI Error (${module}::${func}): ${json.errors?.join(", ") || "Unknown failure"}`));
+          } else {
+            resolve(json.data);
+          }
+        } catch (e) {
+          reject(new Error(`Failed to parse cPanel response: ${data}`));
+        }
+      });
+    });
+    req.on("error", (e) => reject(e));
+    req.on("timeout", () => {
+      req.destroy();
+      reject(new Error("cPanel API Timeout"));
+    });
   });
-  if (!response.ok) {
-    throw new Error(`cPanel API HTTP Error: ${response.status} ${response.statusText}`);
-  }
-  const json = await response.json();
-  if (json.errors && json.errors.length > 0) {
-    throw new Error(`cPanel UAPI Error (${module}::${func}): ${json.errors.join(", ")}`);
-  }
-  if (json.status === 0) {
-    throw new Error(`cPanel UAPI Error (${module}::${func}): ${json.errors?.join(", ") || "Unknown failure"}`);
-  }
-  return json.data;
 }
 async function addSubdomain(subdomain, rootDomain, documentRoot) {
   return callUapi("SubDomain", "addsubdomain", {
@@ -378,10 +398,23 @@ async function addSubdomain(subdomain, rootDomain, documentRoot) {
   });
 }
 async function deleteSubdomain(subdomain, rootDomain) {
-  return callUapi("SubDomain", "delete_subdomain", {
-    domain: subdomain,
-    rootdomain: rootDomain
-  });
+  const fullDomain = `${subdomain}.${rootDomain}`;
+  try {
+    return await callUapi("Domains", "remove_domain", {
+      domain: fullDomain
+    });
+  } catch (e) {
+    console.warn(`[cPanel] Domains::remove_domain failed, trying fallback: ${e.message}`);
+    try {
+      return await callUapi("SubDomain", "delsubdomain", {
+        domain: subdomain,
+        rootdomain: rootDomain
+      });
+    } catch (e2) {
+      console.warn(`[cPanel] SubDomain::delsubdomain failed: ${e2.message}`);
+      throw e;
+    }
+  }
 }
 async function createDatabase(dbName) {
   return callUapi("Mysql", "create_database", {
@@ -427,26 +460,36 @@ var WpCliError = class extends Error {
   }
 };
 async function checkWpCliAvailable() {
-  try {
-    const { stdout: versionOut } = await execAsync("wp --version");
-    const { stdout: pathOut } = await execAsync("which wp").catch(() => ({ stdout: "unknown" }));
-    return {
-      available: true,
-      version: versionOut.trim(),
-      path: pathOut.trim()
-    };
-  } catch (error) {
-    return {
-      available: false,
-      error: error.message || "WP-CLI not found or executable"
-    };
+  const possiblePaths = [
+    process.env.WP_CLI_PATH || "wp",
+    "/usr/local/bin/wp",
+    "/usr/bin/wp",
+    `${process.env.HOME}/bin/wp`,
+    "/home/digimvyc/bin/wp"
+  ];
+  for (const wpPath of possiblePaths) {
+    try {
+      const { stdout: versionOut } = await execAsync(`${wpPath} --version`);
+      return {
+        available: true,
+        version: versionOut.trim(),
+        path: wpPath
+      };
+    } catch (e) {
+      continue;
+    }
   }
+  return {
+    available: false,
+    error: "WP-CLI not found in common paths. Please set WP_CLI_PATH in your .env"
+  };
 }
 async function runWpCommand(command, documentRoot, logCallback) {
   if (!fs2.existsSync(documentRoot)) {
     throw new Error(`Document root does not exist: ${documentRoot}`);
   }
-  const cmd = `wp ${command} --path=${documentRoot}`;
+  const wpPath = process.env.WP_CLI_PATH || "wp";
+  const cmd = `${wpPath} ${command} --path=${documentRoot}`;
   if (logCallback) {
     logCallback(`[WP-CLI] Executing: ${cmd.replace(/--dbpass=[^\s]+/, "--dbpass=***")}`);
   }
@@ -2942,22 +2985,39 @@ async function pollSslStatus() {
       `SELECT * FROM isolated_deployments WHERE ssl_status = 'pending' LIMIT 5`
     );
     for (const dep of deployments) {
+      const httpsUrl = dep.subdomain_url.replace("http://", "https://");
+      const host = httpsUrl.replace("https://", "").split("/")[0];
+      console.log(`[SSL Worker] Checking SSL for ${host}`);
       try {
-        const httpsUrl = dep.subdomain_url.replace("http://", "https://");
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5e3);
-        const response = await fetch(httpsUrl, { signal: controller.signal });
-        clearTimeout(timeout);
-        if (response.ok || response.status < 500) {
-          await pool.query(
-            `UPDATE isolated_deployments SET ssl_status = 'valid', subdomain_url = ?, wp_admin_url = ? WHERE id = ?`,
-            [httpsUrl, `${httpsUrl}/wp-admin`, dep.id]
-          );
-        }
+        const https2 = await import("https");
+        await new Promise((resolve, reject) => {
+          const req = https2.get({
+            hostname: host,
+            port: 443,
+            path: "/",
+            timeout: 5e3,
+            rejectUnauthorized: true
+            // We want to know if the cert is valid
+          }, (res) => {
+            resolve(true);
+          });
+          req.on("error", (e) => reject(e));
+          req.on("timeout", () => {
+            req.destroy();
+            reject(new Error("Timeout"));
+          });
+        });
+        console.log(`[SSL Worker] SSL is VALID for ${httpsUrl}. Upgrading...`);
+        await pool.query(
+          `UPDATE isolated_deployments SET ssl_status = 'valid', subdomain_url = ?, wp_admin_url = ? WHERE id = ?`,
+          [httpsUrl, `${httpsUrl}/wp-admin`, dep.id]
+        );
       } catch (error) {
+        console.log(`[SSL Worker] SSL not ready for ${host}`);
       }
     }
   } catch (error) {
+    console.error("[SSL Worker] Error:", error);
   }
 }
 setInterval(pollSslStatus, 12e4);

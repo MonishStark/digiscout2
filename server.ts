@@ -2797,23 +2797,44 @@ async function pollSslStatus() {
 		);
 
 		for (const dep of deployments) {
-			try {
-				const httpsUrl = dep.subdomain_url.replace("http://", "https://");
-				const controller = new AbortController();
-				const timeout = setTimeout(() => controller.abort(), 5000);
-				
-				const response = await fetch(httpsUrl, { signal: controller.signal });
-				clearTimeout(timeout);
+			const httpsUrl = dep.subdomain_url.replace("http://", "https://");
+			const host = httpsUrl.replace("https://", "").split("/")[0];
+			
+			console.log(`[SSL Worker] Checking SSL for ${host}`);
 
-				if (response.ok || response.status < 500) {
-					await pool.query(
-						`UPDATE isolated_deployments SET ssl_status = 'valid', subdomain_url = ?, wp_admin_url = ? WHERE id = ?`,
-						[httpsUrl, `${httpsUrl}/wp-admin`, dep.id]
-					);
-				}
-			} catch (error) {}
+			try {
+				const https = await import("https");
+				await new Promise((resolve, reject) => {
+					const req = https.get({
+						hostname: host,
+						port: 443,
+						path: "/",
+						timeout: 5000,
+						rejectUnauthorized: true // We want to know if the cert is valid
+					}, (res) => {
+						resolve(true);
+					});
+
+					req.on("error", (e) => reject(e));
+					req.on("timeout", () => {
+						req.destroy();
+						reject(new Error("Timeout"));
+					});
+				});
+
+				console.log(`[SSL Worker] SSL is VALID for ${httpsUrl}. Upgrading...`);
+				await pool.query(
+					`UPDATE isolated_deployments SET ssl_status = 'valid', subdomain_url = ?, wp_admin_url = ? WHERE id = ?`,
+					[httpsUrl, `${httpsUrl}/wp-admin`, dep.id]
+				);
+			} catch (error) {
+				// SSL not ready yet
+				console.log(`[SSL Worker] SSL not ready for ${host}`);
+			}
 		}
-	} catch (error) {}
+	} catch (error) {
+		console.error("[SSL Worker] Error:", error);
+	}
 }
 
 setInterval(pollSslStatus, 120000);

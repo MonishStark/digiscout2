@@ -1,4 +1,4 @@
-import fetch from "node-fetch";
+import https from "https";
 
 interface UAPIResponse {
 	status: number;
@@ -20,6 +20,9 @@ function getCpanelConfig() {
 	}
 
 	return {
+		host,
+		user,
+		token,
 		baseUrl: `https://${host}:2083/execute`,
 		authHeader: `cpanel ${user}:${token}`,
 	};
@@ -30,36 +33,49 @@ async function callUapi(
 	func: string,
 	params: Record<string, string>,
 ): Promise<any> {
-	const { baseUrl, authHeader } = getCpanelConfig();
+	const { host, authHeader } = getCpanelConfig();
 
-	const url = new URL(`${baseUrl}/${module}/${func}`);
-	for (const [key, value] of Object.entries(params)) {
-		url.searchParams.append(key, value);
-	}
+	const path = `/execute/${module}/${func}`;
+	const query = new URLSearchParams(params).toString();
+	const fullPath = query ? `${path}?${query}` : path;
 
-	const response = await fetch(url.toString(), {
-		method: "GET", // UAPI generally accepts GET for execute unless strictly required
-		headers: {
-			Authorization: authHeader,
-		},
+	return new Promise((resolve, reject) => {
+		const req = https.get({
+			hostname: host,
+			port: 2083,
+			path: fullPath,
+			headers: {
+				Authorization: authHeader,
+			},
+			timeout: 30000
+		}, (res) => {
+			let data = "";
+			res.on("data", (chunk) => data += chunk);
+			res.on("end", () => {
+				if (res.statusCode && res.statusCode >= 400) {
+					return reject(new Error(`cPanel API HTTP Error: ${res.statusCode} ${data}`));
+				}
+				try {
+					const json = JSON.parse(data) as UAPIResponse;
+					if (json.errors && json.errors.length > 0) {
+						reject(new Error(`cPanel UAPI Error (${module}::${func}): ${json.errors.join(", ")}`));
+					} else if (json.status === 0) {
+						reject(new Error(`cPanel UAPI Error (${module}::${func}): ${json.errors?.join(", ") || "Unknown failure"}`));
+					} else {
+						resolve(json.data);
+					}
+				} catch (e) {
+					reject(new Error(`Failed to parse cPanel response: ${data}`));
+				}
+			});
+		});
+
+		req.on("error", (e) => reject(e));
+		req.on("timeout", () => {
+			req.destroy();
+			reject(new Error("cPanel API Timeout"));
+		});
 	});
-
-	if (!response.ok) {
-		throw new Error(`cPanel API HTTP Error: ${response.status} ${response.statusText}`);
-	}
-
-	const json = (await response.json()) as UAPIResponse;
-
-	if (json.errors && json.errors.length > 0) {
-		throw new Error(`cPanel UAPI Error (${module}::${func}): ${json.errors.join(", ")}`);
-	}
-	
-	if (json.status === 0) {
-	    // Sometimes cPanel returns status 0 with an error in metadata
-	    throw new Error(`cPanel UAPI Error (${module}::${func}): ${json.errors?.join(", ") || "Unknown failure"}`);
-	}
-
-	return json.data;
 }
 
 export async function addSubdomain(
@@ -75,10 +91,25 @@ export async function addSubdomain(
 }
 
 export async function deleteSubdomain(subdomain: string, rootDomain: string) {
-	return callUapi("SubDomain", "delete_subdomain", {
-		domain: subdomain,
-		rootdomain: rootDomain,
-	});
+	const fullDomain = `${subdomain}.${rootDomain}`;
+	try {
+		// Try the modern Domains::remove_domain first
+		return await callUapi("Domains", "remove_domain", {
+			domain: fullDomain,
+		});
+	} catch (e: any) {
+		console.warn(`[cPanel] Domains::remove_domain failed, trying fallback: ${e.message}`);
+		try {
+			// Try the legacy SubDomain::delsubdomain
+			return await callUapi("SubDomain", "delsubdomain", {
+				domain: subdomain,
+				rootdomain: rootDomain,
+			});
+		} catch (e2: any) {
+			console.warn(`[cPanel] SubDomain::delsubdomain failed: ${e2.message}`);
+			throw e; // Throw original error
+		}
+	}
 }
 
 export async function createDatabase(dbName: string) {

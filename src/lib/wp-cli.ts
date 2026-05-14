@@ -33,22 +33,31 @@ export async function checkWpCliAvailable(): Promise<{
 	path?: string;
 	error?: string;
 }> {
-	try {
-		// Try 'wp --version' directly
-		const { stdout: versionOut } = await execAsync("wp --version");
-		const { stdout: pathOut } = await execAsync("which wp").catch(() => ({ stdout: "unknown" }));
+	const possiblePaths = [
+		process.env.WP_CLI_PATH || "wp",
+		"/usr/local/bin/wp",
+		"/usr/bin/wp",
+		`${process.env.HOME}/bin/wp`,
+		"/home/digimvyc/bin/wp"
+	];
 
-		return {
-			available: true,
-			version: versionOut.trim(),
-			path: pathOut.trim(),
-		};
-	} catch (error: any) {
-		return {
-			available: false,
-			error: error.message || "WP-CLI not found or executable",
-		};
+	for (const wpPath of possiblePaths) {
+		try {
+			const { stdout: versionOut } = await execAsync(`${wpPath} --version`);
+			return {
+				available: true,
+				version: versionOut.trim(),
+				path: wpPath,
+			};
+		} catch (e) {
+			continue;
+		}
 	}
+
+	return {
+		available: false,
+		error: "WP-CLI not found in common paths. Please set WP_CLI_PATH in your .env",
+	};
 }
 
 /**
@@ -63,7 +72,8 @@ export async function runWpCommand(
 		throw new Error(`Document root does not exist: ${documentRoot}`);
 	}
 
-	const cmd = `wp ${command} --path=${documentRoot}`;
+	const wpPath = process.env.WP_CLI_PATH || "wp";
+	const cmd = `${wpPath} ${command} --path=${documentRoot}`;
 	if (logCallback) {
 		logCallback(`[WP-CLI] Executing: ${cmd.replace(/--dbpass=[^\s]+/, "--dbpass=***")}`);
 	}
