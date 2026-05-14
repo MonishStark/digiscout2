@@ -2171,6 +2171,7 @@ ${buildImageBlock(business)}
 
 Return only valid JSON matching the WebsiteSchema TypeScript interface. No markdown, no commentary, no explanations. Valid JSON only.`;
 
+		console.error(`[Gemini] Starting generation for ${business.name} with model ${modelsToTry[0].name}`);
 		persistGenerationDebugFile(debugSession, "02-generation-prompt.md", prompt);
 
 		const modelsToTry = [
@@ -2183,16 +2184,9 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. No markd
 
 		for (const model of modelsToTry) {
 			try {
+				console.error(`[Gemini] Attempting ${model.name}...`);
 				const response = (await Promise.race([
-					genai.models.generateContent({
-						model: model.name,
-						contents: prompt,
-						config: {
-							responseMimeType: "application/json",
-							temperature: 1.15,
-							topP: 0.95,
-						},
-					}),
+					genai.getGenerativeModel({ model: model.name }).generateContent(prompt),
 					new Promise((_, reject) =>
 						setTimeout(
 							() =>
@@ -2204,27 +2198,27 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. No markd
 							model.timeoutMs,
 						),
 					),
-				])) as { text?: string };
+				])) as any;
 
-				rawText = (response.text || "").trim();
+				const result = await response.response;
+				rawText = result.text().trim();
+				
 				if (rawText) {
+					console.error(`[Gemini] ${model.name} success! Response length: ${rawText.length}`);
+					fs.writeSync(2, `[Gemini] RESPONSE: ${rawText.substring(0, 500)}...\n`);
 					break;
 				}
 
-				lastError = new Error(`${model.name} returned empty text`);
-				console.warn(
-					`[Generate] ${model.name} returned empty text, trying next model.`,
-				);
+				console.error(`[Gemini] ${model.name} returned empty text.`);
 			} catch (error) {
 				lastError = error;
-				console.warn(
-					`[Generate] ${model.name} failed, trying next model:`,
-					error,
-				);
+				console.error(`[Gemini] ${model.name} failed:`, error instanceof Error ? error.message : error);
+				fs.writeSync(2, `[Gemini] ERROR DETAIL: ${JSON.stringify(error)}\n`);
 			}
 		}
 
 		if (!rawText) {
+			console.error("[Gemini] ALL MODELS FAILED. Falling back to template.");
 			throw lastError || new Error("All Gemini model attempts failed");
 		}
 

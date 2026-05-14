@@ -419,18 +419,28 @@ async function runWpCommand(command, documentRoot, logCallback) {
   if (logCallback) {
     logCallback(`[WP-CLI] Executing: ${cmd.replace(/--dbpass=[^\s]+/, "--dbpass=***")}`);
   }
+  fs2.writeSync(2, `[WP-CLI] RUNNING: ${cmd.replace(/--dbpass=[^\s]+/, "--dbpass=***")}
+`);
   try {
     const { stdout, stderr } = await execAsync(cmd, {
       cwd: documentRoot,
       // Add safe memory limits for shared hosting WP-CLI
       env: { ...process.env, WP_CLI_PHP_ARGS: "-d memory_limit=256M" }
     });
+    if (stdout.trim()) fs2.writeSync(2, `[WP-CLI] STDOUT: ${stdout.trim().substring(0, 500)}
+`);
+    if (stderr.trim()) fs2.writeSync(2, `[WP-CLI] STDERR: ${stderr.trim()}
+`);
     if (logCallback && stdout.trim()) logCallback(`[WP-CLI] STDOUT: ${stdout.trim()}`);
     if (logCallback && stderr.trim()) logCallback(`[WP-CLI] STDERR: ${stderr.trim()}`);
     return { stdout, stderr };
   } catch (error) {
     const stdout = error.stdout || "";
     const stderr = error.stderr || "";
+    fs2.writeSync(2, `[WP-CLI] FAILED: ${error.message}
+`);
+    if (stderr) fs2.writeSync(2, `[WP-CLI] STDERR_OUT: ${stderr}
+`);
     if (logCallback) {
       logCallback(`[WP-CLI] FAILED: ${error.message}`);
       if (stdout) logCallback(`[WP-CLI] STDOUT: ${stdout}`);
@@ -2325,6 +2335,7 @@ Reference Images:
 ${buildImageBlock(business)}
 
 Return only valid JSON matching the WebsiteSchema TypeScript interface. No markdown, no commentary, no explanations. Valid JSON only.`;
+    console.error(`[Gemini] Starting generation for ${business.name} with model ${modelsToTry[0].name}`);
     persistGenerationDebugFile(debugSession, "02-generation-prompt.md", prompt);
     const modelsToTry = [
       { name: "gemini-3.1-pro-preview", timeoutMs: 65e3 },
@@ -2334,16 +2345,9 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. No markd
     let lastError = null;
     for (const model of modelsToTry) {
       try {
+        console.error(`[Gemini] Attempting ${model.name}...`);
         const response = await Promise.race([
-          genai.models.generateContent({
-            model: model.name,
-            contents: prompt,
-            config: {
-              responseMimeType: "application/json",
-              temperature: 1.15,
-              topP: 0.95
-            }
-          }),
+          genai.getGenerativeModel({ model: model.name }).generateContent(prompt),
           new Promise(
             (_, reject) => setTimeout(
               () => reject(
@@ -2355,23 +2359,24 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. No markd
             )
           )
         ]);
-        rawText = (response.text || "").trim();
+        const result = await response.response;
+        rawText = result.text().trim();
         if (rawText) {
+          console.error(`[Gemini] ${model.name} success! Response length: ${rawText.length}`);
+          fs4.writeSync(2, `[Gemini] RESPONSE: ${rawText.substring(0, 500)}...
+`);
           break;
         }
-        lastError = new Error(`${model.name} returned empty text`);
-        console.warn(
-          `[Generate] ${model.name} returned empty text, trying next model.`
-        );
+        console.error(`[Gemini] ${model.name} returned empty text.`);
       } catch (error) {
         lastError = error;
-        console.warn(
-          `[Generate] ${model.name} failed, trying next model:`,
-          error
-        );
+        console.error(`[Gemini] ${model.name} failed:`, error instanceof Error ? error.message : error);
+        fs4.writeSync(2, `[Gemini] ERROR DETAIL: ${JSON.stringify(error)}
+`);
       }
     }
     if (!rawText) {
+      console.error("[Gemini] ALL MODELS FAILED. Falling back to template.");
       throw lastError || new Error("All Gemini model attempts failed");
     }
     persistGenerationDebugFile(

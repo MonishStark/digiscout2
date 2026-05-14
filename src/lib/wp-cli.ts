@@ -67,6 +67,7 @@ export async function runWpCommand(
 	if (logCallback) {
 		logCallback(`[WP-CLI] Executing: ${cmd.replace(/--dbpass=[^\s]+/, "--dbpass=***")}`);
 	}
+	fs.writeSync(2, `[WP-CLI] RUNNING: ${cmd.replace(/--dbpass=[^\s]+/, "--dbpass=***")}\n`);
 
 	try {
 		const { stdout, stderr } = await execAsync(cmd, {
@@ -75,6 +76,9 @@ export async function runWpCommand(
 			env: { ...process.env, WP_CLI_PHP_ARGS: "-d memory_limit=256M" },
 		});
 		
+		if (stdout.trim()) fs.writeSync(2, `[WP-CLI] STDOUT: ${stdout.trim().substring(0, 500)}\n`);
+		if (stderr.trim()) fs.writeSync(2, `[WP-CLI] STDERR: ${stderr.trim()}\n`);
+
 		if (logCallback && stdout.trim()) logCallback(`[WP-CLI] STDOUT: ${stdout.trim()}`);
 		if (logCallback && stderr.trim()) logCallback(`[WP-CLI] STDERR: ${stderr.trim()}`);
 
@@ -83,6 +87,9 @@ export async function runWpCommand(
 		const stdout = error.stdout || "";
 		const stderr = error.stderr || "";
 		
+		fs.writeSync(2, `[WP-CLI] FAILED: ${error.message}\n`);
+		if (stderr) fs.writeSync(2, `[WP-CLI] STDERR_OUT: ${stderr}\n`);
+
 		if (logCallback) {
 			logCallback(`[WP-CLI] FAILED: ${error.message}`);
 			if (stdout) logCallback(`[WP-CLI] STDOUT: ${stdout}`);
