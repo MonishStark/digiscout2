@@ -24,20 +24,9 @@ export interface WordPressProvisionSiteRequest {
 
 export interface WordPressProvisionSiteResult {
 	success: boolean;
-	dryRun: boolean;
+	jobId?: string;
 	message?: string;
-	site?: WordPressProvisioningSite;
-	provisioningStatus: ProvisioningStatus;
-	subsiteCreationStatus: ProvisioningStepStatus;
-	adminCreationStatus: ProvisioningStepStatus;
-	themeInstallStatus: ProvisioningStepStatus;
-	mediaImportStatus: ProvisioningStepStatus;
-	contentImportStatus: ProvisioningStepStatus;
-	homepageSetupStatus: ProvisioningStepStatus;
-	credentialsStatus: ProvisioningStepStatus;
-	logs: ProvisioningLogEntry[];
 	error?: string;
-	details?: string;
 }
 
 export async function provisionWordPressSite(
@@ -65,27 +54,15 @@ export async function provisionWordPressSite(
 		}),
 	});
 
-	const text = await response.text().catch(() => "");
-	let parsed: WordPressProvisionSiteResult | null = null;
-	try {
-		parsed = JSON.parse(text) as WordPressProvisionSiteResult;
-	} catch {
-		parsed = null;
-	}
-
 	if (!response.ok) {
+		const errorData = await response.json().catch(() => ({}));
 		throw new Error(
-			parsed?.error ||
-				parsed?.details ||
+			errorData.error ||
 				`WordPress provisioning failed: ${response.status} ${response.statusText}`,
 		);
 	}
 
-	if (!parsed) {
-		throw new Error("WordPress provisioning returned invalid JSON.");
-	}
-
-	return parsed;
+	return (await response.json()) as WordPressProvisionSiteResult;
 }
 
 export async function deleteProvisionedWordPressSite(

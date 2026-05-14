@@ -230,31 +230,7 @@ export default function LeadDetails({
 							p.id === newId
 								? {
 										...p,
-										wordpressSiteType: "multisite",
-										provisioningStatus: provisionResult.provisioningStatus,
-										wordpressSite: provisionResult.site,
-										wordpressSiteId: provisionResult.site?.siteId,
-										wordpressSiteSlug: provisionResult.site?.siteSlug,
-										wordpressSiteUrl: provisionResult.site?.siteUrl,
-										wordpressAdminUrl: provisionResult.site?.adminUrl,
-										wordpressOwnerUsername: provisionResult.site?.ownerUsername,
-										wordpressOwnerEmail: provisionResult.site?.ownerEmail,
-										wordpressPasswordSetupUrl:
-											provisionResult.site?.passwordSetupUrl,
-										subsiteCreationStatus:
-											provisionResult.subsiteCreationStatus,
-										adminCreationStatus: provisionResult.adminCreationStatus,
-										themeInstallStatus: provisionResult.themeInstallStatus,
-										mediaImportStatus: provisionResult.mediaImportStatus,
-										contentImportStatus: provisionResult.contentImportStatus,
-										homepageSetupStatus: provisionResult.homepageSetupStatus,
-										credentialsStatus: provisionResult.credentialsStatus,
-										provisioningLogs: provisionResult.logs,
-										provisioningError:
-											provisionResult.error ||
-											(provisionResult.dryRun
-												? provisionResult.message
-												: undefined),
+										provisioningStatus: "pending",
 										lastProvisionedAt: new Date().toISOString(),
 									}
 								: p,

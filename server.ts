@@ -20,6 +20,8 @@ import {
 	OutreachRequest,
 	OutreachResponse,
 } from "./src/lib/callhippo-service";
+import { pool, initializeDatabase } from "./src/lib/db";
+import { startProvisioningWorker } from "./src/lib/provisioning-worker";
 
 dotenv.config({ path: process.env.NODE_ENV === "production" ? ".env.production" : ".env.local" });
 
@@ -2590,44 +2592,69 @@ app.post(
 				});
 			}
 
-			// Use Namecheap WordPress Multisite provisioner
-			const result = await provisionWordPressMultisiteSite({
-				projectId,
-				business,
-				websiteSchema,
-				provisioningPlan
+			const jobId = crypto.randomUUID();
+			await pool.query(
+				`INSERT INTO provisioning_jobs (id, project_id, status) VALUES (?, ?, 'pending')`,
+				[jobId, projectId]
+			);
+
+			return res.json({
+				success: true,
+				jobId,
+				message: "Provisioning job queued successfully",
 			});
-			return res.json(result);
 		} catch (error) {
 			return res.status(500).json({
-				success: false,
-				dryRun: false,
-				provisioningStatus: "failed",
-				subsiteCreationStatus: "failed",
-				adminCreationStatus: "failed",
-				themeInstallStatus: "failed",
-				mediaImportStatus: "failed",
-				contentImportStatus: "failed",
-				homepageSetupStatus: "failed",
-				credentialsStatus: "failed",
-				logs: [],
-				error:
-					error instanceof Error
-						? error.message
-						: "WordPress provisioning failed",
+				error: error instanceof Error ? error.message : "Failed to queue provisioning job",
 			});
 		}
 	},
 );
 
-app.get("/api/wordpress/site-status/:siteId", async (req, res) => {
-	const { siteId } = req.params;
-	return res.json({
-		success: true,
-		siteId,
-		message:
-			"Site status polling is not yet persisted in the app server. Use the provisioning response as the source of truth for this MVP.",
-	});
+app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
+	const { projectId } = req.params;
+	try {
+		const [rows]: any = await pool.query(
+			`SELECT status, logs, subdomain_url, wp_admin_url, wp_admin_user, wp_admin_pass_encrypted FROM provisioning_jobs 
+			 LEFT JOIN isolated_deployments ON provisioning_jobs.project_id = isolated_deployments.project_id
+			 WHERE provisioning_jobs.project_id = ? ORDER BY provisioning_jobs.created_at DESC LIMIT 1`,
+			[projectId]
+		);
+
+		if (!rows || rows.length === 0) {
+			return res.status(404).json({ error: "Job not found" });
+		}
+
+		let rawPassword = null;
+		if (rows[0].status === "completed" && rows[0].wp_admin_pass_encrypted) {
+			try {
+				const [ivHex, encryptedHex] = rows[0].wp_admin_pass_encrypted.split(":");
+				const key = process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
+				const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(key), Buffer.from(ivHex, "hex"));
+				let decrypted = decipher.update(Buffer.from(encryptedHex, "hex"));
+				decrypted = Buffer.concat([decrypted, decipher.final()]);
+				rawPassword = decrypted.toString();
+			} catch (e) {
+				console.error("Decryption failed:", e);
+			}
+		}
+
+		return res.json({
+			success: true,
+			status: rows[0].status,
+			logs: rows[0].logs || [],
+			deployment: rows[0].subdomain_url ? {
+				liveUrl: rows[0].subdomain_url,
+				adminUrl: rows[0].wp_admin_url,
+				username: rows[0].wp_admin_user,
+				password: rawPassword
+			} : null
+		});
+	} catch (error) {
+		return res.status(500).json({
+			error: error instanceof Error ? error.message : "Failed to fetch status",
+		});
+	}
 });
 
 app.delete("/api/wordpress/site/:siteId", async (req, res) => {
@@ -2758,8 +2785,10 @@ app.delete("/api/sites/:siteId", async (req: Request, res: Response) => {
 	}
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
 	console.log(`Server is running on http://localhost:${PORT}`);
+	await initializeDatabase();
+	startProvisioningWorker();
 });
 
 export default app;

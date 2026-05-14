@@ -1,103 +1,19 @@
 // server.ts
-import crypto from "crypto";
+import crypto2 from "crypto";
 import cors from "cors";
-import dotenv from "dotenv";
+import dotenv2 from "dotenv";
 import express from "express";
-import fs from "fs";
+import fs3 from "fs";
 import path from "path";
 import { GoogleGenAI } from "@google/genai";
 
 // src/lib/wordpress-provisioning.ts
-function logEntry(step, level, message) {
-  return {
-    timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-    step,
-    level,
-    message
-  };
-}
-function buildDryRunResponse(request, message) {
-  const siteSlug = request.provisioningPlan.siteSlug;
-  const fallbackBase = process.env.WORDPRESS_MULTISITE_BASE_URL || "http://multisite.local";
-  const siteUrl = `${fallbackBase.replace(/\/$/, "")}/${siteSlug}/`;
-  return {
-    success: true,
-    dryRun: true,
-    message,
-    site: {
-      siteId: siteSlug,
-      siteSlug,
-      siteUrl,
-      adminUrl: `${siteUrl.replace(/\/$/, "")}/wp-admin/`,
-      ownerUsername: request.provisioningPlan.ownerUsername,
-      ownerEmail: request.provisioningPlan.ownerEmail
-    },
-    provisioningStatus: "dry-run",
-    subsiteCreationStatus: "dry-run",
-    adminCreationStatus: "dry-run",
-    themeInstallStatus: "dry-run",
-    mediaImportStatus: "dry-run",
-    contentImportStatus: "dry-run",
-    homepageSetupStatus: "dry-run",
-    credentialsStatus: "dry-run",
-    logs: [
-      logEntry("subsite_creation", "info", message),
-      logEntry(
-        "page_creation",
-        "info",
-        `Prepared ${request.provisioningPlan.pages.length} WordPress page payloads for ${siteSlug}.`
-      )
-    ]
-  };
-}
 function getMultisiteConfig() {
   return {
     baseUrl: process.env.WORDPRESS_MULTISITE_BASE_URL || process.env.WP_MULTISITE_BASE_URL || "",
     username: process.env.WORDPRESS_MULTISITE_NETWORK_USERNAME || process.env.WP_MULTISITE_NETWORK_USERNAME || "",
     applicationPassword: process.env.WORDPRESS_MULTISITE_NETWORK_APP_PASSWORD || process.env.WP_MULTISITE_NETWORK_APP_PASSWORD || ""
   };
-}
-async function provisionWordPressMultisiteSite(request) {
-  const config = getMultisiteConfig();
-  if (!config.baseUrl || !config.username || !config.applicationPassword) {
-    return buildDryRunResponse(
-      request,
-      "WordPress Multisite network credentials are not configured. Returning a provisioning dry-run."
-    );
-  }
-  const endpoint = `${config.baseUrl.replace(/\/$/, "")}/wp-json/digital-scout/v1/provision-site`;
-  const authToken = Buffer.from(
-    `${config.username}:${config.applicationPassword}`
-  ).toString("base64");
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Basic ${authToken}`
-    },
-    body: JSON.stringify({
-      projectId: request.projectId,
-      business: request.business,
-      websiteSchema: request.websiteSchema,
-      provisioningPlan: request.provisioningPlan
-    })
-  });
-  const text = await response.text().catch(() => "");
-  let parsed = null;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    parsed = null;
-  }
-  if (!response.ok) {
-    throw new Error(
-      parsed?.error || parsed?.details || `WordPress Multisite provisioning failed: ${response.status} ${response.statusText}`
-    );
-  }
-  if (!parsed) {
-    throw new Error("WordPress Multisite provisioning returned invalid JSON.");
-  }
-  return parsed;
 }
 async function deleteProvisionedWordPressMultisiteSite(siteId) {
   const config = getMultisiteConfig();
@@ -290,8 +206,453 @@ function formatPhoneNumber(phone) {
   return cleaned;
 }
 
-// server.ts
+// src/lib/db.ts
+import mysql from "mysql2/promise";
+import dotenv from "dotenv";
 dotenv.config({ path: process.env.NODE_ENV === "production" ? ".env.production" : ".env.local" });
+var pool = mysql.createPool({
+  host: process.env.DB_HOST || "127.0.0.1",
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "",
+  database: process.env.DB_NAME || "digitalscout",
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+});
+async function initializeDatabase() {
+  try {
+    await pool.query(`
+			CREATE TABLE IF NOT EXISTS provisioning_jobs (
+				id VARCHAR(255) PRIMARY KEY,
+				project_id VARCHAR(255) NOT NULL,
+				status ENUM('pending', 'creating_subdomain', 'creating_database', 'installing_wordpress', 'configuring_wordpress', 'deploying_content', 'validating', 'completed', 'failed') DEFAULT 'pending',
+				subdomain VARCHAR(255) NULL,
+				db_name VARCHAR(255) NULL,
+				db_user VARCHAR(255) NULL,
+				wp_admin_user VARCHAR(255) NULL,
+				wp_admin_pass_encrypted TEXT NULL,
+				retry_count INT DEFAULT 0,
+				locked_at DATETIME NULL,
+				logs JSON NULL,
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+				INDEX idx_status (status),
+				INDEX idx_project (project_id)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+		`);
+    await pool.query(`
+			CREATE TABLE IF NOT EXISTS isolated_deployments (
+				id VARCHAR(255) PRIMARY KEY,
+				project_id VARCHAR(255) NOT NULL,
+				subdomain_url VARCHAR(255) NOT NULL,
+				wp_admin_url VARCHAR(255) NOT NULL,
+				admin_username VARCHAR(255) NOT NULL,
+				encrypted_admin_password TEXT NOT NULL,
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				UNIQUE KEY uk_project (project_id)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+		`);
+    console.log("[DB] Provisioning schema initialized successfully.");
+  } catch (error) {
+    console.error("[DB] Failed to initialize schema:", error);
+  }
+}
+
+// src/lib/provisioning-engine.ts
+import crypto from "crypto";
+import fs2 from "fs";
+
+// src/lib/cpanel-uapi.ts
+import fetch2 from "node-fetch";
+function getCpanelConfig() {
+  const host = process.env.CPANEL_HOST;
+  const user = process.env.CPANEL_USERNAME;
+  const token = process.env.CPANEL_API_TOKEN;
+  if (!host || !user || !token) {
+    throw new Error(
+      "Missing cPanel configuration. Please check CPANEL_HOST, CPANEL_USERNAME, and CPANEL_API_TOKEN in your environment variables."
+    );
+  }
+  return {
+    baseUrl: `https://${host}:2083/execute`,
+    authHeader: `cpanel ${user}:${token}`
+  };
+}
+async function callUapi(module, func, params) {
+  const { baseUrl, authHeader } = getCpanelConfig();
+  const url = new URL(`${baseUrl}/${module}/${func}`);
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.append(key, value);
+  }
+  const response = await fetch2(url.toString(), {
+    method: "GET",
+    // UAPI generally accepts GET for execute unless strictly required
+    headers: {
+      Authorization: authHeader
+    }
+  });
+  if (!response.ok) {
+    throw new Error(`cPanel API HTTP Error: ${response.status} ${response.statusText}`);
+  }
+  const json = await response.json();
+  if (json.errors && json.errors.length > 0) {
+    throw new Error(`cPanel UAPI Error (${module}::${func}): ${json.errors.join(", ")}`);
+  }
+  if (json.status === 0) {
+    throw new Error(`cPanel UAPI Error (${module}::${func}): ${json.errors?.join(", ") || "Unknown failure"}`);
+  }
+  return json.data;
+}
+async function addSubdomain(subdomain, rootDomain, documentRoot) {
+  return callUapi("SubDomain", "addsubdomain", {
+    domain: subdomain,
+    rootdomain: rootDomain,
+    dir: documentRoot
+  });
+}
+async function deleteSubdomain(domain) {
+  return callUapi("SubDomain", "delsubdomain", {
+    domain
+  });
+}
+async function createDatabase(dbName) {
+  return callUapi("Mysql", "create_database", {
+    name: dbName
+  });
+}
+async function deleteDatabase(dbName) {
+  return callUapi("Mysql", "delete_database", {
+    name: dbName
+  });
+}
+async function createDatabaseUser(dbUser, password) {
+  return callUapi("Mysql", "create_user", {
+    name: dbUser,
+    password
+  });
+}
+async function deleteDatabaseUser(dbUser) {
+  return callUapi("Mysql", "delete_user", {
+    name: dbUser
+  });
+}
+async function setDatabasePrivileges(dbUser, dbName, privileges = "ALL PRIVILEGES") {
+  return callUapi("Mysql", "set_privileges_on_database", {
+    user: dbUser,
+    database: dbName,
+    privileges
+  });
+}
+
+// src/lib/wp-cli.ts
+import { exec } from "child_process";
+import { promisify } from "util";
+import fs from "fs";
+var execAsync = promisify(exec);
+var WpCliError = class extends Error {
+  constructor(message, stdout, stderr, code) {
+    super(message);
+    this.name = "WpCliError";
+    this.stdout = stdout;
+    this.stderr = stderr;
+    this.code = code;
+  }
+};
+async function checkWpCliAvailable() {
+  try {
+    const { stdout: versionOut } = await execAsync("wp --version");
+    const { stdout: pathOut } = await execAsync("which wp").catch(() => ({ stdout: "unknown" }));
+    return {
+      available: true,
+      version: versionOut.trim(),
+      path: pathOut.trim()
+    };
+  } catch (error) {
+    return {
+      available: false,
+      error: error.message || "WP-CLI not found or executable"
+    };
+  }
+}
+async function runWpCommand(command, documentRoot, logCallback) {
+  if (!fs.existsSync(documentRoot)) {
+    throw new Error(`Document root does not exist: ${documentRoot}`);
+  }
+  const cmd = `wp ${command} --path=${documentRoot}`;
+  if (logCallback) {
+    logCallback(`[WP-CLI] Executing: ${cmd.replace(/--dbpass=[^\s]+/, "--dbpass=***")}`);
+  }
+  try {
+    const { stdout, stderr } = await execAsync(cmd, {
+      cwd: documentRoot,
+      // Add safe memory limits for shared hosting WP-CLI
+      env: { ...process.env, WP_CLI_PHP_ARGS: "-d memory_limit=256M" }
+    });
+    if (logCallback && stdout.trim()) logCallback(`[WP-CLI] STDOUT: ${stdout.trim()}`);
+    if (logCallback && stderr.trim()) logCallback(`[WP-CLI] STDERR: ${stderr.trim()}`);
+    return { stdout, stderr };
+  } catch (error) {
+    const stdout = error.stdout || "";
+    const stderr = error.stderr || "";
+    if (logCallback) {
+      logCallback(`[WP-CLI] FAILED: ${error.message}`);
+      if (stdout) logCallback(`[WP-CLI] STDOUT: ${stdout}`);
+      if (stderr) logCallback(`[WP-CLI] STDERR: ${stderr}`);
+    }
+    throw new WpCliError(
+      `WP-CLI command failed: ${command}`,
+      stdout,
+      stderr,
+      error.code
+    );
+  }
+}
+async function downloadWordPressCore(documentRoot, logCallback) {
+  return runWpCommand("core download", documentRoot, logCallback);
+}
+async function createWpConfig(documentRoot, dbName, dbUser, dbPass, dbHost = "localhost", logCallback) {
+  return runWpCommand(
+    `config create --dbname="${dbName}" --dbuser="${dbUser}" --dbpass="${dbPass}" --dbhost="${dbHost}" --extra-php="define('WP_DEBUG', false); define('WP_DEBUG_LOG', false);"`,
+    documentRoot,
+    logCallback
+  );
+}
+async function installWordPress(documentRoot, url, title, adminUser, adminPassword, adminEmail, logCallback) {
+  return runWpCommand(
+    `core install --url="${url}" --title="${title}" --admin_user="${adminUser}" --admin_password="${adminPassword}" --admin_email="${adminEmail}" --skip-email`,
+    documentRoot,
+    logCallback
+  );
+}
+async function configurePermalinks(documentRoot, structure = "/%postname%/", logCallback) {
+  return runWpCommand(`rewrite structure "${structure}"`, documentRoot, logCallback);
+}
+
+// src/lib/provisioning-engine.ts
+var MAX_RETRIES = 3;
+function sanitizeSubdomain(name) {
+  return name.toLowerCase().replace(/[^a-z0-9-]/g, "").substring(0, 30);
+}
+function generateSecurePassword() {
+  return crypto.randomBytes(16).toString("hex") + "!aA1";
+}
+function encrypt(text) {
+  const key = process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(key), iv);
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return iv.toString("hex") + ":" + encrypted.toString("hex");
+}
+async function appendLog(jobId, message) {
+  const timestamp = (/* @__PURE__ */ new Date()).toISOString();
+  const logEntry = `[${timestamp}] ${message}`;
+  console.log(`[Job ${jobId}] ${message}`);
+  await pool.query(
+    `UPDATE provisioning_jobs SET logs = JSON_ARRAY_APPEND(COALESCE(logs, JSON_ARRAY()), '$', ?) WHERE id = ?`,
+    [logEntry, jobId]
+  );
+}
+async function processJob(jobId) {
+  const [rows] = await pool.query(`SELECT * FROM provisioning_jobs WHERE id = ?`, [jobId]);
+  if (!rows || rows.length === 0) return;
+  const job = rows[0];
+  if (job.status === "completed" || job.status === "failed") return;
+  try {
+    await executeStateMachine(job);
+  } catch (error) {
+    await appendLog(job.id, `ERROR: ${error.message}`);
+    if (job.retry_count < MAX_RETRIES) {
+      await appendLog(job.id, `Retrying later (Attempt ${job.retry_count + 1}/${MAX_RETRIES})`);
+      await pool.query(`UPDATE provisioning_jobs SET retry_count = retry_count + 1, locked_at = NULL WHERE id = ?`, [job.id]);
+    } else {
+      await appendLog(job.id, `Max retries reached. Initiating rollback.`);
+      await rollbackJob(job);
+      await pool.query(`UPDATE provisioning_jobs SET status = 'failed', locked_at = NULL WHERE id = ?`, [job.id]);
+    }
+  }
+}
+async function executeStateMachine(job) {
+  const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscout.online";
+  const docRootBase = process.env.WP_DOCROOT_BASE || "/home/username/public_html/sites";
+  let subdomain = job.subdomain;
+  let dbName = job.db_name;
+  let dbUser = job.db_user;
+  let wpAdminUser = job.wp_admin_user || "admin";
+  let wpAdminPass = job.wp_admin_pass_encrypted;
+  if (job.status === "pending" || job.status === "creating_subdomain") {
+    await pool.query(`UPDATE provisioning_jobs SET status = 'creating_subdomain' WHERE id = ?`, [job.id]);
+    await appendLog(job.id, "Starting subdomain creation");
+    if (!subdomain) {
+      subdomain = sanitizeSubdomain(`site-${job.project_id}`);
+      await pool.query(`UPDATE provisioning_jobs SET subdomain = ? WHERE id = ?`, [subdomain, job.id]);
+    }
+    const fullDocRoot = `${docRootBase}/${subdomain}`;
+    await addSubdomain(subdomain, rootDomain, fullDocRoot);
+    await appendLog(job.id, `Created subdomain: ${subdomain}.${rootDomain}`);
+    job.status = "creating_database";
+  }
+  if (job.status === "creating_database") {
+    await pool.query(`UPDATE provisioning_jobs SET status = 'creating_database' WHERE id = ?`, [job.id]);
+    await appendLog(job.id, "Starting database creation");
+    const dbPrefix = process.env.CPANEL_USERNAME ? `${process.env.CPANEL_USERNAME}_` : "db_";
+    if (!dbName) {
+      const suffix = crypto.randomBytes(4).toString("hex");
+      dbName = `${dbPrefix}${suffix}`.substring(0, 64);
+      dbUser = `${dbPrefix}u${suffix}`.substring(0, 32);
+      await pool.query(`UPDATE provisioning_jobs SET db_name = ?, db_user = ? WHERE id = ?`, [dbName, dbUser, job.id]);
+    }
+    const dbPassword = generateSecurePassword();
+    await createDatabase(dbName);
+    await createDatabaseUser(dbUser, dbPassword);
+    await setDatabasePrivileges(dbUser, dbName);
+    job._tempDbPass = dbPassword;
+    await appendLog(job.id, `Created database: ${dbName} and user: ${dbUser}`);
+    job.status = "installing_wordpress";
+  }
+  if (job.status === "installing_wordpress") {
+    await pool.query(`UPDATE provisioning_jobs SET status = 'installing_wordpress' WHERE id = ?`, [job.id]);
+    await appendLog(job.id, "Starting WordPress installation");
+    const wpCliStatus = await checkWpCliAvailable();
+    if (!wpCliStatus.available) {
+      throw new Error("WP-CLI is missing on the host. Cannot proceed.");
+    }
+    const fullDocRoot = `${docRootBase}/${subdomain}`;
+    if (!fs2.existsSync(fullDocRoot)) {
+      fs2.mkdirSync(fullDocRoot, { recursive: true });
+    }
+    await downloadWordPressCore(fullDocRoot, (log) => appendLog(job.id, log));
+    if (!wpAdminPass) {
+      const rawPass = generateSecurePassword();
+      wpAdminPass = encrypt(rawPass);
+      job._tempAdminPass = rawPass;
+      await pool.query(`UPDATE provisioning_jobs SET wp_admin_user = ?, wp_admin_pass_encrypted = ? WHERE id = ?`, [wpAdminUser, wpAdminPass, job.id]);
+    }
+    const dbPassword = job._tempDbPass;
+    if (!dbPassword) {
+      throw new Error("Temporary DB password lost across retries. Manual intervention or rollback required.");
+    }
+    await createWpConfig(fullDocRoot, dbName, dbUser, dbPassword, "localhost", (log) => appendLog(job.id, log));
+    const rawAdminPass = job._tempAdminPass;
+    const fullUrl = `https://${subdomain}.${rootDomain}`;
+    await installWordPress(fullDocRoot, fullUrl, `Generated Site ${job.project_id}`, wpAdminUser, rawAdminPass, "admin@digitalscout.online", (log) => appendLog(job.id, log));
+    await appendLog(job.id, "WordPress installed successfully");
+    job.status = "configuring_wordpress";
+  }
+  if (job.status === "configuring_wordpress") {
+    await pool.query(`UPDATE provisioning_jobs SET status = 'configuring_wordpress' WHERE id = ?`, [job.id]);
+    const fullDocRoot = `${docRootBase}/${subdomain}`;
+    await configurePermalinks(fullDocRoot, "/%postname%/", (log) => appendLog(job.id, log));
+    await appendLog(job.id, "Configured permalinks");
+    job.status = "deploying_content";
+  }
+  if (job.status === "deploying_content") {
+    await pool.query(`UPDATE provisioning_jobs SET status = 'deploying_content' WHERE id = ?`, [job.id]);
+    await appendLog(job.id, "Deploying content blocks...");
+    job.status = "validating";
+  }
+  if (job.status === "validating") {
+    await pool.query(`UPDATE provisioning_jobs SET status = 'validating' WHERE id = ?`, [job.id]);
+    await appendLog(job.id, "Validating deployment...");
+    const fullUrl = `https://${subdomain}.${rootDomain}`;
+    try {
+      await fetch(fullUrl);
+    } catch (e) {
+      await appendLog(job.id, `SSL/HTTP validation failed: ${e.message} (AutoSSL may still be provisioning)`);
+    }
+    job.status = "completed";
+  }
+  if (job.status === "completed") {
+    await pool.query(`UPDATE provisioning_jobs SET status = 'completed', locked_at = NULL WHERE id = ?`, [job.id]);
+    await pool.query(`
+			INSERT IGNORE INTO isolated_deployments (id, project_id, subdomain_url, wp_admin_url, admin_username, encrypted_admin_password)
+			VALUES (?, ?, ?, ?, ?, ?)
+		`, [
+      crypto.randomUUID(),
+      job.project_id,
+      `https://${subdomain}.${rootDomain}`,
+      `https://${subdomain}.${rootDomain}/wp-admin`,
+      wpAdminUser,
+      wpAdminPass
+    ]);
+    await appendLog(job.id, "Job completed successfully!");
+  }
+}
+async function rollbackJob(job) {
+  await appendLog(job.id, "[ROLLBACK] Starting cleanup...");
+  if (job.subdomain) {
+    try {
+      await deleteSubdomain(job.subdomain);
+      await appendLog(job.id, `[ROLLBACK] Deleted subdomain ${job.subdomain}`);
+    } catch (e) {
+      await appendLog(job.id, `[ROLLBACK] Failed to delete subdomain: ${e.message}`);
+    }
+  }
+  if (job.db_name) {
+    try {
+      await deleteDatabase(job.db_name);
+      await appendLog(job.id, `[ROLLBACK] Deleted database ${job.db_name}`);
+    } catch (e) {
+      await appendLog(job.id, `[ROLLBACK] Failed to delete database: ${e.message}`);
+    }
+  }
+  if (job.db_user) {
+    try {
+      await deleteDatabaseUser(job.db_user);
+      await appendLog(job.id, `[ROLLBACK] Deleted database user ${job.db_user}`);
+    } catch (e) {
+      await appendLog(job.id, `[ROLLBACK] Failed to delete database user: ${e.message}`);
+    }
+  }
+  await appendLog(job.id, "[ROLLBACK] Cleanup finished.");
+}
+
+// src/lib/provisioning-worker.ts
+var POLL_INTERVAL_MS = 5e3;
+var isWorkerRunning = false;
+async function startProvisioningWorker() {
+  if (isWorkerRunning) return;
+  isWorkerRunning = true;
+  console.log("[Worker] Provisioning worker started.");
+  setInterval(async () => {
+    try {
+      await pollQueue();
+    } catch (error) {
+      console.error("[Worker] Error in poll loop:", error);
+    }
+  }, POLL_INTERVAL_MS);
+}
+async function pollQueue() {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [rows] = await connection.query(`
+			SELECT id FROM provisioning_jobs 
+			WHERE status NOT IN ('completed', 'failed') 
+			  AND (locked_at IS NULL OR locked_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE))
+			ORDER BY created_at ASC 
+			LIMIT 1
+			FOR UPDATE SKIP LOCKED
+		`);
+    if (!rows || rows.length === 0) {
+      await connection.commit();
+      return;
+    }
+    const jobId = rows[0].id;
+    await connection.query(`UPDATE provisioning_jobs SET locked_at = NOW() WHERE id = ?`, [jobId]);
+    await connection.commit();
+    console.log(`[Worker] Picked up job ${jobId}`);
+    await processJob(jobId);
+  } catch (error) {
+    await connection.rollback();
+    console.error("[Worker] Transaction error:", error);
+  } finally {
+    connection.release();
+  }
+}
+
+// server.ts
+dotenv2.config({ path: process.env.NODE_ENV === "production" ? ".env.production" : ".env.local" });
 var app = express();
 var PORT = process.env.PORT || 5001;
 app.use(
@@ -320,12 +681,12 @@ function createGenerationDebugSession(business) {
   let folderName = traceId;
   let folderPath = path.join(DEBUG_ROOT_DIR, folderName);
   let suffix = 2;
-  while (fs.existsSync(folderPath)) {
+  while (fs3.existsSync(folderPath)) {
     folderName = `${traceId}-${suffix}`;
     folderPath = path.join(DEBUG_ROOT_DIR, folderName);
     suffix += 1;
   }
-  fs.mkdirSync(folderPath, { recursive: true });
+  fs3.mkdirSync(folderPath, { recursive: true });
   const session = {
     traceId,
     folderName,
@@ -351,15 +712,15 @@ function formatDebugPayload(content) {
   return JSON.stringify(content, null, 2);
 }
 function persistGenerationDebugFile(session, fileName, content, append = false) {
-  fs.mkdirSync(session.folderPath, { recursive: true });
+  fs3.mkdirSync(session.folderPath, { recursive: true });
   const targetPath = path.join(session.folderPath, fileName);
   const payload = formatDebugPayload(content);
-  if (append && fs.existsSync(targetPath)) {
-    fs.appendFileSync(targetPath, `${payload}
+  if (append && fs3.existsSync(targetPath)) {
+    fs3.appendFileSync(targetPath, `${payload}
 `, "utf8");
     return;
   }
-  fs.writeFileSync(targetPath, payload, "utf8");
+  fs3.writeFileSync(targetPath, payload, "utf8");
 }
 function appendGenerationDebugError(session, message) {
   const line = `[${(/* @__PURE__ */ new Date()).toISOString()}] ${message}`;
@@ -2097,7 +2458,7 @@ app.post(
       const siteData = await siteResponse.json();
       const siteId = siteData.id;
       const deployedUrl = siteData.ssl_url || siteData.url || siteData.deploy_url;
-      const sha1 = crypto.createHash("sha1").update(websiteContent).digest("hex");
+      const sha1 = crypto2.createHash("sha1").update(websiteContent).digest("hex");
       const deployResponse = await fetch(
         `https://api.netlify.com/api/v1/sites/${siteId}/deploys`,
         {
@@ -2279,38 +2640,64 @@ app.post(
           error: "Missing projectId, business, or websiteSchema."
         });
       }
-      const result = await provisionWordPressMultisiteSite({
-        projectId,
-        business,
-        websiteSchema,
-        provisioningPlan
+      const jobId = crypto2.randomUUID();
+      await pool.query(
+        `INSERT INTO provisioning_jobs (id, project_id, status) VALUES (?, ?, 'pending')`,
+        [jobId, projectId]
+      );
+      return res.json({
+        success: true,
+        jobId,
+        message: "Provisioning job queued successfully"
       });
-      return res.json(result);
     } catch (error) {
       return res.status(500).json({
-        success: false,
-        dryRun: false,
-        provisioningStatus: "failed",
-        subsiteCreationStatus: "failed",
-        adminCreationStatus: "failed",
-        themeInstallStatus: "failed",
-        mediaImportStatus: "failed",
-        contentImportStatus: "failed",
-        homepageSetupStatus: "failed",
-        credentialsStatus: "failed",
-        logs: [],
-        error: error instanceof Error ? error.message : "WordPress provisioning failed"
+        error: error instanceof Error ? error.message : "Failed to queue provisioning job"
       });
     }
   }
 );
-app.get("/api/wordpress/site-status/:siteId", async (req, res) => {
-  const { siteId } = req.params;
-  return res.json({
-    success: true,
-    siteId,
-    message: "Site status polling is not yet persisted in the app server. Use the provisioning response as the source of truth for this MVP."
-  });
+app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
+  const { projectId } = req.params;
+  try {
+    const [rows] = await pool.query(
+      `SELECT status, logs, subdomain_url, wp_admin_url, wp_admin_user, wp_admin_pass_encrypted FROM provisioning_jobs 
+			 LEFT JOIN isolated_deployments ON provisioning_jobs.project_id = isolated_deployments.project_id
+			 WHERE provisioning_jobs.project_id = ? ORDER BY provisioning_jobs.created_at DESC LIMIT 1`,
+      [projectId]
+    );
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ error: "Job not found" });
+    }
+    let rawPassword = null;
+    if (rows[0].status === "completed" && rows[0].wp_admin_pass_encrypted) {
+      try {
+        const [ivHex, encryptedHex] = rows[0].wp_admin_pass_encrypted.split(":");
+        const key = process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
+        const decipher = crypto2.createDecipheriv("aes-256-cbc", Buffer.from(key), Buffer.from(ivHex, "hex"));
+        let decrypted = decipher.update(Buffer.from(encryptedHex, "hex"));
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+        rawPassword = decrypted.toString();
+      } catch (e) {
+        console.error("Decryption failed:", e);
+      }
+    }
+    return res.json({
+      success: true,
+      status: rows[0].status,
+      logs: rows[0].logs || [],
+      deployment: rows[0].subdomain_url ? {
+        liveUrl: rows[0].subdomain_url,
+        adminUrl: rows[0].wp_admin_url,
+        username: rows[0].wp_admin_user,
+        password: rawPassword
+      } : null
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : "Failed to fetch status"
+    });
+  }
 });
 app.delete("/api/wordpress/site/:siteId", async (req, res) => {
   try {
@@ -2416,8 +2803,10 @@ app.delete("/api/sites/:siteId", async (req, res) => {
     });
   }
 });
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server is running on http://localhost:${PORT}`);
+  await initializeDatabase();
+  startProvisioningWorker();
 });
 var server_default = app;
 export {

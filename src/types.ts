@@ -192,11 +192,16 @@ export interface Deployment {
 }
 
 export type ProvisioningStatus =
-	| "not_started"
-	| "provisioning"
-	| "ready"
+	| "pending"
+	| "creating_subdomain"
+	| "creating_database"
+	| "installing_wordpress"
+	| "configuring_wordpress"
+	| "deploying_content"
+	| "validating"
 	| "completed"
 	| "failed"
+	| "ready" // Legacy
 	| "dry-run";
 
 export type ProvisioningStepStatus =
@@ -251,6 +256,7 @@ export interface WordPressProvisioningState {
 	credentialsStatus?: ProvisioningStepStatus;
 	lastProvisionedAt?: string;
 	provisioningLogs?: ProvisioningLogEntry[];
+	wordpressPassword?: string;
 	provisioningError?: string;
 }
 

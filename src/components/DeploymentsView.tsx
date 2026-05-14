@@ -344,35 +344,93 @@ export default function DeploymentsView({
 
 	const getProvisioningLabel = (project: WebsiteProject) => {
 		switch (project.provisioningStatus) {
-			case "ready":
 			case "completed":
 				return "CMS Ready";
-			case "provisioning":
-				return "Provisioning";
-			case "dry-run":
-				return "Dry-Run";
+			case "pending":
+				return "Queueing";
+			case "creating_subdomain":
+				return "DNS Setup";
+			case "creating_database":
+				return "Database Setup";
+			case "installing_wordpress":
+				return "WP Install";
+			case "configuring_wordpress":
+				return "WP Config";
+			case "deploying_content":
+				return "Pushing Content";
+			case "validating":
+				return "Validating";
 			case "failed":
-				return "Provisioning Failed";
+				return "Failed";
 			default:
-				return "Not Started";
+				return project.provisioningStatus || "Not Started";
 		}
 	};
 
 	const getProvisioningTone = (project: WebsiteProject) => {
 		switch (project.provisioningStatus) {
-			case "ready":
 			case "completed":
 				return "border-cyan-200 bg-cyan-50 text-cyan-700";
-			case "provisioning":
-				return "border-amber-200 bg-amber-50 text-amber-700";
-			case "dry-run":
-				return "border-slate-200 bg-slate-50 text-slate-600";
 			case "failed":
 				return "border-rose-200 bg-rose-50 text-rose-700";
+			case "pending":
+			case "creating_subdomain":
+			case "creating_database":
+			case "installing_wordpress":
+			case "configuring_wordpress":
+			case "deploying_content":
+			case "validating":
+				return "border-amber-200 bg-amber-50 text-amber-700 animate-pulse";
 			default:
 				return "border-slate-200 bg-slate-50 text-slate-600";
 		}
 	};
+
+	React.useEffect(() => {
+		const activeProjects = projects.filter(
+			(p) =>
+				p.provisioningStatus &&
+				!["completed", "failed", "ready", "dry-run"].includes(
+					p.provisioningStatus,
+				),
+		);
+
+		if (activeProjects.length === 0) return;
+
+		const interval = setInterval(() => {
+			activeProjects.forEach(async (project) => {
+				try {
+					const API_URL =
+						((import.meta as any).env?.VITE_API_URL as string | undefined) ||
+						"http://localhost:5001";
+					const response = await fetch(
+						`${API_URL}/api/wordpress/site-status/${project.id}`,
+					);
+					if (response.ok) {
+						const data = await response.json();
+						setProjects((prev) =>
+							prev.map((p) =>
+								p.id === project.id
+									? {
+											...p,
+											provisioningStatus: data.status,
+											wordpressSiteUrl: data.deployment?.liveUrl,
+											wordpressAdminUrl: data.deployment?.adminUrl,
+											wordpressOwnerUsername: data.deployment?.username,
+											wordpressPassword: data.deployment?.password,
+										}
+									: p,
+							),
+						);
+					}
+				} catch (error) {
+					console.error("Polling error:", error);
+				}
+			});
+		}, 3000);
+
+		return () => clearInterval(interval);
+	}, [projects, setProjects]);
 
 	const getCategoryLabel = (project: WebsiteProject) =>
 		project.businessCategory || "General";
@@ -500,6 +558,14 @@ export default function DeploymentsView({
 															<span className='truncate'>WP Admin</span>
 															<ExternalLink className='h-3 w-3 flex-shrink-0' />
 														</a>
+													)}
+													{project.wordpressPassword && (
+														<div className='mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800'>
+															<p className='font-bold mb-1'>WordPress Admin Credentials</p>
+															<p>User: <span className='font-mono bg-white/50 px-1 rounded'>{project.wordpressOwnerUsername}</span></p>
+															<p>Pass: <span className='font-mono bg-white/50 px-1 rounded'>{project.wordpressPassword}</span></p>
+															<p className='mt-1 text-[10px] text-amber-600 italic'>Save these! They are only shown once.</p>
+														</div>
 													)}
 													{project.deployedUrl && (
 														<a
