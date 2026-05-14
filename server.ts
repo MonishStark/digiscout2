@@ -1,6 +1,12 @@
 /** @format */
 
 import "./src/lib/env";
+import fs from "fs";
+// Low-level write to stderr to bypass console redirection
+fs.writeSync(2, `[BOOT] Server process starting at ${new Date().toISOString()}\n`);
+fs.writeSync(2, `[BOOT] CWD: ${process.cwd()}\n`);
+fs.writeSync(2, `[BOOT] DB_USER: ${process.env.DB_USER || "NOT SET"}\n`);
+
 import crypto from "crypto";
 import http from "http";
 import cors from "cors";

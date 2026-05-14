@@ -683,6 +683,12 @@ async function pollQueue() {
 }
 
 // server.ts
+fs4.writeSync(2, `[BOOT] Server process starting at ${(/* @__PURE__ */ new Date()).toISOString()}
+`);
+fs4.writeSync(2, `[BOOT] CWD: ${process.cwd()}
+`);
+fs4.writeSync(2, `[BOOT] DB_USER: ${process.env.DB_USER || "NOT SET"}
+`);
 var app = express();
 var PORT = process.env.PORT || 5001;
 app.use(
