@@ -10,6 +10,12 @@ var bundleRoot = path.resolve(__dirname, "../");
 var searchPaths = [cwd, bundleRoot];
 var envFiles = [".env.production", ".env.local", ".env"];
 console.error(`[Env] Searching in: ${searchPaths.join(", ")}`);
+try {
+  const files = fs.readdirSync(cwd);
+  console.error(`[Env] Files found in ${cwd}: ${files.join(", ")}`);
+} catch (e) {
+  console.error(`[Env] Could not list files in ${cwd}: ${e.message}`);
+}
 for (const root of searchPaths) {
   for (const file of envFiles) {
     const fullPath = path.join(root, file);
