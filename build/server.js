@@ -1,10 +1,23 @@
 // src/lib/env.ts
 import dotenv from "dotenv";
 import path from "path";
-var rootDir = process.cwd();
+import fs from "fs";
+import { fileURLToPath } from "url";
+var cwd = process.cwd();
+var __filename = fileURLToPath(import.meta.url);
+var __dirname = path.dirname(__filename);
+var bundleRoot = path.resolve(__dirname, "../");
+var searchPaths = [cwd, bundleRoot];
 var envFiles = [".env.production", ".env.local", ".env"];
-for (const file of envFiles) {
-  dotenv.config({ path: path.join(rootDir, file) });
+console.log(`[Env] Searching in: ${searchPaths.join(", ")}`);
+for (const root of searchPaths) {
+  for (const file of envFiles) {
+    const fullPath = path.join(root, file);
+    if (fs.existsSync(fullPath)) {
+      console.log(`[Env] Found environment file: ${fullPath}`);
+      dotenv.config({ path: fullPath });
+    }
+  }
 }
 var env_default = process.env;
 
@@ -12,7 +25,7 @@ var env_default = process.env;
 import crypto2 from "crypto";
 import cors from "cors";
 import express from "express";
-import fs3 from "fs";
+import fs4 from "fs";
 import path2 from "path";
 import { GoogleGenAI } from "@google/genai";
 
@@ -226,6 +239,7 @@ var pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0
 });
+console.log(`[DB] Pool initialized. User: ${process.env.DB_USER || "root (default)"}, Host: ${process.env.DB_HOST || "127.0.0.1"}`);
 async function initializeDatabase() {
   try {
     await pool.query(`
@@ -267,7 +281,7 @@ async function initializeDatabase() {
 
 // src/lib/provisioning-engine.ts
 import crypto from "crypto";
-import fs2 from "fs";
+import fs3 from "fs";
 
 // src/lib/cpanel-uapi.ts
 import fetch2 from "node-fetch";
@@ -354,7 +368,7 @@ async function setDatabasePrivileges(dbUser, dbName, privileges = "ALL PRIVILEGE
 // src/lib/wp-cli.ts
 import { exec } from "child_process";
 import { promisify } from "util";
-import fs from "fs";
+import fs2 from "fs";
 var execAsync = promisify(exec);
 var WpCliError = class extends Error {
   constructor(message, stdout, stderr, code) {
@@ -382,7 +396,7 @@ async function checkWpCliAvailable() {
   }
 }
 async function runWpCommand(command, documentRoot, logCallback) {
-  if (!fs.existsSync(documentRoot)) {
+  if (!fs2.existsSync(documentRoot)) {
     throw new Error(`Document root does not exist: ${documentRoot}`);
   }
   const cmd = `wp ${command} --path=${documentRoot}`;
@@ -525,8 +539,8 @@ async function executeStateMachine(job) {
       throw new Error("WP-CLI is missing on the host. Cannot proceed.");
     }
     const fullDocRoot = `${docRootBase}/${subdomain}`;
-    if (!fs2.existsSync(fullDocRoot)) {
-      fs2.mkdirSync(fullDocRoot, { recursive: true });
+    if (!fs3.existsSync(fullDocRoot)) {
+      fs3.mkdirSync(fullDocRoot, { recursive: true });
     }
     await downloadWordPressCore(fullDocRoot, (log) => appendLog(job.id, log));
     if (!wpAdminPass) {
@@ -687,12 +701,12 @@ function createGenerationDebugSession(business) {
   let folderName = traceId;
   let folderPath = path2.join(DEBUG_ROOT_DIR, folderName);
   let suffix = 2;
-  while (fs3.existsSync(folderPath)) {
+  while (fs4.existsSync(folderPath)) {
     folderName = `${traceId}-${suffix}`;
     folderPath = path2.join(DEBUG_ROOT_DIR, folderName);
     suffix += 1;
   }
-  fs3.mkdirSync(folderPath, { recursive: true });
+  fs4.mkdirSync(folderPath, { recursive: true });
   const session = {
     traceId,
     folderName,
@@ -718,15 +732,15 @@ function formatDebugPayload(content) {
   return JSON.stringify(content, null, 2);
 }
 function persistGenerationDebugFile(session, fileName, content, append = false) {
-  fs3.mkdirSync(session.folderPath, { recursive: true });
+  fs4.mkdirSync(session.folderPath, { recursive: true });
   const targetPath = path2.join(session.folderPath, fileName);
   const payload = formatDebugPayload(content);
-  if (append && fs3.existsSync(targetPath)) {
-    fs3.appendFileSync(targetPath, `${payload}
+  if (append && fs4.existsSync(targetPath)) {
+    fs4.appendFileSync(targetPath, `${payload}
 `, "utf8");
     return;
   }
-  fs3.writeFileSync(targetPath, payload, "utf8");
+  fs4.writeFileSync(targetPath, payload, "utf8");
 }
 function appendGenerationDebugError(session, message) {
   const line = `[${(/* @__PURE__ */ new Date()).toISOString()}] ${message}`;

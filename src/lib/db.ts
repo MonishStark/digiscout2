@@ -11,6 +11,8 @@ export const pool = mysql.createPool({
 	queueLimit: 0,
 });
 
+console.log(`[DB] Pool initialized. User: ${process.env.DB_USER || "root (default)"}, Host: ${process.env.DB_HOST || "127.0.0.1"}`);
+
 export async function initializeDatabase() {
 	try {
 		// Create provisioning_jobs table
