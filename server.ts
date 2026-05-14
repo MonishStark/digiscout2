@@ -2171,13 +2171,13 @@ ${buildImageBlock(business)}
 
 Return only valid JSON matching the WebsiteSchema TypeScript interface. No markdown, no commentary, no explanations. Valid JSON only.`;
 
-		console.error(`[Gemini] Starting generation for ${business.name} with model ${modelsToTry[0].name}`);
-		persistGenerationDebugFile(debugSession, "02-generation-prompt.md", prompt);
-
 		const modelsToTry = [
 			{ name: "gemini-3.1-pro-preview", timeoutMs: 65000 },
 			{ name: "gemini-2.5-flash", timeoutMs: 35000 },
 		] as const;
+
+		console.error(`[Gemini] Starting generation for ${business.name} with model ${modelsToTry[0].name}`);
+		persistGenerationDebugFile(debugSession, "02-generation-prompt.md", prompt);
 
 		let rawText = "";
 		let lastError: unknown = null;
