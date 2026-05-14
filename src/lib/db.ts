@@ -25,6 +25,7 @@ export async function initializeDatabase() {
 				subdomain VARCHAR(255) NULL,
 				db_name VARCHAR(255) NULL,
 				db_user VARCHAR(255) NULL,
+				db_pass_encrypted TEXT NULL,
 				wp_admin_user VARCHAR(255) NULL,
 				wp_admin_pass_encrypted TEXT NULL,
 				retry_count INT DEFAULT 0,
@@ -36,6 +37,11 @@ export async function initializeDatabase() {
 				INDEX idx_project (project_id)
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 		`);
+
+		// Add db_pass_encrypted column if it doesn't exist
+		try {
+			await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN db_pass_encrypted TEXT NULL AFTER db_user`);
+		} catch (e) {}
 
 		// Add business_name column if it doesn't exist
 		try {

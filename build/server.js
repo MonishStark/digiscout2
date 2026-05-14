@@ -267,6 +267,7 @@ async function initializeDatabase() {
 				subdomain VARCHAR(255) NULL,
 				db_name VARCHAR(255) NULL,
 				db_user VARCHAR(255) NULL,
+				db_pass_encrypted TEXT NULL,
 				wp_admin_user VARCHAR(255) NULL,
 				wp_admin_pass_encrypted TEXT NULL,
 				retry_count INT DEFAULT 0,
@@ -278,6 +279,10 @@ async function initializeDatabase() {
 				INDEX idx_project (project_id)
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 		`);
+    try {
+      await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN db_pass_encrypted TEXT NULL AFTER db_user`);
+    } catch (e) {
+    }
     try {
       await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN business_name VARCHAR(255) NULL AFTER project_id`);
     } catch (e) {
@@ -352,9 +357,10 @@ async function addSubdomain(subdomain, rootDomain, documentRoot) {
     dir: documentRoot
   });
 }
-async function deleteSubdomain(domain) {
-  return callUapi("SubDomain", "delsubdomain", {
-    domain
+async function deleteSubdomain(subdomain, rootDomain) {
+  return callUapi("SubDomain", "delete_subdomain", {
+    domain: subdomain,
+    rootdomain: rootDomain
   });
 }
 async function createDatabase(dbName) {
@@ -561,6 +567,7 @@ async function executeStateMachine(job) {
     await createDatabase(dbName);
     await createDatabaseUser(dbUser, dbPassword);
     await setDatabasePrivileges(dbUser, dbName);
+    await pool.query(`UPDATE provisioning_jobs SET db_pass_encrypted = ? WHERE id = ?`, [encrypt(dbPassword), job.id]);
     job._tempDbPass = dbPassword;
     await appendLog(job.id, `Created database: ${dbName} and user: ${dbUser}`);
     job.status = "installing_wordpress";
@@ -568,6 +575,20 @@ async function executeStateMachine(job) {
   if (job.status === "installing_wordpress") {
     await pool.query(`UPDATE provisioning_jobs SET status = 'installing_wordpress' WHERE id = ?`, [job.id]);
     await appendLog(job.id, "Starting WordPress installation");
+    let dbPassword = job._tempDbPass;
+    if (!dbPassword && job.db_pass_encrypted) {
+      const parts = job.db_pass_encrypted.split(":");
+      const iv = Buffer.from(parts[0], "hex");
+      const encrypted = Buffer.from(parts[1], "hex");
+      const key = process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
+      const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(key), iv);
+      let decrypted = decipher.update(encrypted);
+      decrypted = Buffer.concat([decrypted, decipher.final()]);
+      dbPassword = decrypted.toString();
+    }
+    if (!dbPassword) {
+      throw new Error("Database password missing. Manual intervention required.");
+    }
     const wpCliStatus = await checkWpCliAvailable();
     if (!wpCliStatus.available) {
       throw new Error("WP-CLI is missing on the host. Cannot proceed.");
@@ -582,10 +603,6 @@ async function executeStateMachine(job) {
       wpAdminPass = encrypt(rawPass);
       job._tempAdminPass = rawPass;
       await pool.query(`UPDATE provisioning_jobs SET wp_admin_user = ?, wp_admin_pass_encrypted = ? WHERE id = ?`, [wpAdminUser, wpAdminPass, job.id]);
-    }
-    const dbPassword = job._tempDbPass;
-    if (!dbPassword) {
-      throw new Error("Temporary DB password lost across retries. Manual intervention or rollback required.");
     }
     await createWpConfig(fullDocRoot, dbName, dbUser, dbPassword, "localhost", (log) => appendLog(job.id, log));
     const rawAdminPass = job._tempAdminPass;
@@ -626,7 +643,8 @@ async function rollbackJob(job) {
   await appendLog(job.id, "[ROLLBACK] Starting cleanup...");
   if (job.subdomain) {
     try {
-      await deleteSubdomain(job.subdomain);
+      const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscout.online";
+      await deleteSubdomain(job.subdomain, rootDomain);
       await appendLog(job.id, `[ROLLBACK] Deleted subdomain ${job.subdomain}`);
     } catch (e) {
       await appendLog(job.id, `[ROLLBACK] Failed to delete subdomain: ${e.message}`);

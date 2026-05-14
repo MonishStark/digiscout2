@@ -74,10 +74,10 @@ export async function addSubdomain(
 	});
 }
 
-export async function deleteSubdomain(domain: string) {
-	// Note: delete requires the full domain (sub.domain.com) usually
-	return callUapi("SubDomain", "delsubdomain", {
-		domain: domain,
+export async function deleteSubdomain(subdomain: string, rootDomain: string) {
+	return callUapi("SubDomain", "delete_subdomain", {
+		domain: subdomain,
+		rootdomain: rootDomain,
 	});
 }
 

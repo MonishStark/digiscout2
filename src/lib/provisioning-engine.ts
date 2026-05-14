@@ -125,7 +125,7 @@ async function executeStateMachine(job: any) {
 		await createDatabaseUser(dbUser, dbPassword);
 		await setDatabasePrivileges(dbUser, dbName);
 		
-		// We securely store the DB password in memory only for the installation phase
+		await pool.query(`UPDATE provisioning_jobs SET db_pass_encrypted = ? WHERE id = ?`, [encrypt(dbPassword), job.id]);
 		(job as any)._tempDbPass = dbPassword;
 		await appendLog(job.id, `Created database: ${dbName} and user: ${dbUser}`);
 
@@ -136,6 +136,22 @@ async function executeStateMachine(job: any) {
 	if (job.status === "installing_wordpress") {
 		await pool.query(`UPDATE provisioning_jobs SET status = 'installing_wordpress' WHERE id = ?`, [job.id]);
 		await appendLog(job.id, "Starting WordPress installation");
+
+		let dbPassword = (job as any)._tempDbPass;
+		if (!dbPassword && job.db_pass_encrypted) {
+			const parts = job.db_pass_encrypted.split(":");
+			const iv = Buffer.from(parts[0], "hex");
+			const encrypted = Buffer.from(parts[1], "hex");
+			const key = process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
+			const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(key), iv);
+			let decrypted = decipher.update(encrypted);
+			decrypted = Buffer.concat([decrypted, decipher.final()]);
+			dbPassword = decrypted.toString();
+		}
+
+		if (!dbPassword) {
+			throw new Error("Database password missing. Manual intervention required.");
+		}
 
 		const wpCliStatus = await checkWpCliAvailable();
 		if (!wpCliStatus.available) {
@@ -155,11 +171,6 @@ async function executeStateMachine(job: any) {
 			wpAdminPass = encrypt(rawPass);
 			(job as any)._tempAdminPass = rawPass;
 			await pool.query(`UPDATE provisioning_jobs SET wp_admin_user = ?, wp_admin_pass_encrypted = ? WHERE id = ?`, [wpAdminUser, wpAdminPass, job.id]);
-		}
-
-		const dbPassword = (job as any)._tempDbPass;
-		if (!dbPassword) {
-			throw new Error("Temporary DB password lost across retries. Manual intervention or rollback required.");
 		}
 
 		await createWpConfig(fullDocRoot, dbName, dbUser, dbPassword, "localhost", (log) => appendLog(job.id, log));
@@ -217,7 +228,8 @@ async function rollbackJob(job: any) {
 	
 	if (job.subdomain) {
 		try {
-			await deleteSubdomain(job.subdomain);
+			const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscout.online";
+			await deleteSubdomain(job.subdomain, rootDomain);
 			await appendLog(job.id, `[ROLLBACK] Deleted subdomain ${job.subdomain}`);
 		} catch (e: any) {
 			await appendLog(job.id, `[ROLLBACK] Failed to delete subdomain: ${e.message}`);
