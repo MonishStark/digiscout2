@@ -718,56 +718,94 @@ async function injectWebsiteContent(docRoot, schema, logCallback) {
     try {
       await runWpCommand("post delete $(wp post list --post_type=post,page --format=ids) --force", docRoot, logCallback);
     } catch (e) {
-      await logCallback("No existing posts to delete or cleanup failed.");
     }
-    await logCallback("Generating WordPress block content...");
-    let homeContent = "";
+    const theme = schema.theme || {};
+    const palette = theme.palette || {
+      background: "#07070a",
+      surface: "#111114",
+      primary: "#7c3aed",
+      text: "#f4f4f5",
+      muted: "#a1a1aa"
+    };
+    await logCallback("Generating premium WordPress theme overrides...");
+    const globalStyles = `
+<style>
+	:root {
+		--wp--preset--color--vivid-purple: ${palette.primary};
+		--wp--preset--color--black: ${palette.background};
+		--wp--preset--color--white: ${palette.text};
+	}
+	body { 
+		background-color: ${palette.background} !important; 
+		color: ${palette.text} !important;
+		font-family: 'Inter', sans-serif !important;
+	}
+	.wp-block-group, .wp-block-columns, .wp-block-column {
+		color: ${palette.text} !important;
+	}
+	h1, h2, h3, h4 { color: ${palette.text} !important; font-weight: 700 !important; }
+	.has-background { padding: 40px; border-radius: 24px; }
+	.premium-card {
+		background: rgba(255, 255, 255, 0.03) !important;
+		backdrop-filter: blur(12px);
+		border: 1px solid rgba(255, 255, 255, 0.1) !important;
+		border-radius: 28px !important;
+	}
+	.wp-block-button__link {
+		background-color: ${palette.primary} !important;
+		border-radius: 50px !important;
+		padding: 12px 32px !important;
+		font-weight: 600 !important;
+		transition: transform 0.2s ease !important;
+	}
+	.wp-block-button__link:hover { transform: scale(1.05); }
+</style>
+`;
+    let homeContent = `<!-- wp:html -->
+${globalStyles}
+<!-- /wp:html -->
+`;
     const hero = schema.sections?.find((s) => s.type === "hero") || schema.sections?.[0];
-    if (hero) {
-      homeContent += `
-<!-- wp:group {"align":"full","style":{"spacing":{"padding":{"top":"80px","bottom":"80px"}},"elements":{"link":{"color":{"text":"var:preset|color|white"}}}},"backgroundColor":"vivid-purple","textColor":"white","layout":{"type":"constrained"}} -->
-<div class="wp-block-group alignfull has-white-text has-vivid-purple-background-color has-text-color has-background has-link-color" style="padding-top:80px;padding-bottom:80px">
-	<!-- wp:heading {"textAlign":"center","level":1,"style":{"typography":{"fontSize":"4rem","lineHeight":"1.1"}}} -->
-	<h1 class="wp-block-heading has-text-align-center" style="font-size:4rem;line-height:1.1">${hero.headline || hero.title || schema.brand?.businessName}</h1>
+    const heroImg = hero?.media?.src || "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1800&q=80";
+    homeContent += `
+<!-- wp:cover {"url":"${heroImg}","dimRatio":70,"overlayColor":"black","minHeight":600,"minHeightUnit":"px","align":"full","style":{"spacing":{"padding":{"top":"80px","bottom":"80px"}}}} -->
+<div class="wp-block-cover alignfull" style="padding-top:80px;padding-bottom:80px;min-height:600px"><span aria-hidden="true" class="wp-block-cover__background has-black-background-color has-background-dim-70 has-background-dim"></span><img class="wp-block-cover__image-background" alt="" src="${heroImg}" data-object-fit="cover"/><div class="wp-block-cover__inner-container">
+	<!-- wp:heading {"textAlign":"center","level":1,"style":{"typography":{"fontSize":"4.5rem","lineHeight":"1.1"}}} -->
+	<h1 class="wp-block-heading has-text-align-center" style="font-size:4.5rem;line-height:1.1">${hero?.headline || schema.brand?.businessName}</h1>
 	<!-- /wp:heading -->
 
-	<!-- wp:paragraph {"textAlign":"center","style":{"typography":{"fontSize":"1.25rem"}}} -->
-	<p class="has-text-align-center" style="font-size:1.25rem">${hero.subheadline || hero.body || ""}</p>
+	<!-- wp:paragraph {"textAlign":"center","style":{"typography":{"fontSize":"1.4rem"}}} -->
+	<p class="has-text-align-center" style="font-size:1.4rem">${hero?.subheadline || ""}</p>
 	<!-- /wp:paragraph -->
 
 	<!-- wp:buttons {"layout":{"type":"flex","justifyContent":"center"}} -->
 	<div class="wp-block-buttons">
-		<!-- wp:button {"backgroundColor":"white","textColor":"vivid-purple","style":{"border":{"radius":"40px"}}} -->
-		<div class="wp-block-button"><a class="wp-block-button__link has-vivid-purple-color has-white-background-color has-text-color has-background wp-element-button" style="border-radius:40px">Get Started</a></div>
+		<!-- wp:button {"style":{"border":{"radius":"40px"}}} -->
+		<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" style="border-radius:40px">Get Started Today</a></div>
 		<!-- /wp:button -->
 	</div>
 	<!-- /wp:buttons -->
-</div>
-<!-- /wp:group -->`;
-    }
+</div></div>
+<!-- /wp:cover -->`;
     const services = schema.sections?.filter((s) => s.type === "services" || s.type === "features") || [];
     for (const section of services) {
       homeContent += `
-<!-- wp:group {"align":"wide","style":{"spacing":{"margin":{"top":"60px","bottom":"60px"}}},"layout":{"type":"constrained"}} -->
-<div class="wp-block-group alignwide" style="margin-top:60px;margin-bottom:60px">
-	<!-- wp:heading {"textAlign":"center"} -->
-	<h2 class="wp-block-heading has-text-align-center">${section.headline || section.title || "Our Services"}</h2>
+<!-- wp:group {"align":"wide","style":{"spacing":{"margin":{"top":"100px","bottom":"100px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group alignwide" style="margin-top:100px;margin-bottom:100px">
+	<!-- wp:heading {"textAlign":"center","style":{"typography":{"fontSize":"3rem"}}} -->
+	<h2 class="wp-block-heading has-text-align-center" style="font-size:3rem">${section.headline || section.title || "Our Services"}</h2>
 	<!-- /wp:heading -->
 	
-	<!-- wp:paragraph {"textAlign":"center"} -->
-	<p class="has-text-align-center">${section.subheadline || section.body || ""}</p>
-	<!-- /wp:paragraph -->
-
-	<!-- wp:columns -->
+	<!-- wp:columns {"style":{"spacing":{"blockGap":{"top":"24px","left":"24px"}}}} -->
 	<div class="wp-block-columns">
 		${(section.items || []).map((item) => `
-		<!-- wp:column {"style":{"spacing":{"padding":{"top":"20px","bottom":"20px","left":"20px","right":"20px"}},"border":{"radius":"16px"}},"backgroundColor":"white"} -->
-		<div class="wp-block-column has-white-background-color has-background" style="border-radius:16px;padding-top:20px;padding-right:20px;padding-bottom:20px;padding-left:20px">
-			<!-- wp:heading {"level":3} -->
-			<h3 class="wp-block-heading">${item.title || item.name}</h3>
+		<!-- wp:column {"className":"premium-card","style":{"spacing":{"padding":{"top":"32px","bottom":"32px","left":"32px","right":"32px"}}}} -->
+		<div class="wp-block-column premium-card" style="padding-top:32px;padding-right:32px;padding-bottom:32px;padding-left:32px">
+			<!-- wp:heading {"level":3,"style":{"typography":{"fontSize":"1.5rem"}}} -->
+			<h3 class="wp-block-heading" style="font-size:1.5rem">${item.title || item.name}</h3>
 			<!-- /wp:heading -->
-			<!-- wp:paragraph -->
-			<p>${item.description || item.body || ""}</p>
+			<!-- wp:paragraph {"style":{"typography":{"lineHeight":"1.6"}},"textColor":"muted"} -->
+			<p class="has-muted-color has-text-color" style="line-height:1.6">${item.description || item.body || ""}</p>
 			<!-- /wp:paragraph -->
 		</div>
 		<!-- /wp:column -->`).join("\n")}
@@ -776,41 +814,21 @@ async function injectWebsiteContent(docRoot, schema, logCallback) {
 </div>
 <!-- /wp:group -->`;
     }
-    const others = schema.sections?.filter((s) => !["hero", "services", "features"].includes(s.type)) || [];
-    for (const section of others) {
-      homeContent += `
-<!-- wp:group {"layout":{"type":"constrained"}} -->
-<div class="wp-block-group">
-	<!-- wp:heading -->
-	<h2 class="wp-block-heading">${section.headline || section.title || ""}</h2>
-	<!-- /wp:heading -->
-	<!-- wp:paragraph -->
-	<p>${section.subheadline || section.body || ""}</p>
-	<!-- /wp:paragraph -->
-</div>
-<!-- /wp:group -->`;
-    }
     await logCallback("Creating Home page in WordPress...");
     const homePageIdOut = await runWpCommand(`post create --post_type=page --post_title="Home" --post_content='${homeContent.replace(/'/g, "'\\''")}' --post_status=publish --format=ids`, docRoot, logCallback);
     const homePageId = homePageIdOut.stdout.replace(/[^0-9]/g, "").trim();
-    if (!homePageId) {
-      throw new Error("Failed to capture Home page ID from WordPress. Output: " + homePageIdOut.stdout);
-    }
-    await logCallback(`Home page created with ID: ${homePageId}. Setting as front page...`);
+    if (!homePageId) throw new Error("ID extraction failed");
+    await logCallback("Applying site options and front-page settings...");
     await runWpCommand(`option update show_on_front page`, docRoot, logCallback);
     await runWpCommand(`option update page_on_front ${homePageId}`, docRoot, logCallback);
     if (schema.brand?.businessName) {
       await runWpCommand(`option update blogname "${schema.brand.businessName.replace(/"/g, '\\"')}"`, docRoot, logCallback);
     }
-    if (schema.seo?.description) {
-      await runWpCommand(`option update blogdescription "${schema.seo.description.replace(/"/g, '\\"')}"`, docRoot, logCallback);
-    }
     await runWpCommand(`rewrite structure "/%postname%/"`, docRoot, logCallback);
     await runWpCommand(`rewrite flush`, docRoot, logCallback);
-    await logCallback("WordPress content injection complete.");
+    await logCallback("WordPress design sync complete.");
   } catch (error) {
-    await logCallback(`CRITICAL ERROR during content injection: ${error.message}`);
-    console.error("[WP-Injection] Failed:", error);
+    await logCallback(`CRITICAL ERROR during design sync: ${error.message}`);
   }
 }
 async function rollbackJob(job) {
