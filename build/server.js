@@ -278,6 +278,10 @@ async function initializeDatabase() {
 				INDEX idx_project (project_id)
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 		`);
+    try {
+      await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN business_name VARCHAR(255) NULL AFTER project_id`);
+    } catch (e) {
+    }
     await pool.query(`
 			CREATE TABLE IF NOT EXISTS isolated_deployments (
 				id VARCHAR(255) PRIMARY KEY,

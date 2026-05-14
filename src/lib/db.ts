@@ -37,6 +37,13 @@ export async function initializeDatabase() {
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 		`);
 
+		// Add business_name column if it doesn't exist
+		try {
+			await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN business_name VARCHAR(255) NULL AFTER project_id`);
+		} catch (e) {
+			// Column already exists
+		}
+
 		// Create isolated_deployments table
 		await pool.query(`
 			CREATE TABLE IF NOT EXISTS isolated_deployments (
