@@ -1,0 +1,44 @@
+{
+  "business": {
+    "name": "Test Cafe",
+    "category": "Cafe",
+    "address": "123 Main St, San Francisco, CA",
+    "phoneNumber": "(555) 123-4567",
+    "email": "info@testcafe.com",
+    "location": {
+      "lat": 37.7749,
+      "lng": -122.4194
+    },
+    "photos": [
+      "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800"
+    ]
+  },
+  "context": {
+    "name": "Test Cafe",
+    "category": "Cafe",
+    "address": "123 Main St, San Francisco, CA",
+    "reviews": [],
+    "photos": [
+      "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800"
+    ],
+    "imageSuggestions": [],
+    "qualificationNotes": null,
+    "enrichment": {
+      "websiteUri": null,
+      "email": "info@testcafe.com",
+      "phoneNumber": "(555) 123-4567",
+      "specialties": [],
+      "tone": null,
+      "neighborhood": null
+    },
+    "mapsSearch": {
+      "location": {
+        "lat": 37.7749,
+        "lng": -122.4194
+      },
+      "rating": null,
+      "reviewCount": null,
+      "businessStatus": null
+    }
+  }
+}

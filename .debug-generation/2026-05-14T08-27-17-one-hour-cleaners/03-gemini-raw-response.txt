@@ -1,0 +1,150 @@
+{
+  "theme": {
+    "name": "Crisp Care",
+    "style": "clinical",
+    "layout": "editorial",
+    "buttonStyle": "pill",
+    "surfaceStyle": "soft-shadow",
+    "mediaShape": "rounded",
+    "density": "spacious",
+    "accentMode": "minimal",
+    "typography": {
+      "heading": "IBM Plex Sans",
+      "body": "Inter"
+    },
+    "palette": {
+      "background": "#F8FAFC",
+      "surface": "#FFFFFF",
+      "primary": "#2563EB",
+      "accent": "#60A5FA",
+      "text": "#0F172A",
+      "muted": "#64748B",
+      "outline": "#E2E8F0"
+    },
+    "radius": "large"
+  },
+  "sections": [
+    {
+      "type": "hero",
+      "badge": "One Hour Cleaners • Market Street",
+      "headline": "Premium Garment Care, Precisely Timed.",
+      "subheadline": "San Francisco’s trusted dry cleaning professionals. Expert stain removal and delicate fabric care, ready exactly when you need it.",
+      "primaryCta": "View Services",
+      "secondaryCta": "Get Directions",
+      "media": {
+        "url": "https://images.unsplash.com/photo-1582735689146-2f08a54c6096?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80",
+        "alt": "Row of freshly pressed and cleaned shirts in protective covers"
+      }
+    },
+    {
+      "type": "gallery",
+      "title": "Meticulous Attention to Detail",
+      "subtitle": "Every stitch, seam, and fabric receives specialized care tailored to its unique material.",
+      "items": [
+        {
+          "url": "https://images.unsplash.com/photo-1545173168-9f1947eebb7f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+          "alt": "Close-up of precise collar pressing on a white cotton dress shirt"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1604335398980-edadcfdd35df?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+          "alt": "Clean, bright, and welcoming dry cleaning storefront interior"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+          "alt": "Delicate silk fabric hanging elegantly on a wooden hanger"
+        }
+      ]
+    },
+    {
+      "type": "features",
+      "title": "Uncompromising Fabric Care",
+      "subtitle": "We combine advanced cleaning technology with traditional, hands-on expertise.",
+      "items": [
+        {
+          "title": "Express Turnaround",
+          "description": "True to our name, we offer specialized rapid service for standard garments without sacrificing our high quality standards.",
+          "icon": "clock"
+        },
+        {
+          "title": "Gentle Solvents",
+          "description": "We utilize premium, low-impact cleaning solutions that are highly effective on stains but gentle on your clothing.",
+          "icon": "leaf"
+        },
+        {
+          "title": "Delicate Specialists",
+          "description": "Expert handling for sensitive materials including silk, fine wool, cashmere, and complex blended textiles.",
+          "icon": "shield"
+        },
+        {
+          "title": "Hand-Finished Pressing",
+          "description": "Every garment undergoes a detailed inspection and hand-pressed finishing for a crisp, flawless appearance.",
+          "icon": "sparkles"
+        }
+      ]
+    },
+    {
+      "type": "faq",
+      "title": "Common Questions",
+      "subtitle": "Clear, straightforward details about our cleaning process and policies.",
+      "items": [
+        {
+          "question": "What is included in your one-hour service?",
+          "answer": "Our expedited one-hour service applies to standard dry cleaning items dropped off before 2:00 PM. Complex stains, heavy coats, or delicate fabrics requiring specialized care may need standard processing time."
+        },
+        {
+          "question": "Do you clean household textiles or bedding?",
+          "answer": "Yes, we professionally clean duvets, blankets, and select drapery. We ask that you allow a 48-hour turnaround for these oversized household items to ensure proper drying and pressing."
+        },
+        {
+          "question": "Are your cleaning methods safe for vintage clothing?",
+          "answer": "Absolutely. We assess every vintage or fragile piece individually to determine the safest cleaning method, whether that requires specialized dry cleaning or meticulous hand washing."
+        },
+        {
+          "question": "Do you offer alterations or tailoring?",
+          "answer": "We handle minor repairs like button replacements and simple seam fixes in-house. For complex alterations, we partner with trusted local tailors to ensure your garments fit perfectly."
+        }
+      ]
+    },
+    {
+      "type": "testimonials",
+      "title": "Trusted by Market Street",
+      "subtitle": "Our commitment to consistent, high-quality garment care speaks through our regulars.",
+      "items": [
+        {
+          "name": "Julian H.",
+          "role": "Local Professional",
+          "quote": "The only place I trust with my suits in the city. The creases are always razor-sharp, and the turnaround is incredibly reliable for my frequent travel schedule."
+        },
+        {
+          "name": "Sarah P.",
+          "role": "Neighborhood Resident",
+          "quote": "They managed to lift an impossible coffee stain from my silk blouse without damaging the fabric or color. Exceptional attention to detail."
+        },
+        {
+          "name": "Marcus T.",
+          "role": "Regular Client",
+          "quote": "Fast, professional, and genuinely careful with my wardrobe. The one-hour service has saved me before big events more times than I can count."
+        }
+      ]
+    },
+    {
+      "type": "cta",
+      "title": "Refresh Your Wardrobe",
+      "subtitle": "Drop by our Market Street studio for prompt, professional garment care tailored specifically to your finest clothing.",
+      "primaryCta": "Visit Us Today",
+      "secondaryCta": "Call (415) 552-6035"
+    },
+    {
+      "type": "contact",
+      "title": "Find Our Studio",
+      "subtitle": "Conveniently located in San Francisco with easy drop-off access.",
+      "address": "2233 Market St, San Francisco, CA 94114, USA",
+      "phone": "(415) 552-6035",
+      "hours": [
+        "Monday - Friday: 7:00 AM - 7:00 PM",
+        "Saturday: 8:00 AM - 5:00 PM",
+        "Sunday: Closed"
+      ]
+    }
+  ]
+}

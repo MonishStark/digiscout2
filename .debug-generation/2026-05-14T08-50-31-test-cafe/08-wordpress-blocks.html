@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WordPress Block Output</title>
+  <style>
+    body { font-family: Inter, Arial, sans-serif; line-height: 1.5; padding: 24px; color: #111827; background: #f8fafc; }
+    h1, h2, h3 { margin-bottom: 0.5rem; }
+    section { margin-bottom: 2rem; padding: 1rem; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; }
+    pre { white-space: pre-wrap; word-break: break-word; background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: 8px; overflow: auto; }
+    .meta { color: #475569; }
+  </style>
+</head>
+<body>
+  <h1>WordPress Content Trace</h1>
+  <p class="meta">Business: Test Cafe | Category: Cafe | Pages: 6</p>
+  <section>
+    <h2>Generated Gutenberg Blocks</h2>
+    <pre>&lt;!-- wp:navigation {&quot;layout&quot;:{&quot;type&quot;:&quot;flex&quot;,&quot;justifyContent&quot;:&quot;center&quot;}} --&gt;
+&lt;nav class=&quot;wp-block-navigation&quot;&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/&quot;&gt;Home&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/about/&quot;&gt;About&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/services/&quot;&gt;Signature Dishes &amp;amp; Experiences&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/gallery/&quot;&gt;Dining Room &amp;amp; Detail&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/faq/&quot;&gt;Dining Questions&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/contact/&quot;&gt;Visit Test Cafe&lt;/a&gt;&lt;/nav&gt;
+&lt;!-- /wp:navigation --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-hero wp-hero--split&quot; id=&quot;top&quot; data-layout=&quot;hero-immersive&quot;&gt;
+	&lt;div class=&quot;wp-hero__content&quot;&gt;
+		&lt;p class=&quot;wp-hero__badge&quot;&gt;San Francisco&lt;/p&gt;
+		&lt;h1&gt;Morning Rituals, Elevated.&lt;/h1&gt;
+		&lt;p&gt;Artisanal espresso and house-baked pastries served in a sunlit sanctuary on Main Street.&lt;/p&gt;
+		&lt;div class=&quot;wp-hero__actions&quot;&gt;
+			&lt;a class=&quot;wp-button wp-button--primary&quot; href=&quot;#contact&quot;&gt;Order Ahead&lt;/a&gt;
+			&lt;a class=&quot;wp-button wp-button--secondary&quot; href=&quot;#about&quot;&gt;View Seasonal Menu&lt;/a&gt;
+		&lt;/div&gt;
+	&lt;/div&gt;
+	
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-features wp-features--bento&quot; id=&quot;services&quot; data-layout=&quot;feature-grid&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Services&lt;/p&gt;
+		&lt;h2&gt;The Craft Behind the Cup&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-features__grid wp-features__grid--bento&quot;&gt;
+		
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--lead&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;01&lt;/span&gt;
+			&lt;h3&gt;Single-Origin Roasts&lt;/h3&gt;
+			&lt;p&gt;Partnering directly with farmers, our beans are roasted light to preserve their distinct, origin-specific tasting notes.&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--support&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;02&lt;/span&gt;
+			&lt;h3&gt;House-Made Pastries&lt;/h3&gt;
+			&lt;p&gt;Laminated doughs and seasonal tarts, baked fresh in our kitchen every morning before the sun comes up.&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--support&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;03&lt;/span&gt;
+			&lt;h3&gt;Botanical Infusions&lt;/h3&gt;
+			&lt;p&gt;A curated selection of loose-leaf craft teas and delicate, house-steeped floral syrups.&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--support&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;04&lt;/span&gt;
+			&lt;h3&gt;Quiet Workspaces&lt;/h3&gt;
+			&lt;p&gt;Thoughtfully zoned areas featuring generous oak tables, high-speed Wi-Fi, and integrated outlets for deep work.&lt;/p&gt;
+		&lt;/article&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-testimonials wp-testimonials--cards&quot; id=&quot;testimonials&quot; data-layout=&quot;testimonial-carousel&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Testimonials&lt;/p&gt;
+		&lt;h2&gt;Conversations Over Coffee&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-testimonials__grid&quot;&gt;
+		
+		&lt;article class=&quot;wp-testimonial wp-testimonial--card&quot;&gt;
+			&lt;blockquote&gt;&lt;p&gt;The cortado here rivals anything I&amp;#39;ve had in Italy. The handmade terracotta mugs and minimalist aesthetic make every visit a joy.&lt;/p&gt;&lt;/blockquote&gt;
+			&lt;footer&gt;&lt;strong&gt;Julian R.&lt;/strong&gt;&lt;span&gt;Local Architect&lt;/span&gt;&lt;/footer&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-testimonial wp-testimonial--card&quot;&gt;
+			&lt;blockquote&gt;&lt;p&gt;My daily sanctuary. The staff genuinely remembers my order, and the ambient noise is perfectly calibrated for morning focus.&lt;/p&gt;&lt;/blockquote&gt;
+			&lt;footer&gt;&lt;strong&gt;Sarah M.&lt;/strong&gt;&lt;span&gt;Writer &amp;amp; Editor&lt;/span&gt;&lt;/footer&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-testimonial wp-testimonial--card&quot;&gt;
+			&lt;blockquote&gt;&lt;p&gt;Finally, a cafe in the neighborhood that balances exceptional, nerdy espresso standards with warm, unpretentious hospitality.&lt;/p&gt;&lt;/blockquote&gt;
+			&lt;footer&gt;&lt;strong&gt;Marcus T.&lt;/strong&gt;&lt;span&gt;Returning Guest&lt;/span&gt;&lt;/footer&gt;
+		&lt;/article&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-faq&quot; id=&quot;faq&quot; data-layout=&quot;faq-accordion&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;FAQ&lt;/p&gt;
+		&lt;h2&gt;Common Inquiries&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-faq__list&quot;&gt;
+		
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Do you roast your own coffee?&lt;/summary&gt;
+			&lt;p&gt;We partner with a close-knit group of local artisanal roasters and feature a rotating single-origin guest bean on espresso every month.&lt;/p&gt;
+		&lt;/details&gt;
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Are there vegan pastry options?&lt;/summary&gt;
+			&lt;p&gt;Yes, our daily bakery selection always includes at least two plant-based goods, including our signature citrus olive oil loaf.&lt;/p&gt;
+		&lt;/details&gt;
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Is the cafe suitable for remote work?&lt;/summary&gt;
+			&lt;p&gt;Laptops are welcome at our communal oak tables and the window bar. We intentionally keep our intimate booths device-free to encourage conversation.&lt;/p&gt;
+		&lt;/details&gt;
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Can I purchase beans to brew at home?&lt;/summary&gt;
+			&lt;p&gt;Absolutely. We sell retail bags of our staple house blend alongside limited micro-lots, and we are happy to grind them to your exact brewer specifications.&lt;/p&gt;
+		&lt;/details&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-cta wp-cta--centered&quot; data-layout=&quot;cta-split&quot;&gt;
+	&lt;div class=&quot;wp-cta__card&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Call To Action&lt;/p&gt;
+		&lt;h2&gt;Skip the Morning Line&lt;/h2&gt;
+		&lt;p&gt;&lt;/p&gt;
+		&lt;a class=&quot;wp-button wp-button--primary&quot; href=&quot;#contact&quot;&gt;Contact Us&lt;/a&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-contact wp-contact--contact-form&quot; id=&quot;contact&quot; data-layout=&quot;contact-form&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Contact&lt;/p&gt;
+		&lt;h2&gt;Visit Us&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-contact__grid&quot;&gt;
+		&lt;article class=&quot;wp-contact__details&quot;&gt;
+			&lt;h3&gt;Test Cafe&lt;/h3&gt;
+			&lt;p&gt;123 Main St, San Francisco, CA&lt;/p&gt;
+			&lt;p&gt;&lt;strong&gt;Phone:&lt;/strong&gt; (555) 123-4567&lt;/p&gt;
+			&lt;p&gt;&lt;strong&gt;Email:&lt;/strong&gt; info@testcafe.com&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-contact__card&quot;&gt;
+			&lt;div class=&quot;wp-contact__map&quot;&gt;123 Main St, San Francisco, CA&lt;/div&gt;
+			&lt;a class=&quot;wp-button wp-button--primary&quot; href=&quot;mailto:info@testcafe.com&quot;&gt;Book A Conversation&lt;/a&gt;
+		&lt;/article&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;</pre>
+  </section>
+  <section>
+    <h2>Provisioning Plan Pages</h2>
+    
+    <article>
+      <h3>Test Cafe</h3>
+      <p class="meta">Slug: home | Homepage</p>
+      <pre>&lt;!-- wp:navigation {&quot;layout&quot;:{&quot;type&quot;:&quot;flex&quot;,&quot;justifyContent&quot;:&quot;center&quot;}} --&gt;
+&lt;nav class=&quot;wp-block-navigation&quot;&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/&quot;&gt;Home&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/about/&quot;&gt;About&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/services/&quot;&gt;Signature Dishes &amp;amp; Experiences&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/gallery/&quot;&gt;Dining Room &amp;amp; Detail&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/faq/&quot;&gt;Dining Questions&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/contact/&quot;&gt;Visit Test Cafe&lt;/a&gt;&lt;/nav&gt;
+&lt;!-- /wp:navigation --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-hero wp-hero--split&quot; id=&quot;top&quot; data-layout=&quot;hero-immersive&quot;&gt;
+	&lt;div class=&quot;wp-hero__content&quot;&gt;
+		&lt;p class=&quot;wp-hero__badge&quot;&gt;San Francisco&lt;/p&gt;
+		&lt;h1&gt;Morning Rituals, Elevated.&lt;/h1&gt;
+		&lt;p&gt;Artisanal espresso and house-baked pastries served in a sunlit sanctuary on Main Street.&lt;/p&gt;
+		&lt;div class=&quot;wp-hero__actions&quot;&gt;
+			&lt;a class=&quot;wp-button wp-button--primary&quot; href=&quot;#contact&quot;&gt;Order Ahead&lt;/a&gt;
+			&lt;a class=&quot;wp-button wp-button--secondary&quot; href=&quot;#about&quot;&gt;View Seasonal Menu&lt;/a&gt;
+		&lt;/div&gt;
+	&lt;/div&gt;
+	
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-features wp-features--bento&quot; id=&quot;services&quot; data-layout=&quot;feature-grid&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Services&lt;/p&gt;
+		&lt;h2&gt;The Craft Behind the Cup&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-features__grid wp-features__grid--bento&quot;&gt;
+		
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--lead&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;01&lt;/span&gt;
+			&lt;h3&gt;Single-Origin Roasts&lt;/h3&gt;
+			&lt;p&gt;Partnering directly with farmers, our beans are roasted light to preserve their distinct, origin-specific tasting notes.&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--support&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;02&lt;/span&gt;
+			&lt;h3&gt;House-Made Pastries&lt;/h3&gt;
+			&lt;p&gt;Laminated doughs and seasonal tarts, baked fresh in our kitchen every morning before the sun comes up.&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--support&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;03&lt;/span&gt;
+			&lt;h3&gt;Botanical Infusions&lt;/h3&gt;
+			&lt;p&gt;A curated selection of loose-leaf craft teas and delicate, house-steeped floral syrups.&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--support&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;04&lt;/span&gt;
+			&lt;h3&gt;Quiet Workspaces&lt;/h3&gt;
+			&lt;p&gt;Thoughtfully zoned areas featuring generous oak tables, high-speed Wi-Fi, and integrated outlets for deep work.&lt;/p&gt;
+		&lt;/article&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-testimonials wp-testimonials--cards&quot; id=&quot;testimonials&quot; data-layout=&quot;testimonial-carousel&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Testimonials&lt;/p&gt;
+		&lt;h2&gt;Conversations Over Coffee&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-testimonials__grid&quot;&gt;
+		
+		&lt;article class=&quot;wp-testimonial wp-testimonial--card&quot;&gt;
+			&lt;blockquote&gt;&lt;p&gt;The cortado here rivals anything I&amp;#39;ve had in Italy. The handmade terracotta mugs and minimalist aesthetic make every visit a joy.&lt;/p&gt;&lt;/blockquote&gt;
+			&lt;footer&gt;&lt;strong&gt;Julian R.&lt;/strong&gt;&lt;span&gt;Local Architect&lt;/span&gt;&lt;/footer&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-testimonial wp-testimonial--card&quot;&gt;
+			&lt;blockquote&gt;&lt;p&gt;My daily sanctuary. The staff genuinely remembers my order, and the ambient noise is perfectly calibrated for morning focus.&lt;/p&gt;&lt;/blockquote&gt;
+			&lt;footer&gt;&lt;strong&gt;Sarah M.&lt;/strong&gt;&lt;span&gt;Writer &amp;amp; Editor&lt;/span&gt;&lt;/footer&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-testimonial wp-testimonial--card&quot;&gt;
+			&lt;blockquote&gt;&lt;p&gt;Finally, a cafe in the neighborhood that balances exceptional, nerdy espresso standards with warm, unpretentious hospitality.&lt;/p&gt;&lt;/blockquote&gt;
+			&lt;footer&gt;&lt;strong&gt;Marcus T.&lt;/strong&gt;&lt;span&gt;Returning Guest&lt;/span&gt;&lt;/footer&gt;
+		&lt;/article&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-faq&quot; id=&quot;faq&quot; data-layout=&quot;faq-accordion&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;FAQ&lt;/p&gt;
+		&lt;h2&gt;Common Inquiries&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-faq__list&quot;&gt;
+		
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Do you roast your own coffee?&lt;/summary&gt;
+			&lt;p&gt;We partner with a close-knit group of local artisanal roasters and feature a rotating single-origin guest bean on espresso every month.&lt;/p&gt;
+		&lt;/details&gt;
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Are there vegan pastry options?&lt;/summary&gt;
+			&lt;p&gt;Yes, our daily bakery selection always includes at least two plant-based goods, including our signature citrus olive oil loaf.&lt;/p&gt;
+		&lt;/details&gt;
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Is the cafe suitable for remote work?&lt;/summary&gt;
+			&lt;p&gt;Laptops are welcome at our communal oak tables and the window bar. We intentionally keep our intimate booths device-free to encourage conversation.&lt;/p&gt;
+		&lt;/details&gt;
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Can I purchase beans to brew at home?&lt;/summary&gt;
+			&lt;p&gt;Absolutely. We sell retail bags of our staple house blend alongside limited micro-lots, and we are happy to grind them to your exact brewer specifications.&lt;/p&gt;
+		&lt;/details&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-cta wp-cta--centered&quot; data-layout=&quot;cta-split&quot;&gt;
+	&lt;div class=&quot;wp-cta__card&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Call To Action&lt;/p&gt;
+		&lt;h2&gt;Skip the Morning Line&lt;/h2&gt;
+		&lt;p&gt;&lt;/p&gt;
+		&lt;a class=&quot;wp-button wp-button--primary&quot; href=&quot;#contact&quot;&gt;Contact Us&lt;/a&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-contact wp-contact--contact-form&quot; id=&quot;contact&quot; data-layout=&quot;contact-form&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Contact&lt;/p&gt;
+		&lt;h2&gt;Visit Us&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-contact__grid&quot;&gt;
+		&lt;article class=&quot;wp-contact__details&quot;&gt;
+			&lt;h3&gt;Test Cafe&lt;/h3&gt;
+			&lt;p&gt;123 Main St, San Francisco, CA&lt;/p&gt;
+			&lt;p&gt;&lt;strong&gt;Phone:&lt;/strong&gt; (555) 123-4567&lt;/p&gt;
+			&lt;p&gt;&lt;strong&gt;Email:&lt;/strong&gt; info@testcafe.com&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-contact__card&quot;&gt;
+			&lt;div class=&quot;wp-contact__map&quot;&gt;123 Main St, San Francisco, CA&lt;/div&gt;
+			&lt;a class=&quot;wp-button wp-button--primary&quot; href=&quot;mailto:info@testcafe.com&quot;&gt;Book A Conversation&lt;/a&gt;
+		&lt;/article&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;</pre>
+    </article>
+
+    <article>
+      <h3>About</h3>
+      <p class="meta">Slug: about</p>
+      <pre>&lt;!-- wp:navigation {&quot;layout&quot;:{&quot;type&quot;:&quot;flex&quot;,&quot;justifyContent&quot;:&quot;center&quot;}} --&gt;
+&lt;nav class=&quot;wp-block-navigation&quot;&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/&quot;&gt;Home&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/about/&quot;&gt;About&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/services/&quot;&gt;Signature Dishes &amp;amp; Experiences&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/gallery/&quot;&gt;Dining Room &amp;amp; Detail&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/faq/&quot;&gt;Dining Questions&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/contact/&quot;&gt;Visit Test Cafe&lt;/a&gt;&lt;/nav&gt;
+&lt;!-- /wp:navigation --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-about&quot; data-layout=&quot;editorial&quot;&gt;
+  &lt;header class=&quot;wp-section__header&quot;&gt;
+    &lt;p class=&quot;wp-section__eyebrow&quot;&gt;About&lt;/p&gt;
+    &lt;h1&gt;The Story Behind Test Cafe&lt;/h1&gt;
+  &lt;/header&gt;
+  &lt;div class=&quot;wp-about__content&quot;&gt;
+    &lt;p&gt;Artisanal espresso and house-baked pastries served in a sunlit sanctuary on Main Street.&lt;/p&gt;
+    &lt;ul&gt;
+      &lt;li&gt;Category: Cafe&lt;/li&gt;
+      &lt;li&gt;Style Direction: Terracotta Editorial&lt;/li&gt;
+      &lt;li&gt;Experience Focus: editorial&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-testimonials wp-testimonials--cards&quot; id=&quot;testimonials&quot; data-layout=&quot;testimonial-carousel&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Testimonials&lt;/p&gt;
+		&lt;h2&gt;Conversations Over Coffee&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-testimonials__grid&quot;&gt;
+		
+		&lt;article class=&quot;wp-testimonial wp-testimonial--card&quot;&gt;
+			&lt;blockquote&gt;&lt;p&gt;The cortado here rivals anything I&amp;#39;ve had in Italy. The handmade terracotta mugs and minimalist aesthetic make every visit a joy.&lt;/p&gt;&lt;/blockquote&gt;
+			&lt;footer&gt;&lt;strong&gt;Julian R.&lt;/strong&gt;&lt;span&gt;Local Architect&lt;/span&gt;&lt;/footer&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-testimonial wp-testimonial--card&quot;&gt;
+			&lt;blockquote&gt;&lt;p&gt;My daily sanctuary. The staff genuinely remembers my order, and the ambient noise is perfectly calibrated for morning focus.&lt;/p&gt;&lt;/blockquote&gt;
+			&lt;footer&gt;&lt;strong&gt;Sarah M.&lt;/strong&gt;&lt;span&gt;Writer &amp;amp; Editor&lt;/span&gt;&lt;/footer&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-testimonial wp-testimonial--card&quot;&gt;
+			&lt;blockquote&gt;&lt;p&gt;Finally, a cafe in the neighborhood that balances exceptional, nerdy espresso standards with warm, unpretentious hospitality.&lt;/p&gt;&lt;/blockquote&gt;
+			&lt;footer&gt;&lt;strong&gt;Marcus T.&lt;/strong&gt;&lt;span&gt;Returning Guest&lt;/span&gt;&lt;/footer&gt;
+		&lt;/article&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;</pre>
+    </article>
+
+    <article>
+      <h3>Services</h3>
+      <p class="meta">Slug: services</p>
+      <pre>&lt;!-- wp:navigation {&quot;layout&quot;:{&quot;type&quot;:&quot;flex&quot;,&quot;justifyContent&quot;:&quot;center&quot;}} --&gt;
+&lt;nav class=&quot;wp-block-navigation&quot;&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/&quot;&gt;Home&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/about/&quot;&gt;About&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/services/&quot;&gt;Signature Dishes &amp;amp; Experiences&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/gallery/&quot;&gt;Dining Room &amp;amp; Detail&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/faq/&quot;&gt;Dining Questions&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/contact/&quot;&gt;Visit Test Cafe&lt;/a&gt;&lt;/nav&gt;
+&lt;!-- /wp:navigation --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-services&quot; data-layout=&quot;editorial&quot;&gt;
+  &lt;header class=&quot;wp-section__header&quot;&gt;
+    &lt;p class=&quot;wp-section__eyebrow&quot;&gt;Services&lt;/p&gt;
+    &lt;h1&gt;Signature Dishes &amp;amp; Experiences&lt;/h1&gt;
+  &lt;/header&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-features wp-features--bento&quot; id=&quot;services&quot; data-layout=&quot;feature-grid&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Services&lt;/p&gt;
+		&lt;h2&gt;The Craft Behind the Cup&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-features__grid wp-features__grid--bento&quot;&gt;
+		
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--lead&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;01&lt;/span&gt;
+			&lt;h3&gt;Single-Origin Roasts&lt;/h3&gt;
+			&lt;p&gt;Partnering directly with farmers, our beans are roasted light to preserve their distinct, origin-specific tasting notes.&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--support&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;02&lt;/span&gt;
+			&lt;h3&gt;House-Made Pastries&lt;/h3&gt;
+			&lt;p&gt;Laminated doughs and seasonal tarts, baked fresh in our kitchen every morning before the sun comes up.&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--support&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;03&lt;/span&gt;
+			&lt;h3&gt;Botanical Infusions&lt;/h3&gt;
+			&lt;p&gt;A curated selection of loose-leaf craft teas and delicate, house-steeped floral syrups.&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--support&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;04&lt;/span&gt;
+			&lt;h3&gt;Quiet Workspaces&lt;/h3&gt;
+			&lt;p&gt;Thoughtfully zoned areas featuring generous oak tables, high-speed Wi-Fi, and integrated outlets for deep work.&lt;/p&gt;
+		&lt;/article&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-cta wp-cta--centered&quot; data-layout=&quot;cta-split&quot;&gt;
+	&lt;div class=&quot;wp-cta__card&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Call To Action&lt;/p&gt;
+		&lt;h2&gt;Skip the Morning Line&lt;/h2&gt;
+		&lt;p&gt;&lt;/p&gt;
+		&lt;a class=&quot;wp-button wp-button--primary&quot; href=&quot;#contact&quot;&gt;Contact Us&lt;/a&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;</pre>
+    </article>
+
+    <article>
+      <h3>Gallery</h3>
+      <p class="meta">Slug: gallery</p>
+      <pre>&lt;!-- wp:navigation {&quot;layout&quot;:{&quot;type&quot;:&quot;flex&quot;,&quot;justifyContent&quot;:&quot;center&quot;}} --&gt;
+&lt;nav class=&quot;wp-block-navigation&quot;&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/&quot;&gt;Home&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/about/&quot;&gt;About&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/services/&quot;&gt;Signature Dishes &amp;amp; Experiences&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/gallery/&quot;&gt;Dining Room &amp;amp; Detail&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/faq/&quot;&gt;Dining Questions&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/contact/&quot;&gt;Visit Test Cafe&lt;/a&gt;&lt;/nav&gt;
+&lt;!-- /wp:navigation --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-gallery-page&quot; data-layout=&quot;editorial&quot;&gt;
+  &lt;header class=&quot;wp-section__header&quot;&gt;
+    &lt;p class=&quot;wp-section__eyebrow&quot;&gt;Gallery&lt;/p&gt;
+    &lt;h1&gt;Dining Room &amp;amp; Detail&lt;/h1&gt;
+  &lt;/header&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;</pre>
+    </article>
+
+    <article>
+      <h3>FAQ</h3>
+      <p class="meta">Slug: faq</p>
+      <pre>&lt;!-- wp:navigation {&quot;layout&quot;:{&quot;type&quot;:&quot;flex&quot;,&quot;justifyContent&quot;:&quot;center&quot;}} --&gt;
+&lt;nav class=&quot;wp-block-navigation&quot;&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/&quot;&gt;Home&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/about/&quot;&gt;About&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/services/&quot;&gt;Signature Dishes &amp;amp; Experiences&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/gallery/&quot;&gt;Dining Room &amp;amp; Detail&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/faq/&quot;&gt;Dining Questions&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/contact/&quot;&gt;Visit Test Cafe&lt;/a&gt;&lt;/nav&gt;
+&lt;!-- /wp:navigation --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-faq-page&quot; data-layout=&quot;editorial&quot;&gt;
+  &lt;header class=&quot;wp-section__header&quot;&gt;
+    &lt;p class=&quot;wp-section__eyebrow&quot;&gt;FAQ&lt;/p&gt;
+    &lt;h1&gt;Dining Questions&lt;/h1&gt;
+  &lt;/header&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-faq&quot; id=&quot;faq&quot; data-layout=&quot;faq-accordion&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;FAQ&lt;/p&gt;
+		&lt;h2&gt;Common Inquiries&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-faq__list&quot;&gt;
+		
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Do you roast your own coffee?&lt;/summary&gt;
+			&lt;p&gt;We partner with a close-knit group of local artisanal roasters and feature a rotating single-origin guest bean on espresso every month.&lt;/p&gt;
+		&lt;/details&gt;
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Are there vegan pastry options?&lt;/summary&gt;
+			&lt;p&gt;Yes, our daily bakery selection always includes at least two plant-based goods, including our signature citrus olive oil loaf.&lt;/p&gt;
+		&lt;/details&gt;
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Is the cafe suitable for remote work?&lt;/summary&gt;
+			&lt;p&gt;Laptops are welcome at our communal oak tables and the window bar. We intentionally keep our intimate booths device-free to encourage conversation.&lt;/p&gt;
+		&lt;/details&gt;
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Can I purchase beans to brew at home?&lt;/summary&gt;
+			&lt;p&gt;Absolutely. We sell retail bags of our staple house blend alongside limited micro-lots, and we are happy to grind them to your exact brewer specifications.&lt;/p&gt;
+		&lt;/details&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;</pre>
+    </article>
+
+    <article>
+      <h3>Contact</h3>
+      <p class="meta">Slug: contact</p>
+      <pre>&lt;!-- wp:navigation {&quot;layout&quot;:{&quot;type&quot;:&quot;flex&quot;,&quot;justifyContent&quot;:&quot;center&quot;}} --&gt;
+&lt;nav class=&quot;wp-block-navigation&quot;&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/&quot;&gt;Home&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/about/&quot;&gt;About&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/services/&quot;&gt;Signature Dishes &amp;amp; Experiences&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/gallery/&quot;&gt;Dining Room &amp;amp; Detail&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/faq/&quot;&gt;Dining Questions&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/contact/&quot;&gt;Visit Test Cafe&lt;/a&gt;&lt;/nav&gt;
+&lt;!-- /wp:navigation --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-contact-page&quot; data-layout=&quot;split&quot;&gt;
+  &lt;header class=&quot;wp-section__header&quot;&gt;
+    &lt;p class=&quot;wp-section__eyebrow&quot;&gt;Contact&lt;/p&gt;
+    &lt;h1&gt;Visit Test Cafe&lt;/h1&gt;
+  &lt;/header&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-contact wp-contact--contact-form&quot; id=&quot;contact&quot; data-layout=&quot;contact-form&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Contact&lt;/p&gt;
+		&lt;h2&gt;Visit Us&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-contact__grid&quot;&gt;
+		&lt;article class=&quot;wp-contact__details&quot;&gt;
+			&lt;h3&gt;Test Cafe&lt;/h3&gt;
+			&lt;p&gt;123 Main St, San Francisco, CA&lt;/p&gt;
+			&lt;p&gt;&lt;strong&gt;Phone:&lt;/strong&gt; (555) 123-4567&lt;/p&gt;
+			&lt;p&gt;&lt;strong&gt;Email:&lt;/strong&gt; info@testcafe.com&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-contact__card&quot;&gt;
+			&lt;div class=&quot;wp-contact__map&quot;&gt;123 Main St, San Francisco, CA&lt;/div&gt;
+			&lt;a class=&quot;wp-button wp-button--primary&quot; href=&quot;mailto:info@testcafe.com&quot;&gt;Book A Conversation&lt;/a&gt;
+		&lt;/article&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;</pre>
+    </article>
+  </section>
+  <section>
+    <h2>Media Assets</h2>
+    <pre>[]</pre>
+  </section>
+</body>
+</html>

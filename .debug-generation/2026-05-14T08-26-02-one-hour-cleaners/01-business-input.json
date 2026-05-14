@@ -1,0 +1,77 @@
+{
+  "business": {
+    "id": "ChIJrQhfRBx-j4ARHFokw9T5h6s",
+    "name": "One Hour Cleaners",
+    "category": "Dry cleaner",
+    "address": "2233 Market St, San Francisco, CA 94114, USA",
+    "rating": 4.8,
+    "reviewCount": 206,
+    "location": {
+      "lat": 37.7651493,
+      "lng": -122.43166219999999
+    },
+    "phoneNumber": "(415) 552-6035",
+    "photos": [
+      "https://places.googleapis.com/v1/places/ChIJrQhfRBx-j4ARHFokw9T5h6s/photos/Ab43m-t5S-w9M_VlEBTf0_MMbD2ZgyW5_P0IWVYB5dNUG4BfL2S4Wjipgj0jfyYKp4l2sdaoMgm4dmERDfG2sXjPRtzcySePVupsOeRikv_4O10Dnmfkg7ufS_TVwg_9-USsYDu__OnDI84xcrNWaru1FhodyI2Cj5U-lwboMxrx4ViJRxmohUeBPdpJp5rHnDknePrd_5VoIZMds9h4XQNbYSwTcGPJJrblGpRRXtoC2T1Ke4Ge2Ru1sBXy-JKidgvyFT-2BKwz1OkwZZcXUj293HY-plWA2dYZbl3-u5MFBSIT_Q/media?maxWidthPx=400&key=AIzaSyBSyBJPOh4bcDzVqByyf2GTEe5jnwbgC-Y",
+      "https://places.googleapis.com/v1/places/ChIJrQhfRBx-j4ARHFokw9T5h6s/photos/Ab43m-tpwZ515mV2egDjBJAP3j4cANGyQ06tNzXOD8n5Jp_CMWQH243SIAXe6UxRT5fcD3lROV5MxU-Jdt4MKj-spMPj64xhWiFcWvbW1bKBR72c7zHgunUERzSzbZx-M7510lLD3RTzyN0CKUbs8ITnlMcyGIjmcQEdi2f0tRQ6xFdE_1V4A4ipN4tLR05JMhjd9knEePrBqLNyLBAHva7qtZMtk7Tu4E7tMwz9VIKU1YGyTswdMWoaPRgbp8nDYWI5mVRBPILMCdZ7NtQE0r0tAJr3nsSniKB8oM5VYFB1V8IfE6nTR6zPx17XQ_HSUoD2axUH-XfSGkis5Suu570D8bi-gT-SCAdi4o_aJfGbSEv1tQOZo2U_CdEELlj9ww51Lbg2hDo1Maei_WICjHElBEiDgNUn_AXXd8SB1Rc1tBobgyeq/media?maxWidthPx=400&key=AIzaSyBSyBJPOh4bcDzVqByyf2GTEe5jnwbgC-Y",
+      "https://places.googleapis.com/v1/places/ChIJrQhfRBx-j4ARHFokw9T5h6s/photos/Ab43m-uMwcdgfFHsIk3aTcuVGxmZTBV_yYWJmOsD0RfWx8FTSa00TZMqsnonYaksiGKxOKHAm7Cb_qkftC3oD5ajmWnnKN_FG_C6dWsvJWpSz3drmm0k80wEEMVPqKn4bZMjTpZVFW19JwzNGgndotKhVH3jcaHCJUyNKLw4zDix5xwIbP4d7UpmXAOKAcfbg1CyaY-39T9ToOS6s1KtiuG1LZjcD3ISXedT5y3rE6y7Ug88RRNKubKK9G2-Z1ZSd71i-oGMbtVbFGrwOmgHTZI1Reee1f-bzClbyxwu9TLrrKEYog/media?maxWidthPx=400&key=AIzaSyBSyBJPOh4bcDzVqByyf2GTEe5jnwbgC-Y",
+      "https://places.googleapis.com/v1/places/ChIJrQhfRBx-j4ARHFokw9T5h6s/photos/Ab43m-sTIF7elt_GrjRltDy3oupJNd70Nl6Kh6XkC1mf3a54ImWI17cCkxrhO3NSJHFKg7KQuMEE1imNtdGXuZXHV6IcYwKQhqz8rN0TjkWo2MR8HQbgXrt98kYC5_hzB5KDA_3be6iLTQ3fdZSYMS_8PZ9qnYQLcnYMlQUt8Dz3s9NaiJJ5MTYoAUL-yWBDzyO8FBYQMfp2C-O1GHlSSfoQFaM1pRFNSCmMH7gAEfIzjTqugsehX54qYnzk-EjEPnib80bLoVLo6weFULRlT5-3WTHvDUa460J7OIS9AdhoMQYycg/media?maxWidthPx=400&key=AIzaSyBSyBJPOh4bcDzVqByyf2GTEe5jnwbgC-Y",
+      "https://places.googleapis.com/v1/places/ChIJrQhfRBx-j4ARHFokw9T5h6s/photos/Ab43m-tkc_s7xBd_xCuiwXJODN2qQf3wPNusChGHP2kLzhnESsjiLoa9RmT06kOD3ocZLTtR0F1jA7pjxIbA_G9rQZS9jZ4Fn_BtgYyCJ_TlgOMXyXrgpqCKuWBhPJLDY4aN77i59WkWKFFRdczIRUxEPo6CBh3ovz2GeeebLQCtSDIMtj2laT4uUuXZdNv2q_NDCy49mAMp2VFIGsxe9MeSEvYm622Grmb2BkFtbtIPDljRnCnqBNAJp7RBeXpJHskLnX6Mvgec1gKPRQARU-Bd6zy_vJCDE94nyuowl163CTmb0jGQtcEqKbo5nKB7-GzGH4opsEEkwTj9dE-GyGL1LASqz6rWtLdBrdlyVMe3RGbF88LTfGhYIQfE01Gf_XGD1l4d-yru7ybFJMxGDBl6JPvCK0SuvFkZdPbirpA0II1yvJgneTe1t1ESdCwkAfRC/media?maxWidthPx=400&key=AIzaSyBSyBJPOh4bcDzVqByyf2GTEe5jnwbgC-Y",
+      "https://places.googleapis.com/v1/places/ChIJrQhfRBx-j4ARHFokw9T5h6s/photos/Ab43m-vP0vO-qq930GqhgA0l_wwRHezDmQyX0CYLn7cKVqzTPiAGgGRqVnfhdkg5zHG5JPEXu9Gy-6g6xHKSMSnXfkSP0gLhN22vr-U02HB79l5kacI3kX48u7oxRtuePAUhz1ZwTUjHULrK2lEyXyolTFDcmniLWEoCDssZx_j-CAfUyEKZcF94RAhkBeejQAc2u7PFAMtgpv5rrxQlu5in3bpQF1A35hKlHg5Q0Lly9eHh0c2_eBvkunR8djz2urPhkkE0wjQy14T3N_8L5XbDl3IDHKZ08D0LjkmhE1Tdc6AWJ8yvFuySWLbvfbDa17K5U_waCQYflUbyTbqTwB7Ydu9ZHzO5_Incf3Fvs_EQsteHsBUmFjG6DyKtRu6b_bV7485H0t5CI8AesVz3VcFOdUreNQECjn8BFXyew_hZetOQaLVUDHpy8-UHN7aOj8SO/media?maxWidthPx=400&key=AIzaSyBSyBJPOh4bcDzVqByyf2GTEe5jnwbgC-Y",
+      "https://places.googleapis.com/v1/places/ChIJrQhfRBx-j4ARHFokw9T5h6s/photos/Ab43m-skqZDRauHUXgoOhWxC434M0QLJfINmnQ_5Eeo3z9IiTMglI56UIJi3Unns9JEX61AhlylVnqA-TItuAXi268vyeERxgXKWT4U8CLfXPHa3p_9f3SYgCbTjC-R47wYJiozxe6zCZnCcBEAG0mN2BvcjdgMg6ssUIWvtfTTPIi3jxD8s3znfy0x5vgoMbIwq_xeduvTEtE_1BRONWty6bIR6mDXfwRfrJgDtdUdHm21stDI_vv8LsANGiV4Qb8Y6Q3t5VRcrCaSbq4g727HG3X8UbTGc0uMGrzf7FlgIJFQmHrlTLegbD9N_IS0mBaH9J6FAXQrBfMYM7JxIrPCcVeFhcFCvPc50-MsWxSqjtGFSAlXsAfKuuImCxVLBPA4YYS3veMCOzLlAnpMGPTLsWYMbthd5y4pbE3rQB1g_rgFEHUSSUKlpEuCz4Klp1iuN/media?maxWidthPx=400&key=AIzaSyBSyBJPOh4bcDzVqByyf2GTEe5jnwbgC-Y",
+      "https://places.googleapis.com/v1/places/ChIJrQhfRBx-j4ARHFokw9T5h6s/photos/Ab43m-vSgI69HmBDrOt6MzcmvdW30k5AlPK61EPwNn4epwU6vhhvV4djZE78Mff-CFiUN1Y73Gdg0QDcO7RY9XqGXBjv2ciOhZVT4xTf0aswVQH0gDm4gIT6XjPef5J8gO4he5xfbc2W2XRmXnvWakSIXFDCVdkraoVWGEcP_zYPOdXOi_swNoT8V2LWabKv9rXskbd9977yh9n1bVzhFoDE3Si7Y6n9EP5JDrkxSSAuwrNPmggKnoXaxDQjE7pv4yaSuSm8O9FNRiBMB6_drqc0CD5jRStSwCi_82fEHhcCfsWmMBj5cnd1qEfpg9FpmeUTXNvnRUB34WO-BgsJDAraONMdNnqOJwSTgs5TlXZOrhsu06VsRojLfWB2LRjht8KjhcyMt1ER0Cfrb4uyXbYhimVZxIeAvbSUSKcZFCqubYLb7mGGUaunTdOIi6wWhzCw/media?maxWidthPx=400&key=AIzaSyBSyBJPOh4bcDzVqByyf2GTEe5jnwbgC-Y",
+      "https://places.googleapis.com/v1/places/ChIJrQhfRBx-j4ARHFokw9T5h6s/photos/Ab43m-smPGYnOL0ofXxIeqViUDVRE9rYlplmYm0htkpjpSd-QijCobwB0HKuPgPd-tQYj64UZW4iScYxuIm8kuBCUX2Fkoblmd35sg0py1m7u1y9vf7tjLcDPZ-QZ949_OiSU6d3rgCHQl69utZo9aDUteiqHfIGRSCLa0e8vU9udJwmCwgQ8STW1i0Sow6cyNFEX1l_SPELGKeDBwkMFfexvQPSMDxV0e3oN4jg9zn7zrATp8UEVLFhF-_4mNa38KFEhVEcJTX86Q3K_yYqqEC898qLkblr5vwfDkSW1c9TdrrBxA/media?maxWidthPx=400&key=AIzaSyBSyBJPOh4bcDzVqByyf2GTEe5jnwbgC-Y",
+      "https://places.googleapis.com/v1/places/ChIJrQhfRBx-j4ARHFokw9T5h6s/photos/Ab43m-usCu2Ub8rzWpyxhvUYE2u96nDSbe103mYvLRmgffWim9NrQza_tf_mD53u2q2WmCBAaUAlEc6NtRicci33ODj37_nl66IzYfu9Gz6KjektbXyRUF9xdGwmb7dD6yS6Lu5O5x1tgQYBffaLwEOXiRktmdZNCcahKDCTIPke2XdpegDEv_c40RCHxeebPP-NFjGZis7F2irIvVgipC3FX--pMxS3buKqD7pSO40Q-UdwryK0gvRaelVw3iWI-hevklD6V_nLnI4Sq2nRGGyXhGJ0f7e89ZlRtdwERkhft1Qexr6O70xKOcIYzVJoGkCG2HPJC2auGICWL_98g4q-cszO-sypIUqo3pKG22OOAiaGmrnpLQZAO8pZQi9MZawqBd0jY8Mew5tTKKejO4rW4szaObO1vM80PiBOjxtyqGk8NnLBIZnGhi8pKF4xYv3i/media?maxWidthPx=400&key=AIzaSyBSyBJPOh4bcDzVqByyf2GTEe5jnwbgC-Y"
+    ],
+    "isOpen": true,
+    "imageSuggestions": [
+      "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1500306365237-7b4b9d7d0f0b?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "websiteUri": "",
+    "notes": "The business has a consistent phone number listed across multiple sources, but no official website or public email address could be found.",
+    "confidence": "high"
+  },
+  "context": {
+    "name": "One Hour Cleaners",
+    "category": "Dry cleaner",
+    "address": "2233 Market St, San Francisco, CA 94114, USA",
+    "reviews": [],
+    "photos": [
+      "https://places.googleapis.com/v1/places/ChIJrQhfRBx-j4ARHFokw9T5h6s/photos/Ab43m-t5S-w9M_VlEBTf0_MMbD2ZgyW5_P0IWVYB5dNUG4BfL2S4Wjipgj0jfyYKp4l2sdaoMgm4dmERDfG2sXjPRtzcySePVupsOeRikv_4O10Dnmfkg7ufS_TVwg_9-USsYDu__OnDI84xcrNWaru1FhodyI2Cj5U-lwboMxrx4ViJRxmohUeBPdpJp5rHnDknePrd_5VoIZMds9h4XQNbYSwTcGPJJrblGpRRXtoC2T1Ke4Ge2Ru1sBXy-JKidgvyFT-2BKwz1OkwZZcXUj293HY-plWA2dYZbl3-u5MFBSIT_Q/media?maxWidthPx=400&key=AIzaSyBSyBJPOh4bcDzVqByyf2GTEe5jnwbgC-Y",
+      "https://places.googleapis.com/v1/places/ChIJrQhfRBx-j4ARHFokw9T5h6s/photos/Ab43m-tpwZ515mV2egDjBJAP3j4cANGyQ06tNzXOD8n5Jp_CMWQH243SIAXe6UxRT5fcD3lROV5MxU-Jdt4MKj-spMPj64xhWiFcWvbW1bKBR72c7zHgunUERzSzbZx-M7510lLD3RTzyN0CKUbs8ITnlMcyGIjmcQEdi2f0tRQ6xFdE_1V4A4ipN4tLR05JMhjd9knEePrBqLNyLBAHva7qtZMtk7Tu4E7tMwz9VIKU1YGyTswdMWoaPRgbp8nDYWI5mVRBPILMCdZ7NtQE0r0tAJr3nsSniKB8oM5VYFB1V8IfE6nTR6zPx17XQ_HSUoD2axUH-XfSGkis5Suu570D8bi-gT-SCAdi4o_aJfGbSEv1tQOZo2U_CdEELlj9ww51Lbg2hDo1Maei_WICjHElBEiDgNUn_AXXd8SB1Rc1tBobgyeq/media?maxWidthPx=400&key=AIzaSyBSyBJPOh4bcDzVqByyf2GTEe5jnwbgC-Y",
+      "https://places.googleapis.com/v1/places/ChIJrQhfRBx-j4ARHFokw9T5h6s/photos/Ab43m-uMwcdgfFHsIk3aTcuVGxmZTBV_yYWJmOsD0RfWx8FTSa00TZMqsnonYaksiGKxOKHAm7Cb_qkftC3oD5ajmWnnKN_FG_C6dWsvJWpSz3drmm0k80wEEMVPqKn4bZMjTpZVFW19JwzNGgndotKhVH3jcaHCJUyNKLw4zDix5xwIbP4d7UpmXAOKAcfbg1CyaY-39T9ToOS6s1KtiuG1LZjcD3ISXedT5y3rE6y7Ug88RRNKubKK9G2-Z1ZSd71i-oGMbtVbFGrwOmgHTZI1Reee1f-bzClbyxwu9TLrrKEYog/media?maxWidthPx=400&key=AIzaSyBSyBJPOh4bcDzVqByyf2GTEe5jnwbgC-Y",
+      "https://places.googleapis.com/v1/places/ChIJrQhfRBx-j4ARHFokw9T5h6s/photos/Ab43m-sTIF7elt_GrjRltDy3oupJNd70Nl6Kh6XkC1mf3a54ImWI17cCkxrhO3NSJHFKg7KQuMEE1imNtdGXuZXHV6IcYwKQhqz8rN0TjkWo2MR8HQbgXrt98kYC5_hzB5KDA_3be6iLTQ3fdZSYMS_8PZ9qnYQLcnYMlQUt8Dz3s9NaiJJ5MTYoAUL-yWBDzyO8FBYQMfp2C-O1GHlSSfoQFaM1pRFNSCmMH7gAEfIzjTqugsehX54qYnzk-EjEPnib80bLoVLo6weFULRlT5-3WTHvDUa460J7OIS9AdhoMQYycg/media?maxWidthPx=400&key=AIzaSyBSyBJPOh4bcDzVqByyf2GTEe5jnwbgC-Y",
+      "https://places.googleapis.com/v1/places/ChIJrQhfRBx-j4ARHFokw9T5h6s/photos/Ab43m-tkc_s7xBd_xCuiwXJODN2qQf3wPNusChGHP2kLzhnESsjiLoa9RmT06kOD3ocZLTtR0F1jA7pjxIbA_G9rQZS9jZ4Fn_BtgYyCJ_TlgOMXyXrgpqCKuWBhPJLDY4aN77i59WkWKFFRdczIRUxEPo6CBh3ovz2GeeebLQCtSDIMtj2laT4uUuXZdNv2q_NDCy49mAMp2VFIGsxe9MeSEvYm622Grmb2BkFtbtIPDljRnCnqBNAJp7RBeXpJHskLnX6Mvgec1gKPRQARU-Bd6zy_vJCDE94nyuowl163CTmb0jGQtcEqKbo5nKB7-GzGH4opsEEkwTj9dE-GyGL1LASqz6rWtLdBrdlyVMe3RGbF88LTfGhYIQfE01Gf_XGD1l4d-yru7ybFJMxGDBl6JPvCK0SuvFkZdPbirpA0II1yvJgneTe1t1ESdCwkAfRC/media?maxWidthPx=400&key=AIzaSyBSyBJPOh4bcDzVqByyf2GTEe5jnwbgC-Y",
+      "https://places.googleapis.com/v1/places/ChIJrQhfRBx-j4ARHFokw9T5h6s/photos/Ab43m-vP0vO-qq930GqhgA0l_wwRHezDmQyX0CYLn7cKVqzTPiAGgGRqVnfhdkg5zHG5JPEXu9Gy-6g6xHKSMSnXfkSP0gLhN22vr-U02HB79l5kacI3kX48u7oxRtuePAUhz1ZwTUjHULrK2lEyXyolTFDcmniLWEoCDssZx_j-CAfUyEKZcF94RAhkBeejQAc2u7PFAMtgpv5rrxQlu5in3bpQF1A35hKlHg5Q0Lly9eHh0c2_eBvkunR8djz2urPhkkE0wjQy14T3N_8L5XbDl3IDHKZ08D0LjkmhE1Tdc6AWJ8yvFuySWLbvfbDa17K5U_waCQYflUbyTbqTwB7Ydu9ZHzO5_Incf3Fvs_EQsteHsBUmFjG6DyKtRu6b_bV7485H0t5CI8AesVz3VcFOdUreNQECjn8BFXyew_hZetOQaLVUDHpy8-UHN7aOj8SO/media?maxWidthPx=400&key=AIzaSyBSyBJPOh4bcDzVqByyf2GTEe5jnwbgC-Y",
+      "https://places.googleapis.com/v1/places/ChIJrQhfRBx-j4ARHFokw9T5h6s/photos/Ab43m-skqZDRauHUXgoOhWxC434M0QLJfINmnQ_5Eeo3z9IiTMglI56UIJi3Unns9JEX61AhlylVnqA-TItuAXi268vyeERxgXKWT4U8CLfXPHa3p_9f3SYgCbTjC-R47wYJiozxe6zCZnCcBEAG0mN2BvcjdgMg6ssUIWvtfTTPIi3jxD8s3znfy0x5vgoMbIwq_xeduvTEtE_1BRONWty6bIR6mDXfwRfrJgDtdUdHm21stDI_vv8LsANGiV4Qb8Y6Q3t5VRcrCaSbq4g727HG3X8UbTGc0uMGrzf7FlgIJFQmHrlTLegbD9N_IS0mBaH9J6FAXQrBfMYM7JxIrPCcVeFhcFCvPc50-MsWxSqjtGFSAlXsAfKuuImCxVLBPA4YYS3veMCOzLlAnpMGPTLsWYMbthd5y4pbE3rQB1g_rgFEHUSSUKlpEuCz4Klp1iuN/media?maxWidthPx=400&key=AIzaSyBSyBJPOh4bcDzVqByyf2GTEe5jnwbgC-Y",
+      "https://places.googleapis.com/v1/places/ChIJrQhfRBx-j4ARHFokw9T5h6s/photos/Ab43m-vSgI69HmBDrOt6MzcmvdW30k5AlPK61EPwNn4epwU6vhhvV4djZE78Mff-CFiUN1Y73Gdg0QDcO7RY9XqGXBjv2ciOhZVT4xTf0aswVQH0gDm4gIT6XjPef5J8gO4he5xfbc2W2XRmXnvWakSIXFDCVdkraoVWGEcP_zYPOdXOi_swNoT8V2LWabKv9rXskbd9977yh9n1bVzhFoDE3Si7Y6n9EP5JDrkxSSAuwrNPmggKnoXaxDQjE7pv4yaSuSm8O9FNRiBMB6_drqc0CD5jRStSwCi_82fEHhcCfsWmMBj5cnd1qEfpg9FpmeUTXNvnRUB34WO-BgsJDAraONMdNnqOJwSTgs5TlXZOrhsu06VsRojLfWB2LRjht8KjhcyMt1ER0Cfrb4uyXbYhimVZxIeAvbSUSKcZFCqubYLb7mGGUaunTdOIi6wWhzCw/media?maxWidthPx=400&key=AIzaSyBSyBJPOh4bcDzVqByyf2GTEe5jnwbgC-Y",
+      "https://places.googleapis.com/v1/places/ChIJrQhfRBx-j4ARHFokw9T5h6s/photos/Ab43m-smPGYnOL0ofXxIeqViUDVRE9rYlplmYm0htkpjpSd-QijCobwB0HKuPgPd-tQYj64UZW4iScYxuIm8kuBCUX2Fkoblmd35sg0py1m7u1y9vf7tjLcDPZ-QZ949_OiSU6d3rgCHQl69utZo9aDUteiqHfIGRSCLa0e8vU9udJwmCwgQ8STW1i0Sow6cyNFEX1l_SPELGKeDBwkMFfexvQPSMDxV0e3oN4jg9zn7zrATp8UEVLFhF-_4mNa38KFEhVEcJTX86Q3K_yYqqEC898qLkblr5vwfDkSW1c9TdrrBxA/media?maxWidthPx=400&key=AIzaSyBSyBJPOh4bcDzVqByyf2GTEe5jnwbgC-Y",
+      "https://places.googleapis.com/v1/places/ChIJrQhfRBx-j4ARHFokw9T5h6s/photos/Ab43m-usCu2Ub8rzWpyxhvUYE2u96nDSbe103mYvLRmgffWim9NrQza_tf_mD53u2q2WmCBAaUAlEc6NtRicci33ODj37_nl66IzYfu9Gz6KjektbXyRUF9xdGwmb7dD6yS6Lu5O5x1tgQYBffaLwEOXiRktmdZNCcahKDCTIPke2XdpegDEv_c40RCHxeebPP-NFjGZis7F2irIvVgipC3FX--pMxS3buKqD7pSO40Q-UdwryK0gvRaelVw3iWI-hevklD6V_nLnI4Sq2nRGGyXhGJ0f7e89ZlRtdwERkhft1Qexr6O70xKOcIYzVJoGkCG2HPJC2auGICWL_98g4q-cszO-sypIUqo3pKG22OOAiaGmrnpLQZAO8pZQi9MZawqBd0jY8Mew5tTKKejO4rW4szaObO1vM80PiBOjxtyqGk8NnLBIZnGhi8pKF4xYv3i/media?maxWidthPx=400&key=AIzaSyBSyBJPOh4bcDzVqByyf2GTEe5jnwbgC-Y"
+    ],
+    "imageSuggestions": [
+      "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1500306365237-7b4b9d7d0f0b?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "qualificationNotes": "The business has a consistent phone number listed across multiple sources, but no official website or public email address could be found.",
+    "enrichment": {
+      "websiteUri": null,
+      "email": null,
+      "phoneNumber": "(415) 552-6035",
+      "specialties": [],
+      "tone": null,
+      "neighborhood": null
+    },
+    "mapsSearch": {
+      "location": {
+        "lat": 37.7651493,
+        "lng": -122.43166219999999
+      },
+      "rating": 4.8,
+      "reviewCount": 206,
+      "businessStatus": null
+    }
+  }
+}

@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WordPress Block Output</title>
+  <style>
+    body { font-family: Inter, Arial, sans-serif; line-height: 1.5; padding: 24px; color: #111827; background: #f8fafc; }
+    h1, h2, h3 { margin-bottom: 0.5rem; }
+    section { margin-bottom: 2rem; padding: 1rem; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; }
+    pre { white-space: pre-wrap; word-break: break-word; background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: 8px; overflow: auto; }
+    .meta { color: #475569; }
+  </style>
+</head>
+<body>
+  <h1>WordPress Content Trace</h1>
+  <p class="meta">Business: One Hour Cleaners | Category: Dry cleaner | Pages: 6</p>
+  <section>
+    <h2>Generated Gutenberg Blocks</h2>
+    <pre>&lt;!-- wp:navigation {&quot;layout&quot;:{&quot;type&quot;:&quot;flex&quot;,&quot;justifyContent&quot;:&quot;center&quot;}} --&gt;
+&lt;nav class=&quot;wp-block-navigation&quot;&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/&quot;&gt;Home&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/about/&quot;&gt;About&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/services/&quot;&gt;Capabilities Built For Growth&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/gallery/&quot;&gt;Selected Work&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/faq/&quot;&gt;Questions, Answered Clearly&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/contact/&quot;&gt;Let&amp;#39;s Build Your Next Version&lt;/a&gt;&lt;/nav&gt;
+&lt;!-- /wp:navigation --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-hero wp-hero--split&quot; id=&quot;top&quot; data-layout=&quot;hero-immersive&quot;&gt;
+	&lt;div class=&quot;wp-hero__content&quot;&gt;
+		&lt;p class=&quot;wp-hero__badge&quot;&gt;Premium Dry Cleaning&lt;/p&gt;
+		&lt;h1&gt;Flawless Garment Care on Market Street.&lt;/h1&gt;
+		&lt;p&gt;San Francisco&amp;#39;s premier destination for precise spot treatment, structured pressing, and meticulous fabric handling. We treat your everyday wear and delicate silks with rigorous attention to detail.&lt;/p&gt;
+		&lt;div class=&quot;wp-hero__actions&quot;&gt;
+			&lt;a class=&quot;wp-button wp-button--primary&quot; href=&quot;&quot;&gt;Call to Schedule&lt;/a&gt;
+			&lt;a class=&quot;wp-button wp-button--secondary&quot; href=&quot;&quot;&gt;Our Process&lt;/a&gt;
+		&lt;/div&gt;
+	&lt;/div&gt;
+	
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-gallery wp-gallery--grid&quot; id=&quot;gallery&quot; data-layout=&quot;gallery-masonry&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Gallery&lt;/p&gt;
+		&lt;h2&gt;A Clinical Approach to Clean&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-gallery__grid&quot;&gt;
+		
+		&lt;figure class=&quot;wp-gallery__item&quot;&gt;
+			&lt;img src=&quot;&quot; alt=&quot;&quot; /&gt;
+		&lt;/figure&gt;
+		&lt;figure class=&quot;wp-gallery__item&quot;&gt;
+			&lt;img src=&quot;&quot; alt=&quot;&quot; /&gt;
+		&lt;/figure&gt;
+		&lt;figure class=&quot;wp-gallery__item&quot;&gt;
+			&lt;img src=&quot;&quot; alt=&quot;&quot; /&gt;
+		&lt;/figure&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-features wp-features--bento&quot; id=&quot;services&quot; data-layout=&quot;feature-grid&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Services&lt;/p&gt;
+		&lt;h2&gt;Specialized Care Formularies&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-features__grid wp-features__grid--bento&quot;&gt;
+		
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--lead&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;01&lt;/span&gt;
+			&lt;h3&gt;Precision Spot Diagnostics&lt;/h3&gt;
+			&lt;p&gt;Before any garment is submerged, we analyze stains under clinical lighting to apply the exact lifting agent needed without degrading the weave.&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--support&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;02&lt;/span&gt;
+			&lt;h3&gt;Structured Hand Pressing&lt;/h3&gt;
+			&lt;p&gt;Collars, cuffs, and lapels are individually set. We utilize controlled steam tensioning to restore original tailoring lines and eliminate micro-creases.&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--support&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;03&lt;/span&gt;
+			&lt;h3&gt;Silk &amp;amp; Delicate Expertise&lt;/h3&gt;
+			&lt;p&gt;Ultra-low mechanical action environments designed specifically for fragile organic proteins like silk, ensuring zero abrasion or fiber stress.&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--support&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;04&lt;/span&gt;
+			&lt;h3&gt;Eco-Conscious Solvent Profiling&lt;/h3&gt;
+			&lt;p&gt;Gentle, non-toxic liquid suspensions that protect color vibrance while neutralizing deeply embedded atmospheric soils.&lt;/p&gt;
+		&lt;/article&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-testimonials wp-testimonials--cards&quot; id=&quot;testimonials&quot; data-layout=&quot;testimonial-carousel&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Testimonials&lt;/p&gt;
+		&lt;h2&gt;Trusted by Market Street&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-testimonials__grid&quot;&gt;
+		
+		&lt;article class=&quot;wp-testimonial wp-testimonial--card&quot;&gt;
+			&lt;blockquote&gt;&lt;p&gt;I brought in a silk blouse with a severe oil mark, fully expecting it to be ruined. Their pretreatment completely lifted the stain while maintaining the fabric&amp;#39;s soft drape.&lt;/p&gt;&lt;/blockquote&gt;
+			&lt;footer&gt;&lt;strong&gt;Elena M.&lt;/strong&gt;&lt;span&gt;Castro District Resident&lt;/span&gt;&lt;/footer&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-testimonial wp-testimonial--card&quot;&gt;
+			&lt;blockquote&gt;&lt;p&gt;The structured pressing on my suit jackets is noticeably crisper than standard cleaners. The lapels always hold their roll perfectly after a session here.&lt;/p&gt;&lt;/blockquote&gt;
+			&lt;footer&gt;&lt;strong&gt;David C.&lt;/strong&gt;&lt;span&gt;Local Attorney&lt;/span&gt;&lt;/footer&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-testimonial wp-testimonial--card&quot;&gt;
+			&lt;blockquote&gt;&lt;p&gt;Speed without compromise. Even on a tight turnaround, the collars of my dress shirts come back immaculate and never over-starched.&lt;/p&gt;&lt;/blockquote&gt;
+			&lt;footer&gt;&lt;strong&gt;Jordan T.&lt;/strong&gt;&lt;span&gt;Returning Client&lt;/span&gt;&lt;/footer&gt;
+		&lt;/article&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-faq&quot; id=&quot;faq&quot; data-layout=&quot;faq-accordion&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;FAQ&lt;/p&gt;
+		&lt;h2&gt;Care Protocol Questions&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-faq__list&quot;&gt;
+		
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;What is the typical turnaround time for standard dry cleaning?&lt;/summary&gt;
+			&lt;p&gt;Most general wear garments are processed and ready for pickup within 24 to 48 hours. Items requiring extensive spot treatment or delicate handling may take slightly longer to ensure safety.&lt;/p&gt;
+		&lt;/details&gt;
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Can you successfully remove set-in wine or oil stains?&lt;/summary&gt;
+			&lt;p&gt;Our technicians utilize a multi-stage diagnostic approach to stains. While success depends on the fabric and how long the stain has sat, our dedicated pre-treatment lifts the vast majority of severe localized stains.&lt;/p&gt;
+		&lt;/details&gt;
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Do you offer tailored pressing without full chemical cleaning?&lt;/summary&gt;
+			&lt;p&gt;Yes. If an item simply needs structural restoration or wrinkle elimination, we offer standalone steam tensioning and hand-pressing services.&lt;/p&gt;
+		&lt;/details&gt;
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Is your facility equipped for alterations and tailoring repairs?&lt;/summary&gt;
+			&lt;p&gt;Absolutely. Alongside cleaning, our team can handle hems, zipper replacements, and precise tailoring adjustments to optimize your garment&amp;#39;s fit.&lt;/p&gt;
+		&lt;/details&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-cta wp-cta--centered&quot; data-layout=&quot;cta-split&quot;&gt;
+	&lt;div class=&quot;wp-cta__card&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Call To Action&lt;/p&gt;
+		&lt;h2&gt;Restore Your Wardrobe Today.&lt;/h2&gt;
+		&lt;p&gt;&lt;/p&gt;
+		&lt;a class=&quot;wp-button wp-button--primary&quot; href=&quot;#contact&quot;&gt;Contact Us&lt;/a&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-contact wp-contact--contact-form&quot; id=&quot;contact&quot; data-layout=&quot;contact-form&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Contact&lt;/p&gt;
+		&lt;h2&gt;Visit Our Facility&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-contact__grid&quot;&gt;
+		&lt;article class=&quot;wp-contact__details&quot;&gt;
+			&lt;h3&gt;One Hour Cleaners&lt;/h3&gt;
+			&lt;p&gt;2233 Market St, San Francisco, CA 94114, USA&lt;/p&gt;
+			&lt;p&gt;&lt;strong&gt;Phone:&lt;/strong&gt; (415) 552-6035&lt;/p&gt;
+			
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-contact__card&quot;&gt;
+			&lt;div class=&quot;wp-contact__map&quot;&gt;2233 Market St, San Francisco, CA 94114, USA&lt;/div&gt;
+			
+		&lt;/article&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;</pre>
+  </section>
+  <section>
+    <h2>Provisioning Plan Pages</h2>
+    
+    <article>
+      <h3>One Hour Cleaners</h3>
+      <p class="meta">Slug: home | Homepage</p>
+      <pre>&lt;!-- wp:navigation {&quot;layout&quot;:{&quot;type&quot;:&quot;flex&quot;,&quot;justifyContent&quot;:&quot;center&quot;}} --&gt;
+&lt;nav class=&quot;wp-block-navigation&quot;&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/&quot;&gt;Home&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/about/&quot;&gt;About&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/services/&quot;&gt;Capabilities Built For Growth&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/gallery/&quot;&gt;Selected Work&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/faq/&quot;&gt;Questions, Answered Clearly&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/contact/&quot;&gt;Let&amp;#39;s Build Your Next Version&lt;/a&gt;&lt;/nav&gt;
+&lt;!-- /wp:navigation --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-hero wp-hero--split&quot; id=&quot;top&quot; data-layout=&quot;hero-immersive&quot;&gt;
+	&lt;div class=&quot;wp-hero__content&quot;&gt;
+		&lt;p class=&quot;wp-hero__badge&quot;&gt;Premium Dry Cleaning&lt;/p&gt;
+		&lt;h1&gt;Flawless Garment Care on Market Street.&lt;/h1&gt;
+		&lt;p&gt;San Francisco&amp;#39;s premier destination for precise spot treatment, structured pressing, and meticulous fabric handling. We treat your everyday wear and delicate silks with rigorous attention to detail.&lt;/p&gt;
+		&lt;div class=&quot;wp-hero__actions&quot;&gt;
+			&lt;a class=&quot;wp-button wp-button--primary&quot; href=&quot;&quot;&gt;Call to Schedule&lt;/a&gt;
+			&lt;a class=&quot;wp-button wp-button--secondary&quot; href=&quot;&quot;&gt;Our Process&lt;/a&gt;
+		&lt;/div&gt;
+	&lt;/div&gt;
+	
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-gallery wp-gallery--grid&quot; id=&quot;gallery&quot; data-layout=&quot;gallery-masonry&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Gallery&lt;/p&gt;
+		&lt;h2&gt;A Clinical Approach to Clean&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-gallery__grid&quot;&gt;
+		
+		&lt;figure class=&quot;wp-gallery__item&quot;&gt;
+			&lt;img src=&quot;&quot; alt=&quot;&quot; /&gt;
+		&lt;/figure&gt;
+		&lt;figure class=&quot;wp-gallery__item&quot;&gt;
+			&lt;img src=&quot;&quot; alt=&quot;&quot; /&gt;
+		&lt;/figure&gt;
+		&lt;figure class=&quot;wp-gallery__item&quot;&gt;
+			&lt;img src=&quot;&quot; alt=&quot;&quot; /&gt;
+		&lt;/figure&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-features wp-features--bento&quot; id=&quot;services&quot; data-layout=&quot;feature-grid&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Services&lt;/p&gt;
+		&lt;h2&gt;Specialized Care Formularies&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-features__grid wp-features__grid--bento&quot;&gt;
+		
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--lead&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;01&lt;/span&gt;
+			&lt;h3&gt;Precision Spot Diagnostics&lt;/h3&gt;
+			&lt;p&gt;Before any garment is submerged, we analyze stains under clinical lighting to apply the exact lifting agent needed without degrading the weave.&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--support&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;02&lt;/span&gt;
+			&lt;h3&gt;Structured Hand Pressing&lt;/h3&gt;
+			&lt;p&gt;Collars, cuffs, and lapels are individually set. We utilize controlled steam tensioning to restore original tailoring lines and eliminate micro-creases.&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--support&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;03&lt;/span&gt;
+			&lt;h3&gt;Silk &amp;amp; Delicate Expertise&lt;/h3&gt;
+			&lt;p&gt;Ultra-low mechanical action environments designed specifically for fragile organic proteins like silk, ensuring zero abrasion or fiber stress.&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--support&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;04&lt;/span&gt;
+			&lt;h3&gt;Eco-Conscious Solvent Profiling&lt;/h3&gt;
+			&lt;p&gt;Gentle, non-toxic liquid suspensions that protect color vibrance while neutralizing deeply embedded atmospheric soils.&lt;/p&gt;
+		&lt;/article&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-testimonials wp-testimonials--cards&quot; id=&quot;testimonials&quot; data-layout=&quot;testimonial-carousel&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Testimonials&lt;/p&gt;
+		&lt;h2&gt;Trusted by Market Street&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-testimonials__grid&quot;&gt;
+		
+		&lt;article class=&quot;wp-testimonial wp-testimonial--card&quot;&gt;
+			&lt;blockquote&gt;&lt;p&gt;I brought in a silk blouse with a severe oil mark, fully expecting it to be ruined. Their pretreatment completely lifted the stain while maintaining the fabric&amp;#39;s soft drape.&lt;/p&gt;&lt;/blockquote&gt;
+			&lt;footer&gt;&lt;strong&gt;Elena M.&lt;/strong&gt;&lt;span&gt;Castro District Resident&lt;/span&gt;&lt;/footer&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-testimonial wp-testimonial--card&quot;&gt;
+			&lt;blockquote&gt;&lt;p&gt;The structured pressing on my suit jackets is noticeably crisper than standard cleaners. The lapels always hold their roll perfectly after a session here.&lt;/p&gt;&lt;/blockquote&gt;
+			&lt;footer&gt;&lt;strong&gt;David C.&lt;/strong&gt;&lt;span&gt;Local Attorney&lt;/span&gt;&lt;/footer&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-testimonial wp-testimonial--card&quot;&gt;
+			&lt;blockquote&gt;&lt;p&gt;Speed without compromise. Even on a tight turnaround, the collars of my dress shirts come back immaculate and never over-starched.&lt;/p&gt;&lt;/blockquote&gt;
+			&lt;footer&gt;&lt;strong&gt;Jordan T.&lt;/strong&gt;&lt;span&gt;Returning Client&lt;/span&gt;&lt;/footer&gt;
+		&lt;/article&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-faq&quot; id=&quot;faq&quot; data-layout=&quot;faq-accordion&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;FAQ&lt;/p&gt;
+		&lt;h2&gt;Care Protocol Questions&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-faq__list&quot;&gt;
+		
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;What is the typical turnaround time for standard dry cleaning?&lt;/summary&gt;
+			&lt;p&gt;Most general wear garments are processed and ready for pickup within 24 to 48 hours. Items requiring extensive spot treatment or delicate handling may take slightly longer to ensure safety.&lt;/p&gt;
+		&lt;/details&gt;
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Can you successfully remove set-in wine or oil stains?&lt;/summary&gt;
+			&lt;p&gt;Our technicians utilize a multi-stage diagnostic approach to stains. While success depends on the fabric and how long the stain has sat, our dedicated pre-treatment lifts the vast majority of severe localized stains.&lt;/p&gt;
+		&lt;/details&gt;
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Do you offer tailored pressing without full chemical cleaning?&lt;/summary&gt;
+			&lt;p&gt;Yes. If an item simply needs structural restoration or wrinkle elimination, we offer standalone steam tensioning and hand-pressing services.&lt;/p&gt;
+		&lt;/details&gt;
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Is your facility equipped for alterations and tailoring repairs?&lt;/summary&gt;
+			&lt;p&gt;Absolutely. Alongside cleaning, our team can handle hems, zipper replacements, and precise tailoring adjustments to optimize your garment&amp;#39;s fit.&lt;/p&gt;
+		&lt;/details&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-cta wp-cta--centered&quot; data-layout=&quot;cta-split&quot;&gt;
+	&lt;div class=&quot;wp-cta__card&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Call To Action&lt;/p&gt;
+		&lt;h2&gt;Restore Your Wardrobe Today.&lt;/h2&gt;
+		&lt;p&gt;&lt;/p&gt;
+		&lt;a class=&quot;wp-button wp-button--primary&quot; href=&quot;#contact&quot;&gt;Contact Us&lt;/a&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-contact wp-contact--contact-form&quot; id=&quot;contact&quot; data-layout=&quot;contact-form&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Contact&lt;/p&gt;
+		&lt;h2&gt;Visit Our Facility&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-contact__grid&quot;&gt;
+		&lt;article class=&quot;wp-contact__details&quot;&gt;
+			&lt;h3&gt;One Hour Cleaners&lt;/h3&gt;
+			&lt;p&gt;2233 Market St, San Francisco, CA 94114, USA&lt;/p&gt;
+			&lt;p&gt;&lt;strong&gt;Phone:&lt;/strong&gt; (415) 552-6035&lt;/p&gt;
+			
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-contact__card&quot;&gt;
+			&lt;div class=&quot;wp-contact__map&quot;&gt;2233 Market St, San Francisco, CA 94114, USA&lt;/div&gt;
+			
+		&lt;/article&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;</pre>
+    </article>
+
+    <article>
+      <h3>About</h3>
+      <p class="meta">Slug: about</p>
+      <pre>&lt;!-- wp:navigation {&quot;layout&quot;:{&quot;type&quot;:&quot;flex&quot;,&quot;justifyContent&quot;:&quot;center&quot;}} --&gt;
+&lt;nav class=&quot;wp-block-navigation&quot;&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/&quot;&gt;Home&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/about/&quot;&gt;About&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/services/&quot;&gt;Capabilities Built For Growth&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/gallery/&quot;&gt;Selected Work&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/faq/&quot;&gt;Questions, Answered Clearly&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/contact/&quot;&gt;Let&amp;#39;s Build Your Next Version&lt;/a&gt;&lt;/nav&gt;
+&lt;!-- /wp:navigation --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-about&quot; data-layout=&quot;editorial&quot;&gt;
+  &lt;header class=&quot;wp-section__header&quot;&gt;
+    &lt;p class=&quot;wp-section__eyebrow&quot;&gt;About&lt;/p&gt;
+    &lt;h1&gt;About One Hour Cleaners&lt;/h1&gt;
+  &lt;/header&gt;
+  &lt;div class=&quot;wp-about__content&quot;&gt;
+    &lt;p&gt;San Francisco&amp;#39;s premier destination for precise spot treatment, structured pressing, and meticulous fabric handling. We treat your everyday wear and delicate silks with rigorous attention to detail.&lt;/p&gt;
+    &lt;ul&gt;
+      &lt;li&gt;Category: Dry cleaner&lt;/li&gt;
+      &lt;li&gt;Style Direction: Clinical Clarity&lt;/li&gt;
+      &lt;li&gt;Experience Focus: minimal&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-testimonials wp-testimonials--cards&quot; id=&quot;testimonials&quot; data-layout=&quot;testimonial-carousel&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Testimonials&lt;/p&gt;
+		&lt;h2&gt;Trusted by Market Street&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-testimonials__grid&quot;&gt;
+		
+		&lt;article class=&quot;wp-testimonial wp-testimonial--card&quot;&gt;
+			&lt;blockquote&gt;&lt;p&gt;I brought in a silk blouse with a severe oil mark, fully expecting it to be ruined. Their pretreatment completely lifted the stain while maintaining the fabric&amp;#39;s soft drape.&lt;/p&gt;&lt;/blockquote&gt;
+			&lt;footer&gt;&lt;strong&gt;Elena M.&lt;/strong&gt;&lt;span&gt;Castro District Resident&lt;/span&gt;&lt;/footer&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-testimonial wp-testimonial--card&quot;&gt;
+			&lt;blockquote&gt;&lt;p&gt;The structured pressing on my suit jackets is noticeably crisper than standard cleaners. The lapels always hold their roll perfectly after a session here.&lt;/p&gt;&lt;/blockquote&gt;
+			&lt;footer&gt;&lt;strong&gt;David C.&lt;/strong&gt;&lt;span&gt;Local Attorney&lt;/span&gt;&lt;/footer&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-testimonial wp-testimonial--card&quot;&gt;
+			&lt;blockquote&gt;&lt;p&gt;Speed without compromise. Even on a tight turnaround, the collars of my dress shirts come back immaculate and never over-starched.&lt;/p&gt;&lt;/blockquote&gt;
+			&lt;footer&gt;&lt;strong&gt;Jordan T.&lt;/strong&gt;&lt;span&gt;Returning Client&lt;/span&gt;&lt;/footer&gt;
+		&lt;/article&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;</pre>
+    </article>
+
+    <article>
+      <h3>Services</h3>
+      <p class="meta">Slug: services</p>
+      <pre>&lt;!-- wp:navigation {&quot;layout&quot;:{&quot;type&quot;:&quot;flex&quot;,&quot;justifyContent&quot;:&quot;center&quot;}} --&gt;
+&lt;nav class=&quot;wp-block-navigation&quot;&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/&quot;&gt;Home&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/about/&quot;&gt;About&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/services/&quot;&gt;Capabilities Built For Growth&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/gallery/&quot;&gt;Selected Work&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/faq/&quot;&gt;Questions, Answered Clearly&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/contact/&quot;&gt;Let&amp;#39;s Build Your Next Version&lt;/a&gt;&lt;/nav&gt;
+&lt;!-- /wp:navigation --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-services&quot; data-layout=&quot;editorial&quot;&gt;
+  &lt;header class=&quot;wp-section__header&quot;&gt;
+    &lt;p class=&quot;wp-section__eyebrow&quot;&gt;Services&lt;/p&gt;
+    &lt;h1&gt;Capabilities Built For Growth&lt;/h1&gt;
+  &lt;/header&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-features wp-features--bento&quot; id=&quot;services&quot; data-layout=&quot;feature-grid&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Services&lt;/p&gt;
+		&lt;h2&gt;Specialized Care Formularies&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-features__grid wp-features__grid--bento&quot;&gt;
+		
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--lead&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;01&lt;/span&gt;
+			&lt;h3&gt;Precision Spot Diagnostics&lt;/h3&gt;
+			&lt;p&gt;Before any garment is submerged, we analyze stains under clinical lighting to apply the exact lifting agent needed without degrading the weave.&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--support&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;02&lt;/span&gt;
+			&lt;h3&gt;Structured Hand Pressing&lt;/h3&gt;
+			&lt;p&gt;Collars, cuffs, and lapels are individually set. We utilize controlled steam tensioning to restore original tailoring lines and eliminate micro-creases.&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--support&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;03&lt;/span&gt;
+			&lt;h3&gt;Silk &amp;amp; Delicate Expertise&lt;/h3&gt;
+			&lt;p&gt;Ultra-low mechanical action environments designed specifically for fragile organic proteins like silk, ensuring zero abrasion or fiber stress.&lt;/p&gt;
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-feature wp-feature--card wp-feature--support&quot;&gt;
+			&lt;span class=&quot;wp-feature__index&quot;&gt;04&lt;/span&gt;
+			&lt;h3&gt;Eco-Conscious Solvent Profiling&lt;/h3&gt;
+			&lt;p&gt;Gentle, non-toxic liquid suspensions that protect color vibrance while neutralizing deeply embedded atmospheric soils.&lt;/p&gt;
+		&lt;/article&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-cta wp-cta--centered&quot; data-layout=&quot;cta-split&quot;&gt;
+	&lt;div class=&quot;wp-cta__card&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Call To Action&lt;/p&gt;
+		&lt;h2&gt;Restore Your Wardrobe Today.&lt;/h2&gt;
+		&lt;p&gt;&lt;/p&gt;
+		&lt;a class=&quot;wp-button wp-button--primary&quot; href=&quot;#contact&quot;&gt;Contact Us&lt;/a&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;</pre>
+    </article>
+
+    <article>
+      <h3>Gallery</h3>
+      <p class="meta">Slug: gallery</p>
+      <pre>&lt;!-- wp:navigation {&quot;layout&quot;:{&quot;type&quot;:&quot;flex&quot;,&quot;justifyContent&quot;:&quot;center&quot;}} --&gt;
+&lt;nav class=&quot;wp-block-navigation&quot;&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/&quot;&gt;Home&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/about/&quot;&gt;About&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/services/&quot;&gt;Capabilities Built For Growth&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/gallery/&quot;&gt;Selected Work&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/faq/&quot;&gt;Questions, Answered Clearly&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/contact/&quot;&gt;Let&amp;#39;s Build Your Next Version&lt;/a&gt;&lt;/nav&gt;
+&lt;!-- /wp:navigation --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-gallery-page&quot; data-layout=&quot;editorial&quot;&gt;
+  &lt;header class=&quot;wp-section__header&quot;&gt;
+    &lt;p class=&quot;wp-section__eyebrow&quot;&gt;Gallery&lt;/p&gt;
+    &lt;h1&gt;Selected Work&lt;/h1&gt;
+  &lt;/header&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-gallery wp-gallery--grid&quot; id=&quot;gallery&quot; data-layout=&quot;gallery-masonry&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Gallery&lt;/p&gt;
+		&lt;h2&gt;A Clinical Approach to Clean&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-gallery__grid&quot;&gt;
+		
+		&lt;figure class=&quot;wp-gallery__item&quot;&gt;
+			&lt;img src=&quot;&quot; alt=&quot;&quot; /&gt;
+		&lt;/figure&gt;
+		&lt;figure class=&quot;wp-gallery__item&quot;&gt;
+			&lt;img src=&quot;&quot; alt=&quot;&quot; /&gt;
+		&lt;/figure&gt;
+		&lt;figure class=&quot;wp-gallery__item&quot;&gt;
+			&lt;img src=&quot;&quot; alt=&quot;&quot; /&gt;
+		&lt;/figure&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;</pre>
+    </article>
+
+    <article>
+      <h3>FAQ</h3>
+      <p class="meta">Slug: faq</p>
+      <pre>&lt;!-- wp:navigation {&quot;layout&quot;:{&quot;type&quot;:&quot;flex&quot;,&quot;justifyContent&quot;:&quot;center&quot;}} --&gt;
+&lt;nav class=&quot;wp-block-navigation&quot;&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/&quot;&gt;Home&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/about/&quot;&gt;About&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/services/&quot;&gt;Capabilities Built For Growth&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/gallery/&quot;&gt;Selected Work&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/faq/&quot;&gt;Questions, Answered Clearly&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/contact/&quot;&gt;Let&amp;#39;s Build Your Next Version&lt;/a&gt;&lt;/nav&gt;
+&lt;!-- /wp:navigation --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-faq-page&quot; data-layout=&quot;editorial&quot;&gt;
+  &lt;header class=&quot;wp-section__header&quot;&gt;
+    &lt;p class=&quot;wp-section__eyebrow&quot;&gt;FAQ&lt;/p&gt;
+    &lt;h1&gt;Questions, Answered Clearly&lt;/h1&gt;
+  &lt;/header&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-faq&quot; id=&quot;faq&quot; data-layout=&quot;faq-accordion&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;FAQ&lt;/p&gt;
+		&lt;h2&gt;Care Protocol Questions&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-faq__list&quot;&gt;
+		
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;What is the typical turnaround time for standard dry cleaning?&lt;/summary&gt;
+			&lt;p&gt;Most general wear garments are processed and ready for pickup within 24 to 48 hours. Items requiring extensive spot treatment or delicate handling may take slightly longer to ensure safety.&lt;/p&gt;
+		&lt;/details&gt;
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Can you successfully remove set-in wine or oil stains?&lt;/summary&gt;
+			&lt;p&gt;Our technicians utilize a multi-stage diagnostic approach to stains. While success depends on the fabric and how long the stain has sat, our dedicated pre-treatment lifts the vast majority of severe localized stains.&lt;/p&gt;
+		&lt;/details&gt;
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Do you offer tailored pressing without full chemical cleaning?&lt;/summary&gt;
+			&lt;p&gt;Yes. If an item simply needs structural restoration or wrinkle elimination, we offer standalone steam tensioning and hand-pressing services.&lt;/p&gt;
+		&lt;/details&gt;
+		&lt;details class=&quot;wp-faq__item&quot;&gt;
+			&lt;summary&gt;Is your facility equipped for alterations and tailoring repairs?&lt;/summary&gt;
+			&lt;p&gt;Absolutely. Alongside cleaning, our team can handle hems, zipper replacements, and precise tailoring adjustments to optimize your garment&amp;#39;s fit.&lt;/p&gt;
+		&lt;/details&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;</pre>
+    </article>
+
+    <article>
+      <h3>Contact</h3>
+      <p class="meta">Slug: contact</p>
+      <pre>&lt;!-- wp:navigation {&quot;layout&quot;:{&quot;type&quot;:&quot;flex&quot;,&quot;justifyContent&quot;:&quot;center&quot;}} --&gt;
+&lt;nav class=&quot;wp-block-navigation&quot;&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/&quot;&gt;Home&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/about/&quot;&gt;About&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/services/&quot;&gt;Capabilities Built For Growth&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/gallery/&quot;&gt;Selected Work&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/faq/&quot;&gt;Questions, Answered Clearly&lt;/a&gt;&lt;a class=&quot;wp-block-navigation-item__content&quot; href=&quot;/contact/&quot;&gt;Let&amp;#39;s Build Your Next Version&lt;/a&gt;&lt;/nav&gt;
+&lt;!-- /wp:navigation --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-contact-page&quot; data-layout=&quot;split&quot;&gt;
+  &lt;header class=&quot;wp-section__header&quot;&gt;
+    &lt;p class=&quot;wp-section__eyebrow&quot;&gt;Contact&lt;/p&gt;
+    &lt;h1&gt;Let&amp;#39;s Build Your Next Version&lt;/h1&gt;
+  &lt;/header&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;
+
+&lt;!-- wp:html --&gt;
+
+&lt;section class=&quot;wp-section wp-contact wp-contact--contact-form&quot; id=&quot;contact&quot; data-layout=&quot;contact-form&quot;&gt;
+	&lt;header class=&quot;wp-section__header&quot;&gt;
+		&lt;p class=&quot;wp-section__eyebrow&quot;&gt;Contact&lt;/p&gt;
+		&lt;h2&gt;Visit Our Facility&lt;/h2&gt;
+	&lt;/header&gt;
+	&lt;div class=&quot;wp-contact__grid&quot;&gt;
+		&lt;article class=&quot;wp-contact__details&quot;&gt;
+			&lt;h3&gt;One Hour Cleaners&lt;/h3&gt;
+			&lt;p&gt;2233 Market St, San Francisco, CA 94114, USA&lt;/p&gt;
+			&lt;p&gt;&lt;strong&gt;Phone:&lt;/strong&gt; (415) 552-6035&lt;/p&gt;
+			
+		&lt;/article&gt;
+		&lt;article class=&quot;wp-contact__card&quot;&gt;
+			&lt;div class=&quot;wp-contact__map&quot;&gt;2233 Market St, San Francisco, CA 94114, USA&lt;/div&gt;
+			
+		&lt;/article&gt;
+	&lt;/div&gt;
+&lt;/section&gt;
+&lt;!-- /wp:html --&gt;</pre>
+    </article>
+  </section>
+  <section>
+    <h2>Media Assets</h2>
+    <pre>[]</pre>
+  </section>
+</body>
+</html>

@@ -1,0 +1,245 @@
+{
+  "theme": {
+    "name": "Clinical Calm Light",
+    "style": "minimal",
+    "layout": "asymmetrical",
+    "buttonStyle": "pill",
+    "surfaceStyle": "soft",
+    "mediaShape": "rounded",
+    "density": "spacious",
+    "accentMode": "minimal",
+    "typography": {
+      "heading": "IBM Plex Sans",
+      "body": "Inter"
+    },
+    "palette": {
+      "background": "#FAFCFC",
+      "surface": "#FFFFFF",
+      "primary": "#2C7A7B",
+      "accent": "#81E6D9",
+      "text": "#1A202C",
+      "muted": "#EDF2F7",
+      "outline": "#E2E8F0"
+    },
+    "radius": "16px"
+  },
+  "sections": [
+    {
+      "type": "hero",
+      "content": {
+        "headline": "Precision Dental Care in Seattle",
+        "subheadline": "Experience a new standard of oral health. Modern technology meets compassionate, patient-first care in our state-of-the-art clinic.",
+        "primaryCta": {
+          "label": "Schedule Your Visit",
+          "href": "#book"
+        },
+        "secondaryCta": {
+          "label": "Our Philosophy",
+          "href": "#about"
+        },
+        "badge": "Accepting New Patients",
+        "media": {
+          "url": "https://images.unsplash.com/photo-1606811841689-23def381efa3?w=800",
+          "alt": "Modern, clean dental treatment room with state-of-the-art equipment"
+        }
+      },
+      "design": {
+        "layout": "split",
+        "background": "base",
+        "spacing": "spacious"
+      }
+    },
+    {
+      "type": "features",
+      "content": {
+        "title": "Comprehensive Clinical Excellence",
+        "subtitle": "From foundational preventative care to advanced restorative treatments, our clinical standards never waver.",
+        "items": [
+          {
+            "title": "Preventative Diagnostics",
+            "description": "Routine exams, comprehensive cleanings, and high-resolution digital imaging to detect and prevent issues before they escalate.",
+            "icon": "activity"
+          },
+          {
+            "title": "Aesthetic Refinement",
+            "description": "Professional-grade whitening, custom porcelain veneers, and subtle bonding to elevate your natural smile.",
+            "icon": "star"
+          },
+          {
+            "title": "Restorative Solutions",
+            "description": "Durable titanium implants, precision crowns, and structural bridges designed to function identically to natural teeth.",
+            "icon": "shield"
+          },
+          {
+            "title": "Acute Care",
+            "description": "Prompt, empathetic emergency treatments designed to rapidly address unpredicted dental discomfort or trauma.",
+            "icon": "zap"
+          }
+        ]
+      },
+      "design": {
+        "layout": "bento",
+        "background": "surface",
+        "spacing": "spacious"
+      }
+    },
+    {
+      "type": "testimonials",
+      "content": {
+        "title": "Patient Experiences",
+        "subtitle": "Hear from the Seattle community members who trust us with their ongoing oral health.",
+        "items": [
+          {
+            "quote": "The clinic is pristine and the clinical team took the time to meticulously explain every step of my treatment plan. No surprises, just excellent care.",
+            "author": "Sarah Jenkins",
+            "role": "Local Resident"
+          },
+          {
+            "quote": "I've historically carried anxiety about dental visits, but their clinical calm, noise-canceling headphones, and gentle approach completely shifted my perspective.",
+            "author": "Michael Torres",
+            "role": "Tech Professional"
+          },
+          {
+            "quote": "Efficient digital booking, absolutely no delays in the waiting room, and an incredibly thorough exam. The standard of operational care here is unmatched.",
+            "author": "Emily Rossi",
+            "role": "Returning Patient"
+          }
+        ]
+      },
+      "design": {
+        "layout": "masonry",
+        "background": "base",
+        "spacing": "standard"
+      }
+    },
+    {
+      "type": "gallery",
+      "content": {
+        "title": "A Thoughtful Environment",
+        "subtitle": "Designed to establish a sense of ease the moment you arrive.",
+        "items": [
+          {
+            "url": "https://images.unsplash.com/photo-1606811841689-23def381efa3?w=800",
+            "alt": "Well-lit modern dental operating room with calm aesthetic"
+          },
+          {
+            "url": "https://images.unsplash.com/photo-1586221199581-22879f976bb2?w=800",
+            "alt": "Soft reception seating with premium, relaxing interior design"
+          },
+          {
+            "url": "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=800",
+            "alt": "Advanced clinical technology and sterilization equipment"
+          }
+        ]
+      },
+      "design": {
+        "layout": "asymmetrical",
+        "background": "surface",
+        "spacing": "spacious"
+      }
+    },
+    {
+      "type": "features",
+      "content": {
+        "title": "The Modern Smiles Advantage",
+        "subtitle": "Redefining the logistics and comfort of the standard dental visit.",
+        "items": [
+          {
+            "title": "Digital Impressions",
+            "description": "We utilize high-resolution 3D intraoral scanners for perfect precision—eliminating the need for traditional messy molds."
+          },
+          {
+            "title": "Transparent Treatment Plans",
+            "description": "Clear, upfront treatment estimates and financial breakdowns are provided prior to any procedure. No hidden clinical fees."
+          },
+          {
+            "title": "Flexible Urban Scheduling",
+            "description": "Early morning and focused evening appointments specifically offered to accommodate demanding Seattle schedules."
+          }
+        ]
+      },
+      "design": {
+        "layout": "list",
+        "background": "base",
+        "spacing": "standard"
+      }
+    },
+    {
+      "type": "faq",
+      "content": {
+        "title": "Patient Inquiries",
+        "subtitle": "Answers to the most common questions regarding clinical procedures and logistics.",
+        "items": [
+          {
+            "question": "Are you in-network with my insurance provider?",
+            "answer": "We are in-network with the majority of major PPO plans. Our administrative team will happily perform a complimentary benefits verification prior to your first appointment."
+          },
+          {
+            "question": "What is the protocol for an initial patient visit?",
+            "answer": "Your comprehensive first visit includes a detailed exam, low-radiation digital x-rays, periodontal charting, a professional prophylaxis (cleaning), and a customized oral health consultation."
+          },
+          {
+            "question": "Do you offer targeted options for patients with dental anxiety?",
+            "answer": "Yes. We maintain a zero-pressure environment and provide targeted amenities such as noise-canceling headphones, weighted blankets, and mild conscious sedation upon request."
+          },
+          {
+            "question": "How do you handle acute dental emergencies?",
+            "answer": "We reserve dedicated scheduling blocks daily for urgent care. If you are experiencing severe pain, swelling, or trauma, contact us immediately for priority triage."
+          }
+        ]
+      },
+      "design": {
+        "layout": "accordion",
+        "background": "surface",
+        "spacing": "spacious"
+      }
+    },
+    {
+      "type": "cta",
+      "content": {
+        "title": "Prioritize Your Oral Health",
+        "subtitle": "Join a discerning community of Seattle patients who value proactive, meticulously delivered dental care.",
+        "primaryCta": {
+          "label": "Book Your Appointment",
+          "href": "#book"
+        }
+      },
+      "design": {
+        "layout": "split",
+        "background": "primary",
+        "spacing": "spacious"
+      }
+    },
+    {
+      "type": "contact",
+      "content": {
+        "title": "Visit the Clinic",
+        "subtitle": "Conveniently located to serve the greater Seattle area.",
+        "contactInfo": {
+          "address": "321 Smile St, Seattle, WA",
+          "phone": "(206) 555-3456",
+          "email": "appointments@modernsmiles.com"
+        },
+        "businessHours": [
+          {
+            "day": "Monday - Thursday",
+            "hours": "7:00 AM - 6:00 PM"
+          },
+          {
+            "day": "Friday",
+            "hours": "8:00 AM - 2:00 PM"
+          },
+          {
+            "day": "Saturday & Sunday",
+            "hours": "Closed for Seminars"
+          }
+        ]
+      },
+      "design": {
+        "layout": "split",
+        "background": "base",
+        "spacing": "standard"
+      }
+    }
+  ]
+}

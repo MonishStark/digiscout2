@@ -1,0 +1,234 @@
+{
+  "meta": {
+    "siteId": "fallback-test-cafe-1778748201127",
+    "businessId": "test-cafe",
+    "slug": "test-cafe",
+    "version": 1,
+    "target": "static"
+  },
+  "theme": {
+    "name": "Terracotta Editorial",
+    "style": "editorial",
+    "radius": "12px",
+    "layout": "editorial",
+    "buttonStyle": "pill",
+    "surfaceStyle": "glass",
+    "mediaShape": "rounded",
+    "density": "airy",
+    "accentMode": "neon",
+    "palette": {
+      "background": "#FDFBF7",
+      "surface": "#FFFFFF",
+      "primary": "#C55B43",
+      "accent": "#B88A6E",
+      "text": "#2C2724",
+      "muted": "#F0EBE1",
+      "outline": "#E8E2D9"
+    },
+    "typography": {
+      "heading": "Fraunces",
+      "body": "Inter"
+    },
+    "sectionDensity": "balanced",
+    "interactionStyle": "refined"
+  },
+  "brand": {
+    "businessName": "Test Cafe",
+    "category": "Cafe",
+    "address": "123 Main St, San Francisco, CA",
+    "phone": "(555) 123-4567",
+    "email": "info@testcafe.com",
+    "websiteUri": ""
+  },
+  "seo": {
+    "title": "Test Cafe | Preview",
+    "description": "Premium website for Test Cafe—Cafe services with modern design and seamless booking.",
+    "keywords": [
+      "Cafe",
+      "services",
+      "premium",
+      "Cafe"
+    ]
+  },
+  "sections": [
+    {
+      "id": "hero-cafe",
+      "type": "hero",
+      "layout": "hero-immersive",
+      "headline": "Curated Coffee in the Heart of SF",
+      "subheadline": "Thoughtfully sourced single-origin roasts and artisanal pastries, served in a space designed for connection and quiet focus.",
+      "primaryCta": {
+        "label": "Order Ahead",
+        "url": "#order"
+      },
+      "secondaryCta": {
+        "label": "Explore Our Menu",
+        "url": "#menu"
+      },
+      "media": {
+        "url": "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800",
+        "alt": "Steaming cup of premium espresso on a wooden cafe table"
+      },
+      "badge": "Test Cafe",
+      "ctaPrimary": {
+        "label": "Learn More",
+        "href": "#contact"
+      }
+    },
+    {
+      "id": "gallery-spaces",
+      "type": "gallery",
+      "layout": "gallery-masonry",
+      "headline": "A Space to Breathe",
+      "subheadline": "Sunlit corners, natural textures, and the hum of espresso machines. Designed for deep work and casual mornings.",
+      "images": [
+        {
+          "url": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800",
+          "alt": "Sunlit seating area with warm wooden tables and minimalist chairs",
+          "src": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?w=800",
+          "alt": "Barista carefully pouring latte art into a ceramic cup",
+          "src": "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?w=800"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1600093463592-8e36ae95ef56?w=800",
+          "alt": "Freshly baked croissants resting on a cooling rack",
+          "src": "https://images.unsplash.com/photo-1600093463592-8e36ae95ef56?w=800"
+        }
+      ],
+      "items": [
+        {
+          "url": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800",
+          "alt": "Sunlit seating area with warm wooden tables and minimalist chairs",
+          "src": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?w=800",
+          "alt": "Barista carefully pouring latte art into a ceramic cup",
+          "src": "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?w=800"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1600093463592-8e36ae95ef56?w=800",
+          "alt": "Freshly baked croissants resting on a cooling rack",
+          "src": "https://images.unsplash.com/photo-1600093463592-8e36ae95ef56?w=800"
+        }
+      ]
+    },
+    {
+      "id": "features-craft",
+      "type": "features",
+      "layout": "feature-grid",
+      "headline": "Elevated Daily Rituals",
+      "subheadline": "Every detail, from the exact water temperature to the sourcing of our flour, is considered.",
+      "items": [
+        {
+          "title": "Ethically Sourced Beans",
+          "description": "Direct trade partnerships ensure our farmers are paid fairly and every cup bursts with origin character."
+        },
+        {
+          "title": "House-Made Pastries",
+          "description": "Laminated doughs, seasonal tarts, and savory scones baked fresh in our kitchen every morning."
+        },
+        {
+          "title": "Intentional Workspace",
+          "description": "Ample outlets, fast fiber Wi-Fi, and acoustic treatments to create the ideal environment for local professionals."
+        },
+        {
+          "title": "Precision Brewing",
+          "description": "Expert baristas executing flawless flat whites, delicate pour-overs, and balanced batch brews."
+        }
+      ]
+    },
+    {
+      "id": "testimonials-locals",
+      "type": "testimonials",
+      "layout": "testimonial-carousel",
+      "headline": "From the Neighborhood",
+      "subheadline": "What San Francisco locals are saying about our coffee and community.",
+      "items": [
+        {
+          "quote": "The perfect environment for my morning deep-work sessions. The Ethiopian pour-over is consistently excellent and the staff actually knows their craft.",
+          "author": "Alex M.",
+          "role": "Local Professional",
+          "rating": 5
+        },
+        {
+          "quote": "A genuinely welcoming cafe in the city. Their seasonal oat milk cortado is unmatched, and the almond croissants sell out for good reason.",
+          "author": "Jordan K.",
+          "role": "Regular Guest",
+          "rating": 5
+        },
+        {
+          "quote": "I appreciate a coffee shop that gets the details right. Fast internet, comfortable seating, and an espresso blend that isn't burnt.",
+          "author": "Casey P.",
+          "role": "Creative Director",
+          "rating": 5
+        }
+      ]
+    },
+    {
+      "id": "faq-details",
+      "type": "faq",
+      "layout": "faq-accordion",
+      "headline": "Questions & Details",
+      "subheadline": "Everything you need to know before your visit.",
+      "items": [
+        {
+          "question": "Do you offer plant-based milk options?",
+          "answer": "Yes, we proudly serve barista-grade oat, almond, and macadamia milks for any of our espresso or matcha beverages."
+        },
+        {
+          "question": "Is there reliable Wi-Fi for working?",
+          "answer": "Absolutely. High-speed fiber internet is available for all seated guests, and we provide dedicated work tables with access to outlets."
+        },
+        {
+          "question": "Do you take table reservations?",
+          "answer": "We operate purely on a walk-in basis, but with seating across two floors and an outdoor patio, you can usually find a comfortable spot."
+        },
+        {
+          "question": "Are your pastries vegan or gluten-free?",
+          "answer": "We offer a rotating daily selection of vegan and gluten-friendly baked goods. Please ask our baristas about today's specific offerings."
+        }
+      ]
+    },
+    {
+      "id": "cta-order",
+      "type": "cta",
+      "layout": "cta-split",
+      "headline": "Skip the Morning Line",
+      "subheadline": "Order your favorite roast and fresh pastries online, and we'll have them ready at the counter when you arrive.",
+      "primaryCta": {
+        "label": "Start Your Order",
+        "url": "#order-now"
+      },
+      "title": "Skip the Morning Line",
+      "body": "",
+      "buttonLabel": "Contact Us",
+      "buttonHref": "#contact"
+    },
+    {
+      "id": "contact-visit",
+      "type": "contact",
+      "layout": "contact-form",
+      "headline": "Visit Test Cafe",
+      "subheadline": "Join us for your morning brew or an afternoon reset.",
+      "address": "123 Main St, San Francisco, CA",
+      "phone": "(555) 123-4567",
+      "email": "info@testcafe.com",
+      "hours": [
+        {
+          "days": "Monday - Friday",
+          "hours": "7:00 AM - 5:00 PM"
+        },
+        {
+          "days": "Saturday - Sunday",
+          "hours": "8:00 AM - 4:00 PM"
+        }
+      ],
+      "showEmail": true,
+      "showPhone": true
+    }
+  ]
+}

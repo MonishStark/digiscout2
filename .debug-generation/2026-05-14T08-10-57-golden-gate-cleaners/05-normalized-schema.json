@@ -1,0 +1,214 @@
+{
+  "meta": {
+    "siteId": "fallback-sf-dryclean-1-1778746309305",
+    "businessId": "sf-dryclean-1",
+    "slug": "golden-gate-cleaners",
+    "version": 1,
+    "target": "static"
+  },
+  "theme": {
+    "name": "Polished Clinical",
+    "style": "minimal",
+    "radius": "1.5rem",
+    "layout": "editorial",
+    "buttonStyle": "pill",
+    "surfaceStyle": "glass",
+    "mediaShape": "rounded",
+    "density": "balanced",
+    "accentMode": "neon",
+    "palette": {
+      "background": "#F8FAFC",
+      "surface": "#FFFFFF",
+      "primary": "#1E40AF",
+      "accent": "#DBEAFE",
+      "text": "#0F172A",
+      "muted": "#64748B",
+      "outline": "#E2E8F0"
+    },
+    "typography": {
+      "heading": "IBM Plex Sans",
+      "body": "Inter"
+    },
+    "sectionDensity": "balanced",
+    "interactionStyle": "refined"
+  },
+  "brand": {
+    "businessName": "Golden Gate Cleaners",
+    "category": "Dry Cleaning",
+    "address": "123 Market St, San Francisco, CA",
+    "phone": "(415) 555-1234",
+    "email": "info@goldengatecleaners.com",
+    "websiteUri": ""
+  },
+  "seo": {
+    "title": "Golden Gate Cleaners | Premium Garment Care & Tailoring in SF",
+    "description": "Expert dry cleaning, delicate textile preservation, and professional tailoring on Market Street, San Francisco. Featuring non-toxic solvents and clinical precision.",
+    "keywords": [
+      "Dry Cleaning",
+      "services",
+      "premium",
+      "Dry Cleaning"
+    ],
+    "metaTags": [
+      {
+        "name": "keywords",
+        "content": "dry cleaning, tailoring, silk restoration, SF, San Francisco, Market Street, garment preservation, eco-friendly dry cleaning"
+      }
+    ]
+  },
+  "sections": [
+    {
+      "id": "hero",
+      "type": "hero",
+      "layout": "hero-immersive",
+      "headline": "Impeccable Garment Care for San Francisco Professionals",
+      "body": "Expert fabric restoration, delicate textile preservation, and precise structural alterations. Handled with clinical attention to detail right on Market Street.",
+      "cta": {
+        "label": "Book a Consultation",
+        "href": "#contact",
+        "variant": "primary"
+      },
+      "ctaSecondary": {
+        "label": "Explore Our Methods",
+        "href": "#services",
+        "variant": "outline"
+      },
+      "media": {
+        "src": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&q=80",
+        "alt": "A sharply pressed blazer on a wooden hanger, highlighting precision and garment care"
+      },
+      "badge": "Premium Garment Care",
+      "subheadline": "Golden Gate Cleaners positions your brand as the standout choice in Dry Cleaning with bold hierarchy and clear booking paths."
+    },
+    {
+      "id": "gallery",
+      "type": "gallery",
+      "layout": "gallery-masonry",
+      "headline": "The Standard of Care",
+      "body": "A visual look at our clinical environment, specialized techniques, and the flawless finishes we achieve.",
+      "media": [
+        {
+          "src": "https://images.unsplash.com/photo-1582735689151-c1248fb2c7cd?w=800&q=80",
+          "alt": "Close-up of precise chalk marks being made on a bespoke wool suit during an alteration fitting"
+        },
+        {
+          "src": "https://images.unsplash.com/photo-1445205170230-053b83016050?w=800&q=80",
+          "alt": "Row of meticulously organized and protective garment bags hanging in a bright, modern facility"
+        },
+        {
+          "src": "https://images.unsplash.com/photo-1626002166687-df5b10352fb3?w=800&q=80",
+          "alt": "Detailed macro shot of fine silk weave showing the immaculate condition of a restored fabric"
+        }
+      ],
+      "items": []
+    },
+    {
+      "id": "services",
+      "type": "features",
+      "layout": "feature-grid",
+      "headline": "Specialized Services",
+      "body": "Beyond standard cleaning. We offer targeted solutions designed for specific textiles and complex wardrobe requirements.",
+      "items": [
+        {
+          "title": "Silk & Delicates Restoration",
+          "description": "Specialized low-heat solvents and gentle hand-finishing processes to preserve the unique drape, color density, and luster of fine silks."
+        },
+        {
+          "title": "Eco-Conscious Solvent Treatment",
+          "description": "We exclusively utilize non-toxic, odorless silicone-based cleaning solutions that eliminate tough stains while remaining remarkably gentle on fragile fibers."
+        },
+        {
+          "title": "Executive Shirting Detail",
+          "description": "Crisp collar pressing, flawless cuff finishing, and complimentary replacement of cracked or missing buttons on every order."
+        },
+        {
+          "title": "Complex Structural Alterations",
+          "description": "On-site expert tailoring to perfect the fit of your garments, from simple blind hems to advanced shoulder and lapel adjustments."
+        }
+      ]
+    },
+    {
+      "id": "testimonials",
+      "type": "testimonials",
+      "layout": "testimonial-carousel",
+      "headline": "Trusted by San Francisco",
+      "body": "Read how local professionals rely on our clinical precision for their most important wardrobe pieces.",
+      "items": [
+        {
+          "quote": "I brought in a fragile beaded gown that another cleaner refused to touch. The team here managed to treat a prominent wine stain without damaging a single bead. Their technical knowledge of complex textiles is unmatched.",
+          "author": "Morgan T.",
+          "role": "Event Coordinator"
+        },
+        {
+          "quote": "The turnaround time is incredibly consistent, and my executive dress shirts have literally never looked sharper. The proactive button replacement shows a rare level of attention to detail.",
+          "author": "Alex M.",
+          "role": "Corporate Counsel"
+        },
+        {
+          "quote": "Scheduling a pickup is seamless. Knowing my expensive wool overcoats are cleaned using eco-friendly, non-toxic solvents gives me complete peace of mind.",
+          "author": "Jordan K.",
+          "role": "Local Professional"
+        }
+      ]
+    },
+    {
+      "id": "faq",
+      "type": "faq",
+      "layout": "faq-accordion",
+      "headline": "Common Inquiries",
+      "body": "Clear answers regarding our processing times, solvent safety, and handling protocols.",
+      "items": [
+        {
+          "question": "Do you provide complimentary pickup and delivery?",
+          "answer": "Yes, we offer complimentary delivery services within a 3-mile radius of our Market Street location for orders exceeding $50."
+        },
+        {
+          "question": "What type of cleaning solvents do you employ?",
+          "answer": "We utilize advanced, environmentally conscious silicone-based solvents. They are 100% non-toxic, entirely odorless, and significantly less abrasive on delicate fibers than traditional perc."
+        },
+        {
+          "question": "Are you equipped to clean heavily embellished garments?",
+          "answer": "Absolutely. Garments featuring intricate beadwork, sequins, or delicate lace undergo a highly controlled, specialized hand-cleaning protocol to prevent mechanical damage."
+        },
+        {
+          "question": "How long do structural tailoring projects usually take?",
+          "answer": "Standard hems and minor adjustments require 48 hours. Complex tailoring requiring structural changes typically takes 5 to 7 business days following an initial fitting."
+        }
+      ]
+    },
+    {
+      "id": "cta",
+      "type": "cta",
+      "layout": "cta-split",
+      "headline": "Experience the Golden Gate Standard",
+      "body": "Bring in your daily professional wear or entrust us with your most treasured delicate garments.",
+      "cta": {
+        "label": "Review Pricing & Services",
+        "href": "#contact",
+        "variant": "primary"
+      },
+      "title": "Experience the Golden Gate Standard",
+      "buttonLabel": {
+        "label": "Review Pricing & Services",
+        "href": "#contact",
+        "variant": "primary"
+      },
+      "buttonHref": "#contact"
+    },
+    {
+      "id": "contact",
+      "type": "contact",
+      "layout": "contact-form",
+      "headline": "Connect With Our Concierge",
+      "body": "Reach out to schedule a fitting, request a pickup, or inquire about treating a specific fabric.",
+      "contactInfo": {
+        "address": "123 Market St, San Francisco, CA",
+        "phone": "(415) 555-1234",
+        "email": "info@goldengatecleaners.com",
+        "hours": "Mon - Fri: 7:00 AM - 7:00 PM, Sat: 9:00 AM - 4:00 PM"
+      },
+      "showEmail": true,
+      "showPhone": true
+    }
+  ]
+}

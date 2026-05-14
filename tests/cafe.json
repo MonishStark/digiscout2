@@ -1,0 +1,25 @@
+{
+	"id": "test-cafe-001",
+	"name": "Juniper Coffee House",
+	"category": "cafe",
+	"address": "San Francisco, CA",
+	"photos": [
+		"https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1200&q=80"
+	],
+	"specialties": ["specialty coffee", "pastries", "community space"],
+	"neighborhood": "Mission District",
+	"tone": "artisanal, welcoming, passionate",
+	"reviews": [
+		{
+			"rating": 5,
+			"text": "Best coffee in the Mission. The baristas know their craft and are genuinely passionate about it."
+		},
+		{
+			"rating": 5,
+			"text": "Love the atmosphere. Great place to work, meet friends, or just enjoy amazing coffee."
+		}
+	],
+	"qualificationNotes": "Beloved local cafe with loyal following",
+	"imageSuggestions": []
+}

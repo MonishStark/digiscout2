@@ -1,0 +1,178 @@
+{
+  "theme": {
+    "name": "Terracotta Editorial",
+    "style": "editorial",
+    "layout": "asymmetrical",
+    "buttonStyle": "pill",
+    "surfaceStyle": "flat",
+    "mediaShape": "arch",
+    "density": "loose",
+    "accentMode": "minimal",
+    "typography": {
+      "heading": "Fraunces",
+      "body": "Inter"
+    },
+    "palette": {
+      "background": "#FAF9F5",
+      "surface": "#FFFFFF",
+      "primary": "#A35D40",
+      "accent": "#D88D72",
+      "text": "#2D2826",
+      "muted": "#EAE7E0",
+      "outline": "#D8D4CA"
+    },
+    "radius": "large"
+  },
+  "sections": [
+    {
+      "type": "hero",
+      "layout": "split",
+      "content": {
+        "headline": "Where espresso meets intention.",
+        "subheadline": "A warm, editorial space in the heart of San Francisco serving meticulously sourced seasonal roasts and daily fresh-laminated pastries.",
+        "primaryCta": {
+          "label": "View Menu",
+          "href": "#menu"
+        },
+        "secondaryCta": {
+          "label": "Our Space",
+          "href": "#gallery"
+        }
+      },
+      "media": [
+        {
+          "url": "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800",
+          "alt": "Barista carefully pouring latte art into a warm ceramic cup"
+        }
+      ]
+    },
+    {
+      "type": "features",
+      "layout": "grid",
+      "content": {
+        "headline": "The Craft of the Cup",
+        "subheadline": "Every detail from bean selection to water chemistry is designed for clarity of flavor.",
+        "items": [
+          {
+            "title": "Single-Origin Espresso",
+            "description": "Rotating seasonal microlots, dialed in every morning to highlight their natural sweetness and distinct origin characteristics."
+          },
+          {
+            "title": "In-House Viennoiserie",
+            "description": "Croissants and seasonal fruit danishes laminated, proofed, and baked fresh daily in our open-concept kitchen."
+          },
+          {
+            "title": "Thoughtful Botanicals",
+            "description": "Direct-trade ceremonial matcha and whole-leaf teas brewed with precise temperature control to protect delicate notes."
+          },
+          {
+            "title": "Curated Pantry Goods",
+            "description": "A curated selection of specialty coffee beans, manual brewing equipment, and bespoke ceramics from local Bay Area artists."
+          }
+        ]
+      }
+    },
+    {
+      "type": "gallery",
+      "layout": "masonry",
+      "content": {
+        "headline": "A Space to Pause",
+        "items": [
+          {
+            "url": "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?w=800",
+            "alt": "Sunlight streaming over a minimalist wooden cafe table with an iced americano",
+            "src": "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?w=800"
+          },
+          {
+            "url": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800",
+            "alt": "Interior view of the cafe featuring warm terracotta walls, pendant lighting, and lush greenery",
+            "src": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800"
+          },
+          {
+            "url": "https://images.unsplash.com/photo-1600093463592-8e36ae95ef56?w=800",
+            "alt": "Flaky, freshly baked almond croissant resting on a matte ceramic plate",
+            "src": "https://images.unsplash.com/photo-1600093463592-8e36ae95ef56?w=800"
+          }
+        ]
+      }
+    },
+    {
+      "type": "testimonials",
+      "layout": "slider",
+      "content": {
+        "headline": "From Our Guests",
+        "items": [
+          {
+            "name": "Julian M.",
+            "role": "Neighborhood Resident",
+            "quote": "The only space in the city where the pastries rival the espresso. Their cardamom bun has become a non-negotiable weekend ritual."
+          },
+          {
+            "name": "Sarah K.",
+            "role": "Creative Director",
+            "quote": "A beautifully considered environment that actually lets you breathe. Their rotating pour-over menu continually introduces me to complex, brilliant roasts."
+          },
+          {
+            "name": "David T.",
+            "role": "Local Professional",
+            "quote": "Consistently flawless cortados and a genuinely warm staff. It serves as the quiet anchor to my busy mornings."
+          }
+        ]
+      }
+    },
+    {
+      "type": "cta",
+      "layout": "center",
+      "content": {
+        "headline": "Reserve a Morning Pastry Box",
+        "body": "Secure a curated selection of our daily laminated baked goods for your next creative meeting or weekend gathering.",
+        "primaryCta": {
+          "label": "Pre-order Online",
+          "href": "/order"
+        }
+      }
+    },
+    {
+      "type": "faq",
+      "layout": "accordion",
+      "content": {
+        "headline": "Details & Etiquette",
+        "items": [
+          {
+            "question": "Do you offer Wi-Fi for working guests?",
+            "answer": "We offer complimentary high-speed Wi-Fi Monday through Friday. We embrace a screen-free environment on weekends to encourage conversation and community."
+          },
+          {
+            "question": "Are your pastries actually baked on-site?",
+            "answer": "Yes. Our small pastry team prepares, proofs, and bakes all goods on-site every morning starting at 4 AM to ensure perfect freshness."
+          },
+          {
+            "question": "Do you have plant-based or vegan options?",
+            "answer": "Always. We offer house-made cashew-oat milk for beverages without an upcharge, alongside at least two dedicated vegan baked items daily."
+          },
+          {
+            "question": "Can I purchase your coffee beans for home brewing?",
+            "answer": "Absolutely. We retail the exact same seasonal beans we pull behind the bar. We're happy to leave them whole bean or grind them precisely for your home setup."
+          }
+        ]
+      }
+    },
+    {
+      "type": "contact",
+      "layout": "split",
+      "content": {
+        "headline": "Find Your Table",
+        "body": "Located in the creative center of San Francisco. Step away from the noise and enjoy a proper cup.",
+        "email": "info@testcafe.com",
+        "phone": "(555) 123-4567",
+        "address": "123 Main St, San Francisco, CA",
+        "socials": [
+          {
+            "platform": "Instagram",
+            "handle": "@testcafe"
+          }
+        ]
+      }
+    }
+  ]
+}

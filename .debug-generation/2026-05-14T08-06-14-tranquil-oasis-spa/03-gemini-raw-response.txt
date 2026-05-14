@@ -1,0 +1,235 @@
+{
+  "theme": {
+    "name": "Clinical Luxury Rose",
+    "style": "minimal",
+    "layout": "asymmetrical",
+    "buttonStyle": "pill",
+    "surfaceStyle": "flat",
+    "mediaShape": "arch",
+    "density": "loose",
+    "accentMode": "minimal",
+    "typography": {
+      "heading": "Cormorant",
+      "body": "Inter"
+    },
+    "palette": {
+      "background": "#FAFAF9",
+      "surface": "#FFFFFF",
+      "primary": "#8B7D86",
+      "accent": "#D6C3C9",
+      "text": "#2C2A29",
+      "muted": "#E8E6E3",
+      "outline": "#D6D3D0"
+    },
+    "radius": "large"
+  },
+  "sections": [
+    {
+      "type": "hero",
+      "content": {
+        "headline": "Elevated Aesthetics in Beverly Hills.",
+        "subheadline": "Advanced medical treatments and bespoke skin therapies tailored to enhance your natural architecture.",
+        "primaryCta": {
+          "label": "Book Consultation",
+          "url": "#booking"
+        },
+        "secondaryCta": {
+          "label": "Explore Treatments",
+          "url": "#treatments"
+        },
+        "image": {
+          "url": "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800",
+          "alt": "Minimalist clinical treatment room with soft lighting and premium aesthetic equipment"
+        },
+        "badges": [
+          "Board-Certified",
+          "Medical Aesthetics"
+        ]
+      }
+    },
+    {
+      "type": "gallery",
+      "content": {
+        "title": "A Sanctuary of Care",
+        "description": "Our clinic blends clinical precision with a serene, restorative environment.",
+        "items": [
+          {
+            "image": {
+              "url": "https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=800",
+              "alt": "Aesthetic professional administering a facial treatment in a clean, bright space"
+            },
+            "caption": "Precision Care"
+          },
+          {
+            "image": {
+              "url": "https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?w=800",
+              "alt": "Warm, elegantly folded spa towels and natural stones on a light wood surface"
+            },
+            "caption": "Restorative Details"
+          },
+          {
+            "image": {
+              "url": "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=800",
+              "alt": "Curated selection of medical-grade skincare serums and creams on a glass shelf"
+            },
+            "caption": "Medical-Grade Formulas"
+          }
+        ]
+      }
+    },
+    {
+      "type": "features",
+      "content": {
+        "title": "Bespoke Clinical Modalities",
+        "subtitle": "Treatments focused on subtle enhancement, cellular health, and natural restoration.",
+        "items": [
+          {
+            "title": "Neuromodulators & Dermal Fillers",
+            "description": "Precision enhancements to restore structural volume and soften dynamic expression lines.",
+            "icon": "sparkles"
+          },
+          {
+            "title": "Laser Skin Resurfacing",
+            "description": "Advanced light therapies targeted to correct pigmentation, refine texture, and balance skin tone.",
+            "icon": "zap"
+          },
+          {
+            "title": "Bespoke Facial Alchemy",
+            "description": "Medical-grade facials fully customized to address your skin's immediate cellular needs.",
+            "icon": "droplet"
+          },
+          {
+            "title": "IV Nutritional Therapy",
+            "description": "Targeted vitamin infusions formulated for deep hydration and holistic cellular wellness.",
+            "icon": "activity"
+          }
+        ]
+      }
+    },
+    {
+      "type": "features",
+      "content": {
+        "title": "The Tranquil Oasis Standard",
+        "subtitle": "Where medical expertise meets unparalleled patient comfort.",
+        "items": [
+          {
+            "title": "Board-Certified Practitioners",
+            "description": "Our clinical team brings decades of rigorous training in facial anatomy and advanced aesthetic medicine.",
+            "icon": "shield"
+          },
+          {
+            "title": "Discreet & Private Space",
+            "description": "We fiercely protect your privacy with dedicated consultation suites and staggered scheduling for seamless transitions.",
+            "icon": "lock"
+          },
+          {
+            "title": "Long-Term Skin Planning",
+            "description": "We don't just treat; we partner with you to build a multi-year roadmap for collagen preservation and barrier health.",
+            "icon": "map"
+          }
+        ]
+      }
+    },
+    {
+      "type": "testimonials",
+      "content": {
+        "title": "Patient Experiences",
+        "items": [
+          {
+            "name": "Eleanor V.",
+            "role": "Beverly Hills Resident",
+            "quote": "The clinical expertise here is deeply reassuring. My results are entirely natural, and the subtle dermal enhancements have completely refreshed my profile without looking obvious."
+          },
+          {
+            "name": "Sophie L.",
+            "role": "Returning Patient",
+            "quote": "A true sanctuary. From the moment you walk in, the attention to detail and personalized care make you feel completely at ease. The laser resurfacing series transformed my skin texture."
+          },
+          {
+            "name": "Julian M.",
+            "role": "Local Professional",
+            "quote": "The nursing staff took the time to map out a long-term skin health plan for me. It’s not just about a single visit; it's a comprehensive approach to aesthetic wellness."
+          }
+        ]
+      }
+    },
+    {
+      "type": "faq",
+      "content": {
+        "title": "Common Inquiries",
+        "subtitle": "Details regarding our medical treatments and patient process.",
+        "items": [
+          {
+            "question": "What should I expect during my initial consultation?",
+            "answer": "We begin with a comprehensive facial assessment, discuss your specific aesthetic goals, and collaboratively build a customized treatment roadmap designed exclusively for your anatomy."
+          },
+          {
+            "question": "Is there significant downtime after injectable treatments?",
+            "answer": "Most patients return to daily activities immediately. We utilize advanced techniques and provide detailed aftercare instructions to minimize any temporary swelling or bruising."
+          },
+          {
+            "question": "How do I know which laser treatment is appropriate for my skin type?",
+            "answer": "Safety is our priority. Your practitioner will carefully evaluate your skin type, tone, and specific concerns during your visit to recommend the safest and most effective light or laser modality."
+          },
+          {
+            "question": "Do you offer ongoing skin maintenance plans?",
+            "answer": "Yes, we curate seasonal aesthetic programs focused on consistent cellular turnover, collagen preservation, and maintaining the results of your clinical treatments at home."
+          }
+        ]
+      }
+    },
+    {
+      "type": "cta",
+      "content": {
+        "title": "Begin Your Aesthetic Journey",
+        "description": "Schedule a private consultation to discuss your goals and discover the precise treatments that align with your natural beauty.",
+        "primaryCta": {
+          "label": "Reserve Your Time",
+          "url": "#booking"
+        }
+      }
+    },
+    {
+      "type": "contact",
+      "content": {
+        "title": "Visit the Clinic",
+        "description": "Located in the heart of Beverly Hills, offering discreet and comprehensive aesthetic care.",
+        "contactInfo": {
+          "address": "789 Wellness Blvd, Beverly Hills, CA",
+          "phone": "(310) 555-9012",
+          "email": "info@tranquiloasis.com"
+        },
+        "form": {
+          "title": "Request a Consultation",
+          "fields": [
+            {
+              "name": "name",
+              "label": "Full Name",
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": "email",
+              "label": "Email Address",
+              "type": "email",
+              "required": true
+            },
+            {
+              "name": "phone",
+              "label": "Phone Number",
+              "type": "tel",
+              "required": false
+            },
+            {
+              "name": "interest",
+              "label": "Area of Interest",
+              "type": "text",
+              "required": false
+            }
+          ],
+          "submitLabel": "Submit Request"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+const url = "http://127.0.0.1:80/"; (async () => { try { const res = await fetch(url, { method: "GET", headers: { Host: "one-hour-cleaners.test" }, redirect: "manual" }); console.log("status", res.status); console.log("location", res.headers.get("location")); const text = await res.text(); console.log(text.slice(0,200)); } catch (err) { console.error(err); } })();

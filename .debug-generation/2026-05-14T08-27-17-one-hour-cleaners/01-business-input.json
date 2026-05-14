@@ -1,0 +1,33 @@
+{
+  "business": {
+    "id": "ChIJrQhfRBx-j4ARHFokw9T5h6s",
+    "name": "One Hour Cleaners",
+    "category": "Dry cleaner",
+    "address": "2233 Market St, San Francisco, CA 94114, USA",
+    "phoneNumber": "(415) 552-6035",
+    "websiteUri": "http://localhost:5001/api/local-wordpress/one-hour-cleaners/"
+  },
+  "context": {
+    "name": "One Hour Cleaners",
+    "category": "Dry cleaner",
+    "address": "2233 Market St, San Francisco, CA 94114, USA",
+    "reviews": [],
+    "photos": [],
+    "imageSuggestions": [],
+    "qualificationNotes": null,
+    "enrichment": {
+      "websiteUri": "http://localhost:5001/api/local-wordpress/one-hour-cleaners/",
+      "email": null,
+      "phoneNumber": "(415) 552-6035",
+      "specialties": [],
+      "tone": null,
+      "neighborhood": null
+    },
+    "mapsSearch": {
+      "location": null,
+      "rating": null,
+      "reviewCount": null,
+      "businessStatus": null
+    }
+  }
+}

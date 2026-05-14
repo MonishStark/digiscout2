@@ -1,0 +1,242 @@
+{
+  "meta": {
+    "siteId": "fallback-test-dental-001-1778746649046",
+    "businessId": "test-dental-001",
+    "slug": "bright-smile-dental",
+    "version": 1,
+    "target": "static"
+  },
+  "theme": {
+    "name": "Clinical Luxury",
+    "style": "minimalist",
+    "radius": "large",
+    "layout": "editorial",
+    "buttonStyle": "pill",
+    "surfaceStyle": "glass",
+    "mediaShape": "rounded",
+    "density": "balanced",
+    "accentMode": "neon",
+    "palette": {
+      "background": "#F9FBFA",
+      "surface": "#FFFFFF",
+      "primary": "#2B827E",
+      "accent": "#5EC4B6",
+      "text": "#1A2524",
+      "muted": "#758E8D",
+      "outline": "#E2EAE9"
+    },
+    "typography": {
+      "heading": "IBM Plex Sans",
+      "body": "Inter"
+    },
+    "sectionDensity": "balanced",
+    "interactionStyle": "refined"
+  },
+  "brand": {
+    "businessName": "Bright Smile Dental",
+    "category": "dental",
+    "address": "San Francisco, CA",
+    "phone": "",
+    "email": "",
+    "websiteUri": ""
+  },
+  "seo": {
+    "title": "Bright Smile Dental | Preview",
+    "description": "Premium website for Bright Smile Dental—dental services with modern design and seamless booking.",
+    "keywords": [
+      "dental",
+      "services",
+      "premium",
+      "dental"
+    ]
+  },
+  "sections": [
+    {
+      "id": "hero-main",
+      "type": "hero",
+      "title": "Calm, Comprehensive Dentistry in the Financial District",
+      "subtitle": "Advanced clinical care tailored for your comfort. From precise cosmetic enhancements to immediate emergency treatments, experience modern dentistry designed around your complete wellbeing.",
+      "primaryCta": {
+        "label": "Book Your Examination",
+        "href": "#contact"
+      },
+      "secondaryCta": {
+        "label": "Explore Treatments",
+        "href": "#treatments"
+      },
+      "media": {
+        "url": "https://images.unsplash.com/photo-1606811841689-23ddeeb8c66d?auto=format&fit=crop&w=1200&q=80",
+        "alt": "Modern dental clinic operating room bathed in soft natural light"
+      },
+      "headline": "Calm, Comprehensive Dentistry in the Financial District",
+      "subheadline": "Advanced clinical care tailored for your comfort. From precise cosmetic enhancements to immediate emergency treatments, experience modern dentistry designed around your complete wellbeing.",
+      "layout": "hero-immersive"
+    },
+    {
+      "id": "clinic",
+      "type": "split",
+      "layout": "default",
+      "title": "A Sanctuary for Oral Health",
+      "subtitle": "We believe exceptional clinical outcomes begin with an environment that prioritizes your peace of mind.",
+      "content": "Located in the heart of San Francisco's Financial District, Bright Smile Dental merges high-precision technology with a profoundly calming atmosphere. Our well-established practice focuses on removing anxiety from the dental equation, offering a structured, transparent approach to your long-term oral health.",
+      "media": {
+        "url": "https://images.unsplash.com/photo-1584308666744-24d5f400f6f1?auto=format&fit=crop&w=1200&q=80",
+        "alt": "Detail of pristine dental instrumentation on a sterile tray"
+      }
+    },
+    {
+      "id": "treatments",
+      "type": "features",
+      "title": "Specialized Clinical Offerings",
+      "subtitle": "Comprehensive dental protocols administered with meticulous care and advanced diagnostics.",
+      "items": [
+        {
+          "title": "Preventative Diagnostics",
+          "description": "Thorough examinations utilizing low-radiation digital imaging to monitor and protect your fundamental oral health."
+        },
+        {
+          "title": "Architectural Cosmetics",
+          "description": "Custom veneers, professional-grade whitening, and aesthetic bonding to predictably enhance your natural smile."
+        },
+        {
+          "title": "Urgent Emergency Care",
+          "description": "Same-day triage and treatment for severe discomfort, structural damage, and unexpected dental trauma."
+        },
+        {
+          "title": "Anxiety-Managed Protocols",
+          "description": "Environmentally controlled treatment rooms and gentle administration techniques designed for sensitive patients."
+        }
+      ],
+      "layout": "feature-grid"
+    },
+    {
+      "id": "gallery-visuals",
+      "type": "gallery",
+      "title": "Inside the Practice",
+      "subtitle": "A carefully curated clinical environment focused on hygiene, precision, and patient comfort.",
+      "items": [
+        {
+          "url": "https://images.unsplash.com/photo-1606811841689-23ddeeb8c66d?auto=format&fit=crop&w=1200&q=80",
+          "alt": "Ergonomic patient chair centered in a minimalist, sunlit treatment suite",
+          "src": "https://images.unsplash.com/photo-1606811841689-23ddeeb8c66d?auto=format&fit=crop&w=1200&q=80"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1584308666744-24d5f400f6f1?auto=format&fit=crop&w=1200&q=80",
+          "alt": "Sanitized clinical setup highlighting modern dental technology",
+          "src": "https://images.unsplash.com/photo-1584308666744-24d5f400f6f1?auto=format&fit=crop&w=1200&q=80"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1200&q=80",
+          "alt": "Close-up of a digital radiography display showing patient x-rays",
+          "src": "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1200&q=80"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=1200&q=80",
+          "alt": "Clean and welcoming front reception area with soft stone finishes",
+          "src": "https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=1200&q=80"
+        }
+      ],
+      "layout": "gallery-masonry"
+    },
+    {
+      "id": "care",
+      "type": "testimonials",
+      "title": "Patient Experiences",
+      "subtitle": "Reflections from those who entrust us with their continued oral health.",
+      "items": [
+        {
+          "quote": "The doctor and team are incredibly kind and deeply professional. For someone who usually dreads these visits, they made me feel completely comfortable and in control during my procedure.",
+          "author": "Jordan K.",
+          "role": "Financial District Professional"
+        },
+        {
+          "quote": "Exceptional care from start to finish. The facility is strikingly modern, and it is clear the staff genuinely cares about patient wellbeing, not just processing appointments quickly.",
+          "author": "Alex M.",
+          "role": "Returning Patient"
+        },
+        {
+          "quote": "I came in for an unexpected emergency extraction. They accommodated me immediately, explained every step transparently, and the aftercare follow-up was impeccable.",
+          "author": "Casey P.",
+          "role": "Local Resident"
+        }
+      ],
+      "layout": "testimonial-carousel"
+    },
+    {
+      "id": "faq",
+      "type": "faq",
+      "title": "Frequently Asked Questions",
+      "subtitle": "Clear, practical information regarding our operational and clinical protocols.",
+      "items": [
+        {
+          "question": "How do you handle sudden dental emergencies?",
+          "answer": "We reserve specific time slots daily for emergency triage. If you are experiencing acute pain or structural damage, please call us directly for priority scheduling."
+        },
+        {
+          "question": "What is included in a new patient examination?",
+          "answer": "Your initial visit includes a comprehensive structural and periodontal evaluation, full-mouth digital x-rays if necessary, an oral cancer screening, and a detailed consultation regarding your long-term treatment plan."
+        },
+        {
+          "question": "Do you provide consultations for cosmetic work?",
+          "answer": "Yes. We offer dedicated cosmetic assessments where we discuss your aesthetic goals, review imaging, and outline timeline and investment options for procedures like veneers or whitening."
+        },
+        {
+          "question": "Are you currently accepting new insurance networks?",
+          "answer": "We are an established provider for most major PPO insurance plans. Our treatment coordinators will happily verify your specific coverage and explain benefits prior to any clinical procedure."
+        }
+      ],
+      "layout": "faq-accordion"
+    },
+    {
+      "id": "contact",
+      "type": "contact",
+      "title": "Connect with Our Office",
+      "subtitle": "Reach out to schedule your examination or to speak with our treatment coordinators regarding specific clinical needs.",
+      "address": "Financial District, San Francisco, CA",
+      "fields": [
+        {
+          "name": "name",
+          "label": "Full Name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "email",
+          "label": "Email Address",
+          "type": "email",
+          "required": true
+        },
+        {
+          "name": "phone",
+          "label": "Phone Number",
+          "type": "tel",
+          "required": false
+        },
+        {
+          "name": "inquiry",
+          "label": "Nature of Appointment (e.g., General Cleaning, Emergency, Cosmetic)",
+          "type": "textarea",
+          "required": true
+        }
+      ],
+      "submitLabel": "Request Appointment",
+      "showEmail": true,
+      "showPhone": true,
+      "layout": "contact-form"
+    },
+    {
+      "id": "final-cta",
+      "type": "cta",
+      "title": "Prioritize Your Long-Term Oral Health",
+      "subtitle": "Join a practice defined by transparent communication, minimal discomfort, and clinical excellence.",
+      "primaryCta": {
+        "label": "Schedule Your Visit Online",
+        "href": "#contact"
+      },
+      "body": "",
+      "buttonLabel": "Contact Us",
+      "buttonHref": "#contact",
+      "layout": "cta-split"
+    }
+  ]
+}

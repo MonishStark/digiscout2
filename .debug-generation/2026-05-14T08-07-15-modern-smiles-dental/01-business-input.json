@@ -1,0 +1,45 @@
+{
+  "business": {
+    "id": "dental-1",
+    "name": "Modern Smiles Dental",
+    "category": "Dental Clinic",
+    "address": "321 Smile St, Seattle, WA",
+    "phoneNumber": "(206) 555-3456",
+    "email": "appointments@modernsmiles.com",
+    "location": {
+      "lat": 47.6062,
+      "lng": -122.3321
+    },
+    "photos": [
+      "https://images.unsplash.com/photo-1606811841689-23def381efa3?w=800"
+    ]
+  },
+  "context": {
+    "name": "Modern Smiles Dental",
+    "category": "Dental Clinic",
+    "address": "321 Smile St, Seattle, WA",
+    "reviews": [],
+    "photos": [
+      "https://images.unsplash.com/photo-1606811841689-23def381efa3?w=800"
+    ],
+    "imageSuggestions": [],
+    "qualificationNotes": null,
+    "enrichment": {
+      "websiteUri": null,
+      "email": "appointments@modernsmiles.com",
+      "phoneNumber": "(206) 555-3456",
+      "specialties": [],
+      "tone": null,
+      "neighborhood": null
+    },
+    "mapsSearch": {
+      "location": {
+        "lat": 47.6062,
+        "lng": -122.3321
+      },
+      "rating": null,
+      "reviewCount": null,
+      "businessStatus": null
+    }
+  }
+}

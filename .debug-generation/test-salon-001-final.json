@@ -1,0 +1,189 @@
+{
+  "meta": {
+    "siteId": "fallback-test-salon-001-1778741470126",
+    "businessId": "test-salon-001",
+    "slug": "pearl-studio-salon",
+    "version": 1,
+    "target": "static"
+  },
+  "theme": {
+    "name": "Pearl Luxury Minimal",
+    "style": "editorial",
+    "radius": "0.75rem",
+    "layout": "editorial",
+    "buttonStyle": "pill",
+    "surfaceStyle": "glass",
+    "mediaShape": "rounded",
+    "density": "balanced",
+    "accentMode": "neon",
+    "palette": {
+      "background": "#FDFCFA",
+      "surface": "#FFFFFF",
+      "primary": "#8F7D74",
+      "accent": "#E4D9D3",
+      "text": "#1A1716",
+      "muted": "#F3EFEB",
+      "outline": "#E8E2DD"
+    },
+    "typography": {
+      "heading": "Cormorant",
+      "body": "Inter"
+    },
+    "sectionDensity": "balanced",
+    "interactionStyle": "refined"
+  },
+  "brand": {
+    "businessName": "Pearl Studio Salon",
+    "category": "salon",
+    "address": "San Francisco, CA",
+    "phone": "",
+    "email": "",
+    "websiteUri": ""
+  },
+  "seo": {
+    "title": "Pearl Studio Salon | Preview",
+    "description": "Premium website for Pearl Studio Salon—salon services with modern design and seamless booking.",
+    "keywords": [
+      "salon",
+      "services",
+      "premium",
+      "salon"
+    ]
+  },
+  "sections": [
+    {
+      "id": "hero-front",
+      "type": "hero",
+      "badge": "San Francisco Mission District",
+      "headline": "Where Artistry Meets Wellness",
+      "subheadline": "A private sanctuary specializing in bespoke hair color, precision styling, and restorative scalp treatments.",
+      "primaryCta": {
+        "label": "Reserve a Chair",
+        "href": "#booking"
+      },
+      "secondaryCta": {
+        "label": "Explore Services",
+        "href": "#services"
+      }
+    },
+    {
+      "id": "gallery-immersive",
+      "type": "gallery",
+      "headline": "Inside the Studio",
+      "images": [
+        {
+          "url": "https://images.unsplash.com/photo-1596729990705-a91adf0de5b1?auto=format&fit=crop&w=1200&q=80",
+          "alt": "Minimalist styling station at Pearl Studio Salon featuring warm lighting and clean design"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1519699905003-149e2f678d4f?auto=format&fit=crop&w=1200&q=80",
+          "alt": "Abstract arrangement of organic salon products and soft textures"
+        }
+      ],
+      "items": [
+        {
+          "url": "https://images.unsplash.com/photo-1596729990705-a91adf0de5b1?auto=format&fit=crop&w=1200&q=80",
+          "alt": "Minimalist styling station at Pearl Studio Salon featuring warm lighting and clean design"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1519699905003-149e2f678d4f?auto=format&fit=crop&w=1200&q=80",
+          "alt": "Abstract arrangement of organic salon products and soft textures"
+        }
+      ]
+    },
+    {
+      "id": "features-offerings",
+      "type": "features",
+      "headline": "Tailored Artistry",
+      "items": [
+        {
+          "title": "Bespoke Color Design",
+          "description": "Custom-formulated palettes applied with expert technique to compliment your natural complexion and lifestyle."
+        },
+        {
+          "title": "Architectural Styling",
+          "description": "Precision cuts engineered to embrace your natural texture, ensuring a seamless grow-out and effortless daily wear."
+        },
+        {
+          "title": "Restorative Wellness",
+          "description": "Holistic scalp treatments and fiber restoration utilizing ethically sourced, nutrient-dense botanicals."
+        },
+        {
+          "title": "The Silent Appointment",
+          "description": "Opt into a quiet, meditative session in the chair, free from the expectation of conversation."
+        }
+      ]
+    },
+    {
+      "id": "testimonials-voices",
+      "type": "testimonials",
+      "headline": "Guest Experiences",
+      "items": [
+        {
+          "quote": "Amazing color work. The stylists are true artists and genuinely care about their craft. My hair has never looked so vibrant.",
+          "author": "Elena M.",
+          "role": "Regular Guest"
+        },
+        {
+          "quote": "This place is a sanctuary. Every visit feels special and transformative. The scalp treatment was incredibly restorative.",
+          "author": "Sarah T.",
+          "role": "Local Professional"
+        },
+        {
+          "quote": "I finally found a space in the Mission that truly listens to what I want. The environment alone puts you at total ease.",
+          "author": "Jordan K.",
+          "role": "Returning Client"
+        }
+      ]
+    },
+    {
+      "id": "faq-details",
+      "type": "faq",
+      "headline": "Frequently Asked",
+      "items": [
+        {
+          "question": "How should I prepare for a major color transformation?",
+          "answer": "We recommend arriving with unwashed hair and booking a brief digital or in-person consultation prior to the appointment. This allows us to perform a strand test if necessary."
+        },
+        {
+          "question": "What product lines do you utilize?",
+          "answer": "We exclusively work with low-tox, high-performance luxury lines that prioritize environmental sustainability and scalp health without compromising on results."
+        },
+        {
+          "question": "How do I request a silent appointment?",
+          "answer": "Simply leave a note when booking online. After our initial consultation about your goals for the day, your stylist will allow you to relax in peace."
+        },
+        {
+          "question": "What is the policy for rescheduling?",
+          "answer": "Because we reserve substantial time blocks for bespoke services, we politely require a 48-hour notice for all cancellations or modifications."
+        }
+      ]
+    },
+    {
+      "id": "cta-booking",
+      "type": "cta",
+      "headline": "Begin Your Transformation",
+      "body": "Secure your time with our expert team and experience a higher standard of tailored hair care.",
+      "cta": {
+        "label": "Schedule an Appointment",
+        "href": "#book-now"
+      },
+      "title": "Begin Your Transformation",
+      "buttonLabel": {
+        "label": "Schedule an Appointment",
+        "href": "#book-now"
+      },
+      "buttonHref": "#book-now"
+    },
+    {
+      "id": "contact-footer",
+      "type": "contact",
+      "headline": "Visit the Studio",
+      "address": "Mission District, San Francisco, CA",
+      "email": "hello@pearlstudiosalon.com",
+      "phone": "",
+      "showEmail": true,
+      "showPhone": true
+    }
+  ]
+}

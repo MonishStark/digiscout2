@@ -1,0 +1,25 @@
+{
+	"id": "test-drycleaner-001",
+	"name": "Castro Cleaners",
+	"category": "dry cleaning",
+	"address": "San Francisco, CA",
+	"photos": [
+		"https://images.unsplash.com/photo-1584411469571-2e1258cf3c61?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1556228578-8c89e6adf883?auto=format&fit=crop&w=1200&q=80"
+	],
+	"specialties": ["stain removal", "delicate fabrics", "leather care"],
+	"neighborhood": "Castro District",
+	"tone": "trustworthy, professional",
+	"reviews": [
+		{
+			"rating": 5,
+			"text": "Fast and professional service. My delicate silk blouses always come back perfect."
+		},
+		{
+			"rating": 5,
+			"text": "Best dry cleaner in SF. They handle my wool suits with care and expertise."
+		}
+	],
+	"qualificationNotes": "Established local business with strong reputation",
+	"imageSuggestions": []
+}

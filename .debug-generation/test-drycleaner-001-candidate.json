@@ -1,0 +1,153 @@
+{
+  "theme": {
+    "name": "Clinical Polish",
+    "style": "minimal",
+    "layout": "asymmetrical",
+    "buttonStyle": "pill",
+    "surfaceStyle": "flat",
+    "mediaShape": "rounded",
+    "density": "spacious",
+    "accentMode": "minimal",
+    "typography": {
+      "heading": "IBM Plex Sans",
+      "body": "Inter"
+    },
+    "palette": {
+      "background": "#FAFAFA",
+      "surface": "#FFFFFF",
+      "primary": "#1A4E7A",
+      "accent": "#3478B8",
+      "text": "#1E293B",
+      "muted": "#64748B",
+      "outline": "#E2E8F0"
+    },
+    "radius": "1rem"
+  },
+  "sections": [
+    {
+      "type": "hero",
+      "content": {
+        "headline": "Impeccable Fabric Care in the Castro",
+        "subheadline": "Specializing in the preservation of delicate silks, tailored wool suits, and premium leather garments. Exacting standards for San Francisco's most discerning wardrobes.",
+        "primaryCta": {
+          "label": "Schedule a Pickup",
+          "url": "#booking"
+        },
+        "secondaryCta": {
+          "label": "View Our Processes",
+          "url": "#features"
+        },
+        "badges": ["Expert Stain Removal", "Trusted Locally"]
+      }
+    },
+    {
+      "type": "gallery",
+      "content": {
+        "title": "Precision in Every Detail",
+        "subtitle": "A glimpse into our meticulous inspection and treatment environment.",
+        "items": [
+          {
+            "image": "https://images.unsplash.com/photo-1584411469571-2e1258cf3c61?auto=format&fit=crop&w=1200&q=80",
+            "alt": "Crisp shirts arranged professionally after dry cleaning process"
+          },
+          {
+            "image": "https://images.unsplash.com/photo-1556228578-8c89e6adf883?auto=format&fit=crop&w=1200&q=80",
+            "alt": "Close-up of premium fabric being steamed and inspected"
+          }
+        ]
+      }
+    },
+    {
+      "type": "features",
+      "content": {
+        "title": "Tailored Material Solutions",
+        "subtitle": "We look past the label to deliver scientifically calibrated treatments designed to restore and extend the life of your garments.",
+        "items": [
+          {
+            "title": "Advanced Stain Isolation",
+            "description": "Targeted enzymatic treatments that lift complex spots from fibers without degrading structural integrity."
+          },
+          {
+            "title": "Delicate Fabric Protocol",
+            "description": "Gentle, low-agitation processing specifically calibrated for silk blouses, cashmere, and high-end synthetics."
+          },
+          {
+            "title": "Leather & Suede Restoration",
+            "description": "Replenishing organic oils to revive suppleness and correct discoloration in premium leather outerwear."
+          },
+          {
+            "title": "Structural Pressing",
+            "description": "Hand-finishing for tailored wool suits to ensure exact lapel rolls and crisp, enduring creases."
+          }
+        ]
+      }
+    },
+    {
+      "type": "testimonials",
+      "content": {
+        "title": "Recognized by Our Community",
+        "items": [
+          {
+            "author": "Alex M.",
+            "role": "Castro Resident",
+            "quote": "Fast and professional service. My delicate silk blouses always come back perfect. It's rare to find a team that pays this much attention to the subtle details."
+          },
+          {
+            "author": "Jordan K.",
+            "role": "Local Professional",
+            "quote": "Best dry cleaner in SF. They handle my wool suits with care and expertise, making sure they hold their structure flawlessly between wears."
+          },
+          {
+            "author": "Morgan T.",
+            "role": "Returning Client",
+            "quote": "I brought in a designer suede jacket with a difficult water mark. They not only removed it but managed to restore the entire finish. Absolute specialists."
+          }
+        ]
+      }
+    },
+    {
+      "type": "faq",
+      "content": {
+        "title": "Common Inquiries",
+        "items": [
+          {
+            "question": "How long does specialty leather processing take?",
+            "answer": "Organic materials like leather and suede require careful conditioning over multiple stages. We typically request 7-10 business days to ensure a proper restoration."
+          },
+          {
+            "question": "Can you handle set-in stains?",
+            "answer": "While we cannot guarantee the removal of heavily oxidized stains, our targeted spotting techniques successfully lift the vast majority of complex organic and chemical marks without harming the fabric."
+          },
+          {
+            "question": "What kind of solvents do you utilize?",
+            "answer": "We rely on modern, environmentally conscious solvents that thoroughly cleanse garments without leaving residual chemical odors or harming the local ecosystem."
+          },
+          {
+            "question": "Do you provide tailoring alongside cleaning?",
+            "answer": "Yes, our on-staff specialists perform routine maintenance like hemming and button replacement, as well as complex structural alterations."
+          }
+        ]
+      }
+    },
+    {
+      "type": "cta",
+      "content": {
+        "title": "Refresh Your Wardrobe",
+        "body": "Experience the difference of scientific garment care. Drop by our Castro District location or arrange a convenient pickup.",
+        "primaryCta": {
+          "label": "Book a Pickup",
+          "url": "#contact"
+        }
+      }
+    },
+    {
+      "type": "contact",
+      "content": {
+        "title": "Connect With Us",
+        "address": "Castro District, San Francisco, CA",
+        "phone": "Available Upon Request",
+        "email": "inquiries@castrocleaners.local"
+      }
+    }
+  ]
+}

@@ -1,0 +1,191 @@
+{
+  "theme": {
+    "name": "Performance Kinetic Light",
+    "style": "minimal",
+    "layout": "asymmetrical",
+    "buttonStyle": "sharp",
+    "surfaceStyle": "flat",
+    "mediaShape": "geometric",
+    "density": "spacious",
+    "accentMode": "vibrant",
+    "typography": {
+      "heading": "Space Grotesk",
+      "body": "Inter"
+    },
+    "palette": {
+      "background": "#FFFFFF",
+      "surface": "#F8FAFC",
+      "primary": "#0F172A",
+      "accent": "#0D9488",
+      "text": "#1E293B",
+      "muted": "#64748B",
+      "outline": "#E2E8F0"
+    },
+    "radius": "0px"
+  },
+  "sections": [
+    {
+      "type": "hero",
+      "config": {
+        "layout": "split",
+        "alignment": "left"
+      },
+      "data": {
+        "badge": "San Francisco / SOMA",
+        "headline": "Redefine Your Limits.",
+        "subheadline": "Expert coaching, elite strength training, and an unmatched community right in the heart of San Francisco.",
+        "primaryCta": {
+          "label": "Book a Session",
+          "action": "#booking"
+        },
+        "secondaryCta": {
+          "label": "View Schedule",
+          "action": "#schedule"
+        },
+        "media": {
+          "url": "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1200&q=80",
+          "alt": "Athlete performing strength training in a clean, brightly lit gym environment"
+        }
+      }
+    },
+    {
+      "type": "features",
+      "config": {
+        "layout": "bento-grid",
+        "columns": 3
+      },
+      "data": {
+        "headline": "Built for Measurable Progress",
+        "subheadline": "Everything you need to master your fitness, stripped of the distractions.",
+        "items": [
+          {
+            "title": "Structured Strength Programming",
+            "description": "Periodized training cycles designed by experts to build functional strength safely and efficiently.",
+            "icon": "Activity"
+          },
+          {
+            "title": "Dynamic Group Sessions",
+            "description": "High-energy classes capped at 12 athletes to ensure you never get lost in the crowd.",
+            "icon": "Users"
+          },
+          {
+            "title": "1-on-1 Expert Coaching",
+            "description": "Dedicated personal training with seasoned coaches focused entirely on your biomechanics and goals.",
+            "icon": "Crosshair"
+          },
+          {
+            "title": "Premium Facility Standards",
+            "description": "Spotless equipment, generous training zones, and high-quality gear maintained daily.",
+            "icon": "Shield"
+          }
+        ]
+      }
+    },
+    {
+      "type": "testimonials",
+      "config": {
+        "layout": "offset-cards"
+      },
+      "data": {
+        "headline": "Driven by Community",
+        "subheadline": "Hear from the athletes who train with us every week in SOMA.",
+        "items": [
+          {
+            "author": "Alex M.",
+            "role": "Morning Class Regular",
+            "quote": "Amazing gym with a fantastic community. The coaches don't just stand around; they actively correct form and really know their stuff."
+          },
+          {
+            "author": "Jordan K.",
+            "role": "Personal Training Client",
+            "quote": "Easily the best fitness experience I've had in SF. The space is exceptionally clean, well-equipped, and genuinely motivating to walk into."
+          },
+          {
+            "author": "Casey P.",
+            "role": "Local Professional",
+            "quote": "I appreciate the layout and spacing. I never feel crowded even during peak hours, and the energy is unmatched."
+          }
+        ]
+      }
+    },
+    {
+      "type": "gallery",
+      "config": {
+        "layout": "asymmetrical-masonry"
+      },
+      "data": {
+        "headline": "The Training Floor",
+        "items": [
+          {
+            "url": "https://images.unsplash.com/photo-1574680178050-55c6a6a96e0a?auto=format&fit=crop&w=1200&q=80",
+            "alt": "Row of premium barbells and bumper plates against a bright wall"
+          },
+          {
+            "url": "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=1200&q=80",
+            "alt": "Athletes in action during a supervised functional fitness class"
+          },
+          {
+            "url": "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=1200&q=80",
+            "alt": "Pristine locker room facilities with modern finishes"
+          }
+        ]
+      }
+    },
+    {
+      "type": "faq",
+      "config": {
+        "layout": "split-accordion"
+      },
+      "data": {
+        "headline": "Common Questions",
+        "subheadline": "Everything you need to know before stepping onto the floor.",
+        "items": [
+          {
+            "question": "Do I need previous lifting experience to join?",
+            "answer": "Not at all. Our coaches scale every movement to your current ability, whether you're lifting an empty bar or preparing for a competition."
+          },
+          {
+            "question": "Are showers and lockers available?",
+            "answer": "Yes, we offer fully stocked locker rooms with towel service and premium bath products for all members."
+          },
+          {
+            "question": "How large are the group classes?",
+            "answer": "We strictly cap our group sessions at 12 participants. This guarantees you receive personalized attention and plenty of physical space."
+          },
+          {
+            "question": "Do you offer drop-in passes?",
+            "answer": "Yes, drop-ins are welcome for visiting athletes with prior experience. You can reserve a drop-in slot directly on our schedule page."
+          }
+        ]
+      }
+    },
+    {
+      "type": "cta",
+      "config": {
+        "layout": "impact-block"
+      },
+      "data": {
+        "headline": "Ready to hit the floor?",
+        "body": "Join Peak Performance Fitness today and experience the most supportive, results-driven training environment in SOMA.",
+        "primaryCta": {
+          "label": "Secure Your Membership",
+          "action": "#join"
+        }
+      }
+    },
+    {
+      "type": "contact",
+      "config": {
+        "layout": "two-column-card"
+      },
+      "data": {
+        "headline": "Find Us",
+        "subheadline": "Located centrally in SOMA, designed for your daily routine.",
+        "businessName": "Peak Performance Fitness",
+        "address": "San Francisco, CA (SOMA District)",
+        "email": "hello@peakperformancesf.com",
+        "phone": "Available via member portal"
+      }
+    }
+  ]
+}

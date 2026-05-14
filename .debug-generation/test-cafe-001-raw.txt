@@ -1,0 +1,203 @@
+{
+  "theme": {
+    "name": "Artisanal Editorial",
+    "style": "editorial",
+    "layout": "asymmetrical",
+    "buttonStyle": "pill",
+    "surfaceStyle": "outlined",
+    "mediaShape": "arched",
+    "density": "spacious",
+    "accentMode": "minimal",
+    "typography": {
+      "heading": "Fraunces",
+      "body": "Inter"
+    },
+    "palette": {
+      "background": "#FDFCF9",
+      "surface": "#FAF8F2",
+      "primary": "#A85A3C",
+      "accent": "#D48C6B",
+      "text": "#2A2725",
+      "muted": "#8A847C",
+      "outline": "#EBE6DE"
+    },
+    "radius": "24px"
+  },
+  "sections": [
+    {
+      "id": "hero-1",
+      "type": "hero",
+      "layout": "split-image",
+      "content": {
+        "title": "The Heartbeat of the Mission",
+        "subtitle": "Meticulously roasted specialty coffee and daily baked pastries served in a warm, community-driven space.",
+        "primaryCta": {
+          "label": "View Our Menu",
+          "action": "menu"
+        },
+        "secondaryCta": {
+          "label": "Visit the Cafe",
+          "action": "location"
+        },
+        "badge": "Juniper Coffee House"
+      }
+    },
+    {
+      "id": "gallery-1",
+      "type": "gallery",
+      "layout": "masonry",
+      "content": {
+        "title": "Crafted Daily",
+        "subtitle": "A glimpse into our morning rituals and sunlit corners.",
+        "media": [
+          {
+            "url": "https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=1200&q=80",
+            "alt": "Barista pouring delicate latte art into a ceramic cup",
+            "type": "image"
+          },
+          {
+            "url": "https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1200&q=80",
+            "alt": "A quiet, sunlit corner table with freshly brewed coffee in a warm, inviting cafe",
+            "type": "image"
+          }
+        ]
+      }
+    },
+    {
+      "id": "features-1",
+      "type": "features",
+      "layout": "bento",
+      "content": {
+        "title": "Our Craft & Community",
+        "subtitle": "We focus on the details so you can focus on the moment.",
+        "items": [
+          {
+            "title": "Single-Origin Espresso",
+            "text": "Ethically sourced beans, roasted light to highlight their natural sweetness and complex tasting notes.",
+            "icon": "coffee-bean"
+          },
+          {
+            "title": "House-made Pastries",
+            "text": "Flaky croissants and seasonal fruit galettes baked fresh every morning by our resident pastry chef.",
+            "icon": "croissant"
+          },
+          {
+            "title": "Community Canvas",
+            "text": "A welcoming environment designed for deep conversations, quiet reading, or serendipitous local encounters.",
+            "icon": "users"
+          },
+          {
+            "title": "Expert Baristas",
+            "text": "Our team is intensely passionate about coffee science, ensuring every extraction and pour is flawless.",
+            "icon": "award"
+          }
+        ]
+      }
+    },
+    {
+      "id": "testimonials-1",
+      "type": "testimonials",
+      "layout": "offset-grid",
+      "content": {
+        "title": "Word on the Street",
+        "items": [
+          {
+            "quote": "Best coffee in the Mission. The baristas know their craft and are genuinely passionate about it. Every pour is consistently excellent.",
+            "author": "Casey P.",
+            "role": "Mission Resident"
+          },
+          {
+            "quote": "Love the atmosphere. Great place to work, meet friends, or just enjoy an impeccably balanced cortado. It really feels like a neighborhood living room.",
+            "author": "Jordan K.",
+            "role": "Local Writer"
+          },
+          {
+            "quote": "Their seasonal single-origins are always dialed in perfectly. Exploring their new roasts has become my favorite weekend morning ritual.",
+            "author": "Alex M.",
+            "role": "Regular Guest"
+          }
+        ]
+      }
+    },
+    {
+      "id": "faq-1",
+      "type": "faq",
+      "layout": "accordion-minimal",
+      "content": {
+        "title": "Details & Offerings",
+        "items": [
+          {
+            "question": "Do you offer vegan milk alternatives?",
+            "answer": "Yes, we proudly serve oat milk and a house-made macadamia-cashew blend at no extra charge."
+          },
+          {
+            "question": "Is there Wi-Fi available?",
+            "answer": "We have fast, free Wi-Fi available on weekdays. On weekends, we turn it off to encourage unplugged community connection and relaxation."
+          },
+          {
+            "question": "Can I buy your coffee beans to brew at home?",
+            "answer": "Absolutely. We retail bags of our seasonal single-origins and our signature espresso blend, freshly roasted each Tuesday."
+          },
+          {
+            "question": "Do you host private events or pop-ups?",
+            "answer": "We do rent our space for intimate evening gatherings and frequently host local food pop-ups. Reach out to our team for availability."
+          }
+        ]
+      }
+    },
+    {
+      "id": "cta-1",
+      "type": "cta",
+      "layout": "minimal-centered",
+      "content": {
+        "title": "Join Us for Your Morning Ritual",
+        "subtitle": "Whether you need a quick shot of espresso before work or a quiet spot to read for hours, our doors are open.",
+        "primaryCta": {
+          "label": "Get Directions",
+          "action": "directions"
+        }
+      }
+    },
+    {
+      "id": "contact-1",
+      "type": "contact",
+      "layout": "split-form",
+      "content": {
+        "title": "Drop Us a Line",
+        "subtitle": "Have a question about our roasts, pastry pre-orders, or private events? We'd love to hear from you.",
+        "form": {
+          "fields": [
+            {
+              "name": "name",
+              "label": "Name",
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": "email",
+              "label": "Email Address",
+              "type": "email",
+              "required": true
+            },
+            {
+              "name": "inquiryType",
+              "label": "What are you reaching out about?",
+              "type": "select",
+              "required": false
+            },
+            {
+              "name": "message",
+              "label": "Your Message",
+              "type": "textarea",
+              "required": true
+            }
+          ],
+          "submitLabel": "Send Message"
+        },
+        "contactInfo": {
+          "address": "Mission District, San Francisco, CA"
+        }
+      }
+    }
+  ]
+}
