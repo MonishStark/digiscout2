@@ -180,23 +180,6 @@ async function executeStateMachine(job: any) {
 		await pool.query(`UPDATE provisioning_jobs SET status = 'deploying_content' WHERE id = ?`, [job.id]);
 		await appendLog(job.id, "Deploying content blocks...");
 		// Content injection logic goes here (via WP REST API or WP-CLI)
-		job.status = "validating";
-	}
-
-	// 6. Validating
-	if (job.status === "validating") {
-		await pool.query(`UPDATE provisioning_jobs SET status = 'validating' WHERE id = ?`, [job.id]);
-		await appendLog(job.id, "Validating deployment...");
-		
-		const fullUrl = `https://${subdomain}.${rootDomain}`;
-		try {
-			// Basic SSL validation check
-			await fetch(fullUrl);
-		} catch (e: any) {
-			await appendLog(job.id, `SSL/HTTP validation failed: ${e.message} (AutoSSL may still be provisioning)`);
-			// We won't strictly fail the job just for SSL delay on shared hosting
-		}
-
 		job.status = "completed";
 	}
 

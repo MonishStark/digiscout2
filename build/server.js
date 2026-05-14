@@ -596,17 +596,6 @@ async function executeStateMachine(job) {
   if (job.status === "deploying_content") {
     await pool.query(`UPDATE provisioning_jobs SET status = 'deploying_content' WHERE id = ?`, [job.id]);
     await appendLog(job.id, "Deploying content blocks...");
-    job.status = "validating";
-  }
-  if (job.status === "validating") {
-    await pool.query(`UPDATE provisioning_jobs SET status = 'validating' WHERE id = ?`, [job.id]);
-    await appendLog(job.id, "Validating deployment...");
-    const fullUrl = `https://${subdomain}.${rootDomain}`;
-    try {
-      await fetch(fullUrl);
-    } catch (e) {
-      await appendLog(job.id, `SSL/HTTP validation failed: ${e.message} (AutoSSL may still be provisioning)`);
-    }
     job.status = "completed";
   }
   if (job.status === "completed") {
