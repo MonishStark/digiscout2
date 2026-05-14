@@ -262,6 +262,7 @@ async function initializeDatabase() {
 			CREATE TABLE IF NOT EXISTS provisioning_jobs (
 				id VARCHAR(255) PRIMARY KEY,
 				project_id VARCHAR(255) NOT NULL,
+				business_name VARCHAR(255) NULL,
 				status ENUM('pending', 'creating_subdomain', 'creating_database', 'installing_wordpress', 'configuring_wordpress', 'deploying_content', 'validating', 'completed', 'failed') DEFAULT 'pending',
 				subdomain VARCHAR(255) NULL,
 				db_name VARCHAR(255) NULL,
@@ -478,7 +479,7 @@ async function configurePermalinks(documentRoot, structure = "/%postname%/", log
 // src/lib/provisioning-engine.ts
 var MAX_RETRIES = 3;
 function sanitizeSubdomain(name) {
-  return name.toLowerCase().replace(/[^a-z0-9-]/g, "").substring(0, 30);
+  return name.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "").substring(0, 25);
 }
 function generateSecurePassword() {
   return crypto.randomBytes(16).toString("hex") + "!aA1";
@@ -531,7 +532,10 @@ async function executeStateMachine(job) {
     await pool.query(`UPDATE provisioning_jobs SET status = 'creating_subdomain' WHERE id = ?`, [job.id]);
     await appendLog(job.id, "Starting subdomain creation");
     if (!subdomain) {
-      subdomain = sanitizeSubdomain(`site-${job.project_id}`);
+      const name = job.business_name || job.project_id;
+      const base = sanitizeSubdomain(name);
+      const suffix = crypto.randomBytes(2).toString("hex");
+      subdomain = `${base}-${suffix}`.substring(0, 32);
       await pool.query(`UPDATE provisioning_jobs SET subdomain = ? WHERE id = ?`, [subdomain, job.id]);
     }
     const fullDocRoot = `${docRootBase}/${subdomain}`;
@@ -2678,8 +2682,8 @@ app.post(
       }
       const jobId = crypto2.randomUUID();
       await pool.query(
-        `INSERT INTO provisioning_jobs (id, project_id, status) VALUES (?, ?, 'pending')`,
-        [jobId, projectId]
+        `INSERT INTO provisioning_jobs (id, project_id, business_name, status) VALUES (?, ?, ?, 'pending')`,
+        [jobId, projectId, business.name]
       );
       return res.json({
         success: true,

@@ -21,7 +21,12 @@ import {
 const MAX_RETRIES = 3;
 
 function sanitizeSubdomain(name: string) {
-	return name.toLowerCase().replace(/[^a-z0-9-]/g, "").substring(0, 30);
+	return name
+		.toLowerCase()
+		.replace(/[^a-z0-9]/g, "-") // Replace everything non-alphanumeric with hyphen
+		.replace(/-+/g, "-")        // Replace multiple hyphens with single hyphen
+		.replace(/^-+|-+$/g, "")    // Remove leading/trailing hyphens
+		.substring(0, 25);          // Keep it short to leave room for suffix
 }
 
 function generateSecurePassword() {
@@ -87,7 +92,10 @@ async function executeStateMachine(job: any) {
 		await appendLog(job.id, "Starting subdomain creation");
 		
 		if (!subdomain) {
-			subdomain = sanitizeSubdomain(`site-${job.project_id}`);
+			const name = job.business_name || job.project_id;
+			const base = sanitizeSubdomain(name);
+			const suffix = crypto.randomBytes(2).toString("hex");
+			subdomain = `${base}-${suffix}`.substring(0, 32);
 			await pool.query(`UPDATE provisioning_jobs SET subdomain = ? WHERE id = ?`, [subdomain, job.id]);
 		}
 

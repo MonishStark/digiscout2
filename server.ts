@@ -2592,8 +2592,8 @@ app.post(
 
 			const jobId = crypto.randomUUID();
 			await pool.query(
-				`INSERT INTO provisioning_jobs (id, project_id, status) VALUES (?, ?, 'pending')`,
-				[jobId, projectId]
+				`INSERT INTO provisioning_jobs (id, project_id, business_name, status) VALUES (?, ?, ?, 'pending')`,
+				[jobId, projectId, business.name]
 			);
 
 			return res.json({

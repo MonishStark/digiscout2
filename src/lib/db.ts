@@ -20,6 +20,7 @@ export async function initializeDatabase() {
 			CREATE TABLE IF NOT EXISTS provisioning_jobs (
 				id VARCHAR(255) PRIMARY KEY,
 				project_id VARCHAR(255) NOT NULL,
+				business_name VARCHAR(255) NULL,
 				status ENUM('pending', 'creating_subdomain', 'creating_database', 'installing_wordpress', 'configuring_wordpress', 'deploying_content', 'validating', 'completed', 'failed') DEFAULT 'pending',
 				subdomain VARCHAR(255) NULL,
 				db_name VARCHAR(255) NULL,
