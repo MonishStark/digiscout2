@@ -37,11 +37,6 @@ export default function DeploymentsView({
 }: DeploymentsViewProps) {
 	const [deployingId, setDeployingId] = useState<string | null>(null);
 	const [sendingId, setSendingId] = useState<string | null>(null);
-	const [previewProject, setPreviewProject] = useState<WebsiteProject | null>(
-		null,
-	);
-	const [previewHtml, setPreviewHtml] = useState<string>("");
-	const [previewLoading, setPreviewLoading] = useState(false);
 	const [outreachModalOpen, setOutreachModalOpen] = useState(false);
 	const [outreachProjectId, setOutreachProjectId] = useState<string | null>(
 		null,
@@ -216,9 +211,52 @@ export default function DeploymentsView({
 		const project = projects.find((item) => item.id === projectId);
 		if (!project) return;
 
-		setPreviewProject(project);
-		setPreviewHtml("");
-		setPreviewLoading(true);
+		// Open a new window immediately to prevent popup blockers
+		const previewWindow = window.open("", "_blank");
+		if (previewWindow) {
+			previewWindow.document.write(`
+				<!DOCTYPE html>
+				<html>
+					<head>
+						<title>Previewing ${project.businessName}...</title>
+						<style>
+							body { 
+								margin: 0; 
+								display: flex; 
+								align-items: center; 
+								justify-content: center; 
+								height: 100vh; 
+								font-family: sans-serif;
+								background: #f8fafc;
+								color: #64748b;
+							}
+							.loader {
+								text-align: center;
+							}
+							.spinner {
+								border: 3px solid #e2e8f0;
+								border-top: 3px solid #7c3aed;
+								border-radius: 50%;
+								width: 24px;
+								height: 24px;
+								animation: spin 1s linear infinite;
+								margin: 0 auto 16px;
+							}
+							@keyframes spin {
+								0% { transform: rotate(0deg); }
+								100% { transform: rotate(360deg); }
+							}
+						</style>
+					</head>
+					<body>
+						<div class="loader">
+							<div class="spinner"></div>
+							<p>Generating premium preview for <b>${project.businessName}</b>...</p>
+						</div>
+					</body>
+				</html>
+			`);
+		}
 
 		const API_URL =
 			((import.meta as any).env?.VITE_API_URL as string | undefined) ||
@@ -238,24 +276,24 @@ export default function DeploymentsView({
 			}),
 		})
 			.then((response) => response.json())
-			.then((schema) =>
-				setPreviewHtml(
-					renderWebsiteArtifact({
-						schema,
-						html: "",
-						css: "",
-						js: "",
-					}),
-				),
-			)
-			.catch((error) => {
-				console.error("Failed to build local preview:", error);
-				setPreviewHtml(
-					`<!DOCTYPE html><html><body style="font-family: sans-serif; padding: 24px;">Preview failed to load.</body></html>`,
-				);
+			.then((schema) => {
+				const html = renderWebsiteArtifact({
+					schema,
+					html: "",
+					css: "",
+					js: "",
+				});
+				if (previewWindow) {
+					previewWindow.document.open();
+					previewWindow.document.write(html);
+					previewWindow.document.close();
+				}
 			})
-			.finally(() => {
-				setPreviewLoading(false);
+			.catch((error) => {
+				console.error("Failed to build preview:", error);
+				if (previewWindow) {
+					previewWindow.document.body.innerHTML = `<div style="padding: 24px; font-family: sans-serif; color: #ef4444;">Failed to load preview: ${error.message}</div>`;
+				}
 			});
 	};
 
@@ -798,44 +836,6 @@ export default function DeploymentsView({
 				</div>
 			)}
 
-			{previewProject && (
-				<div className='fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm'>
-					<div className='flex h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_30px_120px_rgba(15,23,42,0.3)]'>
-						<div className='flex items-center justify-between border-b border-slate-200 px-5 py-4'>
-							<div>
-								<p className='text-xs uppercase tracking-[0.24em] text-slate-500'>
-									Local Preview
-								</p>
-								<h3 className='text-lg font-semibold text-slate-900'>
-									{previewProject.businessName}
-								</h3>
-							</div>
-							<button
-								onClick={() => {
-									setPreviewProject(null);
-									setPreviewHtml("");
-									setPreviewLoading(false);
-								}}
-								className='rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50'>
-								Close
-							</button>
-						</div>
-						<div className='min-h-0 flex-1 bg-slate-100'>
-							{previewLoading ? (
-								<div className='flex h-full items-center justify-center text-sm text-slate-500'>
-									Loading generated preview...
-								</div>
-							) : (
-								<iframe
-									title={`${previewProject.businessName} local preview`}
-									srcDoc={previewHtml}
-									className='h-full w-full border-0 bg-white'
-								/>
-							)}
-						</div>
-					</div>
-				</div>
-			)}
 		</div>
 	);
 }
