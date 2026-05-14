@@ -239,26 +239,104 @@ async function executeStateMachine(job: any) {
 
 async function injectWebsiteContent(docRoot: string, schema: any, logCallback: (log: string) => void) {
 	try {
+		await logCallback("Cleaning up existing content...");
 		// 1. Delete all existing posts/pages
-		await runWpCommand("post delete $(wp post list --post_type=post,page --format=ids --path=" + docRoot + ") --force", docRoot, logCallback);
+		try {
+			await runWpCommand("post delete $(wp post list --post_type=post,page --format=ids) --force", docRoot, logCallback);
+		} catch (e) {
+			await logCallback("No existing posts to delete or cleanup failed.");
+		}
 		
-		// 2. Create Home Page with JSON content as a placeholder or serialized meta
-		// In a real scenario, we might use a theme that reads this JSON, 
-		// but for now we'll inject the sections into the page content as a basic layout.
+		// 2. Create Home Page with high-quality blocks
+		await logCallback("Generating WordPress block content...");
 		
-		let homeContent = `<!-- wp:paragraph -->\n<p>Welcome to ${schema.brand?.businessName || 'our business'}</p>\n<!-- /wp:paragraph -->\n\n`;
+		let homeContent = "";
 		
-		if (schema.sections) {
-			for (const section of schema.sections) {
-				homeContent += `<!-- wp:heading {"level":2} -->\n<h2>${section.headline || section.title || section.type}</h2>\n<!-- /wp:heading -->\n`;
-				if (section.subheadline || section.body) {
-					homeContent += `<!-- wp:paragraph -->\n<p>${section.subheadline || section.body}</p>\n<!-- /wp:paragraph -->\n`;
-				}
-			}
+		// Hero Section
+		const hero = schema.sections?.find((s: any) => s.type === 'hero') || schema.sections?.[0];
+		if (hero) {
+			homeContent += `
+<!-- wp:group {"align":"full","style":{"spacing":{"padding":{"top":"80px","bottom":"80px"}},"elements":{"link":{"color":{"text":"var:preset|color|white"}}}},"backgroundColor":"vivid-purple","textColor":"white","layout":{"type":"constrained"}} -->
+<div class="wp-block-group alignfull has-white-text has-vivid-purple-background-color has-text-color has-background has-link-color" style="padding-top:80px;padding-bottom:80px">
+	<!-- wp:heading {"textAlign":"center","level":1,"style":{"typography":{"fontSize":"4rem","lineHeight":"1.1"}}} -->
+	<h1 class="wp-block-heading has-text-align-center" style="font-size:4rem;line-height:1.1">${hero.headline || hero.title || schema.brand?.businessName}</h1>
+	<!-- /wp:heading -->
+
+	<!-- wp:paragraph {"textAlign":"center","style":{"typography":{"fontSize":"1.25rem"}}} -->
+	<p class="has-text-align-center" style="font-size:1.25rem">${hero.subheadline || hero.body || ""}</p>
+	<!-- /wp:paragraph -->
+
+	<!-- wp:buttons {"layout":{"type":"flex","justifyContent":"center"}} -->
+	<div class="wp-block-buttons">
+		<!-- wp:button {"backgroundColor":"white","textColor":"vivid-purple","style":{"border":{"radius":"40px"}}} -->
+		<div class="wp-block-button"><a class="wp-block-button__link has-vivid-purple-color has-white-background-color has-text-color has-background wp-element-button" style="border-radius:40px">Get Started</a></div>
+		<!-- /wp:button -->
+	</div>
+	<!-- /wp:buttons -->
+</div>
+<!-- /wp:group -->`;
 		}
 
+		// Features / Services
+		const services = schema.sections?.filter((s: any) => s.type === 'services' || s.type === 'features') || [];
+		for (const section of services) {
+			homeContent += `
+<!-- wp:group {"align":"wide","style":{"spacing":{"margin":{"top":"60px","bottom":"60px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group alignwide" style="margin-top:60px;margin-bottom:60px">
+	<!-- wp:heading {"textAlign":"center"} -->
+	<h2 class="wp-block-heading has-text-align-center">${section.headline || section.title || "Our Services"}</h2>
+	<!-- /wp:heading -->
+	
+	<!-- wp:paragraph {"textAlign":"center"} -->
+	<p class="has-text-align-center">${section.subheadline || section.body || ""}</p>
+	<!-- /wp:paragraph -->
+
+	<!-- wp:columns -->
+	<div class="wp-block-columns">
+		${(section.items || []).map((item: any) => `
+		<!-- wp:column {"style":{"spacing":{"padding":{"top":"20px","bottom":"20px","left":"20px","right":"20px"}},"border":{"radius":"16px"}},"backgroundColor":"white"} -->
+		<div class="wp-block-column has-white-background-color has-background" style="border-radius:16px;padding-top:20px;padding-right:20px;padding-bottom:20px;padding-left:20px">
+			<!-- wp:heading {"level":3} -->
+			<h3 class="wp-block-heading">${item.title || item.name}</h3>
+			<!-- /wp:heading -->
+			<!-- wp:paragraph -->
+			<p>${item.description || item.body || ""}</p>
+			<!-- /wp:paragraph -->
+		</div>
+		<!-- /wp:column -->`).join('\n')}
+	</div>
+	<!-- /wp:columns -->
+</div>
+<!-- /wp:group -->`;
+		}
+
+		// General sections
+		const others = schema.sections?.filter((s: any) => !['hero', 'services', 'features'].includes(s.type)) || [];
+		for (const section of others) {
+			homeContent += `
+<!-- wp:group {"layout":{"type":"constrained"}} -->
+<div class="wp-block-group">
+	<!-- wp:heading -->
+	<h2 class="wp-block-heading">${section.headline || section.title || ""}</h2>
+	<!-- /wp:heading -->
+	<!-- wp:paragraph -->
+	<p>${section.subheadline || section.body || ""}</p>
+	<!-- /wp:paragraph -->
+</div>
+<!-- /wp:group -->`;
+		}
+
+		await logCallback("Creating Home page in WordPress...");
 		const homePageIdOut = await runWpCommand(`post create --post_type=page --post_title="Home" --post_content='${homeContent.replace(/'/g, "'\\''")}' --post_status=publish --format=ids`, docRoot, logCallback);
-		const homePageId = homePageIdOut.stdout.trim();
+		
+		// Clean the ID (remove any non-numeric output)
+		const homePageId = homePageIdOut.stdout.replace(/[^0-9]/g, "").trim();
+		
+		if (!homePageId) {
+			throw new Error("Failed to capture Home page ID from WordPress. Output: " + homePageIdOut.stdout);
+		}
+
+		await logCallback(`Home page created with ID: ${homePageId}. Setting as front page...`);
 		
 		// 3. Set as Front Page
 		await runWpCommand(`option update show_on_front page`, docRoot, logCallback);
@@ -266,15 +344,21 @@ async function injectWebsiteContent(docRoot: string, schema: any, logCallback: (
 		
 		// 4. Update Site Name and Description
 		if (schema.brand?.businessName) {
-			await runWpCommand(`option update blogname "${schema.brand.businessName}"`, docRoot, logCallback);
+			await runWpCommand(`option update blogname "${schema.brand.businessName.replace(/"/g, '\\"')}"`, docRoot, logCallback);
 		}
 		if (schema.seo?.description) {
-			await runWpCommand(`option update blogdescription "${schema.seo.description}"`, docRoot, logCallback);
+			await runWpCommand(`option update blogdescription "${schema.seo.description.replace(/"/g, '\\"')}"`, docRoot, logCallback);
 		}
+		
+		// 5. Permalinks
+		await runWpCommand(`rewrite structure "/%postname%/"`, docRoot, logCallback);
+		await runWpCommand(`rewrite flush`, docRoot, logCallback);
+
+		await logCallback("WordPress content injection complete.");
 
 	} catch (error: any) {
-		logCallback(`Content injection failed: ${error.message}`);
-		// We don't throw here to allow the deployment to finish even if content injection is partial
+		await logCallback(`CRITICAL ERROR during content injection: ${error.message}`);
+		console.error("[WP-Injection] Failed:", error);
 	}
 }
 
