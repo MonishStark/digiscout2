@@ -716,12 +716,6 @@ export default function DeploymentsView({
 													<Mail className='h-3.5 w-3.5 text-amber-500' />
 													{project.email || "No email listed"}
 												</span>
-												{project.wordpressOwnerUsername && (
-													<span className='inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-cyan-700'>
-														<KeyRound className='h-3.5 w-3.5 text-cyan-500' />
-														{project.wordpressOwnerUsername}
-													</span>
-												)}
 											</div>
 											<div />
 										</div>
