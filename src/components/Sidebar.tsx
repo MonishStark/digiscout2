@@ -299,7 +299,7 @@ export default function Sidebar({
 
 				<TabsContent
 					value='results'
-					className='flex-1 mt-0 flex flex-col h-[calc(100vh-170px)]'>
+					className='flex-1 mt-0 flex flex-col h-[calc(100vh-170px)] overflow-hidden'>
 					{businesses.length === 0 ? (
 						<div className='flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-500'>
 							<Building className='w-12 h-12 mb-4 opacity-20' />
@@ -311,7 +311,7 @@ export default function Sidebar({
 							<p className='text-sm'>No leads match the current filter.</p>
 						</div>
 					) : (
-						<ScrollArea className='flex-1'>
+						<ScrollArea className='flex-1 min-h-0'>
 							<div className='p-4 space-y-2'>
 								{filteredBusinesses.map((business) => (
 									<div
