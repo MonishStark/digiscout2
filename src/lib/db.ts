@@ -21,6 +21,7 @@ export async function initializeDatabase() {
 				id VARCHAR(255) PRIMARY KEY,
 				project_id VARCHAR(255) NOT NULL,
 				business_name VARCHAR(255) NULL,
+				website_schema JSON NULL,
 				status ENUM('pending', 'creating_subdomain', 'creating_database', 'installing_wordpress', 'configuring_wordpress', 'deploying_content', 'validating', 'completed', 'failed') DEFAULT 'pending',
 				subdomain VARCHAR(255) NULL,
 				db_name VARCHAR(255) NULL,
@@ -38,17 +39,16 @@ export async function initializeDatabase() {
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 		`);
 
-		// Add db_pass_encrypted column if it doesn't exist
+		// Migrations
+		try {
+			await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN website_schema JSON NULL AFTER business_name`);
+		} catch (e) {}
 		try {
 			await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN db_pass_encrypted TEXT NULL AFTER db_user`);
 		} catch (e) {}
-
-		// Add business_name column if it doesn't exist
 		try {
 			await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN business_name VARCHAR(255) NULL AFTER project_id`);
-		} catch (e) {
-			// Column already exists
-		}
+		} catch (e) {}
 
 		// Create isolated_deployments table
 		await pool.query(`
@@ -59,10 +59,23 @@ export async function initializeDatabase() {
 				wp_admin_url VARCHAR(255) NOT NULL,
 				admin_username VARCHAR(255) NOT NULL,
 				encrypted_admin_password TEXT NOT NULL,
+				website_schema JSON NULL,
+				ssl_status ENUM('pending', 'valid') DEFAULT 'pending',
+				last_ssl_check DATETIME NULL,
 				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 				UNIQUE KEY uk_project (project_id)
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 		`);
+
+		try {
+			await pool.query(`ALTER TABLE isolated_deployments ADD COLUMN website_schema JSON NULL AFTER encrypted_admin_password`);
+		} catch (e) {}
+		try {
+			await pool.query(`ALTER TABLE isolated_deployments ADD COLUMN ssl_status ENUM('pending', 'valid') DEFAULT 'pending' AFTER website_schema`);
+		} catch (e) {}
+		try {
+			await pool.query(`ALTER TABLE isolated_deployments ADD COLUMN last_ssl_check DATETIME NULL AFTER ssl_status`);
+		} catch (e) {}
 
 		console.log("[DB] Provisioning schema initialized successfully.");
 	} catch (error) {

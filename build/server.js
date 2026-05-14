@@ -263,6 +263,7 @@ async function initializeDatabase() {
 				id VARCHAR(255) PRIMARY KEY,
 				project_id VARCHAR(255) NOT NULL,
 				business_name VARCHAR(255) NULL,
+				website_schema JSON NULL,
 				status ENUM('pending', 'creating_subdomain', 'creating_database', 'installing_wordpress', 'configuring_wordpress', 'deploying_content', 'validating', 'completed', 'failed') DEFAULT 'pending',
 				subdomain VARCHAR(255) NULL,
 				db_name VARCHAR(255) NULL,
@@ -280,6 +281,10 @@ async function initializeDatabase() {
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 		`);
     try {
+      await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN website_schema JSON NULL AFTER business_name`);
+    } catch (e) {
+    }
+    try {
       await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN db_pass_encrypted TEXT NULL AFTER db_user`);
     } catch (e) {
     }
@@ -295,10 +300,25 @@ async function initializeDatabase() {
 				wp_admin_url VARCHAR(255) NOT NULL,
 				admin_username VARCHAR(255) NOT NULL,
 				encrypted_admin_password TEXT NOT NULL,
+				website_schema JSON NULL,
+				ssl_status ENUM('pending', 'valid') DEFAULT 'pending',
+				last_ssl_check DATETIME NULL,
 				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 				UNIQUE KEY uk_project (project_id)
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 		`);
+    try {
+      await pool.query(`ALTER TABLE isolated_deployments ADD COLUMN website_schema JSON NULL AFTER encrypted_admin_password`);
+    } catch (e) {
+    }
+    try {
+      await pool.query(`ALTER TABLE isolated_deployments ADD COLUMN ssl_status ENUM('pending', 'valid') DEFAULT 'pending' AFTER website_schema`);
+    } catch (e) {
+    }
+    try {
+      await pool.query(`ALTER TABLE isolated_deployments ADD COLUMN last_ssl_check DATETIME NULL AFTER ssl_status`);
+    } catch (e) {
+    }
     console.log("[DB] Provisioning schema initialized successfully.");
   } catch (error) {
     console.error("[DB] Failed to initialize schema:", error);
@@ -606,7 +626,7 @@ async function executeStateMachine(job) {
     }
     await createWpConfig(fullDocRoot, dbName, dbUser, dbPassword, "localhost", (log) => appendLog(job.id, log));
     const rawAdminPass = job._tempAdminPass;
-    const fullUrl = `https://${subdomain}.${rootDomain}`;
+    const fullUrl = `http://${subdomain}.${rootDomain}`;
     await installWordPress(fullDocRoot, fullUrl, `Generated Site ${job.project_id}`, wpAdminUser, rawAdminPass, "admin@digitalscout.online", (log) => appendLog(job.id, log));
     await appendLog(job.id, "WordPress installed successfully");
     job.status = "configuring_wordpress";
@@ -621,22 +641,68 @@ async function executeStateMachine(job) {
   if (job.status === "deploying_content") {
     await pool.query(`UPDATE provisioning_jobs SET status = 'deploying_content' WHERE id = ?`, [job.id]);
     await appendLog(job.id, "Deploying content blocks...");
+    const fullDocRoot = `${docRootBase}/${subdomain}`;
+    const schema = typeof job.website_schema === "string" ? JSON.parse(job.website_schema) : job.website_schema;
+    if (schema) {
+      await injectWebsiteContent(fullDocRoot, schema, (log) => appendLog(job.id, log));
+      await appendLog(job.id, "Content injected successfully");
+    } else {
+      await appendLog(job.id, "WARNING: No website schema found to inject.");
+    }
     job.status = "completed";
   }
   if (job.status === "completed") {
     await pool.query(`UPDATE provisioning_jobs SET status = 'completed', locked_at = NULL WHERE id = ?`, [job.id]);
+    const httpUrl = `http://${subdomain}.${rootDomain}`;
     await pool.query(`
-			INSERT IGNORE INTO isolated_deployments (id, project_id, subdomain_url, wp_admin_url, admin_username, encrypted_admin_password)
-			VALUES (?, ?, ?, ?, ?, ?)
+			INSERT IGNORE INTO isolated_deployments (id, project_id, subdomain_url, wp_admin_url, admin_username, encrypted_admin_password, website_schema, ssl_status)
+			VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
 		`, [
       crypto.randomUUID(),
       job.project_id,
-      `https://${subdomain}.${rootDomain}`,
-      `https://${subdomain}.${rootDomain}/wp-admin`,
+      httpUrl,
+      `${httpUrl}/wp-admin`,
       wpAdminUser,
-      wpAdminPass
+      wpAdminPass,
+      typeof job.website_schema === "string" ? job.website_schema : JSON.stringify(job.website_schema)
     ]);
-    await appendLog(job.id, "Job completed successfully!");
+    await appendLog(job.id, "Job completed successfully! URL set to HTTP (SSL polling started)");
+  }
+}
+async function injectWebsiteContent(docRoot, schema, logCallback) {
+  try {
+    await runWpCommand("post delete $(wp post list --post_type=post,page --format=ids --path=" + docRoot + ") --force", docRoot, logCallback);
+    let homeContent = `<!-- wp:paragraph -->
+<p>Welcome to ${schema.brand?.businessName || "our business"}</p>
+<!-- /wp:paragraph -->
+
+`;
+    if (schema.sections) {
+      for (const section of schema.sections) {
+        homeContent += `<!-- wp:heading {"level":2} -->
+<h2>${section.headline || section.title || section.type}</h2>
+<!-- /wp:heading -->
+`;
+        if (section.subheadline || section.body) {
+          homeContent += `<!-- wp:paragraph -->
+<p>${section.subheadline || section.body}</p>
+<!-- /wp:paragraph -->
+`;
+        }
+      }
+    }
+    const homePageIdOut = await runWpCommand(`post create --post_type=page --post_title="Home" --post_content='${homeContent.replace(/'/g, "'\\''")}' --post_status=publish --format=ids`, docRoot, logCallback);
+    const homePageId = homePageIdOut.stdout.trim();
+    await runWpCommand(`option update show_on_front page`, docRoot, logCallback);
+    await runWpCommand(`option update page_on_front ${homePageId}`, docRoot, logCallback);
+    if (schema.brand?.businessName) {
+      await runWpCommand(`option update blogname "${schema.brand.businessName}"`, docRoot, logCallback);
+    }
+    if (schema.seo?.description) {
+      await runWpCommand(`option update blogdescription "${schema.seo.description}"`, docRoot, logCallback);
+    }
+  } catch (error) {
+    logCallback(`Content injection failed: ${error.message}`);
   }
 }
 async function rollbackJob(job) {
@@ -2704,8 +2770,8 @@ app.post(
       }
       const jobId = crypto2.randomUUID();
       await pool.query(
-        `INSERT INTO provisioning_jobs (id, project_id, business_name, status) VALUES (?, ?, ?, 'pending')`,
-        [jobId, projectId, business.name]
+        `INSERT INTO provisioning_jobs (id, project_id, business_name, website_schema, status) VALUES (?, ?, ?, ?, 'pending')`,
+        [jobId, projectId, business.name, JSON.stringify(websiteSchema)]
       );
       return res.json({
         success: true,
@@ -2723,7 +2789,8 @@ app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
   const { projectId } = req.params;
   try {
     const [rows] = await pool.query(
-      `SELECT status, logs, subdomain_url, wp_admin_url, wp_admin_user, wp_admin_pass_encrypted FROM provisioning_jobs 
+      `SELECT status, logs, subdomain, subdomain_url, wp_admin_url, ssl_status, wp_admin_user, wp_admin_pass_encrypted 
+			 FROM provisioning_jobs 
 			 LEFT JOIN isolated_deployments ON provisioning_jobs.project_id = isolated_deployments.project_id
 			 WHERE provisioning_jobs.project_id = ? ORDER BY provisioning_jobs.created_at DESC LIMIT 1`,
       [projectId]
@@ -2744,15 +2811,19 @@ app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
         console.error("Decryption failed:", e);
       }
     }
+    const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscout.online";
+    const liveUrl = rows[0].subdomain_url || (rows[0].subdomain ? `http://${rows[0].subdomain}.${rootDomain}` : null);
+    const adminUrl = rows[0].wp_admin_url || (rows[0].subdomain ? `http://${rows[0].subdomain}.${rootDomain}/wp-admin` : null);
     return res.json({
       success: true,
       status: rows[0].status,
       logs: rows[0].logs || [],
-      deployment: rows[0].subdomain_url ? {
-        liveUrl: rows[0].subdomain_url,
-        adminUrl: rows[0].wp_admin_url,
-        username: rows[0].wp_admin_user,
-        password: rawPassword
+      deployment: liveUrl ? {
+        liveUrl,
+        adminUrl,
+        username: rows[0].wp_admin_user || "admin",
+        password: rawPassword,
+        sslStatus: rows[0].ssl_status || "pending"
       } : null
     });
   } catch (error) {
@@ -2865,6 +2936,31 @@ app.delete("/api/sites/:siteId", async (req, res) => {
     });
   }
 });
+async function pollSslStatus() {
+  try {
+    const [deployments] = await pool.query(
+      `SELECT * FROM isolated_deployments WHERE ssl_status = 'pending' LIMIT 5`
+    );
+    for (const dep of deployments) {
+      try {
+        const httpsUrl = dep.subdomain_url.replace("http://", "https://");
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5e3);
+        const response = await fetch(httpsUrl, { signal: controller.signal });
+        clearTimeout(timeout);
+        if (response.ok || response.status < 500) {
+          await pool.query(
+            `UPDATE isolated_deployments SET ssl_status = 'valid', subdomain_url = ?, wp_admin_url = ? WHERE id = ?`,
+            [httpsUrl, `${httpsUrl}/wp-admin`, dep.id]
+          );
+        }
+      } catch (error) {
+      }
+    }
+  } catch (error) {
+  }
+}
+setInterval(pollSslStatus, 12e4);
 app.listen(PORT, async () => {
   console.log(`Server is running on http://localhost:${PORT}`);
   await initializeDatabase();

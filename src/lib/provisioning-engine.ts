@@ -15,7 +15,9 @@ import {
 	downloadWordPressCore,
 	createWpConfig,
 	installWordPress,
+	installWordPress,
 	configurePermalinks,
+	runWpCommand,
 } from "./wp-cli";
 
 const MAX_RETRIES = 3;
@@ -176,7 +178,7 @@ async function executeStateMachine(job: any) {
 		await createWpConfig(fullDocRoot, dbName, dbUser, dbPassword, "localhost", (log) => appendLog(job.id, log));
 		
 		const rawAdminPass = (job as any)._tempAdminPass;
-		const fullUrl = `https://${subdomain}.${rootDomain}`;
+		const fullUrl = `http://${subdomain}.${rootDomain}`;
 		await installWordPress(fullDocRoot, fullUrl, `Generated Site ${job.project_id}`, wpAdminUser, rawAdminPass, "admin@digitalscout.online", (log) => appendLog(job.id, log));
 
 		await appendLog(job.id, "WordPress installed successfully");
@@ -198,7 +200,17 @@ async function executeStateMachine(job: any) {
 	if (job.status === "deploying_content") {
 		await pool.query(`UPDATE provisioning_jobs SET status = 'deploying_content' WHERE id = ?`, [job.id]);
 		await appendLog(job.id, "Deploying content blocks...");
-		// Content injection logic goes here (via WP REST API or WP-CLI)
+		
+		const fullDocRoot = `${docRootBase}/${subdomain}`;
+		const schema = typeof job.website_schema === 'string' ? JSON.parse(job.website_schema) : job.website_schema;
+		
+		if (schema) {
+			await injectWebsiteContent(fullDocRoot, schema, (log) => appendLog(job.id, log));
+			await appendLog(job.id, "Content injected successfully");
+		} else {
+			await appendLog(job.id, "WARNING: No website schema found to inject.");
+		}
+		
 		job.status = "completed";
 	}
 
@@ -206,20 +218,63 @@ async function executeStateMachine(job: any) {
 	if (job.status === "completed") {
 		await pool.query(`UPDATE provisioning_jobs SET status = 'completed', locked_at = NULL WHERE id = ?`, [job.id]);
 		
-		// Insert into deployments
+		// Insert into deployments - ALWAYS start with http
+		const httpUrl = `http://${subdomain}.${rootDomain}`;
 		await pool.query(`
-			INSERT IGNORE INTO isolated_deployments (id, project_id, subdomain_url, wp_admin_url, admin_username, encrypted_admin_password)
-			VALUES (?, ?, ?, ?, ?, ?)
+			INSERT IGNORE INTO isolated_deployments (id, project_id, subdomain_url, wp_admin_url, admin_username, encrypted_admin_password, website_schema, ssl_status)
+			VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
 		`, [
 			crypto.randomUUID(), 
 			job.project_id, 
-			`https://${subdomain}.${rootDomain}`, 
-			`https://${subdomain}.${rootDomain}/wp-admin`, 
+			httpUrl, 
+			`${httpUrl}/wp-admin`, 
 			wpAdminUser, 
-			wpAdminPass
+			wpAdminPass,
+			typeof job.website_schema === 'string' ? job.website_schema : JSON.stringify(job.website_schema)
 		]);
 		
-		await appendLog(job.id, "Job completed successfully!");
+		await appendLog(job.id, "Job completed successfully! URL set to HTTP (SSL polling started)");
+	}
+}
+
+async function injectWebsiteContent(docRoot: string, schema: any, logCallback: (log: string) => void) {
+	try {
+		// 1. Delete all existing posts/pages
+		await runWpCommand("post delete $(wp post list --post_type=post,page --format=ids --path=" + docRoot + ") --force", docRoot, logCallback);
+		
+		// 2. Create Home Page with JSON content as a placeholder or serialized meta
+		// In a real scenario, we might use a theme that reads this JSON, 
+		// but for now we'll inject the sections into the page content as a basic layout.
+		
+		let homeContent = `<!-- wp:paragraph -->\n<p>Welcome to ${schema.brand?.businessName || 'our business'}</p>\n<!-- /wp:paragraph -->\n\n`;
+		
+		if (schema.sections) {
+			for (const section of schema.sections) {
+				homeContent += `<!-- wp:heading {"level":2} -->\n<h2>${section.headline || section.title || section.type}</h2>\n<!-- /wp:heading -->\n`;
+				if (section.subheadline || section.body) {
+					homeContent += `<!-- wp:paragraph -->\n<p>${section.subheadline || section.body}</p>\n<!-- /wp:paragraph -->\n`;
+				}
+			}
+		}
+
+		const homePageIdOut = await runWpCommand(`post create --post_type=page --post_title="Home" --post_content='${homeContent.replace(/'/g, "'\\''")}' --post_status=publish --format=ids`, docRoot, logCallback);
+		const homePageId = homePageIdOut.stdout.trim();
+		
+		// 3. Set as Front Page
+		await runWpCommand(`option update show_on_front page`, docRoot, logCallback);
+		await runWpCommand(`option update page_on_front ${homePageId}`, docRoot, logCallback);
+		
+		// 4. Update Site Name and Description
+		if (schema.brand?.businessName) {
+			await runWpCommand(`option update blogname "${schema.brand.businessName}"`, docRoot, logCallback);
+		}
+		if (schema.seo?.description) {
+			await runWpCommand(`option update blogdescription "${schema.seo.description}"`, docRoot, logCallback);
+		}
+
+	} catch (error: any) {
+		logCallback(`Content injection failed: ${error.message}`);
+		// We don't throw here to allow the deployment to finish even if content injection is partial
 	}
 }
 

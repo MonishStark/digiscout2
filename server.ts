@@ -2592,8 +2592,8 @@ app.post(
 
 			const jobId = crypto.randomUUID();
 			await pool.query(
-				`INSERT INTO provisioning_jobs (id, project_id, business_name, status) VALUES (?, ?, ?, 'pending')`,
-				[jobId, projectId, business.name]
+				`INSERT INTO provisioning_jobs (id, project_id, business_name, website_schema, status) VALUES (?, ?, ?, ?, 'pending')`,
+				[jobId, projectId, business.name, JSON.stringify(websiteSchema)]
 			);
 
 			return res.json({
@@ -2613,7 +2613,8 @@ app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
 	const { projectId } = req.params;
 	try {
 		const [rows]: any = await pool.query(
-			`SELECT status, logs, subdomain_url, wp_admin_url, wp_admin_user, wp_admin_pass_encrypted FROM provisioning_jobs 
+			`SELECT status, logs, subdomain, subdomain_url, wp_admin_url, ssl_status, wp_admin_user, wp_admin_pass_encrypted 
+			 FROM provisioning_jobs 
 			 LEFT JOIN isolated_deployments ON provisioning_jobs.project_id = isolated_deployments.project_id
 			 WHERE provisioning_jobs.project_id = ? ORDER BY provisioning_jobs.created_at DESC LIMIT 1`,
 			[projectId]
@@ -2637,15 +2638,20 @@ app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
 			}
 		}
 
+		const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscout.online";
+		const liveUrl = rows[0].subdomain_url || (rows[0].subdomain ? `http://${rows[0].subdomain}.${rootDomain}` : null);
+		const adminUrl = rows[0].wp_admin_url || (rows[0].subdomain ? `http://${rows[0].subdomain}.${rootDomain}/wp-admin` : null);
+
 		return res.json({
 			success: true,
 			status: rows[0].status,
 			logs: rows[0].logs || [],
-			deployment: rows[0].subdomain_url ? {
-				liveUrl: rows[0].subdomain_url,
-				adminUrl: rows[0].wp_admin_url,
-				username: rows[0].wp_admin_user,
-				password: rawPassword
+			deployment: liveUrl ? {
+				liveUrl,
+				adminUrl,
+				username: rows[0].wp_admin_user || 'admin',
+				password: rawPassword,
+				sslStatus: rows[0].ssl_status || 'pending'
 			} : null
 		});
 	} catch (error) {
@@ -2782,6 +2788,35 @@ app.delete("/api/sites/:siteId", async (req: Request, res: Response) => {
 		});
 	}
 });
+
+// --- SSL Polling Worker ---
+async function pollSslStatus() {
+	try {
+		const [deployments]: any = await pool.query(
+			`SELECT * FROM isolated_deployments WHERE ssl_status = 'pending' LIMIT 5`
+		);
+
+		for (const dep of deployments) {
+			try {
+				const httpsUrl = dep.subdomain_url.replace("http://", "https://");
+				const controller = new AbortController();
+				const timeout = setTimeout(() => controller.abort(), 5000);
+				
+				const response = await fetch(httpsUrl, { signal: controller.signal });
+				clearTimeout(timeout);
+
+				if (response.ok || response.status < 500) {
+					await pool.query(
+						`UPDATE isolated_deployments SET ssl_status = 'valid', subdomain_url = ?, wp_admin_url = ? WHERE id = ?`,
+						[httpsUrl, `${httpsUrl}/wp-admin`, dep.id]
+					);
+				}
+			} catch (error) {}
+		}
+	} catch (error) {}
+}
+
+setInterval(pollSslStatus, 120000);
 
 app.listen(PORT, async () => {
 	console.log(`Server is running on http://localhost:${PORT}`);
