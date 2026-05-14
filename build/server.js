@@ -9,15 +9,25 @@ var __dirname = path.dirname(__filename);
 var bundleRoot = path.resolve(__dirname, "../");
 var searchPaths = [cwd, bundleRoot];
 var envFiles = [".env.production", ".env.local", ".env"];
-console.log(`[Env] Searching in: ${searchPaths.join(", ")}`);
+console.error(`[Env] Searching in: ${searchPaths.join(", ")}`);
 for (const root of searchPaths) {
   for (const file of envFiles) {
     const fullPath = path.join(root, file);
     if (fs.existsSync(fullPath)) {
-      console.log(`[Env] Found environment file: ${fullPath}`);
-      dotenv.config({ path: fullPath });
+      console.error(`[Env] Found environment file: ${fullPath}`);
+      const result = dotenv.config({ path: fullPath });
+      if (result.error) {
+        console.error(`[Env] Error parsing ${fullPath}: ${result.error.message}`);
+      } else {
+        console.error(`[Env] Successfully loaded ${fullPath}`);
+      }
     }
   }
+}
+if (!process.env.DB_USER) {
+  console.error("[Env] WARNING: DB_USER is not set after loading environment files.");
+} else {
+  console.error(`[Env] DB_USER is set to: ${process.env.DB_USER}`);
 }
 var env_default = process.env;
 
@@ -239,7 +249,7 @@ var pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0
 });
-console.log(`[DB] Pool initialized. User: ${process.env.DB_USER || "root (default)"}, Host: ${process.env.DB_HOST || "127.0.0.1"}`);
+console.error(`[DB] Pool initialized. User: ${process.env.DB_USER || "root (default)"}, Host: ${process.env.DB_HOST || "127.0.0.1"}`);
 async function initializeDatabase() {
   try {
     await pool.query(`

@@ -14,16 +14,27 @@ const bundleRoot = path.resolve(__dirname, "../");
 const searchPaths = [cwd, bundleRoot];
 const envFiles = [".env.production", ".env.local", ".env"];
 
-console.log(`[Env] Searching in: ${searchPaths.join(", ")}`);
+console.error(`[Env] Searching in: ${searchPaths.join(", ")}`);
 
 for (const root of searchPaths) {
 	for (const file of envFiles) {
 		const fullPath = path.join(root, file);
 		if (fs.existsSync(fullPath)) {
-			console.log(`[Env] Found environment file: ${fullPath}`);
-			dotenv.config({ path: fullPath });
+			console.error(`[Env] Found environment file: ${fullPath}`);
+			const result = dotenv.config({ path: fullPath });
+			if (result.error) {
+				console.error(`[Env] Error parsing ${fullPath}: ${result.error.message}`);
+			} else {
+				console.error(`[Env] Successfully loaded ${fullPath}`);
+			}
 		}
 	}
+}
+
+if (!process.env.DB_USER) {
+	console.error("[Env] WARNING: DB_USER is not set after loading environment files.");
+} else {
+	console.error(`[Env] DB_USER is set to: ${process.env.DB_USER}`);
 }
 
 export default process.env;
