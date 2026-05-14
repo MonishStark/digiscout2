@@ -1,10 +1,19 @@
+// src/lib/env.ts
+import dotenv from "dotenv";
+import path from "path";
+var rootDir = process.cwd();
+var envFiles = [".env.production", ".env.local", ".env"];
+for (const file of envFiles) {
+  dotenv.config({ path: path.join(rootDir, file) });
+}
+var env_default = process.env;
+
 // server.ts
 import crypto2 from "crypto";
 import cors from "cors";
-import dotenv2 from "dotenv";
 import express from "express";
 import fs3 from "fs";
-import path from "path";
+import path2 from "path";
 import { GoogleGenAI } from "@google/genai";
 
 // src/lib/wordpress-provisioning.ts
@@ -208,8 +217,6 @@ function formatPhoneNumber(phone) {
 
 // src/lib/db.ts
 import mysql from "mysql2/promise";
-import dotenv from "dotenv";
-dotenv.config({ path: process.env.NODE_ENV === "production" ? ".env.production" : ".env.local" });
 var pool = mysql.createPool({
   host: process.env.DB_HOST || "127.0.0.1",
   user: process.env.DB_USER || "root",
@@ -652,7 +659,6 @@ async function pollQueue() {
 }
 
 // server.ts
-dotenv2.config({ path: process.env.NODE_ENV === "production" ? ".env.production" : ".env.local" });
 var app = express();
 var PORT = process.env.PORT || 5001;
 app.use(
@@ -664,7 +670,7 @@ app.use(express.json({ limit: "50mb" }));
 app.get("/", (req, res) => {
   res.send("DigitalScout API Running");
 });
-var DEBUG_ROOT_DIR = path.join(process.cwd(), ".debug-generation");
+var DEBUG_ROOT_DIR = path2.join(process.cwd(), ".debug-generation");
 var generationDebugSessions = /* @__PURE__ */ new Map();
 function slugifyDebugSegment(value) {
   return (value || "generation").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -679,11 +685,11 @@ function createGenerationTraceId(business) {
 function createGenerationDebugSession(business) {
   const traceId = createGenerationTraceId(business);
   let folderName = traceId;
-  let folderPath = path.join(DEBUG_ROOT_DIR, folderName);
+  let folderPath = path2.join(DEBUG_ROOT_DIR, folderName);
   let suffix = 2;
   while (fs3.existsSync(folderPath)) {
     folderName = `${traceId}-${suffix}`;
-    folderPath = path.join(DEBUG_ROOT_DIR, folderName);
+    folderPath = path2.join(DEBUG_ROOT_DIR, folderName);
     suffix += 1;
   }
   fs3.mkdirSync(folderPath, { recursive: true });
@@ -713,7 +719,7 @@ function formatDebugPayload(content) {
 }
 function persistGenerationDebugFile(session, fileName, content, append = false) {
   fs3.mkdirSync(session.folderPath, { recursive: true });
-  const targetPath = path.join(session.folderPath, fileName);
+  const targetPath = path2.join(session.folderPath, fileName);
   const payload = formatDebugPayload(content);
   if (append && fs3.existsSync(targetPath)) {
     fs3.appendFileSync(targetPath, `${payload}

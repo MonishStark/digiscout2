@@ -1,9 +1,9 @@
 /** @format */
 
+import "./src/lib/env";
 import crypto from "crypto";
 import http from "http";
 import cors from "cors";
-import dotenv from "dotenv";
 import express, { Request, Response } from "express";
 import fs from "fs";
 import path from "path";
@@ -22,8 +22,6 @@ import {
 } from "./src/lib/callhippo-service";
 import { pool, initializeDatabase } from "./src/lib/db";
 import { startProvisioningWorker } from "./src/lib/provisioning-worker";
-
-dotenv.config({ path: process.env.NODE_ENV === "production" ? ".env.production" : ".env.local" });
 
 const app = express();
 const PORT = process.env.PORT || 5001;

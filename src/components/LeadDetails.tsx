@@ -264,15 +264,15 @@ export default function LeadDetails({
 								: p,
 						),
 					);
+					if (debugTraceId) {
+						await writeGenerationDebugFile(
+							debugTraceId,
+							"10-errors.log",
+							`[${new Date().toISOString()}] wordpress_provisioning_error: ${String(provisionErr)}`,
+							true,
+						);
+					}
 				}
-			}
-			if (debugTraceId) {
-				await writeGenerationDebugFile(
-					debugTraceId,
-					"10-errors.log",
-					`[${new Date().toISOString()}] wordpress_provisioning_error: ${String(provisionErr)}`,
-					true,
-				);
 			}
 		} catch (error) {
 			console.error(error);
