@@ -6,3 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+.debug-generation/
+cookies*.txt
+tmp*.json
+tmp*.txt
+test_deploy.json
