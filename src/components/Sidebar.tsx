@@ -240,20 +240,27 @@ export default function Sidebar({
 				return;
 			}
 
-			// Filter: ONLY include businesses that DO NOT have a website, or if we consider them outdated
+			// Aggressively sanitize the business data to avoid circular references (like Google Maps DOM attributions)
 			const parsedBusinesses: Business[] = places.map((p) => {
+				// displayName is an object { text: string } in the new API
+				const name = p.displayName?.text || (typeof p.displayName === 'string' ? p.displayName : "Unknown Business");
+				const address = p.formattedAddress || "No address available";
+				
 				return {
-					id: p.id!,
-					name: p.displayName?.text || p.displayName as any || "Unknown Business",
-					category: searchCategory,
-					address: p.formattedAddress || "",
-					rating: p.rating || 0,
-					reviewCount: p.userRatingCount || 0,
-					location: { lat: p.location!.lat(), lng: p.location!.lng() },
-					websiteUri: p.websiteURI || undefined,
-					phoneNumber: p.nationalPhoneNumber || undefined,
+					id: String(p.id || Math.random().toString(36).substr(2, 9)),
+					name: String(name),
+					category: String(searchCategory),
+					address: String(address),
+					rating: typeof p.rating === 'number' ? p.rating : 0,
+					reviewCount: typeof p.userRatingCount === 'number' ? p.userRatingCount : 0,
+					location: { 
+						lat: typeof p.location?.lat === 'function' ? p.location.lat() : 0, 
+						lng: typeof p.location?.lng === 'function' ? p.location.lng() : 0 
+					},
+					websiteUri: p.websiteURI ? String(p.websiteURI) : undefined,
+					phoneNumber: p.nationalPhoneNumber ? String(p.nationalPhoneNumber) : undefined,
 					photos: p.photos
-						? p.photos.map((photo) => photo.getURI({ maxWidth: 400 }))
+						? p.photos.map((photo) => String(photo.getURI({ maxWidth: 400 })))
 						: [],
 					isOpen: p.businessStatus === "OPERATIONAL",
 				};
