@@ -126,9 +126,10 @@ export default function DeploymentsView({
 				await deleteDeployedSite(project.siteId);
 			}
 
-			if (project.wordpressSiteId) {
-				await deleteProvisionedWordPressSite(project.wordpressSiteId);
-			}
+			// Always attempt to purge WordPress/Isolated deployments if they exist
+			await deleteProvisionedWordPressSite(projectId).catch((e) => {
+				console.warn("WP purge skipped or failed:", e);
+			});
 
 			clearDeploymentState(projectId);
 			return true;

@@ -28,6 +28,7 @@ import {
 } from "./src/lib/callhippo-service";
 import { pool, initializeDatabase } from "./src/lib/db";
 import { startProvisioningWorker } from "./src/lib/provisioning-worker";
+import { deleteProvisionedWordPressSite } from "./src/lib/provisioning-engine";
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -2661,18 +2662,18 @@ app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
 	}
 });
 
-app.delete("/api/wordpress/site/:siteId", async (req, res) => {
+
+app.delete("/api/wordpress/site/:projectId", async (req, res) => {
 	try {
-		const { siteId } = req.params;
-		if (!siteId) {
-			return res.status(400).json({ error: "Missing siteId" });
+		const { projectId } = req.params;
+		if (!projectId) {
+			return res.status(400).json({ error: "Missing projectId" });
 		}
 
-		// Use multisite provisioner to delete the site
-		await deleteProvisionedWordPressMultisiteSite(siteId);
+		await deleteProvisionedWordPressSite(projectId);
 		return res.json({
 			success: true,
-			message: `WordPress site ${siteId} deleted successfully`,
+			message: `WordPress site for project ${projectId} deleted successfully`,
 		});
 	} catch (error) {
 		return res.status(500).json({

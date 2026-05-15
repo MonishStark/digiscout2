@@ -407,14 +407,21 @@ async function injectWebsiteContent(docRoot: string, schema: any, logCallback: (
 
 async function rollbackJob(job: any) {
 	await appendLog(job.id, "[ROLLBACK] Starting cleanup...");
+	const docRootBase = process.env.WP_DOCROOT_BASE || "/home/username/public_html/sites";
 	
 	if (job.subdomain) {
 		try {
 			const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscout.online";
 			await deleteSubdomain(job.subdomain, rootDomain);
 			await appendLog(job.id, `[ROLLBACK] Deleted subdomain ${job.subdomain}`);
+			
+			const fullDocRoot = `${docRootBase}/${job.subdomain}`;
+			if (fs.existsSync(fullDocRoot)) {
+				fs.rmSync(fullDocRoot, { recursive: true, force: true });
+				await appendLog(job.id, `[ROLLBACK] Deleted directory ${fullDocRoot}`);
+			}
 		} catch (e: any) {
-			await appendLog(job.id, `[ROLLBACK] Failed to delete subdomain: ${e.message}`);
+			await appendLog(job.id, `[ROLLBACK] Failed to cleanup subdomain/files: ${e.message}`);
 		}
 	}
 
@@ -437,4 +444,27 @@ async function rollbackJob(job: any) {
 	}
 	
 	await appendLog(job.id, "[ROLLBACK] Cleanup finished.");
+}
+
+export async function deleteProvisionedWordPressSite(projectId: string) {
+	console.log(`[Cleanup] Starting deletion for project ${projectId}`);
+	
+	const [rows]: any = await pool.query(
+		`SELECT * FROM provisioning_jobs WHERE project_id = ? ORDER BY created_at DESC LIMIT 1`, 
+		[projectId]
+	);
+
+	if (!rows || rows.length === 0) {
+		console.warn(`[Cleanup] No provisioning job found for project ${projectId}`);
+		return;
+	}
+
+	const job = rows[0];
+	await rollbackJob(job);
+	
+	// Final DB cleanup
+	await pool.query(`DELETE FROM isolated_deployments WHERE project_id = ?`, [projectId]);
+	await pool.query(`DELETE FROM provisioning_jobs WHERE project_id = ?`, [projectId]);
+	
+	console.log(`[Cleanup] Project ${projectId} fully purged.`);
 }

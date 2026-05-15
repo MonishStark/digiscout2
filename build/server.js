@@ -45,38 +45,6 @@ import fs4 from "fs";
 import path2 from "path";
 import { GoogleGenAI } from "@google/genai";
 
-// src/lib/wordpress-provisioning.ts
-function getMultisiteConfig() {
-  return {
-    baseUrl: process.env.WORDPRESS_MULTISITE_BASE_URL || process.env.WP_MULTISITE_BASE_URL || "",
-    username: process.env.WORDPRESS_MULTISITE_NETWORK_USERNAME || process.env.WP_MULTISITE_NETWORK_USERNAME || "",
-    applicationPassword: process.env.WORDPRESS_MULTISITE_NETWORK_APP_PASSWORD || process.env.WP_MULTISITE_NETWORK_APP_PASSWORD || ""
-  };
-}
-async function deleteProvisionedWordPressMultisiteSite(siteId) {
-  const config = getMultisiteConfig();
-  if (!config.baseUrl || !config.username || !config.applicationPassword) {
-    return { success: true, siteId };
-  }
-  const endpoint = `${config.baseUrl.replace(/\/$/, "")}/wp-json/digital-scout/v1/site/${siteId}`;
-  const authToken = Buffer.from(
-    `${config.username}:${config.applicationPassword}`
-  ).toString("base64");
-  const response = await fetch(endpoint, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Basic ${authToken}`
-    }
-  });
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(
-      `Failed to delete WordPress Multisite site ${siteId}: ${response.status} ${response.statusText} ${text}`
-    );
-  }
-  return { success: true, siteId };
-}
-
 // src/lib/callhippo-service.ts
 async function sendOutreachViaCallHippo(request, apiKey) {
   const { businessName, phoneNumber, message, preferredChannel } = request;
@@ -860,13 +828,19 @@ ${globalStyles}
 }
 async function rollbackJob(job) {
   await appendLog(job.id, "[ROLLBACK] Starting cleanup...");
+  const docRootBase = process.env.WP_DOCROOT_BASE || "/home/username/public_html/sites";
   if (job.subdomain) {
     try {
       const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscout.online";
       await deleteSubdomain(job.subdomain, rootDomain);
       await appendLog(job.id, `[ROLLBACK] Deleted subdomain ${job.subdomain}`);
+      const fullDocRoot = `${docRootBase}/${job.subdomain}`;
+      if (fs3.existsSync(fullDocRoot)) {
+        fs3.rmSync(fullDocRoot, { recursive: true, force: true });
+        await appendLog(job.id, `[ROLLBACK] Deleted directory ${fullDocRoot}`);
+      }
     } catch (e) {
-      await appendLog(job.id, `[ROLLBACK] Failed to delete subdomain: ${e.message}`);
+      await appendLog(job.id, `[ROLLBACK] Failed to cleanup subdomain/files: ${e.message}`);
     }
   }
   if (job.db_name) {
@@ -886,6 +860,22 @@ async function rollbackJob(job) {
     }
   }
   await appendLog(job.id, "[ROLLBACK] Cleanup finished.");
+}
+async function deleteProvisionedWordPressSite(projectId) {
+  console.log(`[Cleanup] Starting deletion for project ${projectId}`);
+  const [rows] = await pool.query(
+    `SELECT * FROM provisioning_jobs WHERE project_id = ? ORDER BY created_at DESC LIMIT 1`,
+    [projectId]
+  );
+  if (!rows || rows.length === 0) {
+    console.warn(`[Cleanup] No provisioning job found for project ${projectId}`);
+    return;
+  }
+  const job = rows[0];
+  await rollbackJob(job);
+  await pool.query(`DELETE FROM isolated_deployments WHERE project_id = ?`, [projectId]);
+  await pool.query(`DELETE FROM provisioning_jobs WHERE project_id = ?`, [projectId]);
+  console.log(`[Cleanup] Project ${projectId} fully purged.`);
 }
 
 // src/lib/provisioning-worker.ts
@@ -2985,16 +2975,16 @@ app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
     });
   }
 });
-app.delete("/api/wordpress/site/:siteId", async (req, res) => {
+app.delete("/api/wordpress/site/:projectId", async (req, res) => {
   try {
-    const { siteId } = req.params;
-    if (!siteId) {
-      return res.status(400).json({ error: "Missing siteId" });
+    const { projectId } = req.params;
+    if (!projectId) {
+      return res.status(400).json({ error: "Missing projectId" });
     }
-    await deleteProvisionedWordPressMultisiteSite(siteId);
+    await deleteProvisionedWordPressSite(projectId);
     return res.json({
       success: true,
-      message: `WordPress site ${siteId} deleted successfully`
+      message: `WordPress site for project ${projectId} deleted successfully`
     });
   } catch (error) {
     return res.status(500).json({
