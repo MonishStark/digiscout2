@@ -1034,7 +1034,6 @@ function buildBusinessDebugInput(business) {
 }
 var GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_API_KEY;
 var genai = GENAI_KEY ? new GoogleGenAI({ apiKey: GENAI_KEY }) : null;
-var NETLIFY_TOKEN = process.env.VITE_NETLIFY_TOKEN || process.env.NETLIFY_TOKEN;
 var CALLHIPPO_API_KEY = process.env.CALLHIPPO_API_KEY;
 var WEBSITE_GENERATION_MODE = process.env.WEBSITE_GENERATION_MODE || "gemini";
 function extractEmails(html) {

@@ -186,8 +186,6 @@ export default function LeadDetails({
 							websiteContent: combinedCode,
 							websiteSchema: schema,
 							wordpressBlocks,
-							isDeployed: false,
-							isDeploying: false,
 							wordpressSiteType: "multisite",
 							provisioningStatus: "provisioning",
 							subsiteCreationStatus: "pending",

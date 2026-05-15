@@ -23,7 +23,6 @@ import {
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { deploySiteToNetlify, deleteDeployedSite } from "../lib/netlify";
 import { deleteProvisionedWordPressSite } from "../lib/wordpress-client";
 
 interface DeploymentsViewProps {
@@ -48,73 +47,6 @@ export default function DeploymentsView({
 		"whatsapp",
 	);
 
-	const clearDeploymentState = (projectId: string) => {
-		setProjects((prev) =>
-			prev.map((project) =>
-				project.id === projectId
-					? {
-							...project,
-							isDeployed: false,
-							isDeploying: false,
-							deployedUrl: undefined,
-							siteId: undefined,
-							deployId: undefined,
-							deploymentError: undefined,
-						}
-					: project,
-			),
-		);
-	};
-
-	const handleDeploy = async (projectId: string) => {
-		const project = projects.find((item) => item.id === projectId);
-		if (!project || project.isDeploying) return;
-
-		setDeployingId(projectId);
-		setProjects((prev) =>
-			prev.map((item) =>
-				item.id === projectId
-					? { ...item, isDeploying: true, deploymentError: undefined }
-					: item,
-			),
-		);
-
-		try {
-			const deployedResult = await deploySiteToNetlify(
-				project.websiteContent,
-				project.businessName,
-			);
-
-			setProjects((prev) =>
-				prev.map((item) =>
-					item.id === projectId
-						? {
-								...item,
-								isDeployed: true,
-								deployedUrl: deployedResult.deployedUrl,
-								siteId: deployedResult.siteId,
-								deployId: deployedResult.deployId,
-								isDeploying: false,
-								deploymentError: undefined,
-							}
-						: item,
-				),
-			);
-		} catch (error) {
-			const errorMessage =
-				error instanceof Error ? error.message : "Unknown deployment error";
-			setProjects((prev) =>
-				prev.map((item) =>
-					item.id === projectId
-						? { ...item, isDeploying: false, deploymentError: errorMessage }
-						: item,
-				),
-			);
-		} finally {
-			setDeployingId(null);
-		}
-	};
-
 	const stopDeployment = async (projectId: string) => {
 		const project = projects.find((item) => item.id === projectId);
 		if (!project) return false;
@@ -122,16 +54,8 @@ export default function DeploymentsView({
 		setDeployingId(projectId);
 
 		try {
-			if (project.siteId) {
-				await deleteDeployedSite(project.siteId);
-			}
-
-			// Always attempt to purge WordPress/Isolated deployments if they exist
-			await deleteProvisionedWordPressSite(projectId).catch((e) => {
-				console.warn("WP purge skipped or failed:", e);
-			});
-
-			clearDeploymentState(projectId);
+			// Purge WordPress/Isolated deployments
+			await deleteProvisionedWordPressSite(projectId);
 			return true;
 		} catch (error) {
 			console.error("Failed to stop deployment:", error);
@@ -501,7 +425,7 @@ export default function DeploymentsView({
 			<div className='mx-auto flex w-full max-w-[1600px] flex-col gap-6'>
 				<div className='space-y-4'>
 					{displayProjects.map((project) => {
-						const isLive = project.isDeployed;
+						const isLive = project.provisioningStatus === "completed" || project.provisioningStatus === "ready";
 						const isSent = Boolean(project.emailSent);
 						const statusLabel = getLeadStatusLabel(project);
 						const isActionLoading = deployingId === project.id;
@@ -531,14 +455,6 @@ export default function DeploymentsView({
 												{statusLabel}
 											</Badge>
 										</div>
-										{project.isDeploying && (
-											<div className='absolute inset-0 flex items-center justify-center bg-[#070712]/55 backdrop-blur-[2px]'>
-												<div className='flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-[0_10px_30px_rgba(15,23,42,0.08)]'>
-													<Activity className='h-4 w-4 animate-spin' />
-													Deploying to Netlify
-												</div>
-											</div>
-										)}
 									</div>
 
 									<div className='flex min-w-0 flex-1 flex-col gap-5'>
@@ -555,11 +471,6 @@ export default function DeploymentsView({
 														className={`rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.22em] ${getProvisioningTone(project)}`}>
 														{getProvisioningLabel(project)}
 													</Badge>
-													{project.isDeployed && (
-														<Badge className='rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-emerald-200'>
-															Live on Netlify
-														</Badge>
-													)}
 												</div>
 												<div className='space-y-1'>
 													<h3 className='truncate text-2xl font-semibold tracking-tight text-slate-900 sm:text-[1.7rem]'>
@@ -638,36 +549,9 @@ export default function DeploymentsView({
 														Preview
 													</Button>
 													<Button
-														onClick={() =>
-															isLive
-																? stopDeployment(project.id)
-																: handleDeploy(project.id)
-														}
-														disabled={project.isDeploying || isActionLoading}
-														className={`h-10 rounded-2xl px-4 text-white disabled:cursor-not-allowed disabled:opacity-60 ${
-															isLive
-																? "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
-																: "bg-violet-600 shadow-[0_18px_40px_rgba(139,92,246,0.18)] hover:bg-violet-500"
-														}`}>
-														{isActionLoading ? (
-															<Activity className='mr-2 h-4 w-4 animate-spin' />
-														) : isLive ? (
-															<ShieldCheck className='mr-2 h-4 w-4' />
-														) : (
-															<Globe className='mr-2 h-4 w-4' />
-														)}
-														{isActionLoading
-															? isLive
-																? "Stopping..."
-																: "Deploying..."
-															: isLive
-																? "Stop Deployment"
-																: "Deploy"}
-													</Button>
-													<Button
 														onClick={() => handleSendOutreach(project.id)}
 														disabled={
-															!project.isDeployed || sendingId === project.id
+															!isLive || sendingId === project.id
 														}
 														className='h-10 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60'>
 														{sendingId === project.id ? (
@@ -688,11 +572,6 @@ export default function DeploymentsView({
 											</div>
 										</div>
 
-										{project.deploymentError && (
-											<div className='rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100'>
-												{project.deploymentError}
-											</div>
-										)}
 
 										{project.provisioningError && (
 											<div className='rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100'>

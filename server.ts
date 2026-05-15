@@ -232,8 +232,6 @@ async function readRequestBody(req: Request): Promise<Buffer> {
 
 const GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_API_KEY;
 const genai = GENAI_KEY ? new GoogleGenAI({ apiKey: GENAI_KEY }) : null;
-const NETLIFY_TOKEN =
-	process.env.VITE_NETLIFY_TOKEN || process.env.NETLIFY_TOKEN;
 const CALLHIPPO_API_KEY = process.env.CALLHIPPO_API_KEY;
 const WEBSITE_GENERATION_MODE = process.env.WEBSITE_GENERATION_MODE || "gemini";
 

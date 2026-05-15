@@ -273,12 +273,6 @@ export interface WebsiteProject extends WordPressProvisioningState {
 	websiteContent: string;
 	websiteSchema?: WebsiteSchema;
 	wordpressBlocks?: string;
-	isDeployed: boolean;
-	isDeploying?: boolean;
-	deploymentError?: string;
-	deployedUrl?: string;
-	siteId?: string;
-	deployId?: string;
 	outreachStatus?: OutreachStatus;
 	outreachSentAt?: string;
 	emailSent?: boolean;

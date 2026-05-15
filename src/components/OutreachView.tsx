@@ -1,11 +1,10 @@
 /** @format */
 
 import React from "react";
-import { CalendarDays, Globe, Mail, Trash2, BadgeCheck } from "lucide-react";
+import { CalendarDays, Mail, Trash2, BadgeCheck } from "lucide-react";
 import { WebsiteProject } from "../types";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { deleteDeployedSite } from "../lib/netlify";
 import { deleteProvisionedWordPressSite } from "../lib/wordpress-client";
 
 interface OutreachViewProps {
@@ -31,10 +30,6 @@ export default function OutreachView({
 		if (!confirmDelete) return;
 
 		try {
-			if (project.siteId) {
-				await deleteDeployedSite(project.siteId);
-			}
-
 			if (project.wordpressSiteId) {
 				await deleteProvisionedWordPressSite(project.wordpressSiteId);
 			}
@@ -104,17 +99,17 @@ export default function OutreachView({
 							<div className='flex items-center justify-between gap-3'>
 								<span className='text-white/50'>Deployment</span>
 								<Badge className='bg-white/10 text-white/80 border border-white/15'>
-									{project.isDeployed ? "Live" : "Draft"}
+									{project.provisioningStatus === "completed" || project.provisioningStatus === "ready" ? "Live" : "Draft"}
 								</Badge>
 							</div>
-							{project.deployedUrl && (
+							{project.wordpressSiteUrl && (
 								<div className='rounded-lg bg-black/30 border border-white/5 px-3 py-2 text-xs truncate text-indigo-300'>
 									<a
-										href={project.deployedUrl}
+										href={project.wordpressSiteUrl}
 										target='_blank'
 										rel='noreferrer'
 										className='hover:underline'>
-										{project.deployedUrl}
+										{project.wordpressSiteUrl}
 									</a>
 								</div>
 							)}
