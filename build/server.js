@@ -1299,12 +1299,8 @@ function getSshPrefix() {
   ].filter(Boolean).join(" ");
 }
 async function callUapiRemote(module, func, params) {
-  const cpanelUser = process.env.CPANEL_USERNAME;
-  if (!cpanelUser) {
-    throw new Error("CPANEL_USERNAME is not set.");
-  }
   const paramStr = Object.entries(params).map(([k, v]) => `${k}=${v.replace(/'/g, "\\'")}`).join(" ");
-  const uapiCmd = `uapi --user=${cpanelUser} --output=json ${module} ${func} ${paramStr}`;
+  const uapiCmd = `uapi --output=json ${module} ${func} ${paramStr}`;
   const sshPrefix = getSshPrefix();
   const fullCmd = `${sshPrefix} '${uapiCmd}'`;
   process.stderr.write(`[cPanel-SSH] ${module}::${func} ${paramStr}
