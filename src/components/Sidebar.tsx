@@ -1,6 +1,6 @@
 /** @format */
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
 	SearchIcon,
 	Globe,
@@ -9,6 +9,7 @@ import {
 	Activity,
 	Phone,
 	Mail,
+	Navigation,
 } from "lucide-react";
 import { useMapsLibrary, useMap } from "@vis.gl/react-google-maps";
 
@@ -103,11 +104,57 @@ export default function Sidebar({
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	const [suggestions, setSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
+	const [showSuggestions, setShowSuggestions] = useState(false);
+	const suggestionRef = useRef<HTMLDivElement>(null);
+	const autocompleteService = useRef<google.maps.places.AutocompleteService | null>(null);
+
 	const [activeTab, setActiveTab] = useState("search");
 
 	const placesLib = useMapsLibrary("places");
 	const geocodingLib = useMapsLibrary("geocoding");
 	const map = useMap();
+
+	useEffect(() => {
+		if (placesLib && !autocompleteService.current) {
+			autocompleteService.current = new placesLib.AutocompleteService();
+		}
+	}, [placesLib]);
+
+	useEffect(() => {
+		const handleClickOutside = (event: MouseEvent) => {
+			if (suggestionRef.current && !suggestionRef.current.contains(event.target as Node)) {
+				setShowSuggestions(false);
+			}
+		};
+		document.addEventListener("mousedown", handleClickOutside);
+		return () => document.removeEventListener("mousedown", handleClickOutside);
+	}, []);
+
+	useEffect(() => {
+		if (!city || city.length < 2 || !autocompleteService.current) {
+			setSuggestions([]);
+			return;
+		}
+
+		const timeoutId = setTimeout(() => {
+			autocompleteService.current?.getPlacePredictions(
+				{ 
+					input: city,
+					types: ['(regions)'] // Get cities/regions
+				},
+				(predictions, status) => {
+					if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+						setSuggestions(predictions);
+					} else {
+						setSuggestions([]);
+					}
+				}
+			);
+		}, 300);
+
+		return () => clearTimeout(timeoutId);
+	}, [city]);
 	const filteredBusinesses = businesses;
 
 	const handleSearch = async () => {
@@ -249,12 +296,35 @@ export default function Sidebar({
 							<label className='text-[10px] uppercase tracking-wider text-slate-600 font-bold'>
 								Location
 							</label>
-							<Input
-								placeholder='e.g. Austin, TX'
-								value={city}
-								onChange={(e) => setCity(e.target.value)}
-								className='w-full bg-slate-50 border border-slate-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:border-violet-500 text-slate-900 placeholder:text-slate-400'
-							/>
+							<div className='relative' ref={suggestionRef}>
+								<Input
+									placeholder='e.g. Austin, TX'
+									value={city}
+									onChange={(e) => {
+										setCity(e.target.value);
+										setShowSuggestions(true);
+									}}
+									onFocus={() => city.length >= 2 && setShowSuggestions(true)}
+									className='w-full bg-slate-50 border border-slate-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:border-violet-500 text-slate-900 placeholder:text-slate-400'
+								/>
+								{showSuggestions && suggestions.length > 0 && (
+									<div className='absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden'>
+										{suggestions.map((s) => (
+											<button
+												key={s.place_id}
+												className='w-full px-4 py-2 text-left text-sm hover:bg-violet-50 flex items-center gap-2 text-slate-700 transition-colors border-b border-slate-50 last:border-0'
+												onClick={() => {
+													setCity(s.description);
+													setShowSuggestions(false);
+													setSuggestions([]);
+												}}>
+												<MapPin className='h-3.5 w-3.5 text-slate-400' />
+												<span className='truncate'>{s.description}</span>
+											</button>
+										))}
+									</div>
+								)}
+							</div>
 						</div>
 						<div className='space-y-1.5'>
 							<label className='text-[10px] uppercase tracking-wider text-slate-600 font-bold'>
