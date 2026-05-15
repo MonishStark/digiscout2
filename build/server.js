@@ -966,7 +966,7 @@ var env_default = process.env;
 import crypto2 from "crypto";
 import cors from "cors";
 import express from "express";
-import fs4 from "fs";
+import fs2 from "fs";
 import path2 from "path";
 import { GoogleGenAI } from "@google/genai";
 
@@ -1271,7 +1271,6 @@ async function initializeDatabase() {
 
 // src/lib/provisioning-engine.ts
 import crypto from "crypto";
-import fs3 from "fs";
 
 // src/lib/cpanel-uapi.ts
 import https from "https";
@@ -1392,7 +1391,6 @@ async function setDatabasePrivileges(dbUser, dbName, privileges = "ALL PRIVILEGE
 // src/lib/wp-cli.ts
 import { exec } from "child_process";
 import { promisify } from "util";
-import fs2 from "fs";
 var execAsync = promisify(exec);
 var WpCliError = class extends Error {
   constructor(message, stdout, stderr, code) {
@@ -1403,61 +1401,68 @@ var WpCliError = class extends Error {
     this.code = code;
   }
 };
-async function checkWpCliAvailable() {
-  const possiblePaths = [
-    process.env.WP_CLI_PATH || "wp",
-    "/usr/local/bin/wp",
-    "/usr/bin/wp",
-    `${process.env.HOME}/bin/wp`,
-    "/home/digimvyc/bin/wp"
-  ];
-  for (const wpPath of possiblePaths) {
-    try {
-      const { stdout: versionOut } = await execAsync(`${wpPath} --version`);
-      return {
-        available: true,
-        version: versionOut.trim(),
-        path: wpPath
-      };
-    } catch (e) {
-      continue;
-    }
-  }
-  return {
-    available: false,
-    error: "WP-CLI not found in common paths. Please set WP_CLI_PATH in your .env"
-  };
+function getSshConfig() {
+  const host = process.env.WP_SSH_HOST;
+  const port = process.env.WP_SSH_PORT || "22";
+  const user = process.env.WP_SSH_USER;
+  const keyPath = process.env.WP_SSH_KEY_PATH || "";
+  const wpCliPath = process.env.WP_CLI_PATH || "wp";
+  return { host, port, user, keyPath, wpCliPath };
 }
-async function runWpCommand(command, documentRoot, logCallback) {
-  if (!fs2.existsSync(documentRoot)) {
-    throw new Error(`Document root does not exist: ${documentRoot}`);
-  }
-  const wpPath = process.env.WP_CLI_PATH || "wp";
-  const cmd = `${wpPath} ${command} --path=${documentRoot}`;
-  if (logCallback) {
-    logCallback(`[WP-CLI] Executing: ${cmd.replace(/--dbpass=[^\s]+/, "--dbpass=***")}`);
-  }
-  fs2.writeSync(2, `[WP-CLI] RUNNING: ${cmd.replace(/--dbpass=[^\s]+/, "--dbpass=***")}
+async function executeRemoteCommand(remoteCommand, logCallback) {
+  const { host, port, user, keyPath, wpCliPath: _wpCliPath } = getSshConfig();
+  let cmd;
+  if (host && user) {
+    const escapedCmd = remoteCommand.replace(/'/g, `'\\''`);
+    const keyFlag = keyPath ? `-i "${keyPath}"` : "";
+    cmd = [
+      "ssh",
+      "-p",
+      port,
+      keyFlag,
+      "-o StrictHostKeyChecking=no",
+      "-o ConnectTimeout=30",
+      "-o ServerAliveInterval=60",
+      "-o BatchMode=yes",
+      `${user}@${host}`,
+      `'${escapedCmd}'`
+    ].filter(Boolean).join(" ");
+    if (logCallback) {
+      logCallback(`[SSH\u2192${host}] ${remoteCommand.replace(/--dbpass=[^\s'"]+/g, "--dbpass=***").replace(/--admin_password=[^\s'"]+/g, "--admin_password=***")}`);
+    }
+    process.stderr.write(`[SSH] RUNNING: ${cmd.replace(/--dbpass=[^\s'"]+/g, "--dbpass=***").replace(/--admin_password=[^\s'"]+/g, "--admin_password=***")}
 `);
+  } else {
+    cmd = remoteCommand;
+    if (logCallback) logCallback(`[LOCAL] ${cmd}`);
+    process.stderr.write(`[LOCAL] RUNNING: ${cmd}
+`);
+  }
   try {
     const { stdout, stderr } = await execAsync(cmd, {
-      cwd: documentRoot,
-      // Add safe memory limits for shared hosting WP-CLI
-      env: { ...process.env, WP_CLI_PHP_ARGS: "-d memory_limit=256M" }
+      timeout: 18e4,
+      // 3 min max per command
+      maxBuffer: 10 * 1024 * 1024,
+      // 10MB
+      env: { ...process.env }
     });
-    if (stdout.trim()) fs2.writeSync(2, `[WP-CLI] STDOUT: ${stdout.trim().substring(0, 500)}
+    if (stdout.trim()) {
+      process.stderr.write(`[SSH] STDOUT: ${stdout.trim().substring(0, 1e3)}
 `);
-    if (stderr.trim()) fs2.writeSync(2, `[WP-CLI] STDERR: ${stderr.trim()}
+      if (logCallback) logCallback(`[WP-CLI] STDOUT: ${stdout.trim()}`);
+    }
+    if (stderr.trim()) {
+      process.stderr.write(`[SSH] STDERR: ${stderr.trim()}
 `);
-    if (logCallback && stdout.trim()) logCallback(`[WP-CLI] STDOUT: ${stdout.trim()}`);
-    if (logCallback && stderr.trim()) logCallback(`[WP-CLI] STDERR: ${stderr.trim()}`);
+      if (logCallback) logCallback(`[WP-CLI] STDERR: ${stderr.trim()}`);
+    }
     return { stdout, stderr };
   } catch (error) {
     const stdout = error.stdout || "";
     const stderr = error.stderr || "";
-    fs2.writeSync(2, `[WP-CLI] FAILED: ${error.message}
+    process.stderr.write(`[SSH] FAILED: ${error.message}
 `);
-    if (stderr) fs2.writeSync(2, `[WP-CLI] STDERR_OUT: ${stderr}
+    if (stderr) process.stderr.write(`[SSH] STDERR_OUT: ${stderr}
 `);
     if (logCallback) {
       logCallback(`[WP-CLI] FAILED: ${error.message}`);
@@ -1465,32 +1470,58 @@ async function runWpCommand(command, documentRoot, logCallback) {
       if (stderr) logCallback(`[WP-CLI] STDERR: ${stderr}`);
     }
     throw new WpCliError(
-      `WP-CLI command failed: ${command}`,
+      `WP-CLI remote command failed: ${remoteCommand.substring(0, 120)}`,
       stdout,
       stderr,
       error.code
     );
   }
 }
+async function checkWpCliAvailable() {
+  const { wpCliPath } = getSshConfig();
+  try {
+    const { stdout } = await executeRemoteCommand(`${wpCliPath} --version --allow-root`);
+    return {
+      available: true,
+      version: stdout.trim(),
+      path: wpCliPath
+    };
+  } catch (e) {
+    return {
+      available: false,
+      error: `WP-CLI not reachable on remote server: ${e.message}`
+    };
+  }
+}
+async function runWpCommand(command, documentRoot, logCallback) {
+  const { wpCliPath } = getSshConfig();
+  const fullCommand = `${wpCliPath} ${command} --path="${documentRoot}" --allow-root`;
+  return executeRemoteCommand(fullCommand, logCallback);
+}
 async function downloadWordPressCore(documentRoot, logCallback) {
+  await executeRemoteCommand(`mkdir -p "${documentRoot}"`, logCallback);
   return runWpCommand("core download", documentRoot, logCallback);
 }
 async function createWpConfig(documentRoot, dbName, dbUser, dbPass, dbHost = "localhost", logCallback) {
   return runWpCommand(
-    `config create --dbname="${dbName}" --dbuser="${dbUser}" --dbpass="${dbPass}" --dbhost="${dbHost}" --extra-php="define('WP_DEBUG', false); define('WP_DEBUG_LOG', false);"`,
+    `config create --dbname="${dbName}" --dbuser="${dbUser}" --dbpass="${dbPass}" --dbhost="${dbHost}" --extra-php="define('WP_DEBUG', false); define('WP_DEBUG_LOG', false);" --force`,
     documentRoot,
     logCallback
   );
 }
 async function installWordPress(documentRoot, url, title, adminUser, adminPassword, adminEmail, logCallback) {
+  const safeTitle = title.replace(/'/g, `'\\''`);
   return runWpCommand(
-    `core install --url="${url}" --title="${title}" --admin_user="${adminUser}" --admin_password="${adminPassword}" --admin_email="${adminEmail}" --skip-email`,
+    `core install --url="${url}" --title='${safeTitle}' --admin_user="${adminUser}" --admin_password="${adminPassword}" --admin_email="${adminEmail}" --skip-email`,
     documentRoot,
     logCallback
   );
 }
 async function configurePermalinks(documentRoot, structure = "/%postname%/", logCallback) {
   return runWpCommand(`rewrite structure "${structure}"`, documentRoot, logCallback);
+}
+async function runRemoteShellCommand(command, logCallback) {
+  return executeRemoteCommand(command, logCallback);
 }
 
 // src/lib/provisioning-engine.ts
@@ -1508,6 +1539,14 @@ function encrypt(text) {
   let encrypted = cipher.update(text);
   encrypted = Buffer.concat([encrypted, cipher.final()]);
   return iv.toString("hex") + ":" + encrypted.toString("hex");
+}
+function decrypt(encryptedValue) {
+  const [ivHex, encHex] = encryptedValue.split(":");
+  const key = process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
+  const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(key), Buffer.from(ivHex, "hex"));
+  let decrypted = decipher.update(Buffer.from(encHex, "hex"));
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return decrypted.toString();
 }
 async function appendLog(jobId, message) {
   const timestamp = (/* @__PURE__ */ new Date()).toISOString();
@@ -1538,8 +1577,8 @@ async function processJob(jobId) {
   }
 }
 async function executeStateMachine(job) {
-  const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscout.online";
-  const docRootBase = process.env.WP_DOCROOT_BASE || "/home/username/public_html/sites";
+  const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscoutwp.online";
+  const docRootBase = process.env.WP_DOCROOT_BASE || "/home/digigesf/public_html/sites";
   let subdomain = job.subdomain;
   let dbName = job.db_name;
   let dbUser = job.db_user;
@@ -1547,7 +1586,7 @@ async function executeStateMachine(job) {
   let wpAdminPass = job.wp_admin_pass_encrypted;
   if (job.status === "pending" || job.status === "creating_subdomain") {
     await pool.query(`UPDATE provisioning_jobs SET status = 'creating_subdomain' WHERE id = ?`, [job.id]);
-    await appendLog(job.id, "Starting subdomain creation");
+    await appendLog(job.id, "Starting subdomain creation on remote WP server");
     if (!subdomain) {
       const name = job.business_name || job.project_id;
       const base = sanitizeSubdomain(name);
@@ -1556,13 +1595,14 @@ async function executeStateMachine(job) {
       await pool.query(`UPDATE provisioning_jobs SET subdomain = ? WHERE id = ?`, [subdomain, job.id]);
     }
     const fullDocRoot = `${docRootBase}/${subdomain}`;
+    await appendLog(job.id, `Remote doc root will be: ${fullDocRoot}`);
     await addSubdomain(subdomain, rootDomain, fullDocRoot);
-    await appendLog(job.id, `Created subdomain: ${subdomain}.${rootDomain}`);
+    await appendLog(job.id, `Created subdomain: ${subdomain}.${rootDomain} \u2192 ${fullDocRoot}`);
     job.status = "creating_database";
   }
   if (job.status === "creating_database") {
     await pool.query(`UPDATE provisioning_jobs SET status = 'creating_database' WHERE id = ?`, [job.id]);
-    await appendLog(job.id, "Starting database creation");
+    await appendLog(job.id, "Creating database on remote WP server cPanel");
     const dbPrefix = process.env.CPANEL_USERNAME ? `${process.env.CPANEL_USERNAME}_` : "db_";
     if (!dbName) {
       const suffix = crypto.randomBytes(4).toString("hex");
@@ -1576,70 +1616,77 @@ async function executeStateMachine(job) {
     await setDatabasePrivileges(dbUser, dbName);
     await pool.query(`UPDATE provisioning_jobs SET db_pass_encrypted = ? WHERE id = ?`, [encrypt(dbPassword), job.id]);
     job._tempDbPass = dbPassword;
-    await appendLog(job.id, `Created database: ${dbName} and user: ${dbUser}`);
+    await appendLog(job.id, `Created remote database: ${dbName} and user: ${dbUser}`);
     job.status = "installing_wordpress";
   }
   if (job.status === "installing_wordpress") {
     await pool.query(`UPDATE provisioning_jobs SET status = 'installing_wordpress' WHERE id = ?`, [job.id]);
-    await appendLog(job.id, "Starting WordPress installation");
+    await appendLog(job.id, "Starting remote WordPress installation via SSH/WP-CLI");
     let dbPassword = job._tempDbPass;
     if (!dbPassword && job.db_pass_encrypted) {
-      const parts = job.db_pass_encrypted.split(":");
-      const iv = Buffer.from(parts[0], "hex");
-      const encrypted = Buffer.from(parts[1], "hex");
-      const key = process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
-      const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(key), iv);
-      let decrypted = decipher.update(encrypted);
-      decrypted = Buffer.concat([decrypted, decipher.final()]);
-      dbPassword = decrypted.toString();
+      try {
+        dbPassword = decrypt(job.db_pass_encrypted);
+      } catch (e) {
+        throw new Error(`Failed to decrypt DB password: ${e.message}`);
+      }
     }
     if (!dbPassword) {
-      throw new Error("Database password missing. Manual intervention required.");
+      throw new Error("Database password missing. Cannot install WordPress.");
     }
     const wpCliStatus = await checkWpCliAvailable();
     if (!wpCliStatus.available) {
-      throw new Error("WP-CLI is missing on the host. Cannot proceed.");
+      throw new Error(`WP-CLI not reachable on remote server: ${wpCliStatus.error}`);
     }
+    await appendLog(job.id, `WP-CLI available: ${wpCliStatus.version}`);
     const fullDocRoot = `${docRootBase}/${subdomain}`;
-    if (!fs3.existsSync(fullDocRoot)) {
-      fs3.mkdirSync(fullDocRoot, { recursive: true });
-    }
+    await appendLog(job.id, `Creating remote directory: ${fullDocRoot}`);
+    await runRemoteShellCommand(`mkdir -p "${fullDocRoot}"`, (log) => appendLog(job.id, log));
     await downloadWordPressCore(fullDocRoot, (log) => appendLog(job.id, log));
     if (!wpAdminPass) {
       const rawPass = generateSecurePassword();
       wpAdminPass = encrypt(rawPass);
       job._tempAdminPass = rawPass;
-      await pool.query(`UPDATE provisioning_jobs SET wp_admin_user = ?, wp_admin_pass_encrypted = ? WHERE id = ?`, [wpAdminUser, wpAdminPass, job.id]);
+      await pool.query(
+        `UPDATE provisioning_jobs SET wp_admin_user = ?, wp_admin_pass_encrypted = ? WHERE id = ?`,
+        [wpAdminUser, wpAdminPass, job.id]
+      );
     }
     await createWpConfig(fullDocRoot, dbName, dbUser, dbPassword, "localhost", (log) => appendLog(job.id, log));
-    const rawAdminPass = job._tempAdminPass;
-    const fullUrl = `http://${subdomain}.${rootDomain}`;
-    await installWordPress(fullDocRoot, fullUrl, `Generated Site ${job.project_id}`, wpAdminUser, rawAdminPass, "admin@digitalscout.online", (log) => appendLog(job.id, log));
-    await appendLog(job.id, "WordPress installed successfully");
+    const rawAdminPass = job._tempAdminPass || decrypt(wpAdminPass);
+    const siteUrl = `http://${subdomain}.${rootDomain}`;
+    await installWordPress(
+      fullDocRoot,
+      siteUrl,
+      `${job.business_name || "Generated Site"} \u2014 ${job.project_id}`,
+      wpAdminUser,
+      rawAdminPass,
+      "admin@digitalscout.online",
+      (log) => appendLog(job.id, log)
+    );
+    await appendLog(job.id, `WordPress installed at ${siteUrl}`);
     job.status = "configuring_wordpress";
   }
   if (job.status === "configuring_wordpress") {
     await pool.query(`UPDATE provisioning_jobs SET status = 'configuring_wordpress' WHERE id = ?`, [job.id]);
     const fullDocRoot = `${docRootBase}/${subdomain}`;
     await configurePermalinks(fullDocRoot, "/%postname%/", (log) => appendLog(job.id, log));
-    await appendLog(job.id, "Configured permalinks");
+    await appendLog(job.id, "Configured remote permalinks");
     job.status = "deploying_content";
   }
   if (job.status === "deploying_content") {
     await pool.query(`UPDATE provisioning_jobs SET status = 'deploying_content' WHERE id = ?`, [job.id]);
-    await appendLog(job.id, "Deploying content blocks...");
+    await appendLog(job.id, "Deploying Gutenberg content blocks to remote WordPress...");
     const fullDocRoot = `${docRootBase}/${subdomain}`;
     const schema = typeof job.website_schema === "string" ? JSON.parse(job.website_schema) : job.website_schema;
     if (schema) {
-      const { buildWordPressProvisioningPlan: buildWordPressProvisioningPlan2 } = await Promise.resolve().then(() => (init_wordpress(), wordpress_exports));
-      const plan = buildWordPressProvisioningPlan2(schema, { name: job.business_name });
-      const homepageBlocks = plan.pages.find((p) => p.isHomepage)?.content || "";
+      const { schemaToGutenbergBlocks: schemaToGutenbergBlocks2 } = await Promise.resolve().then(() => (init_wordpress(), wordpress_exports));
+      const homepageBlocks = schemaToGutenbergBlocks2(schema);
       await pool.query(
         `UPDATE provisioning_jobs SET gutenberg_trace = ?, status = 'deploying_content' WHERE id = ?`,
         [homepageBlocks, job.id]
       );
-      await injectWebsiteContent(fullDocRoot, schema, (log) => appendLog(job.id, log));
-      await appendLog(job.id, "Content injected successfully");
+      await injectWebsiteContent(fullDocRoot, schema, homepageBlocks, (log) => appendLog(job.id, log));
+      await appendLog(job.id, "Content injected successfully on remote server");
     } else {
       await appendLog(job.id, "WARNING: No website schema found to inject.");
     }
@@ -1649,7 +1696,8 @@ async function executeStateMachine(job) {
     await pool.query(`UPDATE provisioning_jobs SET status = 'completed', locked_at = NULL WHERE id = ?`, [job.id]);
     const httpUrl = `http://${subdomain}.${rootDomain}`;
     await pool.query(`
-			INSERT IGNORE INTO isolated_deployments (id, project_id, subdomain_url, wp_admin_url, admin_username, encrypted_admin_password, website_schema, ssl_status)
+			INSERT IGNORE INTO isolated_deployments
+				(id, project_id, subdomain_url, wp_admin_url, admin_username, encrypted_admin_password, website_schema, ssl_status)
 			VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
 		`, [
       crypto.randomUUID(),
@@ -1667,40 +1715,25 @@ async function executeStateMachine(job) {
           [
             job.trace_id,
             "provisioning_completed",
-            `WordPress site provisioned at ${httpUrl}`,
-            JSON.stringify({ url: httpUrl, jobId: job.id })
+            `Remote WordPress site provisioned at ${httpUrl}`,
+            JSON.stringify({ url: httpUrl, jobId: job.id, remoteHost: process.env.WP_SSH_HOST })
           ]
         );
       } catch (e) {
       }
     }
-    await appendLog(job.id, "Job completed successfully! URL set to HTTP (SSL polling started)");
+    await appendLog(job.id, `Job completed! Remote WP site live at ${httpUrl} (SSL polling started)`);
   }
 }
-function fallbackImageForCategory(category) {
-  const normalized = (category || "").toLowerCase();
-  if (normalized.includes("restaurant") || normalized.includes("cafe")) {
-    return "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1800&q=80";
-  }
-  if (normalized.includes("gym") || normalized.includes("fitness")) {
-    return "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=1800&q=80";
-  }
-  if (normalized.includes("salon") || normalized.includes("spa")) {
-    return "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1800&q=80";
-  }
-  return "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1800&q=80";
-}
-function getSiteVoice2(schema) {
-  const businessName = schema.brand?.businessName || "The Brand";
-  return {
-    introLine: `${businessName} deserves a polished digital presence that feels current, deliberate, and credible.`
-  };
-}
-async function injectWebsiteContent(docRoot, schema, logCallback) {
+async function injectWebsiteContent(docRoot, schema, homepageBlocks, logCallback) {
   try {
-    await logCallback("Cleaning up existing content...");
+    await logCallback("Cleaning up default WordPress content...");
     try {
-      await runWpCommand("post delete $(wp post list --post_type=post,page --format=ids) --force", docRoot, logCallback);
+      await runWpCommand(
+        "post delete $(wp post list --post_type=post,page --format=ids --allow-root) --force --allow-root",
+        docRoot,
+        logCallback
+      );
     } catch (e) {
     }
     const theme = schema.theme || {};
@@ -1711,32 +1744,31 @@ async function injectWebsiteContent(docRoot, schema, logCallback) {
       text: "#f4f4f5",
       muted: "#a1a1aa"
     };
-    await logCallback("Generating premium WordPress theme overrides...");
+    await logCallback("Generating premium CSS theme overrides...");
     const globalStyles = `
 <style>
 	:root {
-		--wp--preset--color--vivid-purple: ${palette.primary};
-		--wp--preset--color--black: ${palette.background};
-		--wp--preset--color--white: ${palette.text};
+		--wp--preset--color--primary: ${palette.primary};
+		--wp--preset--color--background: ${palette.background};
+		--wp--preset--color--foreground: ${palette.text};
+		--wp--preset--color--muted: ${palette.muted || "#a1a1aa"};
 	}
-	body { 
-		background-color: ${palette.background} !important; 
+	body {
+		background-color: ${palette.background} !important;
 		color: ${palette.text} !important;
 		font-family: 'Inter', sans-serif !important;
 		margin: 0;
 	}
-	/* Hide the default page title in WordPress */
 	.entry-title, .wp-block-post-title { display: none !important; }
-	
 	.wp-block-group, .wp-block-columns, .wp-block-column {
 		color: ${palette.text} !important;
 	}
 	h1, h2, h3, h4 { color: ${palette.text} !important; font-weight: 700 !important; }
 	.has-background { padding: 40px; border-radius: 24px; }
 	.premium-card {
-		background: rgba(255, 255, 255, 0.03) !important;
+		background: rgba(255,255,255,0.03) !important;
 		backdrop-filter: blur(12px);
-		border: 1px solid rgba(255, 255, 255, 0.1) !important;
+		border: 1px solid rgba(255,255,255,0.1) !important;
 		border-radius: 28px !important;
 	}
 	.wp-block-button__link {
@@ -1748,115 +1780,87 @@ async function injectWebsiteContent(docRoot, schema, logCallback) {
 		border: none !important;
 	}
 	.wp-block-button__link:hover { transform: scale(1.05); }
-</style>
-`;
-    let homeContent = `<!-- wp:html -->
+</style>`;
+    const homeContent = `<!-- wp:html -->
 ${globalStyles}
 <!-- /wp:html -->
-`;
-    const hero = schema.sections?.find((s) => s.type === "hero") || schema.sections?.[0];
-    const voice = getSiteVoice2(schema);
-    const heroImg = hero?.media?.src || fallbackImageForCategory(schema.brand?.category);
-    const rawSub = hero?.subheadline || "";
-    const subheadline = rawSub && !/premium|designed to convert|first impression|conversion-ready/i.test(rawSub) ? rawSub : voice.introLine;
-    homeContent += `
-<!-- wp:cover {"url":"${heroImg}","dimRatio":60,"overlayColor":"black","minHeight":700,"minHeightUnit":"px","align":"full","style":{"spacing":{"padding":{"top":"120px","bottom":"120px"}}}} -->
-<div class="wp-block-cover alignfull" style="padding-top:120px;padding-bottom:120px;min-height:700px"><span aria-hidden="true" class="wp-block-cover__background has-black-background-color has-background-dim-60 has-background-dim"></span><img class="wp-block-cover__image-background" alt="" src="${heroImg}" data-object-fit="cover"/><div class="wp-block-cover__inner-container">
-	<!-- wp:heading {"textAlign":"center","level":1,"style":{"typography":{"fontSize":"5rem","lineHeight":"1.1"}}} -->
-	<h1 class="wp-block-heading has-text-align-center" style="font-size:5rem;line-height:1.1">${hero?.headline || schema.brand?.businessName}</h1>
-	<!-- /wp:heading -->
-
-	<!-- wp:paragraph {"textAlign":"center","style":{"typography":{"fontSize":"1.5rem"},"spacing":{"margin":{"top":"24px"}}}} -->
-	<p class="has-text-align-center" style="margin-top:24px;font-size:1.5rem">${subheadline}</p>
-	<!-- /wp:paragraph -->
-
-	<!-- wp:buttons {"layout":{"type":"flex","justifyContent":"center"},"style":{"spacing":{"margin":{"top":"40px"}}}} -->
-	<div class="wp-block-buttons" style="margin-top:40px">
-		<!-- wp:button {"style":{"border":{"radius":"40px"}}} -->
-		<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" style="border-radius:40px">Get Started Today</a></div>
-		<!-- /wp:button -->
-	</div>
-	<!-- /wp:buttons -->
-</div></div>
-<!-- /wp:cover -->`;
-    const services = schema.sections?.filter((s) => s.type === "services" || s.type === "features") || [];
-    for (const section of services) {
-      homeContent += `
-<!-- wp:group {"align":"wide","style":{"spacing":{"margin":{"top":"120px","bottom":"120px"}}},"layout":{"type":"constrained"}} -->
-<div class="wp-block-group alignwide" style="margin-top:120px;margin-bottom:120px">
-	<!-- wp:heading {"textAlign":"center","style":{"typography":{"fontSize":"3.5rem"}}} -->
-	<h2 class="wp-block-heading has-text-align-center" style="font-size:3.5rem">${section.headline || section.title || "Our Services"}</h2>
-	<!-- /wp:heading -->
-	
-	<!-- wp:columns {"style":{"spacing":{"blockGap":{"top":"32px","left":"32px"}},"margin":{"top":"60px"}}} -->
-	<div class="wp-block-columns" style="margin-top:60px">
-		${(section.items || []).map((item) => `
-		<!-- wp:column {"className":"premium-card","style":{"spacing":{"padding":{"top":"40px","bottom":"40px","left":"32px","right":"32px"}}}} -->
-		<div class="wp-block-column premium-card" style="padding-top:40px;padding-right:32px;padding-bottom:40px;padding-left:32px">
-			<!-- wp:heading {"level":3,"style":{"typography":{"fontSize":"1.8rem"}}} -->
-			<h3 class="wp-block-heading" style="font-size:1.8rem">${item.title || item.name}</h3>
-			<!-- /wp:heading -->
-			<!-- wp:paragraph {"style":{"typography":{"lineHeight":"1.7","fontSize":"1.1rem"}},"textColor":"muted"} -->
-			<p class="has-muted-color has-text-color" style="font-size:1.1rem;line-height:1.7">${item.description || item.body || ""}</p>
-			<!-- /wp:paragraph -->
-		</div>
-		<!-- /wp:column -->`).join("\n")}
-	</div>
-	<!-- /wp:columns -->
-</div>
-<!-- /wp:group -->`;
-    }
-    await logCallback("Creating Home page in WordPress...");
-    const homePageIdOut = await runWpCommand(`post create --post_type=page --post_title="Home" --post_content='${homeContent.replace(/'/g, "'\\''")}' --post_status=publish --format=ids`, docRoot, logCallback);
+${homepageBlocks}`;
+    const tmpFile = `/tmp/ds_home_${Date.now()}.html`;
+    await logCallback(`Writing home page content to remote temp file: ${tmpFile}`);
+    const escapedContent = homeContent.replace(/\\/g, "\\\\").replace(/'/g, `'\\''`);
+    await runRemoteShellCommand(
+      `cat > '${tmpFile}' << 'DS_EOF_MARKER'
+${homeContent}
+DS_EOF_MARKER`,
+      logCallback
+    );
+    await logCallback("Creating Home page in remote WordPress...");
+    const homePageIdOut = await runWpCommand(
+      `post create --post_type=page --post_title="Home" --post_content="$(cat '${tmpFile}')" --post_status=publish --format=ids`,
+      docRoot,
+      logCallback
+    );
     const homePageId = homePageIdOut.stdout.replace(/[^0-9]/g, "").trim();
-    if (!homePageId) throw new Error("ID extraction failed");
-    await logCallback("Applying site options and front-page settings...");
+    await runRemoteShellCommand(`rm -f '${tmpFile}'`, logCallback).catch(() => {
+    });
+    if (!homePageId) {
+      throw new Error("Failed to create Home page \u2014 no ID returned from WP-CLI");
+    }
+    await logCallback(`Home page created with ID: ${homePageId}`);
     await runWpCommand(`option update show_on_front page`, docRoot, logCallback);
     await runWpCommand(`option update page_on_front ${homePageId}`, docRoot, logCallback);
     if (schema.brand?.businessName) {
-      await runWpCommand(`option update blogname "${schema.brand.businessName.replace(/"/g, '\\"')}"`, docRoot, logCallback);
+      const safeName = schema.brand.businessName.replace(/"/g, '\\"');
+      await runWpCommand(`option update blogname "${safeName}"`, docRoot, logCallback);
     }
     await runWpCommand(`rewrite structure "/%postname%/"`, docRoot, logCallback);
     await runWpCommand(`rewrite flush`, docRoot, logCallback);
     if (schema.brand?.logo) {
-      await logCallback(`Uploading brand logo: ${schema.brand.logo}`);
+      await logCallback(`Importing brand logo from: ${schema.brand.logo}`);
       try {
-        const mediaIdOut = await runWpCommand(`media import "${schema.brand.logo}" --porcelain`, docRoot, logCallback);
+        const mediaIdOut = await runWpCommand(
+          `media import "${schema.brand.logo}" --porcelain`,
+          docRoot,
+          logCallback
+        );
         const mediaId = mediaIdOut.stdout.trim();
         if (mediaId && /^\d+$/.test(mediaId)) {
-          await logCallback(`Logo uploaded as Media ID: ${mediaId}. Setting as site icon...`);
           await runWpCommand(`option update site_icon ${mediaId}`, docRoot, logCallback);
+          await logCallback(`Logo imported (Media ID: ${mediaId}) and set as site icon`);
         }
       } catch (err) {
-        await logCallback(`Warning: Failed to import logo: ${err.message}`);
+        await logCallback(`Warning: Logo import failed: ${err.message}`);
       }
     }
-    await logCallback("WordPress content injection complete.");
+    await logCallback("Remote WordPress content injection complete.");
   } catch (error) {
-    await logCallback(`CRITICAL ERROR during content injection: ${error.message}`);
+    await logCallback(`CRITICAL ERROR during remote content injection: ${error.message}`);
+    throw error;
   }
 }
 async function rollbackJob(job) {
-  await appendLog(job.id, "[ROLLBACK] Starting cleanup...");
-  const docRootBase = process.env.WP_DOCROOT_BASE || "/home/username/public_html/sites";
+  await appendLog(job.id, "[ROLLBACK] Starting remote cleanup...");
+  const docRootBase = process.env.WP_DOCROOT_BASE || "/home/digigesf/public_html/sites";
   if (job.subdomain) {
     try {
-      const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscout.online";
+      const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscoutwp.online";
       await deleteSubdomain(job.subdomain, rootDomain);
-      await appendLog(job.id, `[ROLLBACK] Deleted subdomain ${job.subdomain}`);
-      const fullDocRoot = `${docRootBase}/${job.subdomain}`;
-      if (fs3.existsSync(fullDocRoot)) {
-        fs3.rmSync(fullDocRoot, { recursive: true, force: true });
-        await appendLog(job.id, `[ROLLBACK] Deleted directory ${fullDocRoot}`);
-      }
+      await appendLog(job.id, `[ROLLBACK] Deleted subdomain ${job.subdomain}.${rootDomain}`);
     } catch (e) {
-      await appendLog(job.id, `[ROLLBACK] Failed to cleanup subdomain/files: ${e.message}`);
+      await appendLog(job.id, `[ROLLBACK] Failed to delete subdomain: ${e.message}`);
+    }
+    const fullDocRoot = `${docRootBase}/${job.subdomain}`;
+    try {
+      await runRemoteShellCommand(`rm -rf "${fullDocRoot}"`, (log) => appendLog(job.id, log));
+      await appendLog(job.id, `[ROLLBACK] Deleted remote directory: ${fullDocRoot}`);
+    } catch (e) {
+      await appendLog(job.id, `[ROLLBACK] Failed to delete remote directory: ${e.message}`);
     }
   }
   if (job.db_name) {
     try {
       await deleteDatabase(job.db_name);
-      await appendLog(job.id, `[ROLLBACK] Deleted database ${job.db_name}`);
+      await appendLog(job.id, `[ROLLBACK] Deleted remote database: ${job.db_name}`);
     } catch (e) {
       await appendLog(job.id, `[ROLLBACK] Failed to delete database: ${e.message}`);
     }
@@ -1864,15 +1868,15 @@ async function rollbackJob(job) {
   if (job.db_user) {
     try {
       await deleteDatabaseUser(job.db_user);
-      await appendLog(job.id, `[ROLLBACK] Deleted database user ${job.db_user}`);
+      await appendLog(job.id, `[ROLLBACK] Deleted remote DB user: ${job.db_user}`);
     } catch (e) {
-      await appendLog(job.id, `[ROLLBACK] Failed to delete database user: ${e.message}`);
+      await appendLog(job.id, `[ROLLBACK] Failed to delete DB user: ${e.message}`);
     }
   }
-  await appendLog(job.id, "[ROLLBACK] Cleanup finished.");
+  await appendLog(job.id, "[ROLLBACK] Remote cleanup finished.");
 }
 async function deleteProvisionedWordPressSite(projectId) {
-  console.log(`[Cleanup] Starting deletion for project ${projectId}`);
+  console.log(`[Cleanup] Starting remote deletion for project ${projectId}`);
   const [rows] = await pool.query(
     `SELECT * FROM provisioning_jobs WHERE project_id = ? ORDER BY created_at DESC LIMIT 1`,
     [projectId]
@@ -1885,7 +1889,7 @@ async function deleteProvisionedWordPressSite(projectId) {
   await rollbackJob(job);
   await pool.query(`DELETE FROM isolated_deployments WHERE project_id = ?`, [projectId]);
   await pool.query(`DELETE FROM provisioning_jobs WHERE project_id = ?`, [projectId]);
-  console.log(`[Cleanup] Project ${projectId} fully purged.`);
+  console.log(`[Cleanup] Project ${projectId} fully purged from remote server.`);
 }
 
 // src/lib/provisioning-worker.ts
@@ -1933,11 +1937,11 @@ async function pollQueue() {
 }
 
 // server.ts
-fs4.writeSync(2, `[BOOT] Server process starting at ${(/* @__PURE__ */ new Date()).toISOString()}
+fs2.writeSync(2, `[BOOT] Server process starting at ${(/* @__PURE__ */ new Date()).toISOString()}
 `);
-fs4.writeSync(2, `[BOOT] CWD: ${process.cwd()}
+fs2.writeSync(2, `[BOOT] CWD: ${process.cwd()}
 `);
-fs4.writeSync(2, `[BOOT] DB_USER: ${process.env.DB_USER || "NOT SET"}
+fs2.writeSync(2, `[BOOT] DB_USER: ${process.env.DB_USER || "NOT SET"}
 `);
 var app = express();
 var PORT = process.env.PORT || 5001;
@@ -1967,12 +1971,12 @@ function createGenerationDebugSession(business) {
   let folderName = traceId;
   let folderPath = path2.join(DEBUG_ROOT_DIR, folderName);
   let suffix = 2;
-  while (fs4.existsSync(folderPath)) {
+  while (fs2.existsSync(folderPath)) {
     folderName = `${traceId}-${suffix}`;
     folderPath = path2.join(DEBUG_ROOT_DIR, folderName);
     suffix += 1;
   }
-  fs4.mkdirSync(folderPath, { recursive: true });
+  fs2.mkdirSync(folderPath, { recursive: true });
   const session = {
     traceId,
     folderName,
@@ -1998,15 +2002,15 @@ function formatDebugPayload(content) {
   return JSON.stringify(content, null, 2);
 }
 function persistGenerationDebugFile(session, fileName, content, append = false) {
-  fs4.mkdirSync(session.folderPath, { recursive: true });
+  fs2.mkdirSync(session.folderPath, { recursive: true });
   const targetPath = path2.join(session.folderPath, fileName);
   const payload = formatDebugPayload(content);
-  if (append && fs4.existsSync(targetPath)) {
-    fs4.appendFileSync(targetPath, `${payload}
+  if (append && fs2.existsSync(targetPath)) {
+    fs2.appendFileSync(targetPath, `${payload}
 `, "utf8");
     return;
   }
-  fs4.writeFileSync(targetPath, payload, "utf8");
+  fs2.writeFileSync(targetPath, payload, "utf8");
 }
 function appendGenerationDebugError(session, message) {
   const line = `[${(/* @__PURE__ */ new Date()).toISOString()}] ${message}`;
@@ -3598,7 +3602,7 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. No markd
         rawText = result.text().trim();
         if (rawText) {
           console.error(`[Gemini] ${model.name} success! Response length: ${rawText.length}`);
-          fs4.writeSync(2, `[Gemini] RESPONSE: ${rawText.substring(0, 500)}...
+          fs2.writeSync(2, `[Gemini] RESPONSE: ${rawText.substring(0, 500)}...
 `);
           break;
         }
@@ -3606,7 +3610,7 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. No markd
       } catch (error) {
         lastError = error;
         console.error(`[Gemini] ${model.name} failed:`, error instanceof Error ? error.message : error);
-        fs4.writeSync(2, `[Gemini] ERROR DETAIL: ${JSON.stringify(error)}
+        fs2.writeSync(2, `[Gemini] ERROR DETAIL: ${JSON.stringify(error)}
 `);
       }
     }
@@ -4070,10 +4074,10 @@ app.get("/api/generate/replay/:traceId", async (req, res) => {
   const { traceId } = req.params;
   try {
     const inputPath = path2.join(DEBUG_ROOT_DIR, traceId, "06-renderer-input.json");
-    if (!fs4.existsSync(inputPath)) {
+    if (!fs2.existsSync(inputPath)) {
       return res.status(404).json({ error: "Trace not found or missing renderer input" });
     }
-    const schemaContent = fs4.readFileSync(inputPath, "utf-8");
+    const schemaContent = fs2.readFileSync(inputPath, "utf-8");
     const rawSchema = JSON.parse(schemaContent);
     const { validateWebsiteSchema: validateWebsiteSchema2 } = await Promise.resolve().then(() => (init_website_schema_validator(), website_schema_validator_exports));
     const { schemaToGutenbergBlocks: schemaToGutenbergBlocks2 } = await Promise.resolve().then(() => (init_wordpress(), wordpress_exports));

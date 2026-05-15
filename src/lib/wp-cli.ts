@@ -1,7 +1,5 @@
 import { exec } from "child_process";
 import { promisify } from "util";
-import path from "path";
-import fs from "fs";
 
 const execAsync = promisify(exec);
 
@@ -24,81 +22,82 @@ export class WpCliError extends Error {
 	}
 }
 
-/**
- * Validates that WP-CLI is installed and accessible.
- */
-export async function checkWpCliAvailable(): Promise<{
-	available: boolean;
-	version?: string;
-	path?: string;
-	error?: string;
-}> {
-	const possiblePaths = [
-		process.env.WP_CLI_PATH || "wp",
-		"/usr/local/bin/wp",
-		"/usr/bin/wp",
-		`${process.env.HOME}/bin/wp`,
-		"/home/digimvyc/bin/wp"
-	];
+// ---------------------------------------------------------------------------
+// SSH Remote Execution
+// ---------------------------------------------------------------------------
 
-	for (const wpPath of possiblePaths) {
-		try {
-			const { stdout: versionOut } = await execAsync(`${wpPath} --version`);
-			return {
-				available: true,
-				version: versionOut.trim(),
-				path: wpPath,
-			};
-		} catch (e) {
-			continue;
-		}
-	}
+function getSshConfig() {
+	const host = process.env.WP_SSH_HOST;
+	const port = process.env.WP_SSH_PORT || "22";
+	const user = process.env.WP_SSH_USER;
+	const keyPath = process.env.WP_SSH_KEY_PATH || "";
+	const wpCliPath = process.env.WP_CLI_PATH || "wp";
 
-	return {
-		available: false,
-		error: "WP-CLI not found in common paths. Please set WP_CLI_PATH in your .env",
-	};
+	return { host, port, user, keyPath, wpCliPath };
 }
 
 /**
- * Safely executes a WP-CLI command in a specific directory.
+ * Wraps a remote shell command in an SSH call.
+ * If WP_SSH_HOST is not set, falls back to running locally (dev mode).
  */
-export async function runWpCommand(
-	command: string,
-	documentRoot: string,
+async function executeRemoteCommand(
+	remoteCommand: string,
 	logCallback?: (log: string) => void,
 ): Promise<WpCliResult> {
-	if (!fs.existsSync(documentRoot)) {
-		throw new Error(`Document root does not exist: ${documentRoot}`);
-	}
+	const { host, port, user, keyPath, wpCliPath: _wpCliPath } = getSshConfig();
 
-	const wpPath = process.env.WP_CLI_PATH || "wp";
-	const cmd = `${wpPath} ${command} --path=${documentRoot}`;
-	if (logCallback) {
-		logCallback(`[WP-CLI] Executing: ${cmd.replace(/--dbpass=[^\s]+/, "--dbpass=***")}`);
+	let cmd: string;
+
+	if (host && user) {
+		// Escape single quotes inside the remote command for safe shell wrapping
+		const escapedCmd = remoteCommand.replace(/'/g, `'\\''`);
+		const keyFlag = keyPath ? `-i "${keyPath}"` : "";
+		cmd = [
+			"ssh",
+			"-p", port,
+			keyFlag,
+			"-o StrictHostKeyChecking=no",
+			"-o ConnectTimeout=30",
+			"-o ServerAliveInterval=60",
+			"-o BatchMode=yes",
+			`${user}@${host}`,
+			`'${escapedCmd}'`,
+		].filter(Boolean).join(" ");
+
+		if (logCallback) {
+			logCallback(`[SSH→${host}] ${remoteCommand.replace(/--dbpass=[^\s'"]+/g, "--dbpass=***").replace(/--admin_password=[^\s'"]+/g, "--admin_password=***")}`);
+		}
+		process.stderr.write(`[SSH] RUNNING: ${cmd.replace(/--dbpass=[^\s'"]+/g, "--dbpass=***").replace(/--admin_password=[^\s'"]+/g, "--admin_password=***")}\n`);
+	} else {
+		// Dev fallback: run locally if SSH not configured
+		cmd = remoteCommand;
+		if (logCallback) logCallback(`[LOCAL] ${cmd}`);
+		process.stderr.write(`[LOCAL] RUNNING: ${cmd}\n`);
 	}
-	fs.writeSync(2, `[WP-CLI] RUNNING: ${cmd.replace(/--dbpass=[^\s]+/, "--dbpass=***")}\n`);
 
 	try {
 		const { stdout, stderr } = await execAsync(cmd, {
-			cwd: documentRoot,
-			// Add safe memory limits for shared hosting WP-CLI
-			env: { ...process.env, WP_CLI_PHP_ARGS: "-d memory_limit=256M" },
+			timeout: 180000, // 3 min max per command
+			maxBuffer: 10 * 1024 * 1024, // 10MB
+			env: { ...process.env },
 		});
-		
-		if (stdout.trim()) fs.writeSync(2, `[WP-CLI] STDOUT: ${stdout.trim().substring(0, 500)}\n`);
-		if (stderr.trim()) fs.writeSync(2, `[WP-CLI] STDERR: ${stderr.trim()}\n`);
 
-		if (logCallback && stdout.trim()) logCallback(`[WP-CLI] STDOUT: ${stdout.trim()}`);
-		if (logCallback && stderr.trim()) logCallback(`[WP-CLI] STDERR: ${stderr.trim()}`);
+		if (stdout.trim()) {
+			process.stderr.write(`[SSH] STDOUT: ${stdout.trim().substring(0, 1000)}\n`);
+			if (logCallback) logCallback(`[WP-CLI] STDOUT: ${stdout.trim()}`);
+		}
+		if (stderr.trim()) {
+			process.stderr.write(`[SSH] STDERR: ${stderr.trim()}\n`);
+			if (logCallback) logCallback(`[WP-CLI] STDERR: ${stderr.trim()}`);
+		}
 
 		return { stdout, stderr };
 	} catch (error: any) {
 		const stdout = error.stdout || "";
 		const stderr = error.stderr || "";
-		
-		fs.writeSync(2, `[WP-CLI] FAILED: ${error.message}\n`);
-		if (stderr) fs.writeSync(2, `[WP-CLI] STDERR_OUT: ${stderr}\n`);
+
+		process.stderr.write(`[SSH] FAILED: ${error.message}\n`);
+		if (stderr) process.stderr.write(`[SSH] STDERR_OUT: ${stderr}\n`);
 
 		if (logCallback) {
 			logCallback(`[WP-CLI] FAILED: ${error.message}`);
@@ -107,15 +106,64 @@ export async function runWpCommand(
 		}
 
 		throw new WpCliError(
-			`WP-CLI command failed: ${command}`,
+			`WP-CLI remote command failed: ${remoteCommand.substring(0, 120)}`,
 			stdout,
 			stderr,
-			error.code
+			error.code,
 		);
 	}
 }
 
+// ---------------------------------------------------------------------------
+// WP-CLI Public API — all commands run remotely via SSH
+// ---------------------------------------------------------------------------
+
+/**
+ * Checks WP-CLI is reachable on the remote server.
+ */
+export async function checkWpCliAvailable(): Promise<{
+	available: boolean;
+	version?: string;
+	path?: string;
+	error?: string;
+}> {
+	const { wpCliPath } = getSshConfig();
+	try {
+		const { stdout } = await executeRemoteCommand(`${wpCliPath} --version --allow-root`);
+		return {
+			available: true,
+			version: stdout.trim(),
+			path: wpCliPath,
+		};
+	} catch (e: any) {
+		return {
+			available: false,
+			error: `WP-CLI not reachable on remote server: ${e.message}`,
+		};
+	}
+}
+
+/**
+ * Core WP-CLI runner — executes wp COMMAND --path=REMOTE_PATH remotely.
+ */
+export async function runWpCommand(
+	command: string,
+	documentRoot: string,
+	logCallback?: (log: string) => void,
+): Promise<WpCliResult> {
+	const { wpCliPath } = getSshConfig();
+	// Build the full wp command with allow-root for shared hosting environments
+	const fullCommand = `${wpCliPath} ${command} --path="${documentRoot}" --allow-root`;
+	return executeRemoteCommand(fullCommand, logCallback);
+}
+
+// ---------------------------------------------------------------------------
+// Higher-level WP-CLI helpers
+// ---------------------------------------------------------------------------
+
 export async function downloadWordPressCore(documentRoot: string, logCallback?: (log: string) => void) {
+	// Ensure the directory exists on the remote server first
+	await executeRemoteCommand(`mkdir -p "${documentRoot}"`, logCallback);
 	return runWpCommand("core download", documentRoot, logCallback);
 }
 
@@ -128,9 +176,9 @@ export async function createWpConfig(
 	logCallback?: (log: string) => void,
 ) {
 	return runWpCommand(
-		`config create --dbname="${dbName}" --dbuser="${dbUser}" --dbpass="${dbPass}" --dbhost="${dbHost}" --extra-php="define('WP_DEBUG', false); define('WP_DEBUG_LOG', false);"`,
+		`config create --dbname="${dbName}" --dbuser="${dbUser}" --dbpass="${dbPass}" --dbhost="${dbHost}" --extra-php="define('WP_DEBUG', false); define('WP_DEBUG_LOG', false);" --force`,
 		documentRoot,
-		logCallback
+		logCallback,
 	);
 }
 
@@ -143,21 +191,56 @@ export async function installWordPress(
 	adminEmail: string,
 	logCallback?: (log: string) => void,
 ) {
+	// Title and password need special quoting for SSH — use printf to avoid shell escaping issues
+	const safeTitle = title.replace(/'/g, `'\\''`);
 	return runWpCommand(
-		`core install --url="${url}" --title="${title}" --admin_user="${adminUser}" --admin_password="${adminPassword}" --admin_email="${adminEmail}" --skip-email`,
+		`core install --url="${url}" --title='${safeTitle}' --admin_user="${adminUser}" --admin_password="${adminPassword}" --admin_email="${adminEmail}" --skip-email`,
 		documentRoot,
-		logCallback
+		logCallback,
 	);
 }
 
-export async function configurePermalinks(documentRoot: string, structure: string = "/%postname%/", logCallback?: (log: string) => void) {
+export async function configurePermalinks(
+	documentRoot: string,
+	structure: string = "/%postname%/",
+	logCallback?: (log: string) => void,
+) {
 	return runWpCommand(`rewrite structure "${structure}"`, documentRoot, logCallback);
 }
 
-export async function installTheme(documentRoot: string, themePathOrSlug: string, activate = true, logCallback?: (log: string) => void) {
-	return runWpCommand(`theme install "${themePathOrSlug}" ${activate ? '--activate' : ''}`, documentRoot, logCallback);
+export async function installTheme(
+	documentRoot: string,
+	themePathOrSlug: string,
+	activate = true,
+	logCallback?: (log: string) => void,
+) {
+	return runWpCommand(
+		`theme install "${themePathOrSlug}" ${activate ? "--activate" : ""}`,
+		documentRoot,
+		logCallback,
+	);
 }
 
-export async function installPlugin(documentRoot: string, pluginSlug: string, activate = true, logCallback?: (log: string) => void) {
-	return runWpCommand(`plugin install "${pluginSlug}" ${activate ? '--activate' : ''}`, documentRoot, logCallback);
+export async function installPlugin(
+	documentRoot: string,
+	pluginSlug: string,
+	activate = true,
+	logCallback?: (log: string) => void,
+) {
+	return runWpCommand(
+		`plugin install "${pluginSlug}" ${activate ? "--activate" : ""}`,
+		documentRoot,
+		logCallback,
+	);
+}
+
+/**
+ * Run an arbitrary shell command on the remote WP server (not WP-CLI).
+ * Used for mkdir, rm -rf, file operations, etc.
+ */
+export async function runRemoteShellCommand(
+	command: string,
+	logCallback?: (log: string) => void,
+): Promise<WpCliResult> {
+	return executeRemoteCommand(command, logCallback);
 }
