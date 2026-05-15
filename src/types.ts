@@ -15,6 +15,13 @@ import {
 	AnimationToken,
 } from "./lib/layout-registry";
 
+export interface ValidationResult {
+	isValid: boolean;
+	errors: string[];
+	repairs?: string[];
+	repairedSchema?: WebsiteSchema;
+}
+
 export interface Business {
 	id: string;
 	name: string;
@@ -223,6 +230,10 @@ export interface WebsiteSchema {
 	brand: WebsiteBrand;
 	seo: WebsiteSEO;
 	sections: WebsiteSection[];
+	_validation?: {
+		repairs: string[];
+		validatedAt: string;
+	};
 }
 
 export interface WebsiteArtifact {

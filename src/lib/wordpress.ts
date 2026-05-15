@@ -190,6 +190,14 @@ function renderHeroSection(schema: WebsiteSchema) {
 		href: "#contact",
 	};
 
+	if (hero.variant === "split-modern-dark") {
+		return `<!-- wp:columns {"align":"wide","style":{"color":{"background":"#111111","text":"#ffffff"}}} -->\n<div class="wp-block-columns alignwide has-text-color has-background" style="background-color:#111111;color:#ffffff">\n<!-- wp:column {"verticalAlignment":"center"} -->\n<div class="wp-block-column is-vertically-aligned-center">\n  ${renderHeading(headline, 1)}\n  ${renderParagraph(subheadline)}\n  ${renderButton(primaryCta.label, primaryCta.href)}\n</div>\n<!-- /wp:column -->\n<!-- wp:column {"verticalAlignment":"center"} -->\n<div class="wp-block-column is-vertically-aligned-center">\n  ${image ? renderMedia(image, hero.media?.alt || schema.brand.businessName) : ""}\n</div>\n<!-- /wp:column -->\n</div>\n<!-- /wp:columns -->`;
+	}
+
+	if (hero.variant === "centered-glass") {
+		return `<!-- wp:cover {"url":"${escapeHtml(image)}","dimRatio":50,"overlayColor":"black","align":"full"} -->\n<div class="wp-block-cover alignfull"><span aria-hidden="true" class="wp-block-cover__background has-black-background-color has-background-dim"></span><img class="wp-block-cover__image-background" src="${escapeHtml(image)}" data-object-fit="cover"/>\n  <div class="wp-block-cover__inner-container" style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 40px; border-radius: 12px;">\n  ${renderHeading(headline, 1)}\n  ${renderParagraph(subheadline)}\n  ${renderButton(primaryCta.label, primaryCta.href)}\n  </div>\n</div>\n<!-- /wp:cover -->`;
+	}
+
 	return `<!-- wp:group {"layout":{"type":"constrained"}} -->\n<div class="wp-block-group">\n  ${renderHeading(headline, 1)}\n  ${renderParagraph(subheadline)}\n  ${renderButton(primaryCta.label, primaryCta.href)}\n  ${image ? renderMedia(image, hero.media?.alt || schema.brand.businessName) : ""}\n</div>\n<!-- /wp:group -->`;
 }
 
@@ -202,6 +210,15 @@ function renderFeaturesSection(schema: WebsiteSchema) {
 	)
 		return "";
 	const voice = getSiteVoice(schema);
+
+	if (features.variant === "masonry-grid") {
+		return `<!-- wp:group {"layout":{"type":"constrained"}} -->\n<div class="wp-block-group">\n  ${renderHeading(voice.featuresTitle, 2)}\n  <!-- wp:columns {"align":"wide"} -->\n<div class="wp-block-columns alignwide">\n${features.items
+			.map(
+				(item) =>
+					`<!-- wp:column -->\n<div class="wp-block-column" style="padding: 24px; border: 1px solid #eee; border-radius: 8px; margin-bottom: 24px;">\n${renderHeading(item.title, 3)}\n${renderParagraph(item.description)}\n</div>\n<!-- /wp:column -->`
+			)
+			.join("\n")}\n</div>\n<!-- /wp:columns -->\n</div>\n<!-- /wp:group -->`;
+	}
 
 	return `<!-- wp:group {"layout":{"type":"constrained"}} -->\n<div class="wp-block-group">\n  ${renderHeading(voice.featuresTitle, 2)}\n  ${renderList(features.items.map((item) => `${item.title}: ${item.description}`))}\n</div>\n<!-- /wp:group -->`;
 }

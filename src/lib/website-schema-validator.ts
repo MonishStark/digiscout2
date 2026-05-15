@@ -1,6 +1,6 @@
-/** @format */
-
-import { WebsiteSchema, WebsiteSection } from "../types";
+import { 
+	ValidationResult 
+} from "../types";
 import {
 	HERO_LAYOUTS,
 	FEATURES_LAYOUTS,
@@ -11,98 +11,108 @@ import {
 	CONTACT_LAYOUTS,
 } from "./layout-registry";
 
-export interface ValidationResult {
-	isValid: boolean;
-	errors: string[];
-	repairedSchema?: WebsiteSchema;
-}
-
 export function validateWebsiteSchema(schema: any): ValidationResult {
 	const errors: string[] = [];
+	const repairs: string[] = [];
 	
 	if (!schema) {
 		return { isValid: false, errors: ["Schema is null or undefined"] };
 	}
 
+	// 1. Version & Structure Check
 	if (schema.schemaVersion !== "1.0") {
-		errors.push(`Invalid schema version: ${schema.schemaVersion}`);
+		schema.schemaVersion = "1.0";
+		repairs.push("version_forced_1.0");
 	}
 
 	if (!schema.meta || !schema.theme || !schema.brand || !Array.isArray(schema.sections)) {
-		errors.push("Schema is missing core top-level objects (meta, theme, brand, sections)");
+		return { isValid: false, errors: ["Missing core top-level objects (meta, theme, brand, sections)"] };
 	}
 
-	if (errors.length > 0) {
-		return { isValid: false, errors };
-	}
-
-	// Section specific validation
+	// 2. Section Layout Enforcement
 	const repairedSections = schema.sections.map((section: any, index: number) => {
-		const type = section.type;
+		const type = (section.type || "unknown").toLowerCase();
+		section.type = type; // Normalize case
 		
+		const validateLayout = (layout: string, allowed: readonly string[], fallback: string) => {
+			if (!allowed.includes(layout as any)) {
+				errors.push(`Section ${index} (${type}): Invalid layout "${layout}"`);
+				section.layout = fallback;
+				repairs.push(`section_${index}_layout_repair: ${layout} -> ${fallback}`);
+			}
+		};
+
 		switch (type) {
 			case "hero":
-				if (!HERO_LAYOUTS.includes(section.layout)) {
-					errors.push(`Section ${index}: Invalid hero layout "${section.layout}"`);
-					section.layout = "editorial-left"; // Fallback
-				}
+				validateLayout(section.layout, HERO_LAYOUTS, "editorial-left");
 				break;
 			case "features":
-				if (!FEATURES_LAYOUTS.includes(section.layout)) {
-					errors.push(`Section ${index}: Invalid features layout "${section.layout}"`);
-					section.layout = "feature-cards";
-				}
+				validateLayout(section.layout, FEATURES_LAYOUTS, "feature-cards");
 				break;
 			case "gallery":
-				if (!GALLERY_LAYOUTS.includes(section.layout)) {
-					errors.push(`Section ${index}: Invalid gallery layout "${section.layout}"`);
-					section.layout = "standard-grid";
-				}
+				validateLayout(section.layout, GALLERY_LAYOUTS, "standard-grid");
 				break;
 			case "testimonials":
-				if (!TESTIMONIALS_LAYOUTS.includes(section.layout)) {
-					errors.push(`Section ${index}: Invalid testimonials layout "${section.layout}"`);
-					section.layout = "floating-cards";
-				}
+				validateLayout(section.layout, TESTIMONIALS_LAYOUTS, "floating-cards");
 				break;
 			case "cta":
-				if (!CTA_LAYOUTS.includes(section.layout)) {
-					errors.push(`Section ${index}: Invalid cta layout "${section.layout}"`);
-					section.layout = "centered-premium";
-				}
+				validateLayout(section.layout, CTA_LAYOUTS, "centered-premium");
 				break;
 			case "faq":
-				if (!FAQ_LAYOUTS.includes(section.layout)) {
-					errors.push(`Section ${index}: Invalid faq layout "${section.layout}"`);
-					section.layout = "accordion-clean";
-				}
+				validateLayout(section.layout, FAQ_LAYOUTS, "accordion-clean");
 				break;
 			case "contact":
-				if (!CONTACT_LAYOUTS.includes(section.layout)) {
-					errors.push(`Section ${index}: Invalid contact layout "${section.layout}"`);
-					section.layout = "split-card";
-				}
+				validateLayout(section.layout, CONTACT_LAYOUTS, "split-card");
 				break;
 			default:
 				errors.push(`Section ${index}: Unknown section type "${type}"`);
 		}
 		
+		if (!section.id) {
+			section.id = `${type}-${index}`;
+			repairs.push(`section_${index}_missing_id_auto_gen`);
+		}
+
 		return section;
 	});
 
-	// Order validation
+	// 3. Section Order Enforcement (Business Logic)
 	const sectionTypes = repairedSections.map((s: any) => s.type);
 	if (sectionTypes[0] !== "hero") {
-		errors.push("Hero section must be the first section");
-		// In a real repair we would move it, but for now we just log
+		errors.push("Layout sequencing error: Hero must be first");
+		// Strategic repair: Find hero and move to front if it exists
+		const heroIdx = repairedSections.findIndex((s: any) => s.type === "hero");
+		if (heroIdx > 0) {
+			const hero = repairedSections.splice(heroIdx, 1)[0];
+			repairedSections.unshift(hero);
+			repairs.push("hero_moved_to_front");
+		}
 	}
+	
 	if (sectionTypes[sectionTypes.length - 1] !== "contact") {
-		errors.push("Contact section must be the last section");
+		errors.push("Layout sequencing error: Contact must be last");
+		const contactIdx = repairedSections.findIndex((s: any) => s.type === "contact");
+		if (contactIdx >= 0 && contactIdx < repairedSections.length - 1) {
+			const contact = repairedSections.splice(contactIdx, 1)[0];
+			repairedSections.push(contact);
+			repairs.push("contact_moved_to_back");
+		}
 	}
+
+	// 4. Brand & Theme Validation
+	if (!schema.brand.businessName) errors.push("Missing businessName in brand");
+	if (!schema.theme.brandDNA) errors.push("Missing brandDNA in theme");
 
 	return {
 		isValid: errors.length === 0,
 		errors,
-		repairedSchema: { ...schema, sections: repairedSections } as WebsiteSchema,
+		repairedSchema: { 
+			...schema, 
+			sections: repairedSections,
+			_validation: { 
+				repairs, 
+				validatedAt: new Date().toISOString() 
+			} 
+		} as WebsiteSchema,
 	};
 }

@@ -6,6 +6,8 @@ export const HERO_LAYOUTS = [
 	"editorial-left",
 	"stacked-media",
 	"luxury-overlap",
+	"split-modern-dark",
+	"centered-glass"
 ] as const;
 
 export const FEATURES_LAYOUTS = [
@@ -14,6 +16,7 @@ export const FEATURES_LAYOUTS = [
 	"icon-list",
 	"feature-cards",
 	"editorial-rows",
+	"masonry-grid"
 ] as const;
 
 export const GALLERY_LAYOUTS = [

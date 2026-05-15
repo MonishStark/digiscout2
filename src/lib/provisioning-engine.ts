@@ -205,6 +205,16 @@ async function executeStateMachine(job: any) {
 		const schema = typeof job.website_schema === 'string' ? JSON.parse(job.website_schema) : job.website_schema;
 		
 		if (schema) {
+			const { buildWordPressProvisioningPlan } = await import("./wordpress");
+			const plan = buildWordPressProvisioningPlan(schema, { name: job.business_name } as any);
+			
+			// Capture the blocks for auditability
+			const homepageBlocks = plan.pages.find(p => p.isHomepage)?.content || "";
+			await pool.query(
+				`UPDATE provisioning_jobs SET gutenberg_trace = ?, status = 'deploying_content' WHERE id = ?`,
+				[homepageBlocks, job.id]
+			);
+
 			await injectWebsiteContent(fullDocRoot, schema, (log) => appendLog(job.id, log));
 			await appendLog(job.id, "Content injected successfully");
 		} else {
@@ -233,6 +243,21 @@ async function executeStateMachine(job: any) {
 			typeof job.website_schema === 'string' ? job.website_schema : JSON.stringify(job.website_schema)
 		]);
 		
+		// Log final success to audit
+		if (job.trace_id) {
+			try {
+				await pool.query(
+					`INSERT INTO generation_audit_logs (trace_id, step, message, data) VALUES (?, ?, ?, ?)`,
+					[
+						job.trace_id,
+						"provisioning_completed",
+						`WordPress site provisioned at ${httpUrl}`,
+						JSON.stringify({ url: httpUrl, jobId: job.id })
+					]
+				);
+			} catch (e) {}
+		}
+
 		await appendLog(job.id, "Job completed successfully! URL set to HTTP (SSL polling started)");
 	}
 }

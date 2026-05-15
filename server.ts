@@ -2234,6 +2234,7 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. No markd
 			business,
 			debugSession,
 		);
+		
 		if (!parsedSchema) {
 			console.warn(
 				"[Generate] Gemini output could not be parsed as WebsiteSchema, using fallback schema.",
@@ -2252,21 +2253,56 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. No markd
 			);
 			return res.json(fallbackSchema);
 		}
-		// Apply small post-processing and dump final renderer input when debugging
-		const finalSchema = ensureNonTemplateCopy(parsedSchema, business);
+
+		// --- NEW DETERMINISTIC PIPELINE ---
+		const { validateWebsiteSchema } = await import("./src/lib/website-schema-validator");
+		const { generateBrandDNA, getPaletteForDNA } = await import("./src/lib/brand-identity-engine");
+		const { getTypographyForDNA } = await import("./src/lib/typography-system");
+
+		// 1. Force Brand DNA based on Category
+		const dna = generateBrandDNA(business.category || "Local Business");
+		const palette = getPaletteForDNA(dna);
+		const typography = getTypographyForDNA(dna);
+
+		// 2. Inject Deterministic Design into Schema
+		parsedSchema.theme.brandDNA = dna;
+		parsedSchema.theme.palette = palette;
+		parsedSchema.theme.typography = typography;
+
+		// 3. Strict Validation & Auto-Repair
+		const validation = validateWebsiteSchema(parsedSchema);
+		const finalSchema = validation.repairedSchema || parsedSchema;
+
+		// 4. Trace Log to DB
+		try {
+			await pool.query(
+				`INSERT INTO generation_audit_logs (trace_id, step, message, data) VALUES (?, ?, ?, ?)`,
+				[
+					debugSession.traceId,
+					"generation_completed",
+					validation.isValid ? "Valid schema generated" : "Schema repaired during validation",
+					JSON.stringify({
+						model: modelsToTry[0].name,
+						isValid: validation.isValid,
+						repairs: validation.repairs,
+						errors: validation.errors
+					})
+				]
+			);
+		} catch (e) {
+			console.error("[DB] Audit log failed:", e);
+		}
+
 		persistGenerationDebugFile(
 			debugSession,
 			"05-normalized-schema.json",
 			finalSchema,
 		);
+		
 		debugSession.sectionTypes = finalSchema.sections.map(
 			(section) => section.type,
 		);
-		debugSession.warnings.push(
-			...(debugSession.parseRepairs.length > 0
-				? ["schema normalized with repair steps"]
-				: []),
-		);
+		
 		res.setHeader("x-debug-generation-fallback", "false");
 		return res.json(finalSchema);
 	} catch (error) {
@@ -2650,15 +2686,30 @@ app.post(
 			}
 
 			const jobId = crypto.randomUUID();
+			const traceId = websiteSchema.meta?.traceId || websiteSchema._validation?.traceId || null;
+			const isPreview = String(projectId).includes("preview-");
+			const previewExpiresAt = isPreview 
+				? new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+				: null;
+
 			await pool.query(
-				`INSERT INTO provisioning_jobs (id, project_id, business_name, website_schema, status) VALUES (?, ?, ?, ?, 'pending')`,
-				[jobId, projectId, business.name, JSON.stringify(websiteSchema)]
+				`INSERT INTO provisioning_jobs (id, project_id, business_name, website_schema, status, trace_id, is_preview, preview_expires_at) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?)`,
+				[
+					jobId, 
+					projectId, 
+					business.name, 
+					JSON.stringify(websiteSchema),
+					traceId,
+					isPreview,
+					previewExpiresAt
+				]
 			);
 
 			return res.json({
 				success: true,
 				jobId,
-				message: "Provisioning job queued successfully",
+				message: isPreview ? "Preview provisioning queued" : "Provisioning job queued successfully",
+				previewExpiresAt
 			});
 		} catch (error) {
 			return res.status(500).json({
@@ -2720,6 +2771,32 @@ app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
 	}
 });
 
+app.get("/api/generate/replay/:traceId", async (req, res) => {
+	const { traceId } = req.params;
+	try {
+		const inputPath = path.join(DEBUG_ROOT_DIR, traceId, "06-renderer-input.json");
+		if (!fs.existsSync(inputPath)) {
+			return res.status(404).json({ error: "Trace not found or missing renderer input" });
+		}
+		
+		const schemaContent = fs.readFileSync(inputPath, "utf-8");
+		const rawSchema = JSON.parse(schemaContent);
+		
+		const { validateWebsiteSchema } = await import("./src/lib/website-schema-validator");
+		const { schemaToGutenbergBlocks } = await import("./src/lib/wordpress");
+		
+		const validatedSchema = validateWebsiteSchema(rawSchema);
+		const blocks = schemaToGutenbergBlocks(validatedSchema);
+		
+		return res.json({
+			success: true,
+			schema: validatedSchema,
+			blocks
+		});
+	} catch (error) {
+		return res.status(500).json({ error: error instanceof Error ? error.message : "Failed to replay trace" });
+	}
+});
 
 app.delete("/api/wordpress/site/:projectId", async (req, res) => {
 	try {
@@ -2896,7 +2973,33 @@ async function pollSslStatus() {
 	}
 }
 
+// --- Preview Site Cleanup Worker ---
+async function pollCleanupPreviewSites() {
+	try {
+		const [deployments]: any = await pool.query(
+			`SELECT project_id, preview_expires_at, status FROM provisioning_jobs WHERE preview_expires_at < NOW() AND status != 'cleaned' LIMIT 10`
+		);
+
+		for (const dep of deployments) {
+			console.log(`[Cleanup Worker] Cleaning up expired preview for project ${dep.project_id}`);
+			try {
+				await deleteProvisionedWordPressSite(dep.project_id);
+				await pool.query(
+					`UPDATE provisioning_jobs SET status = 'cleaned' WHERE project_id = ?`,
+					[dep.project_id]
+				);
+				console.log(`[Cleanup Worker] Cleanup successful for project ${dep.project_id}`);
+			} catch (error) {
+				console.error(`[Cleanup Worker] Failed to clean up ${dep.project_id}:`, error);
+			}
+		}
+	} catch (error) {
+		console.error("[Cleanup Worker] Error:", error);
+	}
+}
+
 setInterval(pollSslStatus, 120000);
+setInterval(pollCleanupPreviewSites, 300000); // 5 minutes
 
 app.listen(PORT, async () => {
 	console.log(`Server is running on http://localhost:${PORT}`);

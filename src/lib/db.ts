@@ -34,8 +34,29 @@ export async function initializeDatabase() {
 				logs JSON NULL,
 				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 				updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+				trace_id VARCHAR(255) NULL,
+				is_preview BOOLEAN DEFAULT FALSE,
+				preview_expires_at DATETIME NULL,
+				generation_metrics JSON NULL,
+				gutenberg_trace LONGTEXT NULL,
+				raw_ai_trace JSON NULL,
 				INDEX idx_status (status),
-				INDEX idx_project (project_id)
+				INDEX idx_project (project_id),
+				INDEX idx_trace (trace_id),
+				INDEX idx_preview_expiry (preview_expires_at)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+		`);
+
+		// Create generation_audit_logs table
+		await pool.query(`
+			CREATE TABLE IF NOT EXISTS generation_audit_logs (
+				id INT AUTO_INCREMENT PRIMARY KEY,
+				trace_id VARCHAR(255) NOT NULL,
+				step VARCHAR(100) NOT NULL,
+				message TEXT NOT NULL,
+				data JSON NULL,
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				INDEX idx_trace (trace_id)
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 		`);
 
@@ -48,6 +69,30 @@ export async function initializeDatabase() {
 		} catch (e) {}
 		try {
 			await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN business_name VARCHAR(255) NULL AFTER project_id`);
+		} catch (e) {}
+		try {
+			await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN trace_id VARCHAR(255) NULL AFTER updated_at`);
+		} catch (e) {}
+		try {
+			await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN is_preview BOOLEAN DEFAULT FALSE AFTER trace_id`);
+		} catch (e) {}
+		try {
+			await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN preview_expires_at DATETIME NULL AFTER is_preview`);
+		} catch (e) {}
+		try {
+			await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN generation_metrics JSON NULL AFTER preview_expires_at`);
+		} catch (e) {}
+		try {
+			await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN gutenberg_trace LONGTEXT NULL AFTER generation_metrics`);
+		} catch (e) {}
+		try {
+			await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN raw_ai_trace JSON NULL AFTER gutenberg_trace`);
+		} catch (e) {}
+		try {
+			await pool.query(`ALTER TABLE provisioning_jobs ADD INDEX idx_trace (trace_id)`);
+		} catch (e) {}
+		try {
+			await pool.query(`ALTER TABLE provisioning_jobs ADD INDEX idx_preview_expiry (preview_expires_at)`);
 		} catch (e) {}
 
 		// Create isolated_deployments table

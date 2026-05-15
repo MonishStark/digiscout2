@@ -132,51 +132,34 @@ export default function DeploymentsView({
 		}
 	};
 
-	const handlePreview = (projectId: string) => {
+	const handlePreview = async (projectId: string) => {
 		const project = projects.find((item) => item.id === projectId);
 		if (!project) return;
 
-		// Open a new window immediately to prevent popup blockers
+		if (project.wordpressSiteUrl) {
+			window.open(project.wordpressSiteUrl, "_blank");
+			return;
+		}
+
+		// If no URL available immediately, show a loading window while we check the latest status
 		const previewWindow = window.open("", "_blank");
 		if (previewWindow) {
 			previewWindow.document.write(`
 				<!DOCTYPE html>
 				<html>
 					<head>
-						<title>Previewing ${project.businessName}...</title>
+						<title>Connecting to WordPress...</title>
 						<style>
-							body { 
-								margin: 0; 
-								display: flex; 
-								align-items: center; 
-								justify-content: center; 
-								height: 100vh; 
-								font-family: sans-serif;
-								background: #f8fafc;
-								color: #64748b;
-							}
-							.loader {
-								text-align: center;
-							}
-							.spinner {
-								border: 3px solid #e2e8f0;
-								border-top: 3px solid #7c3aed;
-								border-radius: 50%;
-								width: 24px;
-								height: 24px;
-								animation: spin 1s linear infinite;
-								margin: 0 auto 16px;
-							}
-							@keyframes spin {
-								0% { transform: rotate(0deg); }
-								100% { transform: rotate(360deg); }
-							}
+							body { margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; background: #f8fafc; color: #64748b; }
+							.loader { text-align: center; }
+							.spinner { border: 3px solid #e2e8f0; border-top: 3px solid #7c3aed; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+							@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 						</style>
 					</head>
 					<body>
 						<div class="loader">
 							<div class="spinner"></div>
-							<p>Generating premium preview for <b>${project.businessName}</b>...</p>
+							<p>Checking WordPress provisioning status for <b>${project.businessName}</b>...</p>
 						</div>
 					</body>
 				</html>
@@ -187,39 +170,40 @@ export default function DeploymentsView({
 			((import.meta as any).env?.VITE_API_URL as string | undefined) ||
 			"http://localhost:5001";
 
-		void fetch(`${API_URL}/api/generate`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				id: project.businessId || project.id,
-				name: project.businessName,
-				category: project.businessCategory || "local business",
-				address: project.businessAddress,
-				phoneNumber: project.phoneNumber,
-				email: project.email,
-				websiteUri: project.wordpressSiteUrl || "",
-			}),
-		})
-			.then((response) => response.json())
-			.then((schema) => {
-				const html = renderWebsiteArtifact({
-					schema,
-					html: "",
-					css: "",
-					js: "",
-				});
-				if (previewWindow) {
-					previewWindow.document.open();
-					previewWindow.document.write(html);
-					previewWindow.document.close();
+		try {
+			const response = await fetch(`${API_URL}/api/wordpress/site-status/${projectId}`);
+			if (response.ok) {
+				const data = await response.json();
+				if (data.deployment?.liveUrl) {
+					// Update local state and redirect
+					setProjects((prev) =>
+						prev.map((p) =>
+							p.id === projectId
+								? {
+										...p,
+										wordpressSiteUrl: data.deployment.liveUrl,
+										wordpressAdminUrl: data.deployment.adminUrl,
+									}
+								: p
+						)
+					);
+					if (previewWindow) {
+						previewWindow.location.href = data.deployment.liveUrl;
+					}
+					return;
 				}
-			})
-			.catch((error) => {
-				console.error("Failed to build preview:", error);
-				if (previewWindow) {
-					previewWindow.document.body.innerHTML = `<div style="padding: 24px; font-family: sans-serif; color: #ef4444;">Failed to load preview: ${error.message}</div>`;
-				}
-			});
+			}
+			
+			// If we get here, it's either failed or still provisioning and has no URL
+			if (previewWindow) {
+				previewWindow.document.body.innerHTML = `<div style="padding: 24px; font-family: sans-serif; color: #ef4444; text-align: center;">The WordPress site for ${project.businessName} is still being provisioned or failed.<br/><br/>Please check the dashboard status.</div>`;
+			}
+		} catch (error) {
+			console.error("Failed to check site status:", error);
+			if (previewWindow) {
+				previewWindow.document.body.innerHTML = `<div style="padding: 24px; font-family: sans-serif; color: #ef4444; text-align: center;">Failed to connect to the server.<br/>${String(error)}</div>`;
+			}
+		}
 	};
 
 	const getPreviewHtml = (project: WebsiteProject) => {
