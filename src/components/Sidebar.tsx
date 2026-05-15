@@ -109,6 +109,10 @@ export default function Sidebar({
 	const suggestionRef = useRef<HTMLDivElement>(null);
 	const autocompleteService = useRef<google.maps.places.AutocompleteService | null>(null);
 
+	const [categorySuggestions, setCategorySuggestions] = useState<string[]>([]);
+	const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
+	const categorySuggestionRef = useRef<HTMLDivElement>(null);
+
 	const [activeTab, setActiveTab] = useState("search");
 
 	const placesLib = useMapsLibrary("places");
@@ -126,10 +130,41 @@ export default function Sidebar({
 			if (suggestionRef.current && !suggestionRef.current.contains(event.target as Node)) {
 				setShowSuggestions(false);
 			}
+			if (categorySuggestionRef.current && !categorySuggestionRef.current.contains(event.target as Node)) {
+				setShowCategorySuggestions(false);
+			}
 		};
 		document.addEventListener("mousedown", handleClickOutside);
 		return () => document.removeEventListener("mousedown", handleClickOutside);
 	}, []);
+
+	const COMMON_PLACE_TYPES = [
+		"Accounting", "Airport", "Amusement Park", "Aquarium", "Art Gallery", "Atm", "Bakery", "Bank", "Bar", "Beauty Salon", 
+		"Bicycle Store", "Book Store", "Bowling Alley", "Bus Station", "Cafe", "Campground", "Car Dealer", "Car Rental", 
+		"Car Repair", "Car Wash", "Casino", "Cemetery", "Church", "City Hall", "Clothing Store", "Convenience Store", 
+		"Courthouse", "Dentist", "Department Store", "Doctor", "Drugstore", "Electrician", "Electronics Store", "Embassy", 
+		"Fire Station", "Florist", "Funeral Home", "Furniture Store", "Gas Station", "Gym", "Hair Care", "Hardware Store", 
+		"Hindu Temple", "Home Goods Store", "Hospital", "Insurance Agency", "Jewelry Store", "Laundry", "Lawyer", "Library", 
+		"Light Rail Station", "Liquor Store", "Local Government Office", "Locksmith", "Lodging", "Meal Delivery", "Meal Takeaway", 
+		"Mosque", "Movie Rental", "Movie Theater", "Moving Company", "Museum", "Night Club", "Painter", "Park", "Parking", 
+		"Pet Store", "Pharmacy", "Physiotherapist", "Plumber", "Police", "Post Office", "Primary School", "Real Estate Agency", 
+		"Restaurant", "Roofing Contractor", "Rv Park", "School", "Secondary School", "Shoe Store", "Shopping Mall", "Spa", 
+		"Stadium", "Storage", "Store", "Subway Station", "Supermarket", "Synagogue", "Taxi Stand", "Tourist Attraction", 
+		"Train Station", "Transit Station", "Travel Agency", "University", "Veterinary Care", "Zoo"
+	];
+
+	useEffect(() => {
+		if (!category || category.length < 1) {
+			setCategorySuggestions([]);
+			return;
+		}
+
+		const filtered = COMMON_PLACE_TYPES.filter(t => 
+			t.toLowerCase().includes(category.toLowerCase())
+		).slice(0, 8);
+		
+		setCategorySuggestions(filtered);
+	}, [category]);
 
 	useEffect(() => {
 		if (!city || city.length < 2 || !autocompleteService.current) {
@@ -157,8 +192,9 @@ export default function Sidebar({
 	}, [city]);
 	const filteredBusinesses = businesses;
 
-	const handleSearch = async () => {
-		if (!city || !category || !placesLib || !geocodingLib || !map) return;
+	const handleSearch = async (overrideCategory?: string) => {
+		const searchCategory = overrideCategory || category;
+		if (!city || !searchCategory || !placesLib || !geocodingLib || !map) return;
 		setIsLoading(true);
 		setError(null);
 
@@ -179,7 +215,7 @@ export default function Sidebar({
 
 			// Search Nearby
 			const request = {
-				textQuery: `${category} in ${city}`,
+				textQuery: `${searchCategory} in ${city}`,
 				fields: [
 					"id",
 					"displayName",
@@ -209,7 +245,7 @@ export default function Sidebar({
 				return {
 					id: p.id!,
 					name: p.displayName || "Unknown Business",
-					category: category,
+					category: searchCategory,
 					address: p.formattedAddress || "",
 					rating: p.rating || 0,
 					reviewCount: p.userRatingCount || 0,
@@ -230,12 +266,14 @@ export default function Sidebar({
 				websiteMissingCandidates.length > 0
 					? websiteMissingCandidates
 					: parsedBusinesses;
+			
+			// If we are auto-fetching from a category selection, maybe limit to top 6
 			const enrichedBusinesses =
 				await enrichBusinessContacts(candidatesToQualify);
 			const qualifiedBusinesses = await qualifyLeads(
 				enrichedBusinesses,
 				city,
-				category,
+				searchCategory,
 			);
 
 			setBusinesses(qualifiedBusinesses);
@@ -330,12 +368,39 @@ export default function Sidebar({
 							<label className='text-[10px] uppercase tracking-wider text-slate-600 font-bold'>
 								Business Type
 							</label>
-							<Input
-								placeholder='e.g. Restaurants, Gyms, Salons'
-								value={category}
-								onChange={(e) => setCategory(e.target.value)}
-								className='w-full bg-slate-50 border border-slate-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:border-violet-500 text-slate-900 placeholder:text-slate-400'
-							/>
+							<div className='relative' ref={categorySuggestionRef}>
+								<Input
+									placeholder='e.g. Restaurants, Gyms, Salons'
+									value={category}
+									onChange={(e) => {
+										setCategory(e.target.value);
+										setShowCategorySuggestions(true);
+									}}
+									onFocus={() => category.length > 0 && setShowCategorySuggestions(true)}
+									className='w-full bg-slate-50 border border-slate-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:border-violet-500 text-slate-900 placeholder:text-slate-400'
+								/>
+								{showCategorySuggestions && categorySuggestions.length > 0 && (
+									<div className='absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden'>
+										{categorySuggestions.map((cat) => (
+											<button
+												key={cat}
+												className='w-full px-4 py-2 text-left text-sm hover:bg-violet-50 flex items-center gap-2 text-slate-700 transition-colors border-b border-slate-50 last:border-0'
+												onClick={() => {
+													setCategory(cat);
+													setShowCategorySuggestions(false);
+													setCategorySuggestions([]);
+													// Trigger search if city is present
+													if (city) {
+														handleSearch(cat);
+													}
+												}}>
+												<Building className='h-3.5 w-3.5 text-slate-400' />
+												<span className='truncate'>{cat}</span>
+											</button>
+										))}
+									</div>
+								)}
+							</div>
 						</div>
 
 						<div className='flex gap-2 pt-2'>
