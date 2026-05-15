@@ -29,13 +29,35 @@ interface SidebarProps {
 	setSelectedBusiness: (b: Business | null) => void;
 }
 
+function sanitizeBusiness(b: any): Business {
+	return {
+		id: String(b.id || ""),
+		name: String(b.name || ""),
+		category: String(b.category || ""),
+		address: String(b.address || ""),
+		rating: Number(b.rating || 0),
+		reviewCount: Number(b.reviewCount || 0),
+		location: { 
+			lat: Number(b.location?.lat || 0), 
+			lng: Number(b.location?.lng || 0) 
+		},
+		websiteUri: b.websiteUri ? String(b.websiteUri) : undefined,
+		email: b.email ? String(b.email) : undefined,
+		phoneNumber: b.phoneNumber ? String(b.phoneNumber) : undefined,
+		photos: Array.isArray(b.photos) ? b.photos.map(p => String(p)) : [],
+		imageSuggestions: Array.isArray(b.imageSuggestions) ? b.imageSuggestions.map(s => String(s)) : [],
+		isOpen: Boolean(b.isOpen),
+	};
+}
+
 const API_URL =
 	((import.meta as any).env?.VITE_API_URL as string | undefined) ||
 	"http://localhost:5001";
 
 async function enrichBusinessContacts(businesses: Business[]) {
+	const sanitizedInputs = businesses.map(sanitizeBusiness);
 	const enrichedBusinesses = await Promise.all(
-		businesses.map(async (business) => {
+		sanitizedInputs.map(async (business) => {
 			// Always attempt enrichment, even when websiteUri is missing. Server will return
 			// category-based image suggestions when no website is available.
 
@@ -75,11 +97,12 @@ async function qualifyLeads(
 	city: string,
 	category: string,
 ) {
+	const sanitizedBusinesses = businesses.map(sanitizeBusiness);
 	const response = await fetch(`${API_URL}/api/qualify-leads`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({
-			businesses,
+			businesses: sanitizedBusinesses,
 			city,
 			category,
 		}),
@@ -287,7 +310,8 @@ export default function Sidebar({
 				searchCategory,
 			);
 
-			setBusinesses(qualifiedBusinesses);
+			const finalBusinesses = qualifiedBusinesses.map(sanitizeBusiness);
+			setBusinesses(finalBusinesses);
 			setActiveTab("results");
 		} catch (err: any) {
 			console.error(err);
