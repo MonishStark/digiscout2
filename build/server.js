@@ -1273,115 +1273,111 @@ async function initializeDatabase() {
 import crypto from "crypto";
 
 // src/lib/cpanel-uapi.ts
-import https from "https";
-function getCpanelConfig() {
-  const host = process.env.CPANEL_HOST;
-  const user = process.env.CPANEL_USERNAME;
-  const token = process.env.CPANEL_API_TOKEN;
-  if (!host || !user || !token) {
+import { exec } from "child_process";
+import { promisify } from "util";
+var execAsync = promisify(exec);
+function getSshPrefix() {
+  const host = process.env.WP_SSH_HOST;
+  const port = process.env.WP_SSH_PORT || "22";
+  const user = process.env.WP_SSH_USER;
+  const keyPath = process.env.WP_SSH_KEY_PATH || "";
+  if (!host || !user) {
     throw new Error(
-      "Missing cPanel configuration. Please check CPANEL_HOST, CPANEL_USERNAME, and CPANEL_API_TOKEN in your environment variables."
+      "WP_SSH_HOST and WP_SSH_USER must be set to run cPanel UAPI commands remotely."
     );
   }
-  return {
-    host,
-    user,
-    token,
-    baseUrl: `https://${host}:2083/execute`,
-    authHeader: `cpanel ${user}:${token}`
-  };
+  const keyFlag = keyPath ? `-i "${keyPath}"` : "";
+  return [
+    "ssh",
+    "-p",
+    port,
+    keyFlag,
+    "-o StrictHostKeyChecking=no",
+    "-o ConnectTimeout=30",
+    "-o BatchMode=yes",
+    `${user}@${host}`
+  ].filter(Boolean).join(" ");
 }
-async function callUapi(module, func, params) {
-  const { host, authHeader } = getCpanelConfig();
-  const path3 = `/execute/${module}/${func}`;
-  const query = new URLSearchParams(params).toString();
-  const fullPath = query ? `${path3}?${query}` : path3;
-  return new Promise((resolve, reject) => {
-    const req = https.get({
-      hostname: host,
-      port: 2083,
-      path: fullPath,
-      headers: {
-        Authorization: authHeader
-      },
-      timeout: 3e4
-    }, (res) => {
-      let data = "";
-      res.on("data", (chunk) => data += chunk);
-      res.on("end", () => {
-        if (res.statusCode && res.statusCode >= 400) {
-          return reject(new Error(`cPanel API HTTP Error: ${res.statusCode} ${data}`));
-        }
-        try {
-          const json = JSON.parse(data);
-          if (json.errors && json.errors.length > 0) {
-            reject(new Error(`cPanel UAPI Error (${module}::${func}): ${json.errors.join(", ")}`));
-          } else if (json.status === 0) {
-            reject(new Error(`cPanel UAPI Error (${module}::${func}): ${json.errors?.join(", ") || "Unknown failure"}`));
-          } else {
-            resolve(json.data);
-          }
-        } catch (e) {
-          reject(new Error(`Failed to parse cPanel response: ${data}`));
-        }
-      });
-    });
-    req.on("error", (e) => reject(e));
-    req.on("timeout", () => {
-      req.destroy();
-      reject(new Error("cPanel API Timeout"));
-    });
-  });
+async function callUapiRemote(module, func, params) {
+  const cpanelUser = process.env.CPANEL_USERNAME;
+  if (!cpanelUser) {
+    throw new Error("CPANEL_USERNAME is not set.");
+  }
+  const paramStr = Object.entries(params).map(([k, v]) => `${k}=${v.replace(/'/g, "\\'")}`).join(" ");
+  const uapiCmd = `uapi --user=${cpanelUser} --output=json ${module} ${func} ${paramStr}`;
+  const sshPrefix = getSshPrefix();
+  const fullCmd = `${sshPrefix} '${uapiCmd}'`;
+  process.stderr.write(`[cPanel-SSH] ${module}::${func} ${paramStr}
+`);
+  try {
+    const { stdout, stderr } = await execAsync(fullCmd, { timeout: 6e4 });
+    if (stderr.trim()) {
+      process.stderr.write(`[cPanel-SSH] STDERR: ${stderr.trim()}
+`);
+    }
+    let parsed;
+    try {
+      parsed = JSON.parse(stdout);
+    } catch (e) {
+      throw new Error(`cPanel UAPI returned invalid JSON: ${stdout.substring(0, 300)}`);
+    }
+    const result = parsed?.result;
+    if (!result) {
+      throw new Error(`Unexpected cPanel UAPI response shape: ${JSON.stringify(parsed).substring(0, 300)}`);
+    }
+    if (result.status === 0 || result.errors && result.errors.length > 0) {
+      const errMsg = Array.isArray(result.errors) ? result.errors.join(", ") : "Unknown cPanel error";
+      throw new Error(`cPanel UAPI Error (${module}::${func}): ${errMsg}`);
+    }
+    process.stderr.write(`[cPanel-SSH] ${module}::${func} \u2192 OK
+`);
+    return result.data;
+  } catch (error) {
+    if (error.message?.includes("cPanel UAPI")) throw error;
+    throw new Error(`cPanel SSH command failed (${module}::${func}): ${error.message}`);
+  }
 }
 async function addSubdomain(subdomain, rootDomain, documentRoot) {
-  return callUapi("SubDomain", "addsubdomain", {
+  const cpanelUser = process.env.CPANEL_USERNAME || "";
+  const homePrefix = `/home/${cpanelUser}/`;
+  const relativeDir = documentRoot.startsWith(homePrefix) ? documentRoot.slice(homePrefix.length) : documentRoot;
+  return callUapiRemote("SubDomain", "addsubdomain", {
     domain: subdomain,
     rootdomain: rootDomain,
-    dir: documentRoot
+    dir: relativeDir
   });
 }
 async function deleteSubdomain(subdomain, rootDomain) {
   const fullDomain = `${subdomain}.${rootDomain}`;
   try {
-    return await callUapi("Domains", "remove_domain", {
+    return await callUapiRemote("Domains", "remove_domain", {
       domain: fullDomain
     });
   } catch (e) {
-    console.warn(`[cPanel] Domains::remove_domain failed, trying fallback: ${e.message}`);
-    try {
-      return await callUapi("SubDomain", "delsubdomain", {
-        domain: subdomain,
-        rootdomain: rootDomain
-      });
-    } catch (e2) {
-      console.warn(`[cPanel] SubDomain::delsubdomain failed: ${e2.message}`);
-      throw e;
-    }
+    console.warn(`[cPanel-SSH] Domains::remove_domain failed: ${e.message}. Trying legacy fallback...`);
+    return await callUapiRemote("SubDomain", "delsubdomain", {
+      domain: subdomain,
+      rootdomain: rootDomain
+    });
   }
 }
 async function createDatabase(dbName) {
-  return callUapi("Mysql", "create_database", {
-    name: dbName
-  });
+  return callUapiRemote("Mysql", "create_database", { name: dbName });
 }
 async function deleteDatabase(dbName) {
-  return callUapi("Mysql", "delete_database", {
-    name: dbName
-  });
+  return callUapiRemote("Mysql", "delete_database", { name: dbName });
 }
 async function createDatabaseUser(dbUser, password) {
-  return callUapi("Mysql", "create_user", {
+  return callUapiRemote("Mysql", "create_user", {
     name: dbUser,
     password
   });
 }
 async function deleteDatabaseUser(dbUser) {
-  return callUapi("Mysql", "delete_user", {
-    name: dbUser
-  });
+  return callUapiRemote("Mysql", "delete_user", { name: dbUser });
 }
 async function setDatabasePrivileges(dbUser, dbName, privileges = "ALL PRIVILEGES") {
-  return callUapi("Mysql", "set_privileges_on_database", {
+  return callUapiRemote("Mysql", "set_privileges_on_database", {
     user: dbUser,
     database: dbName,
     privileges
@@ -1389,9 +1385,9 @@ async function setDatabasePrivileges(dbUser, dbName, privileges = "ALL PRIVILEGE
 }
 
 // src/lib/wp-cli.ts
-import { exec } from "child_process";
-import { promisify } from "util";
-var execAsync = promisify(exec);
+import { exec as exec2 } from "child_process";
+import { promisify as promisify2 } from "util";
+var execAsync2 = promisify2(exec2);
 var WpCliError = class extends Error {
   constructor(message, stdout, stderr, code) {
     super(message);
@@ -1439,7 +1435,7 @@ async function executeRemoteCommand(remoteCommand, logCallback) {
 `);
   }
   try {
-    const { stdout, stderr } = await execAsync(cmd, {
+    const { stdout, stderr } = await execAsync2(cmd, {
       timeout: 18e4,
       // 3 min max per command
       maxBuffer: 10 * 1024 * 1024,
@@ -4206,9 +4202,9 @@ async function pollSslStatus() {
       const host = httpsUrl.replace("https://", "").split("/")[0];
       console.log(`[SSL Worker] Checking SSL for ${host}`);
       try {
-        const https2 = await import("https");
+        const https = await import("https");
         await new Promise((resolve, reject) => {
-          const req = https2.get({
+          const req = https.get({
             hostname: host,
             port: 443,
             path: "/",

@@ -1,140 +1,160 @@
-import https from "https";
+/**
+ * cpanel-uapi.ts
+ *
+ * Executes cPanel UAPI commands via SSH on the remote WP server.
+ * This avoids the ECONNREFUSED issue where cPanel port 2083 is firewalled
+ * from external IPs on Namecheap shared hosting.
+ *
+ * Instead of: HTTPS → server166.web-hosting.com:2083
+ * We now use:  SSH  → digigesf@digiscoutwp.online "uapi Mysql create_database ..."
+ */
 
-interface UAPIResponse {
-	status: number;
-	errors: string[] | null;
-	messages: string[] | null;
-	data: any;
-	metadata?: any;
-}
+import { exec } from "child_process";
+import { promisify } from "util";
 
-function getCpanelConfig() {
-	const host = process.env.CPANEL_HOST;
-	const user = process.env.CPANEL_USERNAME;
-	const token = process.env.CPANEL_API_TOKEN;
+const execAsync = promisify(exec);
 
-	if (!host || !user || !token) {
+// ---------------------------------------------------------------------------
+// SSH config (same as wp-cli.ts)
+// ---------------------------------------------------------------------------
+
+function getSshPrefix(): string {
+	const host = process.env.WP_SSH_HOST;
+	const port = process.env.WP_SSH_PORT || "22";
+	const user = process.env.WP_SSH_USER;
+	const keyPath = process.env.WP_SSH_KEY_PATH || "";
+
+	if (!host || !user) {
 		throw new Error(
-			"Missing cPanel configuration. Please check CPANEL_HOST, CPANEL_USERNAME, and CPANEL_API_TOKEN in your environment variables.",
+			"WP_SSH_HOST and WP_SSH_USER must be set to run cPanel UAPI commands remotely.",
 		);
 	}
 
-	return {
-		host,
-		user,
-		token,
-		baseUrl: `https://${host}:2083/execute`,
-		authHeader: `cpanel ${user}:${token}`,
-	};
+	const keyFlag = keyPath ? `-i "${keyPath}"` : "";
+	return [
+		"ssh",
+		"-p", port,
+		keyFlag,
+		"-o StrictHostKeyChecking=no",
+		"-o ConnectTimeout=30",
+		"-o BatchMode=yes",
+		`${user}@${host}`,
+	].filter(Boolean).join(" ");
 }
 
-async function callUapi(
+/**
+ * Runs a cPanel UAPI command on the remote WP server via SSH.
+ * Equivalent to: ssh wpserver "uapi --user=USERNAME Module function key=val ..."
+ */
+async function callUapiRemote(
 	module: string,
 	func: string,
 	params: Record<string, string>,
 ): Promise<any> {
-	const { host, authHeader } = getCpanelConfig();
+	const cpanelUser = process.env.CPANEL_USERNAME;
+	if (!cpanelUser) {
+		throw new Error("CPANEL_USERNAME is not set.");
+	}
 
-	const path = `/execute/${module}/${func}`;
-	const query = new URLSearchParams(params).toString();
-	const fullPath = query ? `${path}?${query}` : path;
+	const paramStr = Object.entries(params)
+		.map(([k, v]) => `${k}=${v.replace(/'/g, "\\'")}`)
+		.join(" ");
 
-	return new Promise((resolve, reject) => {
-		const req = https.get({
-			hostname: host,
-			port: 2083,
-			path: fullPath,
-			headers: {
-				Authorization: authHeader,
-			},
-			timeout: 30000
-		}, (res) => {
-			let data = "";
-			res.on("data", (chunk) => data += chunk);
-			res.on("end", () => {
-				if (res.statusCode && res.statusCode >= 400) {
-					return reject(new Error(`cPanel API HTTP Error: ${res.statusCode} ${data}`));
-				}
-				try {
-					const json = JSON.parse(data) as UAPIResponse;
-					if (json.errors && json.errors.length > 0) {
-						reject(new Error(`cPanel UAPI Error (${module}::${func}): ${json.errors.join(", ")}`));
-					} else if (json.status === 0) {
-						reject(new Error(`cPanel UAPI Error (${module}::${func}): ${json.errors?.join(", ") || "Unknown failure"}`));
-					} else {
-						resolve(json.data);
-					}
-				} catch (e) {
-					reject(new Error(`Failed to parse cPanel response: ${data}`));
-				}
-			});
-		});
+	const uapiCmd = `uapi --user=${cpanelUser} --output=json ${module} ${func} ${paramStr}`;
+	const sshPrefix = getSshPrefix();
+	const fullCmd = `${sshPrefix} '${uapiCmd}'`;
 
-		req.on("error", (e) => reject(e));
-		req.on("timeout", () => {
-			req.destroy();
-			reject(new Error("cPanel API Timeout"));
-		});
-	});
+	process.stderr.write(`[cPanel-SSH] ${module}::${func} ${paramStr}\n`);
+
+	try {
+		const { stdout, stderr } = await execAsync(fullCmd, { timeout: 60000 });
+
+		if (stderr.trim()) {
+			process.stderr.write(`[cPanel-SSH] STDERR: ${stderr.trim()}\n`);
+		}
+
+		let parsed: any;
+		try {
+			parsed = JSON.parse(stdout);
+		} catch (e) {
+			throw new Error(`cPanel UAPI returned invalid JSON: ${stdout.substring(0, 300)}`);
+		}
+
+		// cPanel UAPI response envelope: { result: { status: 1, data: ..., errors: [] } }
+		const result = parsed?.result;
+		if (!result) {
+			throw new Error(`Unexpected cPanel UAPI response shape: ${JSON.stringify(parsed).substring(0, 300)}`);
+		}
+
+		if (result.status === 0 || (result.errors && result.errors.length > 0)) {
+			const errMsg = Array.isArray(result.errors) ? result.errors.join(", ") : "Unknown cPanel error";
+			throw new Error(`cPanel UAPI Error (${module}::${func}): ${errMsg}`);
+		}
+
+		process.stderr.write(`[cPanel-SSH] ${module}::${func} → OK\n`);
+		return result.data;
+	} catch (error: any) {
+		// Re-throw with better context if it's not already a formatted error
+		if (error.message?.includes("cPanel UAPI")) throw error;
+		throw new Error(`cPanel SSH command failed (${module}::${func}): ${error.message}`);
+	}
 }
+
+// ---------------------------------------------------------------------------
+// Public API — mirrors the original cpanel-uapi.ts surface
+// ---------------------------------------------------------------------------
 
 export async function addSubdomain(
 	subdomain: string,
 	rootDomain: string,
 	documentRoot: string,
 ) {
-	return callUapi("SubDomain", "addsubdomain", {
+	// documentRoot relative to home dir for cPanel (strip /home/user/ prefix)
+	const cpanelUser = process.env.CPANEL_USERNAME || "";
+	const homePrefix = `/home/${cpanelUser}/`;
+	const relativeDir = documentRoot.startsWith(homePrefix)
+		? documentRoot.slice(homePrefix.length)
+		: documentRoot;
+
+	return callUapiRemote("SubDomain", "addsubdomain", {
 		domain: subdomain,
 		rootdomain: rootDomain,
-		dir: documentRoot,
+		dir: relativeDir,
 	});
 }
 
 export async function deleteSubdomain(subdomain: string, rootDomain: string) {
 	const fullDomain = `${subdomain}.${rootDomain}`;
 	try {
-		// Try the modern Domains::remove_domain first
-		return await callUapi("Domains", "remove_domain", {
+		return await callUapiRemote("Domains", "remove_domain", {
 			domain: fullDomain,
 		});
 	} catch (e: any) {
-		console.warn(`[cPanel] Domains::remove_domain failed, trying fallback: ${e.message}`);
-		try {
-			// Try the legacy SubDomain::delsubdomain
-			return await callUapi("SubDomain", "delsubdomain", {
-				domain: subdomain,
-				rootdomain: rootDomain,
-			});
-		} catch (e2: any) {
-			console.warn(`[cPanel] SubDomain::delsubdomain failed: ${e2.message}`);
-			throw e; // Throw original error
-		}
+		console.warn(`[cPanel-SSH] Domains::remove_domain failed: ${e.message}. Trying legacy fallback...`);
+		return await callUapiRemote("SubDomain", "delsubdomain", {
+			domain: subdomain,
+			rootdomain: rootDomain,
+		});
 	}
 }
 
 export async function createDatabase(dbName: string) {
-	return callUapi("Mysql", "create_database", {
-		name: dbName,
-	});
+	return callUapiRemote("Mysql", "create_database", { name: dbName });
 }
 
 export async function deleteDatabase(dbName: string) {
-	return callUapi("Mysql", "delete_database", {
-		name: dbName,
-	});
+	return callUapiRemote("Mysql", "delete_database", { name: dbName });
 }
 
 export async function createDatabaseUser(dbUser: string, password: string) {
-	return callUapi("Mysql", "create_user", {
+	return callUapiRemote("Mysql", "create_user", {
 		name: dbUser,
 		password: password,
 	});
 }
 
 export async function deleteDatabaseUser(dbUser: string) {
-	return callUapi("Mysql", "delete_user", {
-		name: dbUser,
-	});
+	return callUapiRemote("Mysql", "delete_user", { name: dbUser });
 }
 
 export async function setDatabasePrivileges(
@@ -142,7 +162,7 @@ export async function setDatabasePrivileges(
 	dbName: string,
 	privileges: string = "ALL PRIVILEGES",
 ) {
-	return callUapi("Mysql", "set_privileges_on_database", {
+	return callUapiRemote("Mysql", "set_privileges_on_database", {
 		user: dbUser,
 		database: dbName,
 		privileges: privileges,
