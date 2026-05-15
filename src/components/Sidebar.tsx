@@ -240,11 +240,11 @@ export default function Sidebar({
 				return;
 			}
 
-			// Filter: ONLY include businesses that DO NOT have a website, or if we consider them outdated (for now we stick to no website for strict filtering, or just flag them)
+			// Filter: ONLY include businesses that DO NOT have a website, or if we consider them outdated
 			const parsedBusinesses: Business[] = places.map((p) => {
 				return {
 					id: p.id!,
-					name: p.displayName || "Unknown Business",
+					name: p.displayName?.text || p.displayName as any || "Unknown Business",
 					category: searchCategory,
 					address: p.formattedAddress || "",
 					rating: p.rating || 0,
@@ -262,12 +262,16 @@ export default function Sidebar({
 			const websiteMissingCandidates = parsedBusinesses.filter(
 				(b) => !b.websiteUri,
 			);
-			const candidatesToQualify =
+			
+			let candidatesToQualify =
 				websiteMissingCandidates.length > 0
 					? websiteMissingCandidates
 					: parsedBusinesses;
-			
-			// If we are auto-fetching from a category selection, maybe limit to top 6
+
+			// If we are auto-fetching from a category selection, limit to top 6 as requested
+			if (overrideCategory) {
+				candidatesToQualify = candidatesToQualify.slice(0, 6);
+			}
 			const enrichedBusinesses =
 				await enrichBusinessContacts(candidatesToQualify);
 			const qualifiedBusinesses = await qualifyLeads(
@@ -343,6 +347,12 @@ export default function Sidebar({
 										setShowSuggestions(true);
 									}}
 									onFocus={() => city.length >= 2 && setShowSuggestions(true)}
+									onKeyDown={(e) => {
+										if (e.key === 'Enter') {
+											handleSearch();
+											setShowSuggestions(false);
+										}
+									}}
 									className='w-full bg-slate-50 border border-slate-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:border-violet-500 text-slate-900 placeholder:text-slate-400'
 								/>
 								{showSuggestions && suggestions.length > 0 && (
@@ -377,6 +387,12 @@ export default function Sidebar({
 										setShowCategorySuggestions(true);
 									}}
 									onFocus={() => category.length > 0 && setShowCategorySuggestions(true)}
+									onKeyDown={(e) => {
+										if (e.key === 'Enter') {
+											handleSearch();
+											setShowCategorySuggestions(false);
+										}
+									}}
 									className='w-full bg-slate-50 border border-slate-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:border-violet-500 text-slate-900 placeholder:text-slate-400'
 								/>
 								{showCategorySuggestions && categorySuggestions.length > 0 && (
