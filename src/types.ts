@@ -1,5 +1,20 @@
 /** @format */
 
+import {
+	HeroLayout,
+	FeaturesLayout,
+	GalleryLayout,
+	TestimonialsLayout,
+	CtaLayout,
+	FaqLayout,
+	ContactLayout,
+	SpacingToken,
+	RadiusToken,
+	ShadowToken,
+	SurfaceToken,
+	AnimationToken,
+} from "./lib/layout-registry";
+
 export interface Business {
 	id: string;
 	name: string;
@@ -13,6 +28,7 @@ export interface Business {
 	phoneNumber?: string;
 	photos?: string[];
 	imageSuggestions?: string[];
+	logo?: string;
 	isOpen?: boolean;
 }
 
@@ -25,21 +41,27 @@ export type WebsiteSectionType =
 	| "cta"
 	| "faq";
 
+export interface BrandDNA {
+	personality:
+		| "trustworthy"
+		| "luxurious"
+		| "energetic"
+		| "minimalist"
+		| "friendly"
+		| "corporate"
+		| "premium"
+		| "playful";
+	visualMood: "warm-editorial" | "polished-clinical" | "modern-authority" | "vibrant-energy";
+	ctaEnergy: "urgent" | "inviting" | "formal" | "casual";
+	spacingDensity: SpacingToken;
+	imageStyle: "cinematic" | "natural" | "bright-clean" | "moody-luxury";
+	typographyMood: "elegant" | "corporate" | "energetic" | "editorial" | "minimal";
+	iconStyle: "outline" | "filled" | "minimal" | "playful";
+}
+
 export interface WebsiteTheme {
 	name: string;
-	style: string;
-	radius: string;
-	layout?:
-		| "editorial"
-		| "immersive"
-		| "minimal"
-		| "gallery-forward"
-		| "split-screen";
-	buttonStyle?: "pill" | "sharp" | "ghost";
-	surfaceStyle?: "glass" | "solid" | "outline";
-	mediaShape?: "rounded" | "arched" | "portrait" | "square";
-	density?: "airy" | "balanced" | "compact";
-	accentMode?: "neon" | "earthy" | "luxury" | "fresh";
+	brandDNA: BrandDNA;
 	palette: {
 		background: string;
 		surface: string;
@@ -52,6 +74,14 @@ export interface WebsiteTheme {
 	typography: {
 		heading: string;
 		body: string;
+		headingFont: string;
+		bodyFont: string;
+	};
+	tokens: {
+		radius: RadiusToken;
+		shadow: ShadowToken;
+		surface: SurfaceToken;
+		animation: AnimationToken;
 	};
 }
 
@@ -62,6 +92,7 @@ export interface WebsiteBrand {
 	phone?: string;
 	email?: string;
 	websiteUri?: string;
+	logo?: string;
 }
 
 export interface WebsiteSEO {
@@ -70,10 +101,18 @@ export interface WebsiteSEO {
 	keywords: string[];
 }
 
+export interface ImageIntent {
+	type: string;
+	subject: string;
+	style: string;
+	alt: string;
+	fallbackUrl?: string;
+}
+
 export interface HeroSection {
 	id: string;
 	type: "hero";
-	variant: "split" | "centered" | "editorial" | "immersive";
+	layout: HeroLayout;
 	headline: string;
 	subheadline: string;
 	ctaPrimary: {
@@ -85,69 +124,81 @@ export interface HeroSection {
 		href: string;
 	};
 	badges?: string[];
-	media?: {
-		type: "image" | "video";
-		src: string;
-		alt: string;
-	};
+	imageIntent: ImageIntent;
+	confidence?: number;
 }
 
 export interface FeatureSection {
 	id: string;
 	type: "features";
-	layout: "cards" | "list";
+	layout: FeaturesLayout;
+	title: string;
 	items: Array<{
 		title: string;
 		description: string;
 		icon?: string;
 	}>;
+	confidence?: number;
 }
 
 export interface GallerySection {
 	id: string;
 	type: "gallery";
+	layout: GalleryLayout;
+	title: string;
 	items: Array<{
-		src: string;
-		alt: string;
+		imageIntent: ImageIntent;
 	}>;
+	confidence?: number;
 }
 
 export interface TestimonialSection {
 	id: string;
 	type: "testimonials";
+	layout: TestimonialsLayout;
+	title: string;
 	items: Array<{
 		quote: string;
 		author: string;
 		role?: string;
 	}>;
+	confidence?: number;
 }
 
 export interface ContactSection {
 	id: string;
 	type: "contact";
+	layout: ContactLayout;
+	title: string;
 	showMap?: boolean;
 	showHours?: boolean;
 	showEmail?: boolean;
 	showPhone?: boolean;
 	hours?: string[];
+	confidence?: number;
 }
 
 export interface CtaSection {
 	id: string;
 	type: "cta";
+	layout: CtaLayout;
 	title: string;
 	body: string;
 	buttonLabel: string;
 	buttonHref: string;
+	confidence?: number;
 }
 
 export interface FaqSection {
 	id: string;
 	type: "faq";
+	layout: FaqLayout;
+	title: string;
 	items: Array<{
 		question: string;
 		answer: string;
 	}>;
+	confidence?: number;
 }
 
 export type WebsiteSection =
@@ -160,6 +211,7 @@ export type WebsiteSection =
 	| FaqSection;
 
 export interface WebsiteSchema {
+	schemaVersion: "1.0";
 	meta: {
 		siteId: string;
 		businessId: string;

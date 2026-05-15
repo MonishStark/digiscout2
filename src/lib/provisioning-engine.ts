@@ -398,6 +398,21 @@ async function injectWebsiteContent(docRoot: string, schema: any, logCallback: (
 		await runWpCommand(`rewrite structure "/%postname%/"`, docRoot, logCallback);
 		await runWpCommand(`rewrite flush`, docRoot, logCallback);
 
+		// 4. Logo / Favicon handling
+		if (schema.brand?.logo) {
+			await logCallback(`Uploading brand logo: ${schema.brand.logo}`);
+			try {
+				const mediaIdOut = await runWpCommand(`media import "${schema.brand.logo}" --porcelain`, docRoot, logCallback);
+				const mediaId = mediaIdOut.stdout.trim();
+				if (mediaId && /^\d+$/.test(mediaId)) {
+					await logCallback(`Logo uploaded as Media ID: ${mediaId}. Setting as site icon...`);
+					await runWpCommand(`option update site_icon ${mediaId}`, docRoot, logCallback);
+				}
+			} catch (err: any) {
+				await logCallback(`Warning: Failed to import logo: ${err.message}`);
+			}
+		}
+
 		await logCallback("WordPress content injection complete.");
 
 	} catch (error: any) {

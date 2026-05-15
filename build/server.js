@@ -821,6 +821,19 @@ ${globalStyles}
     }
     await runWpCommand(`rewrite structure "/%postname%/"`, docRoot, logCallback);
     await runWpCommand(`rewrite flush`, docRoot, logCallback);
+    if (schema.brand?.logo) {
+      await logCallback(`Uploading brand logo: ${schema.brand.logo}`);
+      try {
+        const mediaIdOut = await runWpCommand(`media import "${schema.brand.logo}" --porcelain`, docRoot, logCallback);
+        const mediaId = mediaIdOut.stdout.trim();
+        if (mediaId && /^\d+$/.test(mediaId)) {
+          await logCallback(`Logo uploaded as Media ID: ${mediaId}. Setting as site icon...`);
+          await runWpCommand(`option update site_icon ${mediaId}`, docRoot, logCallback);
+        }
+      } catch (err) {
+        await logCallback(`Warning: Failed to import logo: ${err.message}`);
+      }
+    }
     await logCallback("WordPress content injection complete.");
   } catch (error) {
     await logCallback(`CRITICAL ERROR during content injection: ${error.message}`);
@@ -2476,6 +2489,7 @@ Adapt the core design for category context:
 
 - **sections** array: 7-9 sections including hero, features, gallery, testimonials, faq, cta, and contact
 - **theme fields**: Set all of: name, style, layout, buttonStyle, surfaceStyle, mediaShape, density, accentMode, typography (heading + body), palette (all 7 colors: background, surface, primary, accent, text, muted, outline), radius
+- **brand fields**: Include businessName, category, address, phone, email, websiteUri, and **logo** (use the detected logo URL if provided in context).
 - **Typography pairing**: Choose one pairing from these premium tones:
   - Luxury/Editorial: serif heading (Playfair, Cormorant, Fraunces) + neutral sans body (Inter, IBM Plex Sans)
   - Modern/Clean: geometric sans heading (Space Grotesk, IBM Plex Sans, Inter) + humanist sans body (Inter)
@@ -2538,6 +2552,7 @@ Business Context:
 - Phone: ${business.phoneNumber || "N/A"}
 - Email: ${business.email || "N/A"}
 - Website: ${business.websiteUri || "N/A"}
+- Logo: ${business.logo || "None detected"}
 
 Qualification Notes:
 ${qualificationNotes}
@@ -2818,9 +2833,13 @@ app.post(
           "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80"
         ];
       };
-      const { websiteUri, businessName, category } = req.body;
+      const { websiteUri, businessName, category, photos } = req.body;
       if (!businessName) {
         return res.status(400).json({ error: "Missing businessName" });
+      }
+      let detectedLogo = photos && photos.length > 0 ? photos[0] : void 0;
+      if (detectedLogo && detectedLogo.includes("googleusercontent.com")) {
+        detectedLogo = detectedLogo.split("=")[0] + "=s400-c";
       }
       if (!websiteUri) {
         return res.json({
@@ -2842,10 +2861,18 @@ app.post(
         });
       }
       const html = await response.text();
+      const email = extractEmails(html)[0];
+      const phones = extractPhones(html);
+      const imageSuggestions = extractImages(html);
+      const websiteLogo = extractLogo(html, websiteUri);
+      if (websiteLogo) {
+        detectedLogo = websiteLogo;
+      }
       return res.json({
-        email: extractEmails(html)[0],
-        phones: extractPhones(html),
-        imageSuggestions: extractImages(html),
+        email,
+        phones,
+        imageSuggestions,
+        logo: detectedLogo,
         businessName,
         category
       });
@@ -2854,11 +2881,42 @@ app.post(
       return res.json({
         email: void 0,
         phones: [],
-        imageSuggestions: []
+        imageSuggestions: [],
+        logo: req.body.photos?.[0]
       });
     }
   }
 );
+function extractLogo(html, baseUrl) {
+  try {
+    const iconRegex = /<link[^>]+rel=["'](?:shortcut )?icon["'][^>]+href=["']([^"']+)["']/i;
+    const appleIconRegex = /<link[^>]+rel=["']apple-touch-icon["'][^>]+href=["']([^"']+)["']/i;
+    const ogImageRegex = /<meta[^>]+property=["']og:logo["'][^>]+content=["']([^"']+)["']/i;
+    const schemaLogoRegex = /["']logo["']\s*:\s*["']([^"']+)["']/i;
+    const match = html.match(ogImageRegex) || html.match(appleIconRegex) || html.match(iconRegex) || html.match(schemaLogoRegex);
+    if (match && match[1]) {
+      let logoUrl = match[1];
+      if (logoUrl.startsWith("//")) {
+        logoUrl = "https:" + logoUrl;
+      } else if (logoUrl.startsWith("/")) {
+        const origin = new URL(baseUrl).origin;
+        logoUrl = origin + logoUrl;
+      } else if (!logoUrl.startsWith("http")) {
+        const origin = new URL(baseUrl).origin;
+        logoUrl = origin + "/" + logoUrl;
+      }
+      return logoUrl;
+    }
+    try {
+      const origin = new URL(baseUrl).origin;
+      return `${origin}/favicon.ico`;
+    } catch {
+      return void 0;
+    }
+  } catch {
+    return void 0;
+  }
+}
 app.post(
   "/api/qualify-leads",
   async (req, res) => {

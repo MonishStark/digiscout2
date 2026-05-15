@@ -230,12 +230,20 @@ function getSection<T extends WebsiteSection["type"]>(
 
 function renderHeader(schema: WebsiteSchema) {
 	const voice = getSiteVoice(schema);
+	const logo = schema.brand.logo;
 
 	return `
 <header class="site-header">
   <a class="brandmark" href="#top">
-    <span class="brand-dot"></span>
-    <span>${escapeHtml(schema.brand.businessName)}</span>
+    ${
+			logo
+				? `<img src="${escapeHtml(logo)}" alt="${escapeHtml(schema.brand.businessName)}" class="site-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />`
+				: ""
+		}
+    <div class="logo-fallback" style="${logo ? "display: none;" : "display: flex;"}">
+      <span class="brand-dot"></span>
+      <span>${escapeHtml(schema.brand.businessName)}</span>
+    </div>
   </a>
   <nav class="top-nav">
     ${voice.nav.map((link) => `<a href="${link.href}">${escapeHtml(link.label)}</a>`).join("")}
@@ -344,6 +352,11 @@ function renderHero(section: HeroSection, schema: WebsiteSchema) {
 	return `
 <section class="site-section hero hero-${layout}" id="top" data-layout="${escapeHtml(layout)}">
   <div class="hero-copy">
+    ${
+			section.media?.logo
+				? `<img src="${escapeHtml(section.media.logo)}" alt="Logo" class="hero-logo-stamp" />`
+				: ""
+		}
     <div class="eyebrow">${escapeHtml(schema.brand.category)}</div>
     <h1>${escapeHtml(headline)}</h1>
     <p>${escapeHtml(heroCopy)}</p>
@@ -827,6 +840,40 @@ function renderPageBody(schema: WebsiteSchema) {
 		.join("\n");
 }
 
+function renderFooter(schema: WebsiteSchema) {
+	const logo = schema.brand.logo;
+	const currentYear = new Date().getFullYear();
+	
+	return `
+<footer class="site-footer">
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <a class="brandmark" href="#top">
+        ${
+					logo
+						? `<img src="${escapeHtml(logo)}" alt="${escapeHtml(schema.brand.businessName)}" class="site-logo" />`
+						: ""
+				}
+        <div class="logo-fallback" style="${logo ? "display: none;" : "display: flex;"}">
+          <span class="brand-dot"></span>
+          <span>${escapeHtml(schema.brand.businessName)}</span>
+        </div>
+      </a>
+      <p>${escapeHtml(schema.brand.businessName)} — Digital Presence</p>
+    </div>
+    <div class="footer-contact">
+      <h4>Contact</h4>
+      <p>${escapeHtml(schema.brand.address)}</p>
+      <p>${escapeHtml(schema.brand.phone)}</p>
+      <p>${escapeHtml(schema.brand.email)}</p>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>&copy; ${currentYear} ${escapeHtml(schema.brand.businessName)}. All rights reserved.</p>
+  </div>
+</footer>`;
+}
+
 const buildCss = (schema: WebsiteSchema) => {
 	const theme = defaultTheme(schema.theme);
 	const voice = getSiteVoice(schema);
@@ -935,6 +982,18 @@ img { display: block; width: 100%; max-width: 100%; }
   transition: transform .2s ease;
 }
 .brandmark:hover { transform: translateX(2px); }
+.site-logo {
+  max-height: 38px;
+  width: auto;
+  object-fit: contain;
+  transition: transform .3s ease;
+}
+.brandmark:hover .site-logo { transform: scale(1.05); }
+.logo-fallback {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 .brand-dot {
   width: 10px;
   height: 10px;
@@ -1005,6 +1064,13 @@ img { display: block; width: 100%; max-width: 100%; }
 }
 .hero h1 { font-size: clamp(3.2rem, 9vw, 6.4rem); margin-bottom: 24px; font-weight: 800; line-height: 1.08; }
 .hero p { font-size: clamp(1.08rem, 2.2vw, 1.55rem); color: var(--muted); max-width: 62ch; margin: 0 0 28px; line-height: 1.55; }
+.hero-logo-stamp {
+  max-height: 52px;
+  width: auto;
+  object-fit: contain;
+  margin-bottom: 24px;
+  display: block;
+}
 .hero-copy { position: relative; z-index: 2; }
 .hero-stats {
   margin-top: 32px;
@@ -1422,6 +1488,46 @@ img { display: block; width: 100%; max-width: 100%; }
   transition: all .3s ease;
 }
 .map-card:hover .map-placeholder { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.site-footer {
+  margin-top: 120px;
+  padding: 64px 0 32px;
+  border-top: 1px solid var(--outline);
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 48px;
+  margin-bottom: 48px;
+}
+.footer-brand p {
+  margin-top: 18px;
+  color: var(--muted);
+  max-width: 320px;
+  font-size: .94rem;
+}
+.footer-contact h4 {
+  margin: 0 0 16px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.footer-contact p {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: .92rem;
+}
+.footer-bottom {
+  padding-top: 32px;
+  border-top: 1px solid var(--outline);
+  text-align: center;
+  color: var(--muted);
+  font-size: .84rem;
+}
+@media (max-width: 768px) {
+  .footer-grid { grid-template-columns: 1fr; gap: 32px; }
+  .site-header { grid-template-columns: 1fr auto; }
+  .top-nav { display: none; }
+}
 [data-reveal] {
   opacity: 0;
   transform: translateY(20px);
@@ -1628,6 +1734,7 @@ export function renderWebsiteArtifact(artifact: WebsiteArtifact): string {
 			phone: artifact.schema.brand?.phone || "",
 			email: artifact.schema.brand?.email || "",
 			websiteUri: artifact.schema.brand?.websiteUri || "",
+			logo: artifact.schema.brand?.logo,
 		},
 		seo: {
 			title:
@@ -1655,6 +1762,7 @@ export function renderWebsiteArtifact(artifact: WebsiteArtifact): string {
   <main class="site-shell">
     ${renderHeader(normalizedSchema)}
     ${htmlBody}
+    ${renderFooter(normalizedSchema)}
   </main>
   <script>${artifact.js || buildJs()}</script>
 </body>

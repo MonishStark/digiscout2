@@ -190,6 +190,7 @@ export async function generateWebsite(
 				phone: business.phoneNumber || "",
 				email: business.email || "",
 				websiteUri: business.websiteUri || "",
+				logo: business.logo,
 			},
 			seo: {
 				title: `${business.name || "Demo Business"} — Preview`,
@@ -218,6 +219,7 @@ export async function generateWebsite(
 							business.photos?.[0] ||
 							"https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=80",
 						alt: business.name || "Hero",
+						logo: business.logo,
 					},
 				},
 				{

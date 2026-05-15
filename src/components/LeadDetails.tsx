@@ -183,6 +183,7 @@ export default function LeadDetails({
 							reviewCount: business.reviewCount,
 							email: business.email,
 							phoneNumber: business.phoneNumber,
+							logo: business.logo,
 							websiteContent: combinedCode,
 							websiteSchema: schema,
 							wordpressBlocks,

@@ -2087,6 +2087,7 @@ Adapt the core design for category context:
 
 - **sections** array: 7-9 sections including hero, features, gallery, testimonials, faq, cta, and contact
 - **theme fields**: Set all of: name, style, layout, buttonStyle, surfaceStyle, mediaShape, density, accentMode, typography (heading + body), palette (all 7 colors: background, surface, primary, accent, text, muted, outline), radius
+- **brand fields**: Include businessName, category, address, phone, email, websiteUri, and **logo** (use the detected logo URL if provided in context).
 - **Typography pairing**: Choose one pairing from these premium tones:
   - Luxury/Editorial: serif heading (Playfair, Cormorant, Fraunces) + neutral sans body (Inter, IBM Plex Sans)
   - Modern/Clean: geometric sans heading (Space Grotesk, IBM Plex Sans, Inter) + humanist sans body (Inter)
@@ -2149,6 +2150,7 @@ Business Context:
 - Phone: ${business.phoneNumber || "N/A"}
 - Email: ${business.email || "N/A"}
 - Website: ${business.websiteUri || "N/A"}
+- Logo: ${business.logo || "None detected"}
 
 Qualification Notes:
 ${qualificationNotes}
@@ -2445,11 +2447,18 @@ app.post(
 
 app.post(
 	"/api/enrich-business",
-	async (req: Request<{}, {}, EnrichBusinessRequest>, res: Response) => {
+	async (req: Request<{}, {}, EnrichBusinessRequest & { photos?: string[] }>, res: Response) => {
 		try {
-			const { websiteUri, businessName, category } = req.body;
+			const { websiteUri, businessName, category, photos } = req.body;
 			if (!businessName) {
 				return res.status(400).json({ error: "Missing businessName" });
+			}
+
+			// First choice: Google Maps photos (already collected by frontend)
+			let detectedLogo = photos && photos.length > 0 ? photos[0] : undefined;
+			if (detectedLogo && detectedLogo.includes("googleusercontent.com")) {
+				// Optimize for logo use (square crop, reasonable size)
+				detectedLogo = detectedLogo.split("=")[0] + "=s400-c";
 			}
 
 			function categoryImageSuggestions(cat: string, name?: string) {
@@ -2506,10 +2515,21 @@ app.post(
 			}
 
 			const html = await response.text();
+			const email = extractEmails(html)[0];
+			const phones = extractPhones(html);
+			const imageSuggestions = extractImages(html);
+			
+			// Second choice: Website logo detection
+			const websiteLogo = extractLogo(html, websiteUri);
+			if (websiteLogo) {
+				detectedLogo = websiteLogo;
+			}
+
 			return res.json({
-				email: extractEmails(html)[0],
-				phones: extractPhones(html),
-				imageSuggestions: extractImages(html),
+				email,
+				phones,
+				imageSuggestions,
+				logo: detectedLogo,
 				businessName,
 				category,
 			});
@@ -2519,10 +2539,50 @@ app.post(
 				email: undefined,
 				phones: [],
 				imageSuggestions: [],
+				logo: req.body.photos?.[0],
 			});
 		}
 	},
 );
+
+function extractLogo(html: string, baseUrl: string): string | undefined {
+	try {
+		// 1. Try manifest/icons or link rel shortcuts
+		const iconRegex = /<link[^>]+rel=["'](?:shortcut )?icon["'][^>]+href=["']([^"']+)["']/i;
+		const appleIconRegex = /<link[^>]+rel=["']apple-touch-icon["'][^>]+href=["']([^"']+)["']/i;
+		const ogImageRegex = /<meta[^>]+property=["']og:logo["'][^>]+content=["']([^"']+)["']/i;
+		const schemaLogoRegex = /["']logo["']\s*:\s*["']([^"']+)["']/i;
+
+		const match = html.match(ogImageRegex) || 
+		              html.match(appleIconRegex) || 
+					  html.match(iconRegex) ||
+					  html.match(schemaLogoRegex);
+
+		if (match && match[1]) {
+			let logoUrl = match[1];
+			if (logoUrl.startsWith("//")) {
+				logoUrl = "https:" + logoUrl;
+			} else if (logoUrl.startsWith("/")) {
+				const origin = new URL(baseUrl).origin;
+				logoUrl = origin + logoUrl;
+			} else if (!logoUrl.startsWith("http")) {
+				const origin = new URL(baseUrl).origin;
+				logoUrl = origin + "/" + logoUrl;
+			}
+			return logoUrl;
+		}
+
+		// 3. Fallback to favicon.ico
+		try {
+			const origin = new URL(baseUrl).origin;
+			return `${origin}/favicon.ico`;
+		} catch {
+			return undefined;
+		}
+	} catch {
+		return undefined;
+	}
+}
 
 app.post(
 	"/api/qualify-leads",

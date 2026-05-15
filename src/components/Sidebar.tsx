@@ -46,6 +46,7 @@ function sanitizeBusiness(b: any): Business {
 		phoneNumber: b.phoneNumber ? String(b.phoneNumber) : undefined,
 		photos: Array.isArray(b.photos) ? b.photos.map(p => String(p)) : [],
 		imageSuggestions: Array.isArray(b.imageSuggestions) ? b.imageSuggestions.map(s => String(s)) : [],
+		logo: b.logo ? String(b.logo) : undefined,
 		isOpen: Boolean(b.isOpen),
 	};
 }
@@ -69,6 +70,7 @@ async function enrichBusinessContacts(businesses: Business[]) {
 						websiteUri: business.websiteUri,
 						businessName: business.name,
 						category: business.category,
+						photos: business.photos,
 					}),
 				});
 
@@ -82,6 +84,7 @@ async function enrichBusinessContacts(businesses: Business[]) {
 					email: data.email,
 					phoneNumber: business.phoneNumber || data.phones?.[0],
 					imageSuggestions: data.imageSuggestions || [],
+					logo: data.logo || business.logo,
 				};
 			} catch {
 				return business;
