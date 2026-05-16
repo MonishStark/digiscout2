@@ -207,6 +207,10 @@ export default function DeploymentsView({
 	};
 
 	const getPreviewHtml = (project: WebsiteProject) => {
+		// If WP site is live, return null — we'll use src iframe instead
+		if (project.wordpressSiteUrl && project.provisioningStatus === "completed") {
+			return null;
+		}
 		if (project.websiteSchema) {
 			return renderWebsiteArtifact({
 				schema: project.websiteSchema,
@@ -215,7 +219,6 @@ export default function DeploymentsView({
 				js: "",
 			});
 		}
-
 		return project.websiteContent;
 	};
 
@@ -420,16 +423,29 @@ export default function DeploymentsView({
 								className='group relative overflow-hidden rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_24px_90px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-violet-200 hover:shadow-[0_30px_100px_rgba(15,23,42,0.1)] sm:p-5 lg:p-6'>
 								<div className='absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.08),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.05),transparent_25%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100' />
 								<div className='relative flex flex-col gap-5 xl:flex-row xl:items-stretch xl:gap-6'>
-									<div className='relative h-[200px] w-full overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50 shadow-[0_20px_50px_rgba(15,23,42,0.08)] sm:h-[220px] xl:h-auto xl:w-[320px] xl:flex-shrink-0'>
-										<iframe
-											srcDoc={getPreviewHtml(project)}
-											title={`${project.businessName} preview`}
-											sandbox='allow-scripts'
-											scrolling='no'
-											className='h-full w-full border-0 overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]'
-											style={{ overflow: "hidden" }}
-										/>
-										<div className='absolute inset-0 bg-gradient-to-t from-white/30 via-transparent to-transparent' />
+									{/* ── MINI PREVIEW ── */}
+									<div className='relative h-[200px] w-full overflow-hidden rounded-[24px] border border-slate-200 bg-slate-900 shadow-[0_20px_50px_rgba(15,23,42,0.08)] sm:h-[220px] xl:h-auto xl:w-[320px] xl:flex-shrink-0'>
+										{project.wordpressSiteUrl && project.provisioningStatus === "completed" ? (
+											/* Live WP site — real iframe */
+											<iframe
+												src={project.wordpressSiteUrl}
+												title={`${project.businessName} live preview`}
+												scrolling='no'
+												className='h-full w-full border-0 transition-transform duration-700 ease-out group-hover:scale-[1.02]'
+												style={{ transform: 'scale(0.5)', transformOrigin: 'top left', width: '200%', height: '200%', pointerEvents: 'none' }}
+											/>
+										) : (
+											/* Still provisioning — static schema renderer */
+											<iframe
+												srcDoc={getPreviewHtml(project) ?? ""}
+												title={`${project.businessName} preview`}
+												sandbox='allow-scripts'
+												scrolling='no'
+												className='h-full w-full border-0 overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]'
+												style={{ overflow: "hidden" }}
+											/>
+										)}
+										<div className='absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none' />
 										<div className='absolute left-4 top-4 flex items-center gap-2'>
 											<Badge className='rounded-full border border-slate-200 bg-white/85 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-slate-600 backdrop-blur-xl'>
 												{getProvisioningLabel(project)}

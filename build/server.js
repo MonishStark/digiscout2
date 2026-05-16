@@ -616,6 +616,236 @@ var init_wordpress = __esm({
   }
 });
 
+// src/lib/premium-site-builder.ts
+var premium_site_builder_exports = {};
+__export(premium_site_builder_exports, {
+  buildPremiumPageContent: () => buildPremiumPageContent,
+  esc: () => esc
+});
+function esc(str) {
+  return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function buildPremiumPageContent(schema) {
+  const palette = schema.theme?.palette || {
+    background: "#07070a",
+    surface: "#0f0f13",
+    primary: "#7c3aed",
+    text: "#f4f4f5",
+    muted: "#a1a1aa"
+  };
+  const P = palette.primary;
+  const BG = palette.background;
+  const SURF = palette.surface;
+  const TEXT = palette.text;
+  const MUTED = palette.muted || "#a1a1aa";
+  const businessName = schema.brand?.businessName || "Welcome";
+  const sections = schema.sections || [];
+  const hero = sections.find((s) => s.type === "hero") || sections[0] || {};
+  const feats = sections.find((s) => s.type === "features" || s.type === "services");
+  const gallery = sections.find((s) => s.type === "gallery");
+  const testimonials = sections.find((s) => s.type === "testimonials");
+  const cta = sections.find((s) => s.type === "cta");
+  const heroImg = hero?.media?.src || hero?.media?.url || "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1800&q=80";
+  const heroTitle = hero?.headline || businessName;
+  const heroSub = hero?.subheadline || `${businessName} \u2014 modern, professional & ready to impress.`;
+  const ctaLabel = hero?.primaryCta?.label || hero?.ctaPrimary?.label || "Get Started";
+  const email = schema.brand?.email || "";
+  const phone = schema.brand?.phone || "";
+  const address = schema.brand?.address || "";
+  const globalCss = `<!-- wp:html -->
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;700;900&display=swap');
+*,*::before,*::after{box-sizing:border-box!important;}
+html,body{background:${BG}!important;color:${TEXT}!important;font-family:'Inter',sans-serif!important;margin:0!important;padding:0!important;scroll-behavior:smooth!important;}
+/* Hide Hello Elementor/theme chrome completely */
+.site-header,.site-footer,.elementor-location-header,.elementor-location-footer,
+#masthead,#colophon,.entry-title,.wp-block-post-title,
+.page-title,.breadcrumbs,.posted-on,.byline,header.entry-header{display:none!important;}
+/* Strip all WP/theme content wrappers */
+.site-content,.hentry,.entry-content,.wp-block-post-content,
+.wp-site-blocks,.is-layout-flow,.elementor,.page,.single{
+  padding:0!important;margin:0!important;max-width:100%!important;width:100%!important;background:${BG}!important;}
+/* Hero cover override */
+.wp-block-cover.ds-hero{position:relative!important;overflow:hidden!important;}
+.wp-block-cover.ds-hero h1{
+  font-family:'Playfair Display',serif!important;
+  font-size:clamp(2.8rem,6vw,5.5rem)!important;
+  line-height:1.08!important;font-weight:900!important;
+  color:#fff!important;letter-spacing:-0.03em!important;
+  text-shadow:0 4px 40px rgba(0,0,0,0.5)!important;
+  margin-bottom:1.5rem!important;}
+.wp-block-cover.ds-hero .wp-block-paragraph{
+  font-size:clamp(1rem,1.8vw,1.35rem)!important;
+  color:rgba(255,255,255,.88)!important;
+  max-width:620px!important;margin:0 auto 2.5rem!important;line-height:1.7!important;}
+.wp-block-button__link,.wp-element-button{
+  background:${P}!important;color:#fff!important;border:none!important;
+  border-radius:50px!important;padding:16px 44px!important;font-weight:700!important;
+  font-size:1.05rem!important;letter-spacing:.02em!important;cursor:pointer!important;
+  text-decoration:none!important;display:inline-block!important;
+  box-shadow:0 8px 32px rgba(0,0,0,.3)!important;
+  transition:transform .2s ease,box-shadow .2s ease!important;}
+.wp-block-button__link:hover{transform:scale(1.05)!important;color:#fff!important;
+  box-shadow:0 12px 48px rgba(0,0,0,.4)!important;}
+</style>
+<!-- /wp:html -->
+
+`;
+  const heroBlock = `<!-- wp:cover {"url":"${esc(heroImg)}","dimRatio":60,"overlayColor":"black","minHeight":100,"minHeightUnit":"vh","align":"full","className":"ds-hero"} -->
+<div class="wp-block-cover alignfull ds-hero" style="min-height:100vh;position:relative;overflow:hidden;">
+<span aria-hidden="true" class="wp-block-cover__background has-black-background-color has-background-dim-60 has-background-dim" style="background:linear-gradient(160deg,rgba(0,0,0,.7) 0%,rgba(${hexToRgb(P)},.35) 100%)!important;"></span>
+<img class="wp-block-cover__image-background" alt="${esc(businessName)}" src="${esc(heroImg)}" data-object-fit="cover" style="object-fit:cover;width:100%;height:100%;position:absolute;inset:0;"/>
+<div class="wp-block-cover__inner-container" style="position:relative;z-index:2;padding:160px 24px 120px;text-align:center;max-width:900px;margin:0 auto;">
+<!-- wp:heading {"textAlign":"center","level":1} -->
+<h1 class="wp-block-heading has-text-align-center">${esc(heroTitle)}</h1>
+<!-- /wp:heading -->
+<!-- wp:paragraph {"textAlign":"center"} -->
+<p class="wp-block-paragraph has-text-align-center">${esc(heroSub)}</p>
+<!-- /wp:paragraph -->
+<!-- wp:buttons {"layout":{"type":"flex","justifyContent":"center"},"style":{"spacing":{"margin":{"top":"40px"}}}} -->
+<div class="wp-block-buttons" style="margin-top:40px;"><!-- wp:button -->
+<div class="wp-block-button"><a class="wp-block-button__link wp-element-button">${esc(ctaLabel)}</a></div>
+<!-- /wp:button --></div>
+<!-- /wp:buttons -->
+</div></div>
+<!-- /wp:cover -->
+
+`;
+  let featBlock = "";
+  if (feats?.items?.length) {
+    const items = feats.items.slice(0, 6);
+    const icons = ["\u2726", "\u25C8", "\u2B21", "\u25C9", "\u2B22", "\u2727"];
+    const cards = items.map((item, i) => `
+<div style="background:linear-gradient(135deg,rgba(255,255,255,.04),rgba(255,255,255,.01));border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:36px 28px;transition:transform .3s,box-shadow .3s;position:relative;overflow:hidden;" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 30px 70px rgba(0,0,0,.4)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+  <div style="font-size:2rem;margin-bottom:1rem;color:${P};">${icons[i % icons.length]}</div>
+  <h3 style="font-size:1.2rem;font-weight:700;color:${TEXT};margin:0 0 .75rem;letter-spacing:-.01em;">${esc(item.title || item.name || "")}</h3>
+  <p style="color:${MUTED};line-height:1.75;font-size:.95rem;margin:0;">${esc(item.description || item.body || "")}</p>
+</div>`).join("\n");
+    featBlock = `<!-- wp:html -->
+<section id="services" style="background:${SURF};padding:100px 40px;width:100%;box-sizing:border-box;">
+  <div style="max-width:1100px;margin:0 auto;">
+    <div style="text-align:center;margin-bottom:60px;">
+      <span style="display:inline-block;background:linear-gradient(135deg,${P},#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:.85rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;margin-bottom:1rem;">${esc(feats.tagline || "What We Offer")}</span>
+      <h2 style="font-family:'Playfair Display',serif;font-size:clamp(2rem,4vw,3.2rem);font-weight:900;color:${TEXT};margin:0 auto;letter-spacing:-.03em;line-height:1.1;">${esc(feats.headline || feats.title || "Our Services")}</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;">
+      ${cards}
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
+  let galleryBlock = "";
+  if (gallery?.items?.length) {
+    const imgs = gallery.items.slice(0, 6);
+    const figures = imgs.map((item) => `
+<figure style="margin:0;overflow:hidden;border-radius:16px;aspect-ratio:4/3;position:relative;" onmouseover="this.querySelector('img').style.transform='scale(1.08)'" onmouseout="this.querySelector('img').style.transform='scale(1)'">
+  <img src="${esc(item.src || item.url || "")}" alt="${esc(item.alt || businessName)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;transition:transform .5s ease;display:block;"/>
+</figure>`).join("\n");
+    galleryBlock = `<!-- wp:html -->
+<section id="gallery" style="background:${BG};padding:100px 40px;width:100%;box-sizing:border-box;">
+  <div style="max-width:1100px;margin:0 auto;">
+    <div style="text-align:center;margin-bottom:60px;">
+      <h2 style="font-family:'Playfair Display',serif;font-size:clamp(2rem,4vw,3.2rem);font-weight:900;color:${TEXT};margin:0 auto;letter-spacing:-.03em;">${esc(gallery.headline || gallery.title || "Gallery")}</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;">
+      ${figures}
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
+  let testimonialsBlock = "";
+  if (testimonials?.items?.length) {
+    const items = testimonials.items.slice(0, 4);
+    const cards = items.map((item) => `
+<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-left:3px solid ${P};border-radius:16px;padding:32px;">
+  <div style="font-size:2rem;color:${P};margin-bottom:1rem;line-height:1;">\u275D</div>
+  <p style="font-style:italic;color:${TEXT};line-height:1.75;font-size:1rem;margin:0 0 1.25rem;">${esc(item.quote || "")}</p>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,${P},#a855f7);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:.85rem;">${(item.author || "?")[0].toUpperCase()}</div>
+    <div>
+      <div style="font-weight:700;color:${TEXT};font-size:.95rem;">${esc(item.author || "")}</div>
+      ${item.role ? `<div style="color:${MUTED};font-size:.8rem;">${esc(item.role)}</div>` : ""}
+    </div>
+  </div>
+</div>`).join("\n");
+    testimonialsBlock = `<!-- wp:html -->
+<section id="reviews" style="background:${SURF};padding:100px 40px;width:100%;box-sizing:border-box;">
+  <div style="max-width:1100px;margin:0 auto;">
+    <div style="text-align:center;margin-bottom:60px;">
+      <h2 style="font-family:'Playfair Display',serif;font-size:clamp(2rem,4vw,3.2rem);font-weight:900;color:${TEXT};margin:0 auto;letter-spacing:-.03em;">${esc(testimonials.headline || "What Our Clients Say")}</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;">
+      ${cards}
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
+  let ctaBlock = "";
+  if (cta) {
+    const ctaTitle = cta.headline || cta.title || `Ready to experience ${businessName}?`;
+    const ctaBody = cta.body || "";
+    const ctaBtnLabel = cta.buttonLabel || cta.primaryCta?.label || "Book Now";
+    const ctaBtnHref = cta.buttonHref || cta.primaryCta?.href || "#contact";
+    ctaBlock = `<!-- wp:html -->
+<section style="background:linear-gradient(135deg,${P} 0%,#1e1b4b 100%);padding:120px 40px;text-align:center;width:100%;box-sizing:border-box;position:relative;overflow:hidden;">
+  <div style="position:absolute;inset:0;background:url('data:image/svg+xml,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; width=&quot;60&quot; height=&quot;60&quot;><circle cx=&quot;30&quot; cy=&quot;30&quot; r=&quot;1&quot; fill=&quot;rgba(255,255,255,0.15)&quot;/></svg>') repeat;pointer-events:none;"></div>
+  <div style="position:relative;z-index:1;max-width:700px;margin:0 auto;">
+    <h2 style="font-family:'Playfair Display',serif;font-size:clamp(2rem,4vw,3rem);font-weight:900;color:#fff;margin:0 0 1.5rem;letter-spacing:-.03em;">${esc(ctaTitle)}</h2>
+    ${ctaBody ? `<p style="color:rgba(255,255,255,.85);font-size:1.15rem;margin:0 0 2.5rem;line-height:1.7;">${esc(ctaBody)}</p>` : ""}
+    <a href="${esc(ctaBtnHref)}" style="background:#fff;color:${P};padding:18px 48px;border-radius:50px;font-weight:800;text-decoration:none;display:inline-block;font-size:1.05rem;letter-spacing:.02em;box-shadow:0 8px 40px rgba(0,0,0,.3);transition:transform .2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">${esc(ctaBtnLabel)}</a>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
+  let contactBlock = "";
+  const contactItems = [];
+  if (address) contactItems.push(`<div style="text-align:center;"><div style="font-size:2rem;margin-bottom:.75rem;">\u{1F4CD}</div><h3 style="font-weight:700;color:${TEXT};margin:0 0 .5rem;font-size:1rem;">Address</h3><p style="color:${MUTED};line-height:1.6;margin:0;font-size:.95rem;">${esc(address)}</p></div>`);
+  if (phone) contactItems.push(`<div style="text-align:center;"><div style="font-size:2rem;margin-bottom:.75rem;">\u{1F4DE}</div><h3 style="font-weight:700;color:${TEXT};margin:0 0 .5rem;font-size:1rem;">Phone</h3><a href="tel:${esc(phone)}" style="color:${P};text-decoration:none;font-size:.95rem;">${esc(phone)}</a></div>`);
+  if (email) contactItems.push(`<div style="text-align:center;"><div style="font-size:2rem;margin-bottom:.75rem;">\u2709\uFE0F</div><h3 style="font-weight:700;color:${TEXT};margin:0 0 .5rem;font-size:1rem;">Email</h3><a href="mailto:${esc(email)}" style="color:${P};text-decoration:none;font-size:.95rem;">${esc(email)}</a></div>`);
+  if (contactItems.length) {
+    contactBlock = `<!-- wp:html -->
+<section id="contact" style="background:${BG};padding:100px 40px;width:100%;box-sizing:border-box;">
+  <div style="max-width:900px;margin:0 auto;">
+    <h2 style="font-family:'Playfair Display',serif;font-size:clamp(2rem,4vw,3rem);font-weight:900;color:${TEXT};text-align:center;margin:0 0 60px;letter-spacing:-.03em;">Get In Touch</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:40px;">
+      ${contactItems.join("\n")}
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
+  const footer = `<!-- wp:html -->
+<footer style="background:#000;padding:40px;text-align:center;border-top:1px solid rgba(255,255,255,.06);">
+  <p style="color:rgba(255,255,255,.35);font-size:.85rem;margin:0;">&copy; ${(/* @__PURE__ */ new Date()).getFullYear()} ${esc(businessName)}. All rights reserved.</p>
+</footer>
+<!-- /wp:html -->`;
+  return globalCss + heroBlock + featBlock + galleryBlock + testimonialsBlock + ctaBlock + contactBlock + footer;
+}
+function hexToRgb(hex) {
+  const clean = hex.replace("#", "");
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+  return `${r},${g},${b}`;
+}
+var init_premium_site_builder = __esm({
+  "src/lib/premium-site-builder.ts"() {
+  }
+});
+
 // src/lib/layout-registry.ts
 var HERO_LAYOUTS, FEATURES_LAYOUTS, GALLERY_LAYOUTS, TESTIMONIALS_LAYOUTS, CTA_LAYOUTS, FAQ_LAYOUTS, CONTACT_LAYOUTS;
 var init_layout_registry = __esm({
@@ -1702,20 +1932,18 @@ async function executeStateMachine(job) {
     const fullDocRoot = `${docRootBase}/${subdomain}`;
     await configurePermalinks(fullDocRoot, "/%postname%/", (log) => appendLog(job.id, log));
     await appendLog(job.id, "Configured remote permalinks");
-    await appendLog(job.id, "Installing Astra theme...");
+    await appendLog(job.id, "Installing Hello Elementor theme...");
     try {
-      await runWpCommand(`theme install astra --activate`, fullDocRoot, (log) => appendLog(job.id, log));
-      await appendLog(job.id, "Astra theme activated");
+      await runWpCommand(`theme install hello-elementor --activate`, fullDocRoot, (log) => appendLog(job.id, log));
+      await appendLog(job.id, "Hello Elementor theme activated");
     } catch (e) {
-      await appendLog(job.id, `Warning: Theme install failed (${e.message}), using default theme`);
+      await appendLog(job.id, `Warning: Theme install failed (${e.message}), using default`);
     }
     try {
-      await runWpCommand(`theme delete twentytwentyfive twentytwentyfour twentytwentythree`, fullDocRoot, (log) => appendLog(job.id, log));
+      await runWpCommand(`theme delete twentytwentyfive twentytwentyfour twentytwentythree astra`, fullDocRoot, (log) => appendLog(job.id, log));
     } catch (e) {
     }
     await runWpCommand(`option update default_comment_status closed`, fullDocRoot, (log) => appendLog(job.id, log)).catch(() => {
-    });
-    await runWpCommand(`option update comment_status closed`, fullDocRoot, (log) => appendLog(job.id, log)).catch(() => {
     });
     await runWpCommand(`option update blogdescription ""`, fullDocRoot, (log) => appendLog(job.id, log)).catch(() => {
     });
@@ -1773,20 +2001,7 @@ async function executeStateMachine(job) {
     await appendLog(job.id, `Job completed! Remote WP site live at ${httpUrl} (SSL polling started)`);
   }
 }
-function fallbackImageForCategory(category) {
-  const normalized = (category || "").toLowerCase();
-  if (normalized.includes("restaurant") || normalized.includes("cafe")) {
-    return "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1800&q=80";
-  }
-  if (normalized.includes("gym") || normalized.includes("fitness")) {
-    return "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=1800&q=80";
-  }
-  if (normalized.includes("salon") || normalized.includes("spa")) {
-    return "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1800&q=80";
-  }
-  return "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1800&q=80";
-}
-function esc(str) {
+function esc2(str) {
   return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 async function injectWebsiteContent(docRoot, schema, _homepageBlocks, logCallback) {
@@ -1800,152 +2015,9 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, logCallbac
       );
     } catch (e) {
     }
-    const palette = schema.theme?.palette || {
-      background: "#07070a",
-      surface: "#111114",
-      primary: "#7c3aed",
-      text: "#f4f4f5",
-      muted: "#a1a1aa"
-    };
-    const businessName = schema.brand?.businessName || "Welcome";
-    const sections = schema.sections || [];
-    const hero = sections.find((s) => s.type === "hero") || sections[0] || {};
-    const features = sections.find((s) => s.type === "features" || s.type === "services");
-    const gallery = sections.find((s) => s.type === "gallery");
-    const testimonials = sections.find((s) => s.type === "testimonials");
-    const cta = sections.find((s) => s.type === "cta");
-    const heroImg = hero?.media?.src || hero?.media?.url || fallbackImageForCategory(schema.brand?.category);
-    const heroTitle = hero?.headline || businessName;
-    const heroSub = hero?.subheadline || `${businessName} \u2014 professional, trusted, and ready to serve you.`;
-    const ctaLabel = hero?.primaryCta?.label || hero?.ctaPrimary?.label || "Get Started";
-    const email = schema.brand?.email || "";
-    const phone = schema.brand?.phone || "";
-    const address = schema.brand?.address || "";
     await logCallback("Building premium Gutenberg content...");
-    const css = `
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-html,body{background:${palette.background}!important;color:${palette.text}!important;font-family:'Inter',sans-serif!important;margin:0!important;padding:0!important;}
-/* Hide Astra/theme chrome */
-.ast-site-header-wrap,.site-header,#masthead,.ast-breadcrumbs-wrapper,.entry-title,.wp-block-post-title,.posted-on,.byline,.ast-blog-single-element,.site-footer,#colophon,.ast-footer-widget-area{display:none!important;}
-/* Remove content padding added by Astra */
-.ast-separate-container .site-content,.ast-plain-container .site-content,.entry-content,.ast-container{padding:0!important;max-width:100%!important;width:100%!important;}
-.wp-site-blocks,.is-layout-flow,.wp-block-post-content{padding:0!important;margin:0!important;}
-/* Hero */
-.wp-block-cover.ds-hero{min-height:100vh!important;}
-.wp-block-cover.ds-hero h1{font-size:clamp(2.2rem,5.5vw,5rem)!important;line-height:1.1!important;font-weight:800!important;color:#fff!important;margin-bottom:1.5rem!important;letter-spacing:-0.02em!important;}
-.wp-block-cover.ds-hero p{font-size:clamp(1rem,1.8vw,1.3rem)!important;color:rgba(255,255,255,.85)!important;max-width:600px!important;margin:0 auto 2.5rem!important;line-height:1.65!important;}
-/* Sections */
-.ds-section{padding:100px 40px!important;width:100%!important;box-sizing:border-box!important;}
-.ds-section-dark{background:${palette.surface}!important;}
-.ds-section-light{background:${palette.background}!important;}
-.ds-section h2{font-size:clamp(1.8rem,3.5vw,3rem)!important;font-weight:800!important;color:${palette.text}!important;text-align:center!important;margin:0 auto 3rem!important;letter-spacing:-0.02em!important;max-width:700px!important;}
-.ds-inner{max-width:1100px!important;margin:0 auto!important;}
-/* Cards */
-.ds-card{background:rgba(255,255,255,.04)!important;border:1px solid rgba(255,255,255,.07)!important;border-radius:20px!important;padding:36px 28px!important;transition:transform .3s ease,box-shadow .3s ease!important;}
-.ds-card:hover{transform:translateY(-6px)!important;box-shadow:0 24px 60px rgba(0,0,0,.3)!important;}
-.ds-card h3{font-size:1.2rem!important;font-weight:700!important;color:${palette.text}!important;margin:0 0 .75rem!important;}
-.ds-card p{color:${palette.muted}!important;line-height:1.7!important;font-size:.95rem!important;margin:0!important;}
-.ds-grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(270px,1fr))!important;gap:24px!important;margin-top:48px!important;}
-/* Testimonials */
-.ds-testimonial{background:rgba(255,255,255,.04)!important;border-left:3px solid ${palette.primary}!important;border-radius:12px!important;padding:28px!important;}
-.ds-testimonial blockquote{font-style:italic!important;color:${palette.text}!important;margin:0 0 1rem!important;line-height:1.7!important;font-size:1rem!important;}
-.ds-testimonial .ds-author{font-weight:600!important;color:${palette.primary}!important;font-size:.9rem!important;}
-/* CTA */
-.ds-cta-section{padding:100px 40px!important;text-align:center!important;background:linear-gradient(135deg,${palette.primary},${palette.surface})!important;}
-.ds-cta-section h2{color:#fff!important;margin-bottom:1.5rem!important;}
-.ds-cta-section p{color:rgba(255,255,255,.85)!important;font-size:1.1rem!important;margin:0 auto 2.5rem!important;max-width:580px!important;}
-.ds-cta-section a{background:#fff!important;color:${palette.primary}!important;padding:16px 40px!important;border-radius:50px!important;font-weight:700!important;text-decoration:none!important;display:inline-block!important;transition:transform .2s!important;font-size:1rem!important;}
-.ds-cta-section a:hover{transform:scale(1.04)!important;}
-/* Buttons */
-.wp-block-button__link{background:${palette.primary}!important;color:#fff!important;border:none!important;border-radius:50px!important;padding:14px 36px!important;font-weight:700!important;transition:transform .2s,box-shadow .2s!important;font-size:1rem!important;letter-spacing:.01em!important;}
-.wp-block-button__link:hover{transform:scale(1.04)!important;box-shadow:0 8px 30px rgba(0,0,0,.25)!important;color:#fff!important;}
-/* Gallery */
-.ds-gallery-grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))!important;gap:16px!important;margin-top:48px!important;}
-.ds-gallery-grid figure{margin:0!important;overflow:hidden!important;border-radius:12px!important;aspect-ratio:4/3!important;}
-.ds-gallery-grid img{width:100%!important;height:100%!important;object-fit:cover!important;transition:transform .4s ease!important;}
-.ds-gallery-grid figure:hover img{transform:scale(1.06)!important;}
-/* Contact */
-.ds-contact-grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important;gap:32px!important;margin-top:48px!important;}
-.ds-contact-item h3{font-size:1rem!important;font-weight:700!important;color:${palette.primary}!important;margin:0 0 .5rem!important;}
-.ds-contact-item p,.ds-contact-item a{color:${palette.muted}!important;line-height:1.6!important;font-size:.95rem!important;text-decoration:none!important;}
-@media(max-width:768px){.ds-section{padding:64px 20px!important;}.ds-cta-section{padding:64px 20px!important;}}
-</style>`;
-    let content = `<!-- wp:html -->
-${css}
-<!-- /wp:html -->
-
-`;
-    content += `<!-- wp:cover {"url":"${esc(heroImg)}","dimRatio":55,"overlayColor":"black","minHeight":100,"minHeightUnit":"vh","align":"full","className":"ds-hero","style":{"spacing":{"padding":{"top":"160px","bottom":"120px"}}}} -->
-<div class="wp-block-cover alignfull ds-hero" style="padding-top:160px;padding-bottom:120px;min-height:100vh"><span aria-hidden="true" class="wp-block-cover__background has-black-background-color has-background-dim-55 has-background-dim"></span><img class="wp-block-cover__image-background" alt="${esc(businessName)}" src="${esc(heroImg)}" data-object-fit="cover"/><div class="wp-block-cover__inner-container">
-<!-- wp:heading {"textAlign":"center","level":1} -->
-<h1 class="wp-block-heading has-text-align-center">${esc(heroTitle)}</h1>
-<!-- /wp:heading -->
-<!-- wp:paragraph {"textAlign":"center","fontSize":"large"} -->
-<p class="has-text-align-center has-large-font-size">${esc(heroSub)}</p>
-<!-- /wp:paragraph -->
-<!-- wp:buttons {"layout":{"type":"flex","justifyContent":"center"},"style":{"spacing":{"margin":{"top":"40px"}}}} -->
-<div class="wp-block-buttons" style="margin-top:40px"><!-- wp:button {"style":{"border":{"radius":"50px"}}} -->
-<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" style="border-radius:50px">${esc(ctaLabel)}</a></div>
-<!-- /wp:button --></div>
-<!-- /wp:buttons -->
-</div></div>
-<!-- /wp:cover -->
-
-`;
-    if (features?.items?.length) {
-      const items = features.items.slice(0, 6);
-      const cards = items.map(
-        (item) => `<div class="ds-card"><h3>${esc(item.title || item.name || "")}</h3><p>${esc(item.description || item.body || "")}</p></div>`
-      ).join("\n");
-      content += `<!-- wp:html -->
-<section class="ds-section ds-section-dark" id="services"><div class="ds-inner"><h2>${esc(features.headline || features.title || "Our Services")}</h2><div class="ds-grid">${cards}</div></div></section>
-<!-- /wp:html -->
-
-`;
-    }
-    if (gallery?.items?.length) {
-      const imgs = gallery.items.slice(0, 6).map(
-        (item) => `<figure><img src="${esc(item.src || item.url || "")}" alt="${esc(item.alt || businessName)}" loading="lazy"></figure>`
-      ).join("\n");
-      content += `<!-- wp:html -->
-<section class="ds-section ds-section-light" id="gallery"><div class="ds-inner"><h2>${esc(gallery.headline || gallery.title || "Gallery")}</h2><div class="ds-gallery-grid">${imgs}</div></div></section>
-<!-- /wp:html -->
-
-`;
-    }
-    if (testimonials?.items?.length) {
-      const cards = testimonials.items.slice(0, 4).map(
-        (item) => `<div class="ds-testimonial"><blockquote>"${esc(item.quote || "")}"</blockquote><div class="ds-author">\u2014 ${esc(item.author || "")}${item.role ? `, ${esc(item.role)}` : ""}</div></div>`
-      ).join("\n");
-      content += `<!-- wp:html -->
-<section class="ds-section ds-section-dark" id="reviews"><div class="ds-inner"><h2>${esc(testimonials.headline || "What Our Clients Say")}</h2><div class="ds-grid">${cards}</div></div></section>
-<!-- /wp:html -->
-
-`;
-    }
-    if (cta) {
-      const ctaT = cta.headline || cta.title || `Ready to experience ${businessName}?`;
-      const ctaB = cta.body || "";
-      const ctaBtnLabel = cta.buttonLabel || cta.primaryCta?.label || "Book Now";
-      const ctaBtnHref = cta.buttonHref || cta.primaryCta?.href || "#contact";
-      content += `<!-- wp:html -->
-<section class="ds-cta-section"><h2>${esc(ctaT)}</h2>${ctaB ? `<p>${esc(ctaB)}</p>` : ""}<a href="${esc(ctaBtnHref)}">${esc(ctaBtnLabel)}</a></section>
-<!-- /wp:html -->
-
-`;
-    }
-    let contactItems = "";
-    if (address) contactItems += `<div class="ds-contact-item"><h3>Address</h3><p>${esc(address)}</p></div>`;
-    if (phone) contactItems += `<div class="ds-contact-item"><h3>Phone</h3><p><a href="tel:${esc(phone)}">${esc(phone)}</a></p></div>`;
-    if (email) contactItems += `<div class="ds-contact-item"><h3>Email</h3><p><a href="mailto:${esc(email)}">${esc(email)}</a></p></div>`;
-    if (contactItems) {
-      content += `<!-- wp:html -->
-<section class="ds-section ds-section-dark" id="contact"><div class="ds-inner"><h2>Get In Touch</h2><div class="ds-contact-grid">${contactItems}</div></div></section>
-<!-- /wp:html -->
-
-`;
-    }
+    const { buildPremiumPageContent: buildPremiumPageContent2 } = await Promise.resolve().then(() => (init_premium_site_builder(), premium_site_builder_exports));
+    const content = buildPremiumPageContent2(schema);
     const tmpFile = `/tmp/ds_home_${Date.now()}.html`;
     await logCallback(`Writing to remote temp file: ${tmpFile}`);
     await runRemoteShellCommand(
@@ -1967,7 +2039,7 @@ DS_MARKER`,
     await runWpCommand(`option update show_on_front page`, docRoot, logCallback);
     await runWpCommand(`option update page_on_front ${homePageId}`, docRoot, logCallback);
     if (schema.brand?.businessName) {
-      await runWpCommand(`option update blogname "${esc(schema.brand.businessName)}"`, docRoot, logCallback);
+      await runWpCommand(`option update blogname "${esc2(schema.brand.businessName)}"`, docRoot, logCallback);
     }
     await runWpCommand(`rewrite structure "/%postname%/"`, docRoot, logCallback);
     await runWpCommand(`rewrite flush`, docRoot, logCallback);
