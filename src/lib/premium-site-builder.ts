@@ -93,11 +93,11 @@ ${sections.map((s: any) => s.customCss || "").join("\n")}
 
 		switch (section.type) {
 			case "hero":
-				html += renderHero(section, schema, P, TEXT, MUTED, typography);
+				html += renderHero(section, schema, P, TEXT, MUTED, BG, SURF, typography);
 				break;
 			case "features":
 			case "services":
-				html += renderFeatures(section, schema, P, TEXT, MUTED, sectionBg, typography, radius);
+				html += renderFeatures(section, schema, P, TEXT, MUTED, BG, SURF, sectionBg, typography, radius);
 				break;
 			case "gallery":
 				html += renderGallery(section, schema, TEXT, sectionBg, typography);
@@ -131,7 +131,7 @@ ${sections.map((s: any) => s.customCss || "").join("\n")}
 	return html;
 }
 
-function renderHero(section: any, schema: any, P: string, TEXT: string, MUTED: string, typography: any) {
+function renderHero(section: any, schema: any, P: string, TEXT: string, MUTED: string, BG: string, SURF: string, typography: any) {
 	const businessName = schema.brand?.businessName || "";
 	const img = section.media?.[0]?.url || section.media?.src || section.media?.url || "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=80";
 	const title = section.headline || section.content?.headline || businessName;
@@ -154,7 +154,7 @@ function renderHero(section: any, schema: any, P: string, TEXT: string, MUTED: s
 
 	// Split Variant (Framer-style)
 	return `<!-- wp:html -->
-<section class="section-hero" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));min-height:100vh;background:${schema.theme?.palette?.background || '#fff'};overflow:hidden;">
+<section class="section-hero" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));min-height:100vh;background:${BG};overflow:hidden;">
   <div class="animate-up" style="padding:160px 80px;display:flex;flex-direction:column;justify-content:center;">
     <div style="color:${P};font-weight:900;text-transform:uppercase;letter-spacing:0.2em;font-size:0.8rem;margin-bottom:2rem;">${esc(schema.brand?.category || 'Official Site')}</div>
     <h1 style="font-family:'${typography.heading}',serif;font-size:clamp(3rem,6vw,5.5rem);line-height:0.9;font-weight:900;color:${TEXT};letter-spacing:-0.04em;margin-bottom:2rem;">${esc(title)}</h1>
@@ -169,7 +169,7 @@ function renderHero(section: any, schema: any, P: string, TEXT: string, MUTED: s
 <!-- /wp:html -->\n\n`;
 }
 
-function renderFeatures(section: any, schema: any, P: string, TEXT: string, MUTED: string, Bg: string, typography: any, radius: string) {
+function renderFeatures(section: any, schema: any, P: string, TEXT: string, MUTED: string, BG: string, SURF: string, sectionBg: string, typography: any, radius: string) {
 	const items = section.content?.items || section.items || [];
 	const variant = section.variant || "grid";
 
@@ -182,7 +182,7 @@ function renderFeatures(section: any, schema: any, P: string, TEXT: string, MUTE
 </div>`).join("\n");
 
 		return `<!-- wp:html -->
-<section class="section-padding" style="background:${Bg};">
+<section class="section-padding" style="background:${sectionBg};">
   <div style="max-width:1400px;margin:0 auto;">
     <div style="margin-bottom:80px;">
       <h2 style="font-family:'${typography.heading}',serif;font-size:clamp(3rem,5vw,5rem);font-weight:900;color:${TEXT};line-height:1;letter-spacing:-0.04em;">${esc(section.content?.title || section.headline || "Services")}</h2>
@@ -205,7 +205,7 @@ function renderFeatures(section: any, schema: any, P: string, TEXT: string, MUTE
 </div>`).join("\n");
 
 	return `<!-- wp:html -->
-<section class="section-padding section-features" style="background:${Bg};">
+<section class="section-padding section-features" style="background:${sectionBg};">
   <div style="max-width:1300px;margin:0 auto;">
     <div style="text-align:center;margin-bottom:100px;max-width:800px;margin-left:auto;margin-right:auto;">
       <h2 style="font-family:'${typography.heading}',serif;font-size:clamp(2.5rem,5vw,4.5rem);font-weight:900;color:${TEXT};line-height:1;letter-spacing:-0.04em;margin-bottom:1.5rem;">${esc(section.content?.title || section.headline || "Unmatched Excellence")}</h2>

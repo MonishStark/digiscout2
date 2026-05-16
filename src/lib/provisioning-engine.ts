@@ -425,7 +425,7 @@ async function injectWebsiteContent(
 		await logCallback("Cleaning up default WordPress content...");
 		try {
 			// Get IDs first and only delete if not empty to avoid "usage" errors
-			const deleteCmd = `ids=$(/usr/local/sbin/wp post list --post_type=post,page --format=ids --path="${docRoot}" --allow-root); [ -n "$ids" ] && /usr/local/sbin/wp post delete $ids --force --allow-root --path="${docRoot}"`;
+			const deleteCmd = `/usr/local/sbin/wp post list --post_type=post,page --format=ids --path="${docRoot}" --allow-root | xargs -r /usr/local/sbin/wp post delete --force --allow-root --path="${docRoot}"`;
 			await runRemoteShellCommand(deleteCmd, logCallback);
 		} catch (e) { /* non-fatal */ }
 

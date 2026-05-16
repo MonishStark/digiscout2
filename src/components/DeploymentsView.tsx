@@ -424,79 +424,38 @@ export default function DeploymentsView({
 								<div className='absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.08),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.05),transparent_25%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100' />
 								<div className='relative flex flex-col gap-5 xl:flex-row xl:items-stretch xl:gap-6'>
 									{/* ── MINI PREVIEW ── */}
-									<div className='relative h-[240px] w-full overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50 shadow-[0_20px_50px_rgba(15,23,42,0.08)] sm:h-[260px] xl:h-auto xl:w-[360px] xl:flex-shrink-0'>
+									<div className='relative h-[200px] w-full overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50 shadow-[0_20px_50px_rgba(15,23,42,0.08)] sm:h-[220px] xl:h-auto xl:w-[320px] xl:flex-shrink-0'>
 										{project.wordpressSiteUrl && isLive ? (
-											<>
-												<iframe
-													src={project.wordpressSiteUrl}
-													className='absolute left-0 top-0 h-full w-full border-0 transition-opacity duration-500'
-													loading='lazy'
-													style={{
-														transform: 'scale(0.5)',
-														transformOrigin: 'top left',
-														width: '200%',
-														height: '200%',
-														pointerEvents: 'none',
-													}}
-													title={`Preview of ${project.businessName}`}
-												/>
-												{/* Overlay for interaction */}
-												<div className='absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/0 p-4 transition-all duration-300 hover:bg-slate-900/40 group-preview'>
-													<Button 
-														variant="secondary"
-														className="translate-y-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 rounded-full font-bold shadow-xl"
-														onClick={(e) => {
-															e.stopPropagation();
-															window.open(project.wordpressSiteUrl, '_blank');
-														}}
-													>
-														<ExternalLink className="mr-2 h-4 w-4" />
-														View Live Site
-													</Button>
-												</div>
-
-												{window.location.protocol === 'https:' && project.wordpressSiteUrl.startsWith('http://') && (
-													<div className='absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900/95 p-6 text-center text-white backdrop-blur-md'>
-														<div className='mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/20 text-amber-400'>
-															<ShieldCheck className='h-6 w-6' />
-														</div>
-														<p className='text-sm font-bold'>SSL Security Check</p>
-														<p className='mt-2 text-[11px] leading-relaxed opacity-80'>
-															Browsers block secure previews of new sites while SSL certificates propagate.
-														</p>
-														<Button 
-															variant="outline"
-															size="sm"
-															className='mt-5 rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10'
-															onClick={() => window.open(project.wordpressSiteUrl, '_blank')}
-														>
-															Open In New Tab
-														</Button>
-													</div>
-												)}
-											</>
+											<iframe
+												src={project.wordpressSiteUrl}
+												className='absolute left-0 top-0 h-full w-full border-0'
+												loading='lazy'
+												style={{
+													transform: 'scale(0.5)',
+													transformOrigin: 'top left',
+													width: '200%',
+													height: '200%',
+													pointerEvents: 'none',
+												}}
+												title={`Preview of ${project.businessName}`}
+											/>
 										) : (
-											<div className='flex h-full w-full flex-col items-center justify-center p-8 text-center'>
-												<div className='relative mb-6'>
-													<div className='absolute -inset-4 animate-spin-slow rounded-full bg-gradient-to-tr from-violet-500/20 to-cyan-500/20' />
-													<div className='relative flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-lg text-violet-600'>
-														<Activity className='h-7 w-7 animate-pulse' />
-													</div>
+											<div className='flex h-full w-full flex-col items-center justify-center p-6 text-center'>
+												<div className='mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-violet-100 text-violet-600'>
+													<Database className='h-6 w-6 animate-pulse' />
 												</div>
-												<p className='text-sm font-bold text-slate-800'>
-													{getProvisioningLabel(project)}
+												<p className='text-sm font-medium text-slate-600'>
+													Building your unique site...
 												</p>
-												<p className='mt-2 text-xs leading-relaxed text-slate-400 max-w-[180px]'>
-													Our AI engine is currently deploying your bespoke WordPress theme...
+												<p className='mt-1 text-xs text-slate-400'>
+													Provisioning Hello Elementor & Content
 												</p>
 											</div>
 										)}
-										<div className='absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none' />
+										<div className='absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none' />
 										<div className='absolute left-4 top-4 flex items-center gap-2'>
-											<Badge className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest backdrop-blur-xl ${
-												isLive ? 'border-emerald-200/50 bg-emerald-500/90 text-white' : 'border-slate-200 bg-white/85 text-slate-600'
-											}`}>
-												{isLive ? '● LIVE' : getProvisioningLabel(project)}
+											<Badge className='rounded-full border border-slate-200 bg-white/85 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-slate-600 backdrop-blur-xl'>
+												{getProvisioningLabel(project)}
 											</Badge>
 										</div>
 									</div>
@@ -505,129 +464,135 @@ export default function DeploymentsView({
 										<div className='flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between'>
 											<div className='min-w-0 space-y-3'>
 												<div className='flex flex-wrap items-center gap-2'>
-													<Badge className='rounded-full border border-violet-100 bg-violet-50/50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-violet-700'>
+													<Badge className='rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-violet-700'>
 														{getCategoryLabel(project)}
 													</Badge>
-													<Badge className='rounded-full border border-slate-100 bg-slate-50/50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600'>
+													<Badge className='rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-slate-600'>
 														{getRatingLabel(project)}
 													</Badge>
+													<Badge
+														className={`rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.22em] ${getProvisioningTone(project)}`}>
+														{getProvisioningLabel(project)}
+													</Badge>
 												</div>
-												<div className='space-y-1.5'>
-													<h3 className='truncate text-2xl font-bold tracking-tight text-slate-900 sm:text-[1.85rem]'>
+												<div className='space-y-1'>
+													<h3 className='truncate text-2xl font-semibold tracking-tight text-slate-900 sm:text-[1.7rem]'>
 														{project.businessName}
 													</h3>
-													<p className='flex flex-wrap items-center gap-3 text-sm text-slate-500'>
-														<span className='inline-flex items-center gap-1.5'>
-															<MapPin className='h-4 w-4 text-violet-500/70' />
+													<p className='flex flex-wrap items-center gap-2 text-sm text-slate-500'>
+														<span className='inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5'>
+															<MapPin className='h-3.5 w-3.5 text-violet-500' />
 															{project.businessAddress}
 														</span>
-														<span className='h-1 w-1 rounded-full bg-slate-300' />
-														<span className='inline-flex items-center gap-1.5'>
-															<CheckCircle2 className='h-4 w-4 text-emerald-500/70' />
+														<span className='inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5'>
+															<ShieldCheck className='h-3.5 w-3.5 text-emerald-500' />
 															{getGeneratedDate(project.id)}
 														</span>
 													</p>
-													
-													<div className='mt-4 flex flex-wrap gap-2'>
-														{isLive && project.wordpressSiteUrl && (
-															<a
-																href={project.wordpressSiteUrl}
-																target='_blank'
-																rel='noreferrer'
-																className='group/link inline-flex items-center gap-2 rounded-xl border border-cyan-100 bg-cyan-50/30 px-3 py-2 text-xs font-medium text-cyan-700 transition-all hover:bg-cyan-50'>
-																<Globe className='h-3.5 w-3.5 transition-transform group-hover/link:rotate-12' />
-																<span className='truncate'>{project.wordpressSiteUrl.replace('http://', '').replace('https://', '')}</span>
-																<ExternalLink className='h-3 w-3 opacity-0 group-hover/link:opacity-100' />
-															</a>
-														)}
-														{isLive && project.wordpressAdminUrl && (
-															<a
-																href={project.wordpressAdminUrl}
-																target='_blank'
-																rel='noreferrer'
-																className='group/link inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition-all hover:bg-slate-50'>
-																<KeyRound className='h-3.5 w-3.5 text-slate-400 group-hover/link:text-violet-500' />
-																<span>WP Admin Panel</span>
-																<ExternalLink className='h-3 w-3' />
-															</a>
-														)}
-													</div>
-
+													{isLive && project.wordpressSiteUrl && (
+														<a
+															href={project.wordpressSiteUrl}
+															target='_blank'
+															rel='noreferrer'
+															className='inline-flex max-w-full items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-xs text-cyan-700 hover:bg-cyan-100'>
+															<Database className='h-3.5 w-3.5 flex-shrink-0' />
+															<span className='truncate'>
+																{project.wordpressSiteUrl}
+															</span>
+														</a>
+													)}
+													{isLive && project.wordpressAdminUrl && (
+														<a
+															href={project.wordpressAdminUrl}
+															target='_blank'
+															rel='noreferrer'
+															className='inline-flex max-w-full items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50'>
+															<KeyRound className='h-3.5 w-3.5 flex-shrink-0' />
+															<span className='truncate'>WP Admin</span>
+															<ExternalLink className='h-3 w-3 flex-shrink-0' />
+														</a>
+													)}
 													{project.wordpressPassword && (
-														<div className='mt-4 overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white'>
-															<div className='bg-amber-100/50 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-amber-800'>
-																Secure Admin Credentials
-															</div>
-															<div className='grid grid-cols-2 gap-4 p-4'>
-																<div>
-																	<p className='text-[10px] font-medium text-amber-600/70'>Username</p>
-																	<p className='font-mono text-xs font-bold text-slate-800'>{project.wordpressOwnerUsername}</p>
-																</div>
-																<div>
-																	<p className='text-[10px] font-medium text-amber-600/70'>Password</p>
-																	<p className='font-mono text-xs font-bold text-slate-800'>{project.wordpressPassword}</p>
-																</div>
-															</div>
+														<div className='mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800'>
+															<p className='font-bold mb-1'>WordPress Admin Credentials</p>
+															<p>User: <span className='font-mono bg-white/50 px-1 rounded'>{project.wordpressOwnerUsername}</span></p>
+															<p>Pass: <span className='font-mono bg-white/50 px-1 rounded'>{project.wordpressPassword}</span></p>
+															<p className='mt-1 text-[10px] text-amber-600 italic'>Save these! They are only shown once.</p>
 														</div>
+													)}
+													{project.deployedUrl && (
+														<a
+															href={project.deployedUrl}
+															target='_blank'
+															rel='noreferrer'
+															className='inline-flex max-w-full items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-700 hover:bg-emerald-100'>
+															<Globe className='h-3.5 w-3.5 flex-shrink-0' />
+															<span className='truncate'>
+																{project.deployedUrl}
+															</span>
+														</a>
 													)}
 												</div>
 											</div>
 
 											<div className='flex flex-col gap-3 xl:items-end'>
 												<div className='flex flex-wrap items-center gap-2 xl:justify-end'>
+													{isSent && (
+														<Badge className='rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-medium text-amber-700'>
+															Outreach sent
+														</Badge>
+													)}
+												</div>
+												<div className='flex flex-wrap items-center gap-2 xl:justify-end'>
 													<Button
 														onClick={() => handleSendOutreach(project.id)}
-														disabled={!isLive || sendingId === project.id}
-														className='h-12 rounded-2xl bg-slate-900 px-6 text-white transition-all hover:bg-violet-600 disabled:opacity-50'>
+														disabled={
+															!isLive || sendingId === project.id
+														}
+														className='h-10 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60'>
 														{sendingId === project.id ? (
 															<Activity className='mr-2 h-4 w-4 animate-spin' />
 														) : (
-															<Send className='mr-2 h-4 w-4' />
+															<Mail className='mr-2 h-4 w-4' />
 														)}
 														Send Outreach
 													</Button>
 													<Button
-														variant="ghost"
 														onClick={() => handleDeleteLead(project.id)}
-														className='h-12 w-12 rounded-2xl border border-slate-200 text-slate-400 transition-all hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600'>
-														<Trash2 className='h-5 w-5' />
+														className='h-10 rounded-2xl border border-rose-200 bg-rose-50 px-4 text-rose-700 transition-all duration-200 hover:border-rose-600 hover:bg-rose-600 hover:text-white shadow-none'>
+														<Trash2 className='mr-2 h-4 w-4' />
+														Delete Lead
 													</Button>
 												</div>
-												{isSent && (
-													<div className='flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold text-emerald-700'>
-														<div className='h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse' />
-														OUTREACH COMPLETED
-													</div>
-												)}
 											</div>
 										</div>
 
+
 										{project.provisioningError && (
-											<div className='rounded-2xl border border-rose-200 bg-rose-50 p-4'>
-												<div className='flex items-center gap-2 text-sm font-bold text-rose-800'>
-													<X className='h-4 w-4' />
-													Provisioning Interrupted
-												</div>
-												<p className='mt-1 text-xs text-rose-600/80 leading-relaxed'>
+											<div className='rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100'>
+												WordPress provisioning issue:
+												<span className='mt-1 block text-xs text-rose-200/75'>
 													{project.provisioningError}
-												</p>
+												</span>
 											</div>
 										)}
 
-										<div className='mt-auto flex items-center justify-between border-t border-slate-100 pt-5'>
-											<div className='flex flex-wrap items-center gap-4 text-xs font-medium text-slate-400'>
-												<span className='inline-flex items-center gap-2'>
-													<Mail className='h-3.5 w-3.5 text-slate-300' />
-													{project.email || "No email"}
+										<div className='relative flex items-center justify-between gap-3 border-t border-slate-200 pt-4'>
+											<div className='flex flex-wrap items-center gap-3 text-xs text-slate-500'>
+												<span className='inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5'>
+													<BriefcaseBusiness className='h-3.5 w-3.5 text-violet-500' />
+													{project.businessCategory || "General"}
 												</span>
-												<span className='inline-flex items-center gap-2'>
-													<Phone className='h-3.5 w-3.5 text-slate-300' />
-													{project.phoneNumber || "No phone"}
+												<span className='inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5'>
+													<Phone className='h-3.5 w-3.5 text-cyan-500' />
+													{project.phoneNumber || "No phone listed"}
+												</span>
+												<span className='inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5'>
+													<Mail className='h-3.5 w-3.5 text-amber-500' />
+													{project.email || "No email listed"}
 												</span>
 											</div>
-											<div className='flex items-center gap-2 text-[10px] font-bold text-slate-300 uppercase tracking-widest'>
-												Lead ID: {project.id.split('-').pop()}
-											</div>
+											<div />
 										</div>
 									</div>
 								</div>

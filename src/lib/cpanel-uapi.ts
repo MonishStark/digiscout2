@@ -154,7 +154,30 @@ export async function deleteSubdomain(subdomain: string, rootDomain: string) {
 		console.warn(`[cPanel-SSH] SubDomain::delsubdomain (full part) failed: ${e.message}.`);
 	}
 
-	// 4. Try DomainInfo::delete_domain (last resort)
+	// 4. Try legacy SubDomain::delete_subdomain (another common variant)
+	try {
+		await callUapiRemote("SubDomain", "delete_subdomain", {
+			domain: subdomain,
+			rootdomain: rootDomain,
+		});
+		return true;
+	} catch (e: any) {
+		console.warn(`[cPanel-SSH] SubDomain::delete_subdomain failed: ${e.message}.`);
+	}
+
+	// 5. Try legacy cpapi2 fallback (for older/custom cPanel environments)
+	try {
+		const sshPrefix = getSshPrefix();
+		const cpapi2Cmd = `cpapi2 --output=json SubDomain delsubdomain domain=${subdomain} rootdomain=${rootDomain}`;
+		const fullCmd = `${sshPrefix} '${cpapi2Cmd}'`;
+		process.stderr.write(`[cPanel-SSH] Attempting cpapi2 fallback for delsubdomain...\n`);
+		await execAsync(fullCmd, { timeout: 60000 });
+		return true;
+	} catch (e: any) {
+		console.warn(`[cPanel-SSH] cpapi2 SubDomain::delsubdomain failed: ${e.message}`);
+	}
+
+	// 6. Try DomainInfo::delete_domain (last resort)
 	try {
 		await callUapiRemote("DomainInfo", "delete_domain", {
 			domain: fullDomain,

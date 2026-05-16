@@ -637,7 +637,7 @@ function buildPremiumPageContent(schema) {
   };
   const P = palette.primary;
   const BG = palette.background;
-  const SURF2 = palette.surface;
+  const SURF = palette.surface;
   const TEXT = palette.text;
   const MUTED = palette.muted || "#666666";
   const ACCENT = palette.accent || P;
@@ -697,14 +697,14 @@ ${sections.map((s) => s.customCss || "").join("\n")}
   let html = globalCss;
   sections.forEach((section, index) => {
     const isEven = index % 2 === 0;
-    const sectionBg = isEven ? BG : SURF2;
+    const sectionBg = isEven ? BG : SURF;
     switch (section.type) {
       case "hero":
-        html += renderHero(section, schema, P, TEXT, MUTED, typography);
+        html += renderHero(section, schema, P, TEXT, MUTED, BG, SURF, typography);
         break;
       case "features":
       case "services":
-        html += renderFeatures(section, schema, P, TEXT, MUTED, sectionBg, typography, radius);
+        html += renderFeatures(section, schema, P, TEXT, MUTED, BG, SURF, sectionBg, typography, radius);
         break;
       case "gallery":
         html += renderGallery(section, schema, TEXT, sectionBg, typography);
@@ -734,7 +734,7 @@ ${sections.map((s) => s.customCss || "").join("\n")}
 <!-- /wp:html -->`;
   return html;
 }
-function renderHero(section, schema, P, TEXT, MUTED, typography) {
+function renderHero(section, schema, P, TEXT, MUTED, BG, SURF, typography) {
   const businessName = schema.brand?.businessName || "";
   const img = section.media?.[0]?.url || section.media?.src || section.media?.url || "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=80";
   const title = section.headline || section.content?.headline || businessName;
@@ -756,7 +756,7 @@ function renderHero(section, schema, P, TEXT, MUTED, typography) {
 `;
   }
   return `<!-- wp:html -->
-<section class="section-hero" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));min-height:100vh;background:${schema.theme?.palette?.background || "#fff"};overflow:hidden;">
+<section class="section-hero" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));min-height:100vh;background:${BG};overflow:hidden;">
   <div class="animate-up" style="padding:160px 80px;display:flex;flex-direction:column;justify-content:center;">
     <div style="color:${P};font-weight:900;text-transform:uppercase;letter-spacing:0.2em;font-size:0.8rem;margin-bottom:2rem;">${esc(schema.brand?.category || "Official Site")}</div>
     <h1 style="font-family:'${typography.heading}',serif;font-size:clamp(3rem,6vw,5.5rem);line-height:0.9;font-weight:900;color:${TEXT};letter-spacing:-0.04em;margin-bottom:2rem;">${esc(title)}</h1>
@@ -772,7 +772,7 @@ function renderHero(section, schema, P, TEXT, MUTED, typography) {
 
 `;
 }
-function renderFeatures(section, schema, P, TEXT, MUTED, Bg, typography, radius) {
+function renderFeatures(section, schema, P, TEXT, MUTED, BG, SURF, sectionBg, typography, radius) {
   const items = section.content?.items || section.items || [];
   const variant = section.variant || "grid";
   if (variant === "bento") {
@@ -783,7 +783,7 @@ function renderFeatures(section, schema, P, TEXT, MUTED, Bg, typography, radius)
   <p style="color:${MUTED};line-height:1.6;font-size:1.15rem;margin:0;">${esc(item.description || item.body)}</p>
 </div>`).join("\n");
     return `<!-- wp:html -->
-<section class="section-padding" style="background:${Bg};">
+<section class="section-padding" style="background:${sectionBg};">
   <div style="max-width:1400px;margin:0 auto;">
     <div style="margin-bottom:80px;">
       <h2 style="font-family:'${typography.heading}',serif;font-size:clamp(3rem,5vw,5rem);font-weight:900;color:${TEXT};line-height:1;letter-spacing:-0.04em;">${esc(section.content?.title || section.headline || "Services")}</h2>
@@ -806,7 +806,7 @@ function renderFeatures(section, schema, P, TEXT, MUTED, Bg, typography, radius)
   <p style="color:${MUTED};line-height:1.7;font-size:1.1rem;margin:0;opacity:0.9;">${esc(item.description || item.body)}</p>
 </div>`).join("\n");
   return `<!-- wp:html -->
-<section class="section-padding section-features" style="background:${Bg};">
+<section class="section-padding section-features" style="background:${sectionBg};">
   <div style="max-width:1300px;margin:0 auto;">
     <div style="text-align:center;margin-bottom:100px;max-width:800px;margin-left:auto;margin-right:auto;">
       <h2 style="font-family:'${typography.heading}',serif;font-size:clamp(2.5rem,5vw,4.5rem);font-weight:900;color:${TEXT};line-height:1;letter-spacing:-0.04em;margin-bottom:1.5rem;">${esc(section.content?.title || section.headline || "Unmatched Excellence")}</h2>
@@ -1548,6 +1548,26 @@ async function deleteSubdomain(subdomain, rootDomain) {
     console.warn(`[cPanel-SSH] SubDomain::delsubdomain (full part) failed: ${e.message}.`);
   }
   try {
+    await callUapiRemote("SubDomain", "delete_subdomain", {
+      domain: subdomain,
+      rootdomain: rootDomain
+    });
+    return true;
+  } catch (e) {
+    console.warn(`[cPanel-SSH] SubDomain::delete_subdomain failed: ${e.message}.`);
+  }
+  try {
+    const sshPrefix = getSshPrefix();
+    const cpapi2Cmd = `cpapi2 --output=json SubDomain delsubdomain domain=${subdomain} rootdomain=${rootDomain}`;
+    const fullCmd = `${sshPrefix} '${cpapi2Cmd}'`;
+    process.stderr.write(`[cPanel-SSH] Attempting cpapi2 fallback for delsubdomain...
+`);
+    await execAsync(fullCmd, { timeout: 6e4 });
+    return true;
+  } catch (e) {
+    console.warn(`[cPanel-SSH] cpapi2 SubDomain::delsubdomain failed: ${e.message}`);
+  }
+  try {
     await callUapiRemote("DomainInfo", "delete_domain", {
       domain: fullDomain
     });
@@ -1978,7 +1998,7 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, logCallbac
   try {
     await logCallback("Cleaning up default WordPress content...");
     try {
-      const deleteCmd = `ids=$(/usr/local/sbin/wp post list --post_type=post,page --format=ids --path="${docRoot}" --allow-root); [ -n "$ids" ] && /usr/local/sbin/wp post delete $ids --force --allow-root --path="${docRoot}"`;
+      const deleteCmd = `/usr/local/sbin/wp post list --post_type=post,page --format=ids --path="${docRoot}" --allow-root | xargs -r /usr/local/sbin/wp post delete --force --allow-root --path="${docRoot}"`;
       await runRemoteShellCommand(deleteCmd, logCallback);
     } catch (e) {
     }
