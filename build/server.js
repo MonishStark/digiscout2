@@ -1082,7 +1082,6 @@ import cors from "cors";
 import express from "express";
 import fs2 from "fs";
 import path2 from "path";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // src/lib/callhippo-service.ts
 async function sendOutreachViaCallHippo(request, apiKey) {
@@ -2058,6 +2057,7 @@ fs2.writeSync(2, `[BOOT] CWD: ${process.cwd()}
 `);
 fs2.writeSync(2, `[BOOT] DB_USER: ${process.env.DB_USER || "NOT SET"}
 `);
+var GoogleGenerativeAI = null;
 var app = express();
 var PORT = process.env.PORT || 5001;
 app.use(
@@ -2162,7 +2162,6 @@ function buildBusinessDebugInput(business) {
   };
 }
 var GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_API_KEY;
-var genai = GENAI_KEY ? new GoogleGenerativeAI(GENAI_KEY) : null;
 var CALLHIPPO_API_KEY = process.env.CALLHIPPO_API_KEY;
 var WEBSITE_GENERATION_MODE = process.env.WEBSITE_GENERATION_MODE || "gemini";
 function extractEmails(html) {
@@ -3731,8 +3730,17 @@ ${prompt}
           rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
         } else {
           console.error(`[Gemini] Attempting SDK call for ${model.name}...`);
+          if (!GoogleGenerativeAI) {
+            try {
+              const mod = await import("@google/generative-ai");
+              GoogleGenerativeAI = mod.GoogleGenerativeAI;
+            } catch (e) {
+              throw new Error("Gemini SDK (@google/generative-ai) not found in node_modules.");
+            }
+          }
+          const sdkGenAI = new GoogleGenerativeAI(GENAI_KEY);
           const response = await Promise.race([
-            genai.getGenerativeModel({ model: model.name }).generateContent(prompt),
+            sdkGenAI.getGenerativeModel({ model: model.name }).generateContent(prompt),
             new Promise(
               (_, reject) => setTimeout(
                 () => reject(

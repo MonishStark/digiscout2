@@ -13,7 +13,9 @@ import cors from "cors";
 import express, { Request, Response } from "express";
 import fs from "fs";
 import path from "path";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+// Dynamic import for GoogleGenerativeAI to prevent startup failure if package missing
+let GoogleGenerativeAI: any = null;
+
 import {
 	deleteProvisionedWordPressMultisiteSite,
 	provisionWordPressMultisiteSite,
@@ -231,7 +233,7 @@ async function readRequestBody(req: Request): Promise<Buffer> {
 
 
 const GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_API_KEY;
-const genai = GENAI_KEY ? new GoogleGenerativeAI(GENAI_KEY) : null;
+
 const CALLHIPPO_API_KEY = process.env.CALLHIPPO_API_KEY;
 const WEBSITE_GENERATION_MODE = process.env.WEBSITE_GENERATION_MODE || "gemini";
 
@@ -2218,8 +2220,17 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. No markd
 					rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 				} else {
 					console.error(`[Gemini] Attempting SDK call for ${model.name}...`);
+					if (!GoogleGenerativeAI) {
+						try {
+							const mod = await import("@google/generative-ai");
+							GoogleGenerativeAI = mod.GoogleGenerativeAI;
+						} catch (e) {
+							throw new Error("Gemini SDK (@google/generative-ai) not found in node_modules.");
+						}
+					}
+					const sdkGenAI = new GoogleGenerativeAI(GENAI_KEY);
 					const response = (await Promise.race([
-						genai.getGenerativeModel({ model: model.name }).generateContent(prompt),
+						sdkGenAI.getGenerativeModel({ model: model.name }).generateContent(prompt),
 						new Promise((_, reject) =>
 							setTimeout(
 								() =>
