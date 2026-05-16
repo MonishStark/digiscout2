@@ -232,6 +232,20 @@ async function readRequestBody(req: Request): Promise<Buffer> {
 
 
 
+async function getSDKGenAI() {
+	if (!GENAI_KEY) return null;
+	if (!GoogleGenerativeAI) {
+		try {
+			const mod = await import("@google/generative-ai");
+			GoogleGenerativeAI = mod.GoogleGenerativeAI;
+		} catch (e) {
+			console.error("[Gemini] SDK package @google/generative-ai not found.");
+			return null;
+		}
+	}
+	return new GoogleGenerativeAI(GENAI_KEY);
+}
+
 const GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_API_KEY;
 
 const CALLHIPPO_API_KEY = process.env.CALLHIPPO_API_KEY;
@@ -398,13 +412,14 @@ async function qualifyLeadCandidate(
 		};
 	}
 
-	if (!genai) {
+	const genAI = await getSDKGenAI();
+	if (!genAI) {
 		return {
 			hasWebsite: false,
 			email: business.email,
 			phoneNumber: business.phoneNumber,
 			confidence: "low",
-			notes: "Gemini API key is not configured.",
+			notes: "Gemini API key is not configured or SDK missing.",
 		};
 	}
 
@@ -464,17 +479,19 @@ Return only valid JSON in this exact shape:
 
 	for (const configVariant of configsToTry) {
 		try {
-			const response = await genai.models.generateContent({
-				model: "gemini-2.5-pro",
-				contents: prompt,
-				config: {
-					temperature: 0.1,
-					tools: configVariant.tools as any,
-					toolConfig: configVariant.toolConfig as any,
-				},
+			const modelInstance = genAI.getGenerativeModel({
+				model: "gemini-1.5-pro",
+				tools: configVariant.tools as any,
+				toolConfig: configVariant.toolConfig as any,
+			} as any);
+
+			const result = await modelInstance.generateContent({
+				contents: [{ role: 'user', parts: [{ text: prompt }] }],
+				generationConfig: { temperature: 0.1 }
 			});
 
-			const parsed = parseLeadQualificationOutput((response.text || "").trim());
+			const response = await result.response;
+			const parsed = parseLeadQualificationOutput((response.text() || "").trim());
 			if (parsed) {
 				return parsed;
 			}
@@ -2220,17 +2237,12 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. No markd
 					rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 				} else {
 					console.error(`[Gemini] Attempting SDK call for ${model.name}...`);
-					if (!GoogleGenerativeAI) {
-						try {
-							const mod = await import("@google/generative-ai");
-							GoogleGenerativeAI = mod.GoogleGenerativeAI;
-						} catch (e) {
-							throw new Error("Gemini SDK (@google/generative-ai) not found in node_modules.");
-						}
+					const genAI = await getSDKGenAI();
+					if (!genAI) {
+						throw new Error("Gemini SDK not available.");
 					}
-					const sdkGenAI = new GoogleGenerativeAI(GENAI_KEY);
 					const response = (await Promise.race([
-						sdkGenAI.getGenerativeModel({ model: model.name }).generateContent(prompt),
+						genAI.getGenerativeModel({ model: model.name }).generateContent(prompt),
 						new Promise((_, reject) =>
 							setTimeout(
 								() =>

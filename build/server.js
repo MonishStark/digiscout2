@@ -2161,6 +2161,19 @@ function buildBusinessDebugInput(business) {
     }
   };
 }
+async function getSDKGenAI() {
+  if (!GENAI_KEY) return null;
+  if (!GoogleGenerativeAI) {
+    try {
+      const mod = await import("@google/generative-ai");
+      GoogleGenerativeAI = mod.GoogleGenerativeAI;
+    } catch (e) {
+      console.error("[Gemini] SDK package @google/generative-ai not found.");
+      return null;
+    }
+  }
+  return new GoogleGenerativeAI(GENAI_KEY);
+}
 var GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_API_KEY;
 var CALLHIPPO_API_KEY = process.env.CALLHIPPO_API_KEY;
 var WEBSITE_GENERATION_MODE = process.env.WEBSITE_GENERATION_MODE || "gemini";
@@ -2250,13 +2263,14 @@ async function qualifyLeadCandidate(business, city) {
       notes: "Google Places returned an official website URL."
     };
   }
-  if (!genai) {
+  const genAI = await getSDKGenAI();
+  if (!genAI) {
     return {
       hasWebsite: false,
       email: business.email,
       phoneNumber: business.phoneNumber,
       confidence: "low",
-      notes: "Gemini API key is not configured."
+      notes: "Gemini API key is not configured or SDK missing."
     };
   }
   const prompt = `You are qualifying a local business lead using live grounded data.
@@ -2310,16 +2324,17 @@ Return only valid JSON in this exact shape:
   let lastError = null;
   for (const configVariant of configsToTry) {
     try {
-      const response = await genai.models.generateContent({
-        model: "gemini-2.5-pro",
-        contents: prompt,
-        config: {
-          temperature: 0.1,
-          tools: configVariant.tools,
-          toolConfig: configVariant.toolConfig
-        }
+      const modelInstance = genAI.getGenerativeModel({
+        model: "gemini-1.5-pro",
+        tools: configVariant.tools,
+        toolConfig: configVariant.toolConfig
       });
-      const parsed = parseLeadQualificationOutput((response.text || "").trim());
+      const result = await modelInstance.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1 }
+      });
+      const response = await result.response;
+      const parsed = parseLeadQualificationOutput((response.text() || "").trim());
       if (parsed) {
         return parsed;
       }
@@ -3730,17 +3745,12 @@ ${prompt}
           rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
         } else {
           console.error(`[Gemini] Attempting SDK call for ${model.name}...`);
-          if (!GoogleGenerativeAI) {
-            try {
-              const mod = await import("@google/generative-ai");
-              GoogleGenerativeAI = mod.GoogleGenerativeAI;
-            } catch (e) {
-              throw new Error("Gemini SDK (@google/generative-ai) not found in node_modules.");
-            }
+          const genAI = await getSDKGenAI();
+          if (!genAI) {
+            throw new Error("Gemini SDK not available.");
           }
-          const sdkGenAI = new GoogleGenerativeAI(GENAI_KEY);
           const response = await Promise.race([
-            sdkGenAI.getGenerativeModel({ model: model.name }).generateContent(prompt),
+            genAI.getGenerativeModel({ model: model.name }).generateContent(prompt),
             new Promise(
               (_, reject) => setTimeout(
                 () => reject(
