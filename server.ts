@@ -2024,11 +2024,11 @@ app.post("/api/generate", async (req: Request, res: Response) => {
 		}
 
 		// Normal Gemini flow
-		if (!genai) {
-			debugSession.fallbackReason = "missing-genai";
+		if (!GENAI_KEY && !process.env.GEMINI_REST_URL) {
+			debugSession.fallbackReason = "missing-config";
 			appendGenerationDebugError(
 				debugSession,
-				"fallback_triggered: genai unavailable",
+				"fallback_triggered: no Gemini API configuration found",
 			);
 			res.setHeader("x-debug-generation-fallback", "true");
 			const fallbackSchema = createFallbackWebsiteSchema(business);
@@ -2041,6 +2041,7 @@ app.post("/api/generate", async (req: Request, res: Response) => {
 		}
 
 		const buildImageBlock = (b: any) => {
+
 			const sources = [...(b.photos || []), ...(b.imageSuggestions || [])];
 			return sources.length
 				? sources.map((u: string, i: number) => `${i + 1}. ${u}`).join("\n")

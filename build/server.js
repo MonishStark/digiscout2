@@ -3550,11 +3550,11 @@ app.post("/api/generate", async (req, res) => {
       );
       return res.json(fallbackSchema);
     }
-    if (!genai) {
-      debugSession.fallbackReason = "missing-genai";
+    if (!GENAI_KEY && !process.env.GEMINI_REST_URL) {
+      debugSession.fallbackReason = "missing-config";
       appendGenerationDebugError(
         debugSession,
-        "fallback_triggered: genai unavailable"
+        "fallback_triggered: no Gemini API configuration found"
       );
       res.setHeader("x-debug-generation-fallback", "true");
       const fallbackSchema = createFallbackWebsiteSchema(business);
