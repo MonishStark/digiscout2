@@ -433,17 +433,15 @@ async function injectWebsiteContent(
 		const { buildPremiumPageContent } = await import("./premium-site-builder");
 		const content = buildPremiumPageContent(schema);
 
-		// LOG CONTENT TO STDERR for user verification
-		try {
-			const fs = await import("fs");
-			fs.writeSync(2, `\n--- WP CONTENT PUSH START ---\n${content}\n--- WP CONTENT PUSH END ---\n`);
-		} catch (e) {}
-
 		// Write content to temp file on remote server (avoids shell escaping limits)
 		const tmpFile = `/tmp/ds_home_${Date.now()}.html`;
 		await logCallback(`Writing to remote temp file: ${tmpFile}`);
+		
+		// Use a more robust way to write large content to remote file
+		// We use base64 to avoid shell escaping issues with complex HTML
+		const base64Content = Buffer.from(content).toString("base64");
 		await runRemoteShellCommand(
-			`cat > '${tmpFile}' << 'DS_MARKER'\n${content}\nDS_MARKER`,
+			`echo "${base64Content}" | base64 -d > '${tmpFile}'`,
 			logCallback,
 		);
 
@@ -455,24 +453,49 @@ async function injectWebsiteContent(
 		const homePageId = homePageIdOut.stdout.replace(/[^0-9]/g, "").trim();
 		await runRemoteShellCommand(`rm -f '${tmpFile}'`, logCallback).catch(() => {});
 
-		if (!homePageId) throw new Error("Home page creation failed — no ID returned");
+		if (!homePageId || homePageId === "0") {
+			throw new Error("Home page creation failed — invalid ID returned");
+		}
 
+		await logCallback(`Home page created with ID: ${homePageId}. Setting as front page...`);
 		await runWpCommand(`option update show_on_front page`, docRoot, logCallback);
 		await runWpCommand(`option update page_on_front ${homePageId}`, docRoot, logCallback);
+		
 		if (schema.brand?.businessName) {
 			await runWpCommand(`option update blogname "${esc(schema.brand.businessName)}"`, docRoot, logCallback);
 		}
+		
 		await runWpCommand(`rewrite structure "/%postname%/"`, docRoot, logCallback);
 		await runWpCommand(`rewrite flush`, docRoot, logCallback);
 
+		// Robust Media Import for Logo
 		if (schema.brand?.logo) {
 			try {
-				const mediaOut = await runWpCommand(`media import "${schema.brand.logo}" --porcelain`, docRoot, logCallback);
-				const mediaId = mediaOut.stdout.trim();
+				await logCallback(`Attempting to import logo: ${schema.brand.logo}`);
+				
+				// Try to import directly first
+				let mediaId = "";
+				try {
+					const mediaOut = await runWpCommand(`media import "${schema.brand.logo}" --porcelain`, docRoot, logCallback);
+					mediaId = mediaOut.stdout.trim();
+				} catch (e) {
+					// If direct import fails (likely due to missing extension), download to temp file first
+					await logCallback("Direct import failed. Retrying with local temp file...");
+					const ext = schema.brand.logo.toLowerCase().includes(".png") ? "png" : "jpg";
+					const remoteTmpMedia = `/tmp/ds_logo_${Date.now()}.${ext}`;
+					await runRemoteShellCommand(`curl -sL "${schema.brand.logo}" -o "${remoteTmpMedia}"`, logCallback);
+					const mediaOut = await runWpCommand(`media import "${remoteTmpMedia}" --porcelain`, docRoot, logCallback);
+					mediaId = mediaOut.stdout.trim();
+					await runRemoteShellCommand(`rm -f "${remoteTmpMedia}"`, logCallback).catch(() => {});
+				}
+
 				if (/^\d+$/.test(mediaId)) {
+					await logCallback(`Logo imported successfully (ID: ${mediaId}). Setting as site icon.`);
 					await runWpCommand(`option update site_icon ${mediaId}`, docRoot, logCallback);
 				}
-			} catch (e: any) { await logCallback(`Warning: logo import failed: ${e.message}`); }
+			} catch (e: any) { 
+				await logCallback(`Warning: logo import failed: ${e.message}`); 
+			}
 		}
 
 		await logCallback("Premium WordPress site injection complete ✓");

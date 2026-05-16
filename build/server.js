@@ -630,14 +630,17 @@ function buildPremiumPageContent(schema) {
     background: "#f8f9fa",
     surface: "#ffffff",
     primary: "#7c3aed",
+    accent: "#1a1a1a",
     text: "#1a1a1a",
-    muted: "#666666"
+    muted: "#666666",
+    outline: "#e2e8f0"
   };
   const P = palette.primary;
   const BG = palette.background;
-  const SURF = palette.surface;
+  const SURF2 = palette.surface;
   const TEXT = palette.text;
   const MUTED = palette.muted || "#666666";
+  const ACCENT = palette.accent || P;
   const businessName = schema.brand?.businessName || "Welcome";
   const theme = schema.theme || {};
   const radius = theme.radius || "24px";
@@ -645,7 +648,7 @@ function buildPremiumPageContent(schema) {
   const sections = schema.sections || [];
   const globalCss = `<!-- wp:html -->
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;700;900&family=Space+Grotesk:wght@300;500;700&family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;500;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;700;900&family=Space+Grotesk:wght@300;500;700&family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;500;700;900&family=Plus+Jakarta+Sans:wght@300;500;700;800&display=swap');
 
 *,*::before,*::after{box-sizing:border-box!important;}
 html,body{background:${BG}!important;color:${TEXT}!important;font-family:'${typography.body}',sans-serif!important;margin:0!important;padding:0!important;scroll-behavior:smooth!important;-webkit-font-smoothing:antialiased;}
@@ -694,7 +697,7 @@ ${sections.map((s) => s.customCss || "").join("\n")}
   let html = globalCss;
   sections.forEach((section, index) => {
     const isEven = index % 2 === 0;
-    const sectionBg = isEven ? BG : SURF;
+    const sectionBg = isEven ? BG : SURF2;
     switch (section.type) {
       case "hero":
         html += renderHero(section, schema, P, TEXT, MUTED, typography);
@@ -733,10 +736,10 @@ ${sections.map((s) => s.customCss || "").join("\n")}
 }
 function renderHero(section, schema, P, TEXT, MUTED, typography) {
   const businessName = schema.brand?.businessName || "";
-  const img = section.media?.src || section.media?.url || "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=80";
-  const title = section.headline || businessName;
-  const sub = section.subheadline || "";
-  const cta = section.ctaPrimary?.label || "Discover More";
+  const img = section.media?.[0]?.url || section.media?.src || section.media?.url || "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=80";
+  const title = section.headline || section.content?.headline || businessName;
+  const sub = section.subheadline || section.content?.subheadline || "";
+  const cta = section.ctaPrimary?.label || section.content?.ctaPrimary || "Discover More";
   const variant = section.variant || "immersive";
   if (variant === "centered" || variant === "immersive") {
     return `<!-- wp:cover {"url":"${esc(img)}","dimRatio":${variant === "immersive" ? 70 : 40},"overlayColor":"black","minHeight":100,"minHeightUnit":"vh","align":"full"} -->
@@ -770,7 +773,30 @@ function renderHero(section, schema, P, TEXT, MUTED, typography) {
 `;
 }
 function renderFeatures(section, schema, P, TEXT, MUTED, Bg, typography, radius) {
-  const items = section.items || [];
+  const items = section.content?.items || section.items || [];
+  const variant = section.variant || "grid";
+  if (variant === "bento") {
+    const cards2 = items.map((item, i) => `
+<div class="bento-item hover-lift" style="grid-column: span ${i % 3 === 0 ? 2 : 1}; border-radius:${radius}; padding:50px; display:flex; flex-direction:column; gap:20px; background:${SURF}; border:1px solid ${schema.theme?.palette?.outline || "#e2e8f0"};">
+  <div style="font-size:2.5rem; opacity:0.3; font-family:'${typography.heading}',serif;">0${i + 1}</div>
+  <h3 style="font-family:'${typography.heading}',serif;font-size:2.2rem;font-weight:800;color:${TEXT};margin:0;letter-spacing:-0.03em;">${esc(item.title || item.name)}</h3>
+  <p style="color:${MUTED};line-height:1.6;font-size:1.15rem;margin:0;">${esc(item.description || item.body)}</p>
+</div>`).join("\n");
+    return `<!-- wp:html -->
+<section class="section-padding" style="background:${Bg};">
+  <div style="max-width:1400px;margin:0 auto;">
+    <div style="margin-bottom:80px;">
+      <h2 style="font-family:'${typography.heading}',serif;font-size:clamp(3rem,5vw,5rem);font-weight:900;color:${TEXT};line-height:1;letter-spacing:-0.04em;">${esc(section.content?.title || section.headline || "Services")}</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:24px;">
+      ${cards2}
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
   const cards = items.map((item, i) => `
 <div class="glass hover-lift" style="border-radius:${radius};padding:60px 45px;display:flex;flex-direction:column;gap:25px;">
   <div style="width:64px;height:64px;border-radius:20px;background:${P};color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.8rem;box-shadow:0 15px 30px rgba(${hexToRgb(P)},0.25);">
@@ -783,7 +809,7 @@ function renderFeatures(section, schema, P, TEXT, MUTED, Bg, typography, radius)
 <section class="section-padding section-features" style="background:${Bg};">
   <div style="max-width:1300px;margin:0 auto;">
     <div style="text-align:center;margin-bottom:100px;max-width:800px;margin-left:auto;margin-right:auto;">
-      <h2 style="font-family:'${typography.heading}',serif;font-size:clamp(2.5rem,5vw,4.5rem);font-weight:900;color:${TEXT};line-height:1;letter-spacing:-0.04em;margin-bottom:1.5rem;">${esc(section.headline || "Unmatched Excellence")}</h2>
+      <h2 style="font-family:'${typography.heading}',serif;font-size:clamp(2.5rem,5vw,4.5rem);font-weight:900;color:${TEXT};line-height:1;letter-spacing:-0.04em;margin-bottom:1.5rem;">${esc(section.content?.title || section.headline || "Unmatched Excellence")}</h2>
       <div style="width:60px;height:4px;background:${P};margin:0 auto;"></div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:40px;">
@@ -796,7 +822,7 @@ function renderFeatures(section, schema, P, TEXT, MUTED, Bg, typography, radius)
 `;
 }
 function renderGallery(section, schema, TEXT, Bg, typography) {
-  const items = section.items || [];
+  const items = section.content?.items || section.items || [];
   const figures = items.slice(0, 4).map((item, i) => `
 <div class="hover-lift" style="overflow:hidden;border-radius:30px;aspect-ratio:${i % 2 === 0 ? "4/5" : "1"};position:relative;grid-column: span ${i === 0 ? 2 : 1};">
   <img src="${esc(item.src || item.url)}" style="width:100%;height:100%;object-fit:cover;" alt="Gallery"/>
@@ -806,7 +832,7 @@ function renderGallery(section, schema, TEXT, Bg, typography) {
   <div style="max-width:1300px;margin:0 auto;">
     <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:80px;flex-wrap:wrap;gap:30px;">
       <h2 style="font-family:'${typography.heading}',serif;font-size:clamp(2.5rem,5vw,4.5rem);font-weight:900;color:${TEXT};line-height:0.9;letter-spacing:-0.04em;">Inside The <br/><span class="text-gradient">Experience</span></h2>
-      <p style="max-width:400px;font-size:1.1rem;color:${Bg === "#fff" ? "#666" : "rgba(255,255,255,0.6)"};line-height:1.6;">${esc(section.subheadline || "A visual journey through our craft, space, and the results we deliver for our clients every day.")}</p>
+      <p style="max-width:400px;font-size:1.1rem;color:${Bg === "#fff" ? "#666" : "rgba(255,255,255,0.6)"};line-height:1.6;">${esc(section.content?.subheadline || section.subheadline || "A visual journey through our craft, space, and the results we deliver for our clients every day.")}</p>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:25px;">
       ${figures}
@@ -818,7 +844,7 @@ function renderGallery(section, schema, TEXT, Bg, typography) {
 `;
 }
 function renderTestimonials(section, schema, P, TEXT, MUTED, Bg, typography) {
-  const items = section.items || [];
+  const items = section.content?.items || section.items || [];
   const cards = items.map((item) => `
 <div class="glass" style="padding:50px;border-radius:40px;display:flex;flex-direction:column;gap:30px;position:relative;overflow:hidden;">
   <div style="font-size:5rem;position:absolute;top:-10px;left:20px;opacity:0.05;font-family:serif;">&ldquo;</div>
@@ -826,7 +852,7 @@ function renderTestimonials(section, schema, P, TEXT, MUTED, Bg, typography) {
   <div style="display:flex;align-items:center;gap:15px;">
     <div style="width:50px;height:50px;background:${P};border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;">${item.author ? item.author.charAt(0) : "A"}</div>
     <div>
-      <div style="font-weight:800;color:${TEXT};font-size:1.1rem;">${esc(item.author)}</div>
+      <div style="font-weight:800;color:${TEXT};font-size:1.1rem;">${esc(item.author || item.name)}</div>
       <div style="color:${P};font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;">${esc(item.role || "Verified Client")}</div>
     </div>
   </div>
@@ -845,14 +871,17 @@ function renderTestimonials(section, schema, P, TEXT, MUTED, Bg, typography) {
 `;
 }
 function renderCTA(section, schema, P, TEXT, typography) {
+  const title = section.content?.title || section.title || "Ready to Level Up?";
+  const body = section.content?.body || section.body || "Join hundreds of businesses growing with our premium solutions.";
+  const label = section.content?.buttonLabel || section.buttonLabel || "Get Started Now";
   return `<!-- wp:html -->
 <section class="section-cta" style="padding:140px 40px;background:linear-gradient(135deg, ${P}, #ec4899);text-align:center;position:relative;overflow:hidden;">
   <div class="floating" style="position:absolute;top:-100px;right:-100px;width:300px;height:300px;background:rgba(255,255,255,0.1);border-radius:50%;"></div>
   <div class="floating" style="position:absolute;bottom:-50px;left:-50px;width:200px;height:200px;background:rgba(255,255,255,0.05);border-radius:50%;animation-delay:2s;"></div>
   <div style="max-width:900px;margin:0 auto;position:relative;z-index:5;">
-    <h2 style="font-family:'${typography.heading}',serif;font-size:clamp(3rem,6vw,5rem);font-weight:900;color:#fff;margin-bottom:2rem;line-height:1;letter-spacing:-0.04em;">${esc(section.title || "Ready to Level Up?")}</h2>
-    <p style="font-size:1.4rem;color:rgba(255,255,255,0.9);margin-bottom:4rem;max-width:600px;margin-left:auto;margin-right:auto;line-height:1.5;">${esc(section.body || "Join hundreds of businesses growing with our premium solutions.")}</p>
-    <a class="wp-block-button__link" style="background:#fff!important;color:${P}!important;font-size:1.2rem;">${esc(section.buttonLabel || "Get Started Now")}</a>
+    <h2 style="font-family:'${typography.heading}',serif;font-size:clamp(3rem,6vw,5rem);font-weight:900;color:#fff;margin-bottom:2rem;line-height:1;letter-spacing:-0.04em;">${esc(title)}</h2>
+    <p style="font-size:1.4rem;color:rgba(255,255,255,0.9);margin-bottom:4rem;max-width:600px;margin-left:auto;margin-right:auto;line-height:1.5;">${esc(body)}</p>
+    <a class="wp-block-button__link" style="background:#fff!important;color:${P}!important;font-size:1.2rem;">${esc(label)}</a>
   </div>
 </section>
 <!-- /wp:html -->
@@ -861,19 +890,23 @@ function renderCTA(section, schema, P, TEXT, typography) {
 }
 function renderContact(section, schema, P, TEXT, MUTED, Bg, typography) {
   const brand = schema.brand || {};
+  const variant = section.variant || "split";
+  const title = section.content?.title || section.title || "Let's Connect";
+  const body = section.content?.body || section.body || "We're ready to discuss your vision and how our expertise can bring it to life.";
   return `<!-- wp:html -->
 <section id="contact" class="section-padding section-contact" style="background:${Bg};">
-  <div style="max-width:1300px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:100px;align-items:center;">
-    <div class="animate-up">
-      <h2 style="font-family:'${typography.heading}',serif;font-size:4.5rem;font-weight:900;color:${TEXT};margin-bottom:2rem;letter-spacing:-0.04em;line-height:0.9;">Let's <br/><span class="text-gradient">Connect</span></h2>
-      <p style="color:${MUTED};font-size:1.3rem;margin-bottom:4rem;line-height:1.6;">We're ready to discuss your vision and how our expertise can bring it to life.</p>
+  <div style="max-width:1300px;margin:0 auto;display:grid;grid-template-columns:${variant === "split" ? "1fr 1fr" : "1fr"};gap:100px;align-items:center;">
+    <div class="animate-up" style="${variant === "centered" ? "text-align:center;" : ""}">
+      <h2 style="font-family:'${typography.heading}',serif;font-size:4.5rem;font-weight:900;color:${TEXT};margin-bottom:2rem;letter-spacing:-0.04em;line-height:0.9;">${esc(title).replace(" ", '<br/><span class="text-gradient">').concat("</span>")}</h2>
+      <p style="color:${MUTED};font-size:1.3rem;margin-bottom:4rem;line-height:1.6;">${esc(body)}</p>
       
-      <div style="display:flex;flex-direction:column;gap:35px;">
+      <div style="display:flex;flex-direction:column;gap:35px; ${variant === "centered" ? "align-items:center;" : ""}">
         ${brand.phone ? `<div><h4 style="color:${P};font-weight:900;text-transform:uppercase;letter-spacing:0.1em;font-size:0.8rem;margin-bottom:10px;">Direct Line</h4><p style="font-size:1.8rem;font-weight:500;color:${TEXT}">${esc(brand.phone)}</p></div>` : ""}
         ${brand.email ? `<div><h4 style="color:${P};font-weight:900;text-transform:uppercase;letter-spacing:0.1em;font-size:0.8rem;margin-bottom:10px;">Email</h4><p style="font-size:1.8rem;font-weight:500;color:${TEXT}">${esc(brand.email)}</p></div>` : ""}
         ${brand.address ? `<div><h4 style="color:${P};font-weight:900;text-transform:uppercase;letter-spacing:0.1em;font-size:0.8rem;margin-bottom:10px;">Location</h4><p style="font-size:1.4rem;font-weight:400;color:${TEXT};line-height:1.4;">${esc(brand.address)}</p></div>` : ""}
       </div>
     </div>
+    ${variant === "split" ? `
     <div class="glass animate-scale" style="padding:60px;border-radius:50px;">
       <h3 style="font-family:'${typography.heading}',serif;font-size:2rem;font-weight:800;margin-bottom:2rem;">Send a Message</h3>
       <div style="display:flex;flex-direction:column;gap:20px;">
@@ -882,7 +915,7 @@ function renderContact(section, schema, P, TEXT, MUTED, Bg, typography) {
         <div style="height:150px;background:rgba(0,0,0,0.05);border-radius:15px;border:1px solid rgba(0,0,0,0.1);"></div>
         <div style="height:60px;background:${P};border-radius:15px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;">Submit Enquiry</div>
       </div>
-    </div>
+    </div>` : ""}
   </div>
 </section>
 <!-- /wp:html -->
@@ -891,8 +924,9 @@ function renderContact(section, schema, P, TEXT, MUTED, Bg, typography) {
 }
 function renderFAQ(section, schema, P, TEXT, MUTED, Bg, typography) {
   const items = section.content?.items || section.items || [];
+  const variant = section.variant || "minimal";
   const cards = items.map((item) => `
-<div class="glass" style="padding:40px;border-radius:25px;">
+<div class="glass" style="padding:40px;border-radius:25px; ${variant === "minimal" ? "background:transparent!important; border:none!important; border-bottom:1px solid rgba(0,0,0,0.1)!important; border-radius:0!important; padding:30px 0!important;" : ""}">
   <h4 style="font-family:'${typography.heading}',serif;font-size:1.4rem;font-weight:800;color:${TEXT};margin-bottom:15px;line-height:1.3;">${esc(item.question || item.title)}</h4>
   <p style="color:${MUTED};font-size:1.1rem;line-height:1.6;margin:0;">${esc(item.answer || item.description)}</p>
 </div>`).join("\n");
@@ -1951,21 +1985,11 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, logCallbac
     await logCallback("Building premium Gutenberg content...");
     const { buildPremiumPageContent: buildPremiumPageContent2 } = await Promise.resolve().then(() => (init_premium_site_builder(), premium_site_builder_exports));
     const content = buildPremiumPageContent2(schema);
-    try {
-      const fs3 = await import("fs");
-      fs3.writeSync(2, `
---- WP CONTENT PUSH START ---
-${content}
---- WP CONTENT PUSH END ---
-`);
-    } catch (e) {
-    }
     const tmpFile = `/tmp/ds_home_${Date.now()}.html`;
     await logCallback(`Writing to remote temp file: ${tmpFile}`);
+    const base64Content = Buffer.from(content).toString("base64");
     await runRemoteShellCommand(
-      `cat > '${tmpFile}' << 'DS_MARKER'
-${content}
-DS_MARKER`,
+      `echo "${base64Content}" | base64 -d > '${tmpFile}'`,
       logCallback
     );
     await logCallback("Creating Home page in WordPress...");
@@ -1977,7 +2001,10 @@ DS_MARKER`,
     const homePageId = homePageIdOut.stdout.replace(/[^0-9]/g, "").trim();
     await runRemoteShellCommand(`rm -f '${tmpFile}'`, logCallback).catch(() => {
     });
-    if (!homePageId) throw new Error("Home page creation failed \u2014 no ID returned");
+    if (!homePageId || homePageId === "0") {
+      throw new Error("Home page creation failed \u2014 invalid ID returned");
+    }
+    await logCallback(`Home page created with ID: ${homePageId}. Setting as front page...`);
     await runWpCommand(`option update show_on_front page`, docRoot, logCallback);
     await runWpCommand(`option update page_on_front ${homePageId}`, docRoot, logCallback);
     if (schema.brand?.businessName) {
@@ -1987,9 +2014,23 @@ DS_MARKER`,
     await runWpCommand(`rewrite flush`, docRoot, logCallback);
     if (schema.brand?.logo) {
       try {
-        const mediaOut = await runWpCommand(`media import "${schema.brand.logo}" --porcelain`, docRoot, logCallback);
-        const mediaId = mediaOut.stdout.trim();
+        await logCallback(`Attempting to import logo: ${schema.brand.logo}`);
+        let mediaId = "";
+        try {
+          const mediaOut = await runWpCommand(`media import "${schema.brand.logo}" --porcelain`, docRoot, logCallback);
+          mediaId = mediaOut.stdout.trim();
+        } catch (e) {
+          await logCallback("Direct import failed. Retrying with local temp file...");
+          const ext = schema.brand.logo.toLowerCase().includes(".png") ? "png" : "jpg";
+          const remoteTmpMedia = `/tmp/ds_logo_${Date.now()}.${ext}`;
+          await runRemoteShellCommand(`curl -sL "${schema.brand.logo}" -o "${remoteTmpMedia}"`, logCallback);
+          const mediaOut = await runWpCommand(`media import "${remoteTmpMedia}" --porcelain`, docRoot, logCallback);
+          mediaId = mediaOut.stdout.trim();
+          await runRemoteShellCommand(`rm -f "${remoteTmpMedia}"`, logCallback).catch(() => {
+          });
+        }
         if (/^\d+$/.test(mediaId)) {
+          await logCallback(`Logo imported successfully (ID: ${mediaId}). Setting as site icon.`);
           await runWpCommand(`option update site_icon ${mediaId}`, docRoot, logCallback);
         }
       } catch (e) {
@@ -3647,6 +3688,9 @@ app.post("/api/generate", async (req, res) => {
     const creativeSeed = `${business.id || "lead"}-${Date.now()}`;
     const prompt = `You are an elite creative director and premium brand strategist crafting bespoke websites for local businesses. Every design must feel high-caliber, editorial, and distinctly tailored\u2014never templated or generic. Think Stripe, Framer, and award-winning product sites as inspiration, not local directory listings.
 
+[CRITICAL MANDATE: LIGHT THEME ONLY]
+You must ONLY generate light themes. Dark modes, charcoal backgrounds, or night-mode aesthetics are STRICTLY FORBIDDEN. All generated hex codes for backgrounds and surfaces must have >90% brightness.
+
 ## MANDATORY DESIGN PRINCIPLES
 
 ### Light Theme Only
@@ -3654,7 +3698,7 @@ app.post("/api/generate", async (req, res) => {
 - Surface: white, off-white, or very soft neutrals with fine borders
 - Text: dark gray to near-black for clarity and contrast
 - Accents: one bold primary accent, optionally one soft secondary accent
-- NO dark backgrounds, NO heavy blacks, NO night-mode aesthetics
+- STRICTLY NO dark backgrounds, NO heavy blacks, NO night-mode aesthetics
 
 ### Premium Spacing & Composition
 - Generous margins and breathing room between sections
@@ -3696,7 +3740,7 @@ Adapt the core design for category context:
   - Modern/Clean: geometric sans heading (Space Grotesk, IBM Plex Sans, Inter) + humanist sans body (Inter)
   - Clinical/Professional: precise sans heading (IBM Plex Sans) + calm sans body (Inter)
   - Performance/Energetic: bold display heading (Space Grotesk) + compact sans body (Inter)
-- **Palette colors**: All hex values for modern light-theme targets: backgrounds light (>90% brightness), surfaces light (>85%), text dark (<30% brightness), accents bold but not neon
+- **Palette colors**: All hex values MUST be for modern light-theme targets: backgrounds light (>90% brightness, e.g., #FFFFFF, #F8FAFC), surfaces light (>85%), text dark (<30% brightness), accents bold but not neon. NEVER use dark background hex codes.
 
 ## CONTENT REQUIREMENTS
 

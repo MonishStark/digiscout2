@@ -2072,6 +2072,9 @@ app.post("/api/generate", async (req: Request, res: Response) => {
 
 		const prompt = `You are an elite creative director and premium brand strategist crafting bespoke websites for local businesses. Every design must feel high-caliber, editorial, and distinctly tailored—never templated or generic. Think Stripe, Framer, and award-winning product sites as inspiration, not local directory listings.
 
+[CRITICAL MANDATE: LIGHT THEME ONLY]
+You must ONLY generate light themes. Dark modes, charcoal backgrounds, or night-mode aesthetics are STRICTLY FORBIDDEN. All generated hex codes for backgrounds and surfaces must have >90% brightness.
+
 ## MANDATORY DESIGN PRINCIPLES
 
 ### Light Theme Only
@@ -2079,7 +2082,7 @@ app.post("/api/generate", async (req: Request, res: Response) => {
 - Surface: white, off-white, or very soft neutrals with fine borders
 - Text: dark gray to near-black for clarity and contrast
 - Accents: one bold primary accent, optionally one soft secondary accent
-- NO dark backgrounds, NO heavy blacks, NO night-mode aesthetics
+- STRICTLY NO dark backgrounds, NO heavy blacks, NO night-mode aesthetics
 
 ### Premium Spacing & Composition
 - Generous margins and breathing room between sections
@@ -2121,7 +2124,7 @@ Adapt the core design for category context:
   - Modern/Clean: geometric sans heading (Space Grotesk, IBM Plex Sans, Inter) + humanist sans body (Inter)
   - Clinical/Professional: precise sans heading (IBM Plex Sans) + calm sans body (Inter)
   - Performance/Energetic: bold display heading (Space Grotesk) + compact sans body (Inter)
-- **Palette colors**: All hex values for modern light-theme targets: backgrounds light (>90% brightness), surfaces light (>85%), text dark (<30% brightness), accents bold but not neon
+- **Palette colors**: All hex values MUST be for modern light-theme targets: backgrounds light (>90% brightness, e.g., #FFFFFF, #F8FAFC), surfaces light (>85%), text dark (<30% brightness), accents bold but not neon. NEVER use dark background hex codes.
 
 ## CONTENT REQUIREMENTS
 

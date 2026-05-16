@@ -27,8 +27,9 @@ export default function App() {
 
 	useEffect(() => {
 		const fetchLeads = async () => {
+			const API_URL = ((import.meta as any).env?.VITE_API_URL as string | undefined) || "http://localhost:5001";
 			try {
-				const response = await fetch("/api/leads");
+				const response = await fetch(`${API_URL}/api/leads`);
 				if (response.ok) {
 					const data = await response.json();
 					setProjects(data);
