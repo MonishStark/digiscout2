@@ -120,16 +120,49 @@ export async function addSubdomain(
 
 export async function deleteSubdomain(subdomain: string, rootDomain: string) {
 	const fullDomain = `${subdomain}.${rootDomain}`;
+	process.stderr.write(`[cPanel-SSH] Attempting to delete domain/subdomain: ${fullDomain}\n`);
+	
+	// 1. Try modern Domains::remove_domain first (best for newer cPanel)
 	try {
-		return await callUapiRemote("Domains", "remove_domain", {
+		await callUapiRemote("Domains", "remove_domain", {
 			domain: fullDomain,
 		});
+		return true;
 	} catch (e: any) {
 		console.warn(`[cPanel-SSH] Domains::remove_domain failed: ${e.message}. Trying legacy fallback...`);
-		return await callUapiRemote("SubDomain", "delsubdomain", {
+	}
+
+	// 2. Try legacy SubDomain::delsubdomain (standard fallback)
+	try {
+		await callUapiRemote("SubDomain", "delsubdomain", {
 			domain: subdomain,
 			rootdomain: rootDomain,
 		});
+		return true;
+	} catch (e: any) {
+		console.warn(`[cPanel-SSH] SubDomain::delsubdomain (sub part) failed: ${e.message}. Trying full domain variant...`);
+	}
+
+	// 3. Try legacy SubDomain::delsubdomain with the FULL domain (needed by some cPanel configs)
+	try {
+		await callUapiRemote("SubDomain", "delsubdomain", {
+			domain: fullDomain,
+			rootdomain: rootDomain,
+		});
+		return true;
+	} catch (e: any) {
+		console.warn(`[cPanel-SSH] SubDomain::delsubdomain (full part) failed: ${e.message}.`);
+	}
+
+	// 4. Try DomainInfo::delete_domain (last resort)
+	try {
+		await callUapiRemote("DomainInfo", "delete_domain", {
+			domain: fullDomain,
+		});
+		return true;
+	} catch (e: any) {
+		console.error(`[cPanel-SSH] All subdomain deletion methods failed for ${fullDomain}. Final error: ${e.message}`);
+		throw e; // Final failure
 	}
 }
 

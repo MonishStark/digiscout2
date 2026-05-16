@@ -1,6 +1,6 @@
 /** @format */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { APIProvider } from "@vis.gl/react-google-maps";
 
 import { Business, WebsiteProject } from "./types";
@@ -24,6 +24,22 @@ export default function App() {
 	const [activePage, setActivePage] = useState<"discover" | "leads">(
 		"discover",
 	);
+
+	useEffect(() => {
+		const fetchLeads = async () => {
+			try {
+				const response = await fetch("/api/leads");
+				if (response.ok) {
+					const data = await response.json();
+					setProjects(data);
+				}
+			} catch (error) {
+				console.error("Failed to fetch leads:", error);
+			}
+		};
+
+		fetchLeads();
+	}, []);
 
 	if (!hasValidKey) {
 		return (

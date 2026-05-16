@@ -532,23 +532,41 @@ async function rollbackJob(job: any) {
 // ---------------------------------------------------------------------------
 
 export async function deleteProvisionedWordPressSite(projectId: string) {
-	console.log(`[Cleanup] Starting remote deletion for project ${projectId}`);
+	console.log(`[Cleanup] Starting comprehensive remote deletion for project ${projectId}`);
 
+	// 1. Fetch all related jobs to ensure we have the subdomain and DB names
 	const [rows]: any = await pool.query(
-		`SELECT * FROM provisioning_jobs WHERE project_id = ? ORDER BY created_at DESC LIMIT 1`,
+		`SELECT * FROM provisioning_jobs WHERE project_id = ?`,
 		[projectId],
 	);
 
 	if (!rows || rows.length === 0) {
-		console.warn(`[Cleanup] No provisioning job found for project ${projectId}`);
+		console.warn(`[Cleanup] No provisioning job found in DB for project ${projectId}. Attempting database-only purge.`);
+		await pool.query(`DELETE FROM isolated_deployments WHERE project_id = ?`, [projectId]);
+		await pool.query(`DELETE FROM provisioning_jobs WHERE project_id = ?`, [projectId]);
 		return;
 	}
 
-	const job = rows[0];
-	await rollbackJob(job);
+	// 2. Perform remote cleanup for each job found (usually just one, but let's be thorough)
+	for (const job of rows) {
+		try {
+			await rollbackJob(job);
+		} catch (e: any) {
+			console.error(`[Cleanup] Rollback failed for job ${job.id}: ${e.message}`);
+			// Continue to next job or purge — we don't want to block the DB deletion
+		}
+	}
 
-	await pool.query(`DELETE FROM isolated_deployments WHERE project_id = ?`, [projectId]);
-	await pool.query(`DELETE FROM provisioning_jobs WHERE project_id = ?`, [projectId]);
+	// 3. Purge from local database tables
+	try {
+		const [del1] = await pool.query(`DELETE FROM isolated_deployments WHERE project_id = ?`, [projectId]);
+		const [del2] = await pool.query(`DELETE FROM provisioning_jobs WHERE project_id = ?`, [projectId]);
+		
+		console.log(`[Cleanup] Project ${projectId} purged from local DB. Jobs removed: ${(del2 as any).affectedRows}`);
+	} catch (e: any) {
+		console.error(`[Cleanup] Failed to purge project ${projectId} from local DB: ${e.message}`);
+		throw e;
+	}
 
-	console.log(`[Cleanup] Project ${projectId} fully purged from remote server.`);
+	console.log(`[Cleanup] Project ${projectId} remote resources and local records fully processed.`);
 }

@@ -1485,16 +1485,42 @@ async function addSubdomain(subdomain, rootDomain, documentRoot) {
 }
 async function deleteSubdomain(subdomain, rootDomain) {
   const fullDomain = `${subdomain}.${rootDomain}`;
+  process.stderr.write(`[cPanel-SSH] Attempting to delete domain/subdomain: ${fullDomain}
+`);
   try {
-    return await callUapiRemote("Domains", "remove_domain", {
+    await callUapiRemote("Domains", "remove_domain", {
       domain: fullDomain
     });
+    return true;
   } catch (e) {
     console.warn(`[cPanel-SSH] Domains::remove_domain failed: ${e.message}. Trying legacy fallback...`);
-    return await callUapiRemote("SubDomain", "delsubdomain", {
+  }
+  try {
+    await callUapiRemote("SubDomain", "delsubdomain", {
       domain: subdomain,
       rootdomain: rootDomain
     });
+    return true;
+  } catch (e) {
+    console.warn(`[cPanel-SSH] SubDomain::delsubdomain (sub part) failed: ${e.message}. Trying full domain variant...`);
+  }
+  try {
+    await callUapiRemote("SubDomain", "delsubdomain", {
+      domain: fullDomain,
+      rootdomain: rootDomain
+    });
+    return true;
+  } catch (e) {
+    console.warn(`[cPanel-SSH] SubDomain::delsubdomain (full part) failed: ${e.message}.`);
+  }
+  try {
+    await callUapiRemote("DomainInfo", "delete_domain", {
+      domain: fullDomain
+    });
+    return true;
+  } catch (e) {
+    console.error(`[cPanel-SSH] All subdomain deletion methods failed for ${fullDomain}. Final error: ${e.message}`);
+    throw e;
   }
 }
 async function createDatabase(dbName) {
@@ -2014,20 +2040,33 @@ async function rollbackJob(job) {
   await appendLog(job.id, "[ROLLBACK] Remote cleanup finished.");
 }
 async function deleteProvisionedWordPressSite(projectId) {
-  console.log(`[Cleanup] Starting remote deletion for project ${projectId}`);
+  console.log(`[Cleanup] Starting comprehensive remote deletion for project ${projectId}`);
   const [rows] = await pool.query(
-    `SELECT * FROM provisioning_jobs WHERE project_id = ? ORDER BY created_at DESC LIMIT 1`,
+    `SELECT * FROM provisioning_jobs WHERE project_id = ?`,
     [projectId]
   );
   if (!rows || rows.length === 0) {
-    console.warn(`[Cleanup] No provisioning job found for project ${projectId}`);
+    console.warn(`[Cleanup] No provisioning job found in DB for project ${projectId}. Attempting database-only purge.`);
+    await pool.query(`DELETE FROM isolated_deployments WHERE project_id = ?`, [projectId]);
+    await pool.query(`DELETE FROM provisioning_jobs WHERE project_id = ?`, [projectId]);
     return;
   }
-  const job = rows[0];
-  await rollbackJob(job);
-  await pool.query(`DELETE FROM isolated_deployments WHERE project_id = ?`, [projectId]);
-  await pool.query(`DELETE FROM provisioning_jobs WHERE project_id = ?`, [projectId]);
-  console.log(`[Cleanup] Project ${projectId} fully purged from remote server.`);
+  for (const job of rows) {
+    try {
+      await rollbackJob(job);
+    } catch (e) {
+      console.error(`[Cleanup] Rollback failed for job ${job.id}: ${e.message}`);
+    }
+  }
+  try {
+    const [del1] = await pool.query(`DELETE FROM isolated_deployments WHERE project_id = ?`, [projectId]);
+    const [del2] = await pool.query(`DELETE FROM provisioning_jobs WHERE project_id = ?`, [projectId]);
+    console.log(`[Cleanup] Project ${projectId} purged from local DB. Jobs removed: ${del2.affectedRows}`);
+  } catch (e) {
+    console.error(`[Cleanup] Failed to purge project ${projectId} from local DB: ${e.message}`);
+    throw e;
+  }
+  console.log(`[Cleanup] Project ${projectId} remote resources and local records fully processed.`);
 }
 
 // src/lib/provisioning-worker.ts
@@ -4300,6 +4339,57 @@ app.delete("/api/wordpress/site/:projectId", async (req, res) => {
     return res.status(500).json({
       error: error instanceof Error ? error.message : "Failed to delete WordPress site"
     });
+  }
+});
+app.get("/api/leads", async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT 
+				pj.project_id as id,
+				pj.business_name as businessName,
+				pj.website_schema as websiteSchema,
+				pj.status as provisioningStatus,
+				pj.created_at as lastProvisionedAt,
+				pj.wp_admin_user as wordpressOwnerUsername,
+				pj.wp_admin_pass_encrypted,
+				idp.subdomain_url as wordpressSiteUrl,
+				idp.wp_admin_url as wordpressAdminUrl,
+				idp.ssl_status as sslStatus
+			 FROM provisioning_jobs pj
+			 LEFT JOIN isolated_deployments idp ON pj.project_id = idp.project_id
+			 ORDER BY pj.created_at DESC`
+    );
+    const leads = rows.map((row) => {
+      let rawPassword = null;
+      if (row.wp_admin_pass_encrypted) {
+        try {
+          const [ivHex, encryptedHex] = row.wp_admin_pass_encrypted.split(":");
+          const key = process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
+          const decipher = crypto2.createDecipheriv("aes-256-cbc", Buffer.from(key), Buffer.from(ivHex, "hex"));
+          let decrypted = decipher.update(Buffer.from(encryptedHex, "hex"));
+          decrypted = Buffer.concat([decrypted, decipher.final()]);
+          rawPassword = decrypted.toString();
+        } catch (e) {
+        }
+      }
+      const schema = row.websiteSchema || {};
+      return {
+        ...row,
+        businessId: schema.meta?.businessId || row.id,
+        businessAddress: schema.brand?.address || "",
+        businessCategory: schema.brand?.category || "General",
+        rating: schema._validation?.rating || 0,
+        reviewCount: schema._validation?.reviewCount || 0,
+        email: schema.brand?.email || "",
+        phoneNumber: schema.brand?.phone || "",
+        wordpressPassword: rawPassword,
+        websiteContent: ""
+      };
+    });
+    return res.json(leads);
+  } catch (error) {
+    console.error("[Leads] Failed to fetch leads:", error);
+    return res.status(500).json({ error: "Failed to fetch leads history" });
   }
 });
 app.post(
