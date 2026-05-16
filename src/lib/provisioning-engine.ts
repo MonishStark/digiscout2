@@ -424,10 +424,9 @@ async function injectWebsiteContent(
 	try {
 		await logCallback("Cleaning up default WordPress content...");
 		try {
-			await runWpCommand(
-				`post delete $(wp post list --post_type=post,page --format=ids --path="${docRoot}" --allow-root) --force --allow-root`,
-				docRoot, logCallback,
-			);
+			// Get IDs first and only delete if not empty to avoid "usage" errors
+			const deleteCmd = `ids=$(/usr/local/sbin/wp post list --post_type=post,page --format=ids --path="${docRoot}" --allow-root); [ -n "$ids" ] && /usr/local/sbin/wp post delete $ids --force --allow-root --path="${docRoot}"`;
+			await runRemoteShellCommand(deleteCmd, logCallback);
 		} catch (e) { /* non-fatal */ }
 
 		await logCallback("Building premium Gutenberg content...");

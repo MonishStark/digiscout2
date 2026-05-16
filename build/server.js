@@ -642,6 +642,7 @@ function buildPremiumPageContent(schema) {
   const theme = schema.theme || {};
   const radius = theme.radius || "24px";
   const typography = theme.typography || { heading: "Playfair Display", body: "Inter" };
+  const sections = schema.sections || [];
   const globalCss = `<!-- wp:html -->
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;700;900&family=Space+Grotesk:wght@300;500;700&family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;500;700;900&display=swap');
@@ -691,7 +692,6 @@ ${sections.map((s) => s.customCss || "").join("\n")}
 
 `;
   let html = globalCss;
-  const sections = schema.sections || [];
   sections.forEach((section, index) => {
     const isEven = index % 2 === 0;
     const sectionBg = isEven ? BG : SURF;
@@ -711,6 +711,9 @@ ${sections.map((s) => s.customCss || "").join("\n")}
         break;
       case "cta":
         html += renderCTA(section, schema, P, TEXT, typography);
+        break;
+      case "faq":
+        html += renderFAQ(section, schema, P, TEXT, MUTED, sectionBg, typography);
         break;
       case "contact":
         html += renderContact(section, schema, P, TEXT, MUTED, sectionBg, typography);
@@ -879,6 +882,26 @@ function renderContact(section, schema, P, TEXT, MUTED, Bg, typography) {
         <div style="height:150px;background:rgba(0,0,0,0.05);border-radius:15px;border:1px solid rgba(0,0,0,0.1);"></div>
         <div style="height:60px;background:${P};border-radius:15px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;">Submit Enquiry</div>
       </div>
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+}
+function renderFAQ(section, schema, P, TEXT, MUTED, Bg, typography) {
+  const items = section.content?.items || section.items || [];
+  const cards = items.map((item) => `
+<div class="glass" style="padding:40px;border-radius:25px;">
+  <h4 style="font-family:'${typography.heading}',serif;font-size:1.4rem;font-weight:800;color:${TEXT};margin-bottom:15px;line-height:1.3;">${esc(item.question || item.title)}</h4>
+  <p style="color:${MUTED};font-size:1.1rem;line-height:1.6;margin:0;">${esc(item.answer || item.description)}</p>
+</div>`).join("\n");
+  return `<!-- wp:html -->
+<section class="section-padding section-faq" style="background:${Bg};">
+  <div style="max-width:1100px;margin:0 auto;">
+    <h2 style="font-family:'${typography.heading}',serif;font-size:3.5rem;font-weight:900;color:${TEXT};margin-bottom:80px;text-align:center;letter-spacing:-0.03em;">${esc(section.content?.title || section.title || "Common Inquiries")}</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(450px,1fr));gap:30px;">
+      ${cards}
     </div>
   </div>
 </section>
@@ -1895,11 +1918,8 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, logCallbac
   try {
     await logCallback("Cleaning up default WordPress content...");
     try {
-      await runWpCommand(
-        `post delete $(wp post list --post_type=post,page --format=ids --path="${docRoot}" --allow-root) --force --allow-root`,
-        docRoot,
-        logCallback
-      );
+      const deleteCmd = `ids=$(/usr/local/sbin/wp post list --post_type=post,page --format=ids --path="${docRoot}" --allow-root); [ -n "$ids" ] && /usr/local/sbin/wp post delete $ids --force --allow-root --path="${docRoot}"`;
+      await runRemoteShellCommand(deleteCmd, logCallback);
     } catch (e) {
     }
     await logCallback("Building premium Gutenberg content...");
