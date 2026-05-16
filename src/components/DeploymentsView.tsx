@@ -426,37 +426,35 @@ export default function DeploymentsView({
 									{/* ── MINI PREVIEW ── */}
 									<div className='relative h-[200px] w-full overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50 shadow-[0_20px_50px_rgba(15,23,42,0.08)] sm:h-[220px] xl:h-auto xl:w-[320px] xl:flex-shrink-0'>
 										{project.wordpressSiteUrl && isLive ? (
-											<iframe
-												src={project.wordpressSiteUrl}
-												className='absolute left-0 top-0 h-full w-full border-0'
-												loading='lazy'
-												style={{
-													transform: 'scale(0.5)',
-													transformOrigin: 'top left',
-													width: '200%',
-													height: '200%',
-													pointerEvents: 'none',
-												}}
-												title={`Preview of ${project.businessName}`}
-											/>
-										) : project.websiteSchema ? (
-											<iframe
-												srcDoc={renderWebsiteArtifact({
-													schema: project.websiteSchema,
-													html: "",
-													css: "",
-													js: "",
-												})}
-												className='absolute left-0 top-0 h-full w-full border-0 opacity-60'
-												style={{
-													transform: 'scale(0.5)',
-													transformOrigin: 'top left',
-													width: '200%',
-													height: '200%',
-													pointerEvents: 'none',
-												}}
-												title={`Draft Preview of ${project.businessName}`}
-											/>
+											<>
+												<iframe
+													src={project.wordpressSiteUrl}
+													className='absolute left-0 top-0 h-full w-full border-0'
+													loading='lazy'
+													style={{
+														transform: 'scale(0.5)',
+														transformOrigin: 'top left',
+														width: '200%',
+														height: '200%',
+														pointerEvents: 'none',
+													}}
+													title={`Preview of ${project.businessName}`}
+												/>
+												{window.location.protocol === 'https:' && project.wordpressSiteUrl.startsWith('http://') && (
+													<div className='absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/90 p-4 text-center text-white backdrop-blur-sm'>
+														<ShieldCheck className='mb-2 h-8 w-8 text-amber-400' />
+														<p className='text-xs font-bold'>SSL Provisioning in Progress</p>
+														<p className='mt-1 text-[10px] opacity-70'>Browsers block non-secure previews. Your site will be fully visible here in ~10 mins.</p>
+														<a 
+															href={project.wordpressSiteUrl} 
+															target='_blank' 
+															rel='noreferrer'
+															className='mt-3 rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold hover:bg-white/20'>
+															Open Site Directly
+														</a>
+													</div>
+												)}
+											</>
 										) : (
 											<div className='flex h-full w-full flex-col items-center justify-center p-6 text-center'>
 												<div className='mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-violet-100 text-violet-600'>

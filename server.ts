@@ -13,7 +13,7 @@ import cors from "cors";
 import express, { Request, Response } from "express";
 import fs from "fs";
 import path from "path";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import {
 	deleteProvisionedWordPressMultisiteSite,
 	provisionWordPressMultisiteSite,
@@ -231,7 +231,7 @@ async function readRequestBody(req: Request): Promise<Buffer> {
 
 
 const GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_API_KEY;
-const genai = GENAI_KEY ? new GoogleGenAI({ apiKey: GENAI_KEY }) : null;
+const genai = GENAI_KEY ? new GoogleGenerativeAI(GENAI_KEY) : null;
 const CALLHIPPO_API_KEY = process.env.CALLHIPPO_API_KEY;
 const WEBSITE_GENERATION_MODE = process.env.WEBSITE_GENERATION_MODE || "gemini";
 
@@ -2186,24 +2186,69 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. No markd
 
 		for (const model of modelsToTry) {
 			try {
-				console.error(`[Gemini] Attempting ${model.name}...`);
-				const response = (await Promise.race([
-					genai.getGenerativeModel({ model: model.name }).generateContent(prompt),
-					new Promise((_, reject) =>
-						setTimeout(
-							() =>
-								reject(
-									new Error(
-										`${model.name} request timed out after ${model.timeoutMs}ms`,
-									),
-								),
-							model.timeoutMs,
-						),
-					),
-				])) as any;
+				const restUrl = process.env.GEMINI_REST_URL;
+				if (restUrl && GENAI_KEY) {
+					console.error(`[Gemini] Attempting direct REST call to ${restUrl}...`);
 
-				const result = await response.response;
-				rawText = result.text().trim();
+					const url = `${restUrl}${restUrl.includes("?") ? "&" : "?"}key=${GENAI_KEY}`;
+
+					const fetchResponse = await Promise.race([
+
+						fetch(url, {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({
+								contents: [{ parts: [{ text: prompt }] }],
+								generationConfig: {
+									temperature: 0.9,
+									maxOutputTokens: 8192,
+								},
+							}),
+						}),
+
+						new Promise<Response>((_, reject) =>
+							setTimeout(() => reject(new Error(`REST timeout after ${model.timeoutMs}ms`)), model.timeoutMs)
+						),
+					]);
+
+					if (!fetchResponse.ok) {
+						throw new Error(`REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`);
+					}
+					const data = await fetchResponse.json() as any;
+					rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+				} else {
+					console.error(`[Gemini] Attempting SDK call for ${model.name}...`);
+					const response = (await Promise.race([
+						genai.getGenerativeModel({ model: model.name }).generateContent(prompt),
+						new Promise((_, reject) =>
+							setTimeout(
+								() =>
+									reject(
+										new Error(
+											`${model.name} request timed out after ${model.timeoutMs}ms`,
+										),
+									),
+								model.timeoutMs,
+							),
+						),
+					])) as any;
+
+					const result = await response.response;
+					rawText = result.text().trim();
+				}
+
+
+
+
+
+
+
+
+
+
+
+
+
 				
 				if (rawText) {
 					console.error(`[Gemini] ${model.name} success! Response length: ${rawText.length}`);

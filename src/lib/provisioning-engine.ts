@@ -425,7 +425,7 @@ async function injectWebsiteContent(
 		await logCallback("Cleaning up default WordPress content...");
 		try {
 			await runWpCommand(
-				"post delete $(wp post list --post_type=post,page --format=ids --allow-root) --force --allow-root",
+				`post delete $(wp post list --post_type=post,page --format=ids --path="${docRoot}" --allow-root) --force --allow-root`,
 				docRoot, logCallback,
 			);
 		} catch (e) { /* non-fatal */ }
