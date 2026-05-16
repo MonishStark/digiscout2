@@ -1702,6 +1702,23 @@ async function executeStateMachine(job) {
     const fullDocRoot = `${docRootBase}/${subdomain}`;
     await configurePermalinks(fullDocRoot, "/%postname%/", (log) => appendLog(job.id, log));
     await appendLog(job.id, "Configured remote permalinks");
+    await appendLog(job.id, "Installing Astra theme...");
+    try {
+      await runWpCommand(`theme install astra --activate`, fullDocRoot, (log) => appendLog(job.id, log));
+      await appendLog(job.id, "Astra theme activated");
+    } catch (e) {
+      await appendLog(job.id, `Warning: Theme install failed (${e.message}), using default theme`);
+    }
+    try {
+      await runWpCommand(`theme delete twentytwentyfive twentytwentyfour twentytwentythree`, fullDocRoot, (log) => appendLog(job.id, log));
+    } catch (e) {
+    }
+    await runWpCommand(`option update default_comment_status closed`, fullDocRoot, (log) => appendLog(job.id, log)).catch(() => {
+    });
+    await runWpCommand(`option update comment_status closed`, fullDocRoot, (log) => appendLog(job.id, log)).catch(() => {
+    });
+    await runWpCommand(`option update blogdescription ""`, fullDocRoot, (log) => appendLog(job.id, log)).catch(() => {
+    });
     job.status = "deploying_content";
   }
   if (job.status === "deploying_content") {
@@ -1756,7 +1773,23 @@ async function executeStateMachine(job) {
     await appendLog(job.id, `Job completed! Remote WP site live at ${httpUrl} (SSL polling started)`);
   }
 }
-async function injectWebsiteContent(docRoot, schema, homepageBlocks, logCallback) {
+function fallbackImageForCategory(category) {
+  const normalized = (category || "").toLowerCase();
+  if (normalized.includes("restaurant") || normalized.includes("cafe")) {
+    return "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1800&q=80";
+  }
+  if (normalized.includes("gym") || normalized.includes("fitness")) {
+    return "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=1800&q=80";
+  }
+  if (normalized.includes("salon") || normalized.includes("spa")) {
+    return "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1800&q=80";
+  }
+  return "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1800&q=80";
+}
+function esc(str) {
+  return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+async function injectWebsiteContent(docRoot, schema, _homepageBlocks, logCallback) {
   try {
     await logCallback("Cleaning up default WordPress content...");
     try {
@@ -1767,65 +1800,161 @@ async function injectWebsiteContent(docRoot, schema, homepageBlocks, logCallback
       );
     } catch (e) {
     }
-    const theme = schema.theme || {};
-    const palette = theme.palette || {
+    const palette = schema.theme?.palette || {
       background: "#07070a",
       surface: "#111114",
       primary: "#7c3aed",
       text: "#f4f4f5",
       muted: "#a1a1aa"
     };
-    await logCallback("Generating premium CSS theme overrides...");
-    const globalStyles = `
+    const businessName = schema.brand?.businessName || "Welcome";
+    const sections = schema.sections || [];
+    const hero = sections.find((s) => s.type === "hero") || sections[0] || {};
+    const features = sections.find((s) => s.type === "features" || s.type === "services");
+    const gallery = sections.find((s) => s.type === "gallery");
+    const testimonials = sections.find((s) => s.type === "testimonials");
+    const cta = sections.find((s) => s.type === "cta");
+    const heroImg = hero?.media?.src || hero?.media?.url || fallbackImageForCategory(schema.brand?.category);
+    const heroTitle = hero?.headline || businessName;
+    const heroSub = hero?.subheadline || `${businessName} \u2014 professional, trusted, and ready to serve you.`;
+    const ctaLabel = hero?.primaryCta?.label || hero?.ctaPrimary?.label || "Get Started";
+    const email = schema.brand?.email || "";
+    const phone = schema.brand?.phone || "";
+    const address = schema.brand?.address || "";
+    await logCallback("Building premium Gutenberg content...");
+    const css = `
 <style>
-	:root {
-		--wp--preset--color--primary: ${palette.primary};
-		--wp--preset--color--background: ${palette.background};
-		--wp--preset--color--foreground: ${palette.text};
-		--wp--preset--color--muted: ${palette.muted || "#a1a1aa"};
-	}
-	body {
-		background-color: ${palette.background} !important;
-		color: ${palette.text} !important;
-		font-family: 'Inter', sans-serif !important;
-		margin: 0;
-	}
-	.entry-title, .wp-block-post-title { display: none !important; }
-	.wp-block-group, .wp-block-columns, .wp-block-column {
-		color: ${palette.text} !important;
-	}
-	h1, h2, h3, h4 { color: ${palette.text} !important; font-weight: 700 !important; }
-	.has-background { padding: 40px; border-radius: 24px; }
-	.premium-card {
-		background: rgba(255,255,255,0.03) !important;
-		backdrop-filter: blur(12px);
-		border: 1px solid rgba(255,255,255,0.1) !important;
-		border-radius: 28px !important;
-	}
-	.wp-block-button__link {
-		background-color: ${palette.primary} !important;
-		border-radius: 50px !important;
-		padding: 16px 40px !important;
-		font-weight: 600 !important;
-		transition: transform 0.2s ease !important;
-		border: none !important;
-	}
-	.wp-block-button__link:hover { transform: scale(1.05); }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+html,body{background:${palette.background}!important;color:${palette.text}!important;font-family:'Inter',sans-serif!important;margin:0!important;padding:0!important;}
+/* Hide Astra/theme chrome */
+.ast-site-header-wrap,.site-header,#masthead,.ast-breadcrumbs-wrapper,.entry-title,.wp-block-post-title,.posted-on,.byline,.ast-blog-single-element,.site-footer,#colophon,.ast-footer-widget-area{display:none!important;}
+/* Remove content padding added by Astra */
+.ast-separate-container .site-content,.ast-plain-container .site-content,.entry-content,.ast-container{padding:0!important;max-width:100%!important;width:100%!important;}
+.wp-site-blocks,.is-layout-flow,.wp-block-post-content{padding:0!important;margin:0!important;}
+/* Hero */
+.wp-block-cover.ds-hero{min-height:100vh!important;}
+.wp-block-cover.ds-hero h1{font-size:clamp(2.2rem,5.5vw,5rem)!important;line-height:1.1!important;font-weight:800!important;color:#fff!important;margin-bottom:1.5rem!important;letter-spacing:-0.02em!important;}
+.wp-block-cover.ds-hero p{font-size:clamp(1rem,1.8vw,1.3rem)!important;color:rgba(255,255,255,.85)!important;max-width:600px!important;margin:0 auto 2.5rem!important;line-height:1.65!important;}
+/* Sections */
+.ds-section{padding:100px 40px!important;width:100%!important;box-sizing:border-box!important;}
+.ds-section-dark{background:${palette.surface}!important;}
+.ds-section-light{background:${palette.background}!important;}
+.ds-section h2{font-size:clamp(1.8rem,3.5vw,3rem)!important;font-weight:800!important;color:${palette.text}!important;text-align:center!important;margin:0 auto 3rem!important;letter-spacing:-0.02em!important;max-width:700px!important;}
+.ds-inner{max-width:1100px!important;margin:0 auto!important;}
+/* Cards */
+.ds-card{background:rgba(255,255,255,.04)!important;border:1px solid rgba(255,255,255,.07)!important;border-radius:20px!important;padding:36px 28px!important;transition:transform .3s ease,box-shadow .3s ease!important;}
+.ds-card:hover{transform:translateY(-6px)!important;box-shadow:0 24px 60px rgba(0,0,0,.3)!important;}
+.ds-card h3{font-size:1.2rem!important;font-weight:700!important;color:${palette.text}!important;margin:0 0 .75rem!important;}
+.ds-card p{color:${palette.muted}!important;line-height:1.7!important;font-size:.95rem!important;margin:0!important;}
+.ds-grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(270px,1fr))!important;gap:24px!important;margin-top:48px!important;}
+/* Testimonials */
+.ds-testimonial{background:rgba(255,255,255,.04)!important;border-left:3px solid ${palette.primary}!important;border-radius:12px!important;padding:28px!important;}
+.ds-testimonial blockquote{font-style:italic!important;color:${palette.text}!important;margin:0 0 1rem!important;line-height:1.7!important;font-size:1rem!important;}
+.ds-testimonial .ds-author{font-weight:600!important;color:${palette.primary}!important;font-size:.9rem!important;}
+/* CTA */
+.ds-cta-section{padding:100px 40px!important;text-align:center!important;background:linear-gradient(135deg,${palette.primary},${palette.surface})!important;}
+.ds-cta-section h2{color:#fff!important;margin-bottom:1.5rem!important;}
+.ds-cta-section p{color:rgba(255,255,255,.85)!important;font-size:1.1rem!important;margin:0 auto 2.5rem!important;max-width:580px!important;}
+.ds-cta-section a{background:#fff!important;color:${palette.primary}!important;padding:16px 40px!important;border-radius:50px!important;font-weight:700!important;text-decoration:none!important;display:inline-block!important;transition:transform .2s!important;font-size:1rem!important;}
+.ds-cta-section a:hover{transform:scale(1.04)!important;}
+/* Buttons */
+.wp-block-button__link{background:${palette.primary}!important;color:#fff!important;border:none!important;border-radius:50px!important;padding:14px 36px!important;font-weight:700!important;transition:transform .2s,box-shadow .2s!important;font-size:1rem!important;letter-spacing:.01em!important;}
+.wp-block-button__link:hover{transform:scale(1.04)!important;box-shadow:0 8px 30px rgba(0,0,0,.25)!important;color:#fff!important;}
+/* Gallery */
+.ds-gallery-grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))!important;gap:16px!important;margin-top:48px!important;}
+.ds-gallery-grid figure{margin:0!important;overflow:hidden!important;border-radius:12px!important;aspect-ratio:4/3!important;}
+.ds-gallery-grid img{width:100%!important;height:100%!important;object-fit:cover!important;transition:transform .4s ease!important;}
+.ds-gallery-grid figure:hover img{transform:scale(1.06)!important;}
+/* Contact */
+.ds-contact-grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important;gap:32px!important;margin-top:48px!important;}
+.ds-contact-item h3{font-size:1rem!important;font-weight:700!important;color:${palette.primary}!important;margin:0 0 .5rem!important;}
+.ds-contact-item p,.ds-contact-item a{color:${palette.muted}!important;line-height:1.6!important;font-size:.95rem!important;text-decoration:none!important;}
+@media(max-width:768px){.ds-section{padding:64px 20px!important;}.ds-cta-section{padding:64px 20px!important;}}
 </style>`;
-    const homeContent = `<!-- wp:html -->
-${globalStyles}
+    let content = `<!-- wp:html -->
+${css}
 <!-- /wp:html -->
-${homepageBlocks}`;
+
+`;
+    content += `<!-- wp:cover {"url":"${esc(heroImg)}","dimRatio":55,"overlayColor":"black","minHeight":100,"minHeightUnit":"vh","align":"full","className":"ds-hero","style":{"spacing":{"padding":{"top":"160px","bottom":"120px"}}}} -->
+<div class="wp-block-cover alignfull ds-hero" style="padding-top:160px;padding-bottom:120px;min-height:100vh"><span aria-hidden="true" class="wp-block-cover__background has-black-background-color has-background-dim-55 has-background-dim"></span><img class="wp-block-cover__image-background" alt="${esc(businessName)}" src="${esc(heroImg)}" data-object-fit="cover"/><div class="wp-block-cover__inner-container">
+<!-- wp:heading {"textAlign":"center","level":1} -->
+<h1 class="wp-block-heading has-text-align-center">${esc(heroTitle)}</h1>
+<!-- /wp:heading -->
+<!-- wp:paragraph {"textAlign":"center","fontSize":"large"} -->
+<p class="has-text-align-center has-large-font-size">${esc(heroSub)}</p>
+<!-- /wp:paragraph -->
+<!-- wp:buttons {"layout":{"type":"flex","justifyContent":"center"},"style":{"spacing":{"margin":{"top":"40px"}}}} -->
+<div class="wp-block-buttons" style="margin-top:40px"><!-- wp:button {"style":{"border":{"radius":"50px"}}} -->
+<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" style="border-radius:50px">${esc(ctaLabel)}</a></div>
+<!-- /wp:button --></div>
+<!-- /wp:buttons -->
+</div></div>
+<!-- /wp:cover -->
+
+`;
+    if (features?.items?.length) {
+      const items = features.items.slice(0, 6);
+      const cards = items.map(
+        (item) => `<div class="ds-card"><h3>${esc(item.title || item.name || "")}</h3><p>${esc(item.description || item.body || "")}</p></div>`
+      ).join("\n");
+      content += `<!-- wp:html -->
+<section class="ds-section ds-section-dark" id="services"><div class="ds-inner"><h2>${esc(features.headline || features.title || "Our Services")}</h2><div class="ds-grid">${cards}</div></div></section>
+<!-- /wp:html -->
+
+`;
+    }
+    if (gallery?.items?.length) {
+      const imgs = gallery.items.slice(0, 6).map(
+        (item) => `<figure><img src="${esc(item.src || item.url || "")}" alt="${esc(item.alt || businessName)}" loading="lazy"></figure>`
+      ).join("\n");
+      content += `<!-- wp:html -->
+<section class="ds-section ds-section-light" id="gallery"><div class="ds-inner"><h2>${esc(gallery.headline || gallery.title || "Gallery")}</h2><div class="ds-gallery-grid">${imgs}</div></div></section>
+<!-- /wp:html -->
+
+`;
+    }
+    if (testimonials?.items?.length) {
+      const cards = testimonials.items.slice(0, 4).map(
+        (item) => `<div class="ds-testimonial"><blockquote>"${esc(item.quote || "")}"</blockquote><div class="ds-author">\u2014 ${esc(item.author || "")}${item.role ? `, ${esc(item.role)}` : ""}</div></div>`
+      ).join("\n");
+      content += `<!-- wp:html -->
+<section class="ds-section ds-section-dark" id="reviews"><div class="ds-inner"><h2>${esc(testimonials.headline || "What Our Clients Say")}</h2><div class="ds-grid">${cards}</div></div></section>
+<!-- /wp:html -->
+
+`;
+    }
+    if (cta) {
+      const ctaT = cta.headline || cta.title || `Ready to experience ${businessName}?`;
+      const ctaB = cta.body || "";
+      const ctaBtnLabel = cta.buttonLabel || cta.primaryCta?.label || "Book Now";
+      const ctaBtnHref = cta.buttonHref || cta.primaryCta?.href || "#contact";
+      content += `<!-- wp:html -->
+<section class="ds-cta-section"><h2>${esc(ctaT)}</h2>${ctaB ? `<p>${esc(ctaB)}</p>` : ""}<a href="${esc(ctaBtnHref)}">${esc(ctaBtnLabel)}</a></section>
+<!-- /wp:html -->
+
+`;
+    }
+    let contactItems = "";
+    if (address) contactItems += `<div class="ds-contact-item"><h3>Address</h3><p>${esc(address)}</p></div>`;
+    if (phone) contactItems += `<div class="ds-contact-item"><h3>Phone</h3><p><a href="tel:${esc(phone)}">${esc(phone)}</a></p></div>`;
+    if (email) contactItems += `<div class="ds-contact-item"><h3>Email</h3><p><a href="mailto:${esc(email)}">${esc(email)}</a></p></div>`;
+    if (contactItems) {
+      content += `<!-- wp:html -->
+<section class="ds-section ds-section-dark" id="contact"><div class="ds-inner"><h2>Get In Touch</h2><div class="ds-contact-grid">${contactItems}</div></div></section>
+<!-- /wp:html -->
+
+`;
+    }
     const tmpFile = `/tmp/ds_home_${Date.now()}.html`;
-    await logCallback(`Writing home page content to remote temp file: ${tmpFile}`);
-    const escapedContent = homeContent.replace(/\\/g, "\\\\").replace(/'/g, `'\\''`);
+    await logCallback(`Writing to remote temp file: ${tmpFile}`);
     await runRemoteShellCommand(
-      `cat > '${tmpFile}' << 'DS_EOF_MARKER'
-${homeContent}
-DS_EOF_MARKER`,
+      `cat > '${tmpFile}' << 'DS_MARKER'
+${content}
+DS_MARKER`,
       logCallback
     );
-    await logCallback("Creating Home page in remote WordPress...");
+    await logCallback("Creating Home page in WordPress...");
     const homePageIdOut = await runWpCommand(
       `post create --post_type=page --post_title="Home" --post_content="$(cat '${tmpFile}')" --post_status=publish --format=ids`,
       docRoot,
@@ -1834,38 +1963,28 @@ DS_EOF_MARKER`,
     const homePageId = homePageIdOut.stdout.replace(/[^0-9]/g, "").trim();
     await runRemoteShellCommand(`rm -f '${tmpFile}'`, logCallback).catch(() => {
     });
-    if (!homePageId) {
-      throw new Error("Failed to create Home page \u2014 no ID returned from WP-CLI");
-    }
-    await logCallback(`Home page created with ID: ${homePageId}`);
+    if (!homePageId) throw new Error("Home page creation failed \u2014 no ID returned");
     await runWpCommand(`option update show_on_front page`, docRoot, logCallback);
     await runWpCommand(`option update page_on_front ${homePageId}`, docRoot, logCallback);
     if (schema.brand?.businessName) {
-      const safeName = schema.brand.businessName.replace(/"/g, '\\"');
-      await runWpCommand(`option update blogname "${safeName}"`, docRoot, logCallback);
+      await runWpCommand(`option update blogname "${esc(schema.brand.businessName)}"`, docRoot, logCallback);
     }
     await runWpCommand(`rewrite structure "/%postname%/"`, docRoot, logCallback);
     await runWpCommand(`rewrite flush`, docRoot, logCallback);
     if (schema.brand?.logo) {
-      await logCallback(`Importing brand logo from: ${schema.brand.logo}`);
       try {
-        const mediaIdOut = await runWpCommand(
-          `media import "${schema.brand.logo}" --porcelain`,
-          docRoot,
-          logCallback
-        );
-        const mediaId = mediaIdOut.stdout.trim();
-        if (mediaId && /^\d+$/.test(mediaId)) {
+        const mediaOut = await runWpCommand(`media import "${schema.brand.logo}" --porcelain`, docRoot, logCallback);
+        const mediaId = mediaOut.stdout.trim();
+        if (/^\d+$/.test(mediaId)) {
           await runWpCommand(`option update site_icon ${mediaId}`, docRoot, logCallback);
-          await logCallback(`Logo imported (Media ID: ${mediaId}) and set as site icon`);
         }
-      } catch (err) {
-        await logCallback(`Warning: Logo import failed: ${err.message}`);
+      } catch (e) {
+        await logCallback(`Warning: logo import failed: ${e.message}`);
       }
     }
-    await logCallback("Remote WordPress content injection complete.");
+    await logCallback("Premium WordPress site injection complete \u2713");
   } catch (error) {
-    await logCallback(`CRITICAL ERROR during remote content injection: ${error.message}`);
+    await logCallback(`CRITICAL ERROR during content injection: ${error.message}`);
     throw error;
   }
 }
