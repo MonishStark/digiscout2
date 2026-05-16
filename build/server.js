@@ -902,7 +902,7 @@ function renderContact(section, schema, P, TEXT, MUTED, Bg, typography) {
       
       <div style="display:flex;flex-direction:column;gap:35px; ${variant === "centered" ? "align-items:center;" : ""}">
         ${brand.phone ? `<div><h4 style="color:${P};font-weight:900;text-transform:uppercase;letter-spacing:0.1em;font-size:0.8rem;margin-bottom:10px;">Direct Line</h4><p style="font-size:1.8rem;font-weight:500;color:${TEXT}">${esc(brand.phone)}</p></div>` : ""}
-        ${brand.email ? `<div><h4 style="color:${P};font-weight:900;text-transform:uppercase;letter-spacing:0.1em;font-size:0.8rem;margin-bottom:10px;">Email</h4><p style="font-size:1.8rem;font-weight:500;color:${TEXT}">${esc(brand.email)}</p></div>` : ""}
+        ${brand.email && !brand.email.toLowerCase().includes("none") && !brand.email.toLowerCase().includes("n/a") && brand.email.includes("@") ? `<div><h4 style="color:${P};font-weight:900;text-transform:uppercase;letter-spacing:0.1em;font-size:0.8rem;margin-bottom:10px;">Email</h4><p style="font-size:1.8rem;font-weight:500;color:${TEXT}">${esc(brand.email)}</p></div>` : ""}
         ${brand.address ? `<div><h4 style="color:${P};font-weight:900;text-transform:uppercase;letter-spacing:0.1em;font-size:0.8rem;margin-bottom:10px;">Location</h4><p style="font-size:1.4rem;font-weight:400;color:${TEXT};line-height:1.4;">${esc(brand.address)}</p></div>` : ""}
       </div>
     </div>
@@ -3816,7 +3816,7 @@ Business Context:
 - Category: ${business.category || "Local Service"}
 - Address: ${business.address || "N/A"}
 - Phone: ${business.phoneNumber || "N/A"}
-- Email: ${business.email || "N/A"}
+- Email: ${business.email || "NONE PROVIDED (Do not invent an email if this is the case)"}
 - Website: ${business.websiteUri || "N/A"}
 - Logo: ${business.logo || "None detected"}
 

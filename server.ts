@@ -2180,7 +2180,7 @@ Business Context:
 - Category: ${business.category || "Local Service"}
 - Address: ${business.address || "N/A"}
 - Phone: ${business.phoneNumber || "N/A"}
-- Email: ${business.email || "N/A"}
+- Email: ${business.email || "NONE PROVIDED (Do not invent an email if this is the case)"}
 - Website: ${business.websiteUri || "N/A"}
 - Logo: ${business.logo || "None detected"}
 
