@@ -2106,8 +2106,16 @@ Adapt the core design for category context:
 ## SCHEMA REQUIREMENTS
 
 - **sections** array: 7-9 sections including hero, features, gallery, testimonials, faq, cta, and contact
-- **theme fields**: Set all of: name, style, layout, buttonStyle, surfaceStyle, mediaShape, density, accentMode, typography (heading + body), palette (all 7 colors: background, surface, primary, accent, text, muted, outline), radius
+- **theme fields**: Set all of: name, style, layout, buttonStyle, surfaceStyle, mediaShape, density, accentMode, typography (heading + body), palette (all 7 colors: background, surface, primary, accent, text, muted, outline), radius, and **customCss** (Inject site-wide premium CSS here).
+- **section fields**: Each section can optionally include a **customCss** field for section-specific styling and a **variant** field (e.g., 'immersive', 'split', 'bento', 'grid').
 - **brand fields**: Include businessName, category, address, phone, email, websiteUri, and **logo** (use the detected logo URL if provided in context).
+
+## CUSTOM DESIGN INJECTION (CRITICAL)
+- Use the **customCss** fields to push the design beyond standard boundaries.
+- Implement modern trends: glassmorphism, subtle micro-interactions, complex gradients, and unique section transitions.
+- Use \`backdrop-filter: blur()\`, \`mask-image\`, \`clip-path\`, and CSS variables for a cohesive, premium look.
+- Ensure all custom CSS is scoped correctly or targets the specific section it's in.
+
 - **Typography pairing**: Choose one pairing from these premium tones:
   - Luxury/Editorial: serif heading (Playfair, Cormorant, Fraunces) + neutral sans body (Inter, IBM Plex Sans)
   - Modern/Clean: geometric sans heading (Space Grotesk, IBM Plex Sans, Inter) + humanist sans body (Inter)
@@ -2116,6 +2124,7 @@ Adapt the core design for category context:
 - **Palette colors**: All hex values for modern light-theme targets: backgrounds light (>90% brightness), surfaces light (>85%), text dark (<30% brightness), accents bold but not neon
 
 ## CONTENT REQUIREMENTS
+
 
 ### Hero Section
 - Headline: business name or powerful, benefit-driven hook (not generic)

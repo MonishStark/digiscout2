@@ -682,6 +682,10 @@ html,body{background:${BG}!important;color:${TEXT}!important;font-family:'${typo
 
 .section-padding { padding: 160px 40px; }
 @media(max-width:768px){ .section-padding { padding: 80px 24px; } }
+
+/* Custom CSS from Gemini */
+${schema.theme?.customCss || ""}
+${sections.map((s) => s.customCss || "").join("\n")}
 </style>
 <!-- /wp:html -->
 
@@ -733,7 +737,7 @@ function renderHero(section, schema, P, TEXT, MUTED, typography) {
   const variant = section.variant || "immersive";
   if (variant === "centered" || variant === "immersive") {
     return `<!-- wp:cover {"url":"${esc(img)}","dimRatio":${variant === "immersive" ? 70 : 40},"overlayColor":"black","minHeight":100,"minHeightUnit":"vh","align":"full"} -->
-<div class="wp-block-cover alignfull" style="min-height:100vh;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+<div class="wp-block-cover alignfull section-hero" style="min-height:100vh;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;">
 <span aria-hidden="true" class="wp-block-cover__background has-black-background-color has-background-dim-${variant === "immersive" ? 70 : 40} has-background-dim" style="background:linear-gradient(180deg,rgba(0,0,0,0.7) 0%,rgba(${hexToRgb(P)},0.4) 100%)!important;"></span>
 <img class="wp-block-cover__image-background" alt="${esc(businessName)}" src="${esc(img)}" data-object-fit="cover" style="object-fit:cover;width:100%;height:100%;position:absolute;inset:0;"/>
 <div class="wp-block-cover__inner-container animate-up" style="position:relative;z-index:2;padding:40px 24px;text-align:center;max-width:1100px;margin:0 auto;">
@@ -746,7 +750,7 @@ function renderHero(section, schema, P, TEXT, MUTED, typography) {
 `;
   }
   return `<!-- wp:html -->
-<section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));min-height:100vh;background:${schema.theme?.palette?.background || "#fff"};overflow:hidden;">
+<section class="section-hero" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));min-height:100vh;background:${schema.theme?.palette?.background || "#fff"};overflow:hidden;">
   <div class="animate-up" style="padding:160px 80px;display:flex;flex-direction:column;justify-content:center;">
     <div style="color:${P};font-weight:900;text-transform:uppercase;letter-spacing:0.2em;font-size:0.8rem;margin-bottom:2rem;">${esc(schema.brand?.category || "Official Site")}</div>
     <h1 style="font-family:'${typography.heading}',serif;font-size:clamp(3rem,6vw,5.5rem);line-height:0.9;font-weight:900;color:${TEXT};letter-spacing:-0.04em;margin-bottom:2rem;">${esc(title)}</h1>
@@ -773,7 +777,7 @@ function renderFeatures(section, schema, P, TEXT, MUTED, Bg, typography, radius)
   <p style="color:${MUTED};line-height:1.7;font-size:1.1rem;margin:0;opacity:0.9;">${esc(item.description || item.body)}</p>
 </div>`).join("\n");
   return `<!-- wp:html -->
-<section class="section-padding" style="background:${Bg};">
+<section class="section-padding section-features" style="background:${Bg};">
   <div style="max-width:1300px;margin:0 auto;">
     <div style="text-align:center;margin-bottom:100px;max-width:800px;margin-left:auto;margin-right:auto;">
       <h2 style="font-family:'${typography.heading}',serif;font-size:clamp(2.5rem,5vw,4.5rem);font-weight:900;color:${TEXT};line-height:1;letter-spacing:-0.04em;margin-bottom:1.5rem;">${esc(section.headline || "Unmatched Excellence")}</h2>
@@ -795,7 +799,7 @@ function renderGallery(section, schema, TEXT, Bg, typography) {
   <img src="${esc(item.src || item.url)}" style="width:100%;height:100%;object-fit:cover;" alt="Gallery"/>
 </div>`).join("\n");
   return `<!-- wp:html -->
-<section class="section-padding" style="background:${Bg};">
+<section class="section-padding section-gallery" style="background:${Bg};">
   <div style="max-width:1300px;margin:0 auto;">
     <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:80px;flex-wrap:wrap;gap:30px;">
       <h2 style="font-family:'${typography.heading}',serif;font-size:clamp(2.5rem,5vw,4.5rem);font-weight:900;color:${TEXT};line-height:0.9;letter-spacing:-0.04em;">Inside The <br/><span class="text-gradient">Experience</span></h2>
@@ -825,7 +829,7 @@ function renderTestimonials(section, schema, P, TEXT, MUTED, Bg, typography) {
   </div>
 </div>`).join("\n");
   return `<!-- wp:html -->
-<section class="section-padding" style="background:${Bg};">
+<section class="section-padding section-testimonials" style="background:${Bg};">
   <div style="max-width:1200px;margin:0 auto;">
     <h2 style="font-family:'${typography.heading}',serif;font-size:3.5rem;font-weight:900;color:${TEXT};margin-bottom:100px;text-align:center;letter-spacing:-0.03em;">What They <span class="text-gradient">Say</span></h2>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:30px;">
@@ -839,7 +843,7 @@ function renderTestimonials(section, schema, P, TEXT, MUTED, Bg, typography) {
 }
 function renderCTA(section, schema, P, TEXT, typography) {
   return `<!-- wp:html -->
-<section style="padding:140px 40px;background:linear-gradient(135deg, ${P}, #ec4899);text-align:center;position:relative;overflow:hidden;">
+<section class="section-cta" style="padding:140px 40px;background:linear-gradient(135deg, ${P}, #ec4899);text-align:center;position:relative;overflow:hidden;">
   <div class="floating" style="position:absolute;top:-100px;right:-100px;width:300px;height:300px;background:rgba(255,255,255,0.1);border-radius:50%;"></div>
   <div class="floating" style="position:absolute;bottom:-50px;left:-50px;width:200px;height:200px;background:rgba(255,255,255,0.05);border-radius:50%;animation-delay:2s;"></div>
   <div style="max-width:900px;margin:0 auto;position:relative;z-index:5;">
@@ -855,7 +859,7 @@ function renderCTA(section, schema, P, TEXT, typography) {
 function renderContact(section, schema, P, TEXT, MUTED, Bg, typography) {
   const brand = schema.brand || {};
   return `<!-- wp:html -->
-<section id="contact" class="section-padding" style="background:${Bg};">
+<section id="contact" class="section-padding section-contact" style="background:${Bg};">
   <div style="max-width:1300px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:100px;align-items:center;">
     <div class="animate-up">
       <h2 style="font-family:'${typography.heading}',serif;font-size:4.5rem;font-weight:900;color:${TEXT};margin-bottom:2rem;letter-spacing:-0.04em;line-height:0.9;">Let's <br/><span class="text-gradient">Connect</span></h2>
@@ -3618,8 +3622,16 @@ Adapt the core design for category context:
 ## SCHEMA REQUIREMENTS
 
 - **sections** array: 7-9 sections including hero, features, gallery, testimonials, faq, cta, and contact
-- **theme fields**: Set all of: name, style, layout, buttonStyle, surfaceStyle, mediaShape, density, accentMode, typography (heading + body), palette (all 7 colors: background, surface, primary, accent, text, muted, outline), radius
+- **theme fields**: Set all of: name, style, layout, buttonStyle, surfaceStyle, mediaShape, density, accentMode, typography (heading + body), palette (all 7 colors: background, surface, primary, accent, text, muted, outline), radius, and **customCss** (Inject site-wide premium CSS here).
+- **section fields**: Each section can optionally include a **customCss** field for section-specific styling and a **variant** field (e.g., 'immersive', 'split', 'bento', 'grid').
 - **brand fields**: Include businessName, category, address, phone, email, websiteUri, and **logo** (use the detected logo URL if provided in context).
+
+## CUSTOM DESIGN INJECTION (CRITICAL)
+- Use the **customCss** fields to push the design beyond standard boundaries.
+- Implement modern trends: glassmorphism, subtle micro-interactions, complex gradients, and unique section transitions.
+- Use \`backdrop-filter: blur()\`, \`mask-image\`, \`clip-path\`, and CSS variables for a cohesive, premium look.
+- Ensure all custom CSS is scoped correctly or targets the specific section it's in.
+
 - **Typography pairing**: Choose one pairing from these premium tones:
   - Luxury/Editorial: serif heading (Playfair, Cormorant, Fraunces) + neutral sans body (Inter, IBM Plex Sans)
   - Modern/Clean: geometric sans heading (Space Grotesk, IBM Plex Sans, Inter) + humanist sans body (Inter)
@@ -3628,6 +3640,7 @@ Adapt the core design for category context:
 - **Palette colors**: All hex values for modern light-theme targets: backgrounds light (>90% brightness), surfaces light (>85%), text dark (<30% brightness), accents bold but not neon
 
 ## CONTENT REQUIREMENTS
+
 
 ### Hero Section
 - Headline: business name or powerful, benefit-driven hook (not generic)
