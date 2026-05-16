@@ -433,6 +433,13 @@ async function injectWebsiteContent(
 		await logCallback("Building premium Gutenberg content...");
 		const { buildPremiumPageContent } = await import("./premium-site-builder");
 		const content = buildPremiumPageContent(schema);
+
+		// LOG CONTENT TO STDERR for user verification
+		try {
+			const fs = await import("fs");
+			fs.writeSync(2, `\n--- WP CONTENT PUSH START ---\n${content}\n--- WP CONTENT PUSH END ---\n`);
+		} catch (e) {}
+
 		// Write content to temp file on remote server (avoids shell escaping limits)
 		const tmpFile = `/tmp/ds_home_${Date.now()}.html`;
 		await logCallback(`Writing to remote temp file: ${tmpFile}`);

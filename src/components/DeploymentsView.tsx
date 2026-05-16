@@ -439,6 +439,24 @@ export default function DeploymentsView({
 												}}
 												title={`Preview of ${project.businessName}`}
 											/>
+										) : project.websiteSchema ? (
+											<iframe
+												srcDoc={renderWebsiteArtifact({
+													schema: project.websiteSchema,
+													html: "",
+													css: "",
+													js: "",
+												})}
+												className='absolute left-0 top-0 h-full w-full border-0 opacity-60'
+												style={{
+													transform: 'scale(0.5)',
+													transformOrigin: 'top left',
+													width: '200%',
+													height: '200%',
+													pointerEvents: 'none',
+												}}
+												title={`Draft Preview of ${project.businessName}`}
+											/>
 										) : (
 											<div className='flex h-full w-full flex-col items-center justify-center p-6 text-center'>
 												<div className='mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-violet-100 text-violet-600'>

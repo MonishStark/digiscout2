@@ -2173,11 +2173,12 @@ ${buildImageBlock(business)}
 Return only valid JSON matching the WebsiteSchema TypeScript interface. No markdown, no commentary, no explanations. Valid JSON only.`;
 
 		const modelsToTry = [
-			{ name: "gemini-3.1-pro-preview", timeoutMs: 65000 },
-			{ name: "gemini-2.5-flash", timeoutMs: 35000 },
+			{ name: "gemini-1.5-pro", timeoutMs: 65000 },
+			{ name: "gemini-1.5-flash", timeoutMs: 35000 },
 		] as const;
 
 		console.error(`[Gemini] Starting generation for ${business.name} with model ${modelsToTry[0].name}`);
+		fs.writeSync(2, `\n--- GEMINI PROMPT START ---\n${prompt}\n--- GEMINI PROMPT END ---\n`);
 		persistGenerationDebugFile(debugSession, "02-generation-prompt.md", prompt);
 
 		let rawText = "";
@@ -2206,7 +2207,8 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. No markd
 				
 				if (rawText) {
 					console.error(`[Gemini] ${model.name} success! Response length: ${rawText.length}`);
-					fs.writeSync(2, `[Gemini] RESPONSE: ${rawText.substring(0, 500)}...\n`);
+					fs.writeSync(2, `\n--- GEMINI RESPONSE START ---\n${rawText}\n--- GEMINI RESPONSE END ---\n`);
+
 					break;
 				}
 

@@ -1853,6 +1853,15 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, logCallbac
     await logCallback("Building premium Gutenberg content...");
     const { buildPremiumPageContent: buildPremiumPageContent2 } = await Promise.resolve().then(() => (init_premium_site_builder(), premium_site_builder_exports));
     const content = buildPremiumPageContent2(schema);
+    try {
+      const fs3 = await import("fs");
+      fs3.writeSync(2, `
+--- WP CONTENT PUSH START ---
+${content}
+--- WP CONTENT PUSH END ---
+`);
+    } catch (e) {
+    }
     const tmpFile = `/tmp/ds_home_${Date.now()}.html`;
     await logCallback(`Writing to remote temp file: ${tmpFile}`);
     await runRemoteShellCommand(
@@ -3632,10 +3641,15 @@ ${buildImageBlock(business)}
 
 Return only valid JSON matching the WebsiteSchema TypeScript interface. No markdown, no commentary, no explanations. Valid JSON only.`;
     const modelsToTry = [
-      { name: "gemini-3.1-pro-preview", timeoutMs: 65e3 },
-      { name: "gemini-2.5-flash", timeoutMs: 35e3 }
+      { name: "gemini-1.5-pro", timeoutMs: 65e3 },
+      { name: "gemini-1.5-flash", timeoutMs: 35e3 }
     ];
     console.error(`[Gemini] Starting generation for ${business.name} with model ${modelsToTry[0].name}`);
+    fs2.writeSync(2, `
+--- GEMINI PROMPT START ---
+${prompt}
+--- GEMINI PROMPT END ---
+`);
     persistGenerationDebugFile(debugSession, "02-generation-prompt.md", prompt);
     let rawText = "";
     let lastError = null;
@@ -3659,7 +3673,10 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. No markd
         rawText = result.text().trim();
         if (rawText) {
           console.error(`[Gemini] ${model.name} success! Response length: ${rawText.length}`);
-          fs2.writeSync(2, `[Gemini] RESPONSE: ${rawText.substring(0, 500)}...
+          fs2.writeSync(2, `
+--- GEMINI RESPONSE START ---
+${rawText}
+--- GEMINI RESPONSE END ---
 `);
           break;
         }
