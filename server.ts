@@ -2254,22 +2254,8 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. No markd
 			return res.json(fallbackSchema);
 		}
 
-		// --- NEW DETERMINISTIC PIPELINE ---
-		const { validateWebsiteSchema } = await import("./src/lib/website-schema-validator");
-		const { generateBrandDNA, getPaletteForDNA } = await import("./src/lib/brand-identity-engine");
-		const { getTypographyForDNA } = await import("./src/lib/typography-system");
-
-		// 1. Force Brand DNA based on Category
-		const dna = generateBrandDNA(business.category || "Local Business");
-		const palette = getPaletteForDNA(dna);
-		const typography = getTypographyForDNA(dna);
-
-		// 2. Inject Deterministic Design into Schema
-		parsedSchema.theme.brandDNA = dna;
-		parsedSchema.theme.palette = palette;
-		parsedSchema.theme.typography = typography;
-
 		// 3. Strict Validation & Auto-Repair
+		const { validateWebsiteSchema } = await import("./src/lib/website-schema-validator");
 		const validation = validateWebsiteSchema(parsedSchema);
 		const finalSchema = validation.repairedSchema || parsedSchema;
 

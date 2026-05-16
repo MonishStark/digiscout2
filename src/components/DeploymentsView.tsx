@@ -424,35 +424,38 @@ export default function DeploymentsView({
 								<div className='absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.08),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.05),transparent_25%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100' />
 								<div className='relative flex flex-col gap-5 xl:flex-row xl:items-stretch xl:gap-6'>
 									{/* ── MINI PREVIEW ── */}
-									<div className='relative h-[200px] w-full overflow-hidden rounded-[24px] border border-slate-200 bg-slate-900 shadow-[0_20px_50px_rgba(15,23,42,0.08)] sm:h-[220px] xl:h-auto xl:w-[320px] xl:flex-shrink-0'>
-										{project.wordpressSiteUrl && project.provisioningStatus === "completed" ? (
-											/* Live WP site — real iframe */
+									<div className='relative h-[200px] w-full overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50 shadow-[0_20px_50px_rgba(15,23,42,0.08)] sm:h-[220px] xl:h-auto xl:w-[320px] xl:flex-shrink-0'>
+										{project.wordpressSiteUrl && isLive ? (
 											<iframe
 												src={project.wordpressSiteUrl}
-												title={`${project.businessName} live preview`}
-												scrolling='no'
-												className='h-full w-full border-0 transition-transform duration-700 ease-out group-hover:scale-[1.02]'
-												style={{ transform: 'scale(0.5)', transformOrigin: 'top left', width: '200%', height: '200%', pointerEvents: 'none' }}
+												className='absolute left-0 top-0 h-full w-full border-0'
+												loading='lazy'
+												style={{
+													transform: 'scale(0.5)',
+													transformOrigin: 'top left',
+													width: '200%',
+													height: '200%',
+													pointerEvents: 'none',
+												}}
+												title={`Preview of ${project.businessName}`}
 											/>
 										) : (
-											/* Still provisioning — static schema renderer */
-											<iframe
-												srcDoc={getPreviewHtml(project) ?? ""}
-												title={`${project.businessName} preview`}
-												sandbox='allow-scripts'
-												scrolling='no'
-												className='h-full w-full border-0 overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]'
-												style={{ overflow: "hidden" }}
-											/>
+											<div className='flex h-full w-full flex-col items-center justify-center p-6 text-center'>
+												<div className='mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-violet-100 text-violet-600'>
+													<Database className='h-6 w-6 animate-pulse' />
+												</div>
+												<p className='text-sm font-medium text-slate-600'>
+													Building your unique site...
+												</p>
+												<p className='mt-1 text-xs text-slate-400'>
+													Provisioning Hello Elementor & Content
+												</p>
+											</div>
 										)}
 										<div className='absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none' />
 										<div className='absolute left-4 top-4 flex items-center gap-2'>
 											<Badge className='rounded-full border border-slate-200 bg-white/85 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-slate-600 backdrop-blur-xl'>
 												{getProvisioningLabel(project)}
-											</Badge>
-											<Badge
-												className={`rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.22em] ${getLeadStatusTone(project)}`}>
-												{statusLabel}
 											</Badge>
 										</div>
 									</div>
@@ -486,7 +489,7 @@ export default function DeploymentsView({
 															{getGeneratedDate(project.id)}
 														</span>
 													</p>
-													{project.wordpressSiteUrl && (
+													{isLive && project.wordpressSiteUrl && (
 														<a
 															href={project.wordpressSiteUrl}
 															target='_blank'
@@ -498,7 +501,7 @@ export default function DeploymentsView({
 															</span>
 														</a>
 													)}
-													{project.wordpressAdminUrl && (
+													{isLive && project.wordpressAdminUrl && (
 														<a
 															href={project.wordpressAdminUrl}
 															target='_blank'
@@ -542,13 +545,6 @@ export default function DeploymentsView({
 												</div>
 												<div className='flex flex-wrap items-center gap-2 xl:justify-end'>
 													<Button
-														onClick={() => handlePreview(project.id)}
-														variant='outline'
-														className='h-10 rounded-2xl border-slate-200 bg-white px-4 text-slate-700 hover:bg-slate-50'>
-														<Eye className='mr-2 h-4 w-4' />
-														Preview
-													</Button>
-													<Button
 														onClick={() => handleSendOutreach(project.id)}
 														disabled={
 															!isLive || sendingId === project.id
@@ -563,8 +559,7 @@ export default function DeploymentsView({
 													</Button>
 													<Button
 														onClick={() => handleDeleteLead(project.id)}
-														variant='outline'
-														className='h-10 rounded-2xl border border-rose-200 bg-rose-50 px-4 text-rose-700 hover:bg-rose-100'>
+														className='h-10 rounded-2xl border border-rose-200 bg-rose-50 px-4 text-rose-700 transition-all duration-200 hover:border-rose-600 hover:bg-rose-600 hover:text-white shadow-none'>
 														<Trash2 className='mr-2 h-4 w-4' />
 														Delete Lead
 													</Button>
