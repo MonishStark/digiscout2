@@ -1518,8 +1518,48 @@ async function runRemoteShellCommand(command, logCallback) {
 
 // src/lib/provisioning-engine.ts
 var MAX_RETRIES = 3;
-function sanitizeSubdomain(name) {
-  return name.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "").substring(0, 25);
+var MAX_SUBDOMAIN_LENGTH = 45;
+var SUBDOMAIN_SEMANTIC_VARIANTS = ["-shop", "-store", "-official", "-co", "-pro"];
+function sanitizeSubdomainBase(name) {
+  return (name || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "").substring(0, 40);
+}
+async function isSubdomainTaken(subdomain) {
+  const [rows] = await pool.query(
+    `SELECT id FROM provisioning_jobs
+		 WHERE subdomain = ? AND status NOT IN ('failed', 'cleaned')
+		 LIMIT 1`,
+    [subdomain]
+  );
+  return rows && rows.length > 0;
+}
+async function generateUniqueSubdomain(businessName) {
+  const base = sanitizeSubdomainBase(businessName);
+  if (!base) {
+    return `site-${crypto.randomBytes(3).toString("hex")}`;
+  }
+  if (!await isSubdomainTaken(base)) {
+    return base;
+  }
+  for (let i = 1; i <= 5; i++) {
+    const candidate = `${base}-${i}`.substring(0, MAX_SUBDOMAIN_LENGTH);
+    if (!await isSubdomainTaken(candidate)) {
+      return candidate;
+    }
+  }
+  for (const suffix of SUBDOMAIN_SEMANTIC_VARIANTS) {
+    const candidate = `${base}${suffix}`.substring(0, MAX_SUBDOMAIN_LENGTH);
+    if (!await isSubdomainTaken(candidate)) {
+      return candidate;
+    }
+  }
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const suffix = crypto.randomBytes(2).toString("hex");
+    const candidate = `${base}-${suffix}`.substring(0, MAX_SUBDOMAIN_LENGTH);
+    if (!await isSubdomainTaken(candidate)) {
+      return candidate;
+    }
+  }
+  return `${base}-${crypto.randomBytes(4).toString("hex")}`.substring(0, MAX_SUBDOMAIN_LENGTH);
 }
 function generateSecurePassword() {
   return crypto.randomBytes(16).toString("hex") + "!aA1";
@@ -1581,9 +1621,8 @@ async function executeStateMachine(job) {
     await appendLog(job.id, "Starting subdomain creation on remote WP server");
     if (!subdomain) {
       const name = job.business_name || job.project_id;
-      const base = sanitizeSubdomain(name);
-      const suffix = crypto.randomBytes(2).toString("hex");
-      subdomain = `${base}-${suffix}`.substring(0, 32);
+      subdomain = await generateUniqueSubdomain(name);
+      await appendLog(job.id, `Generated subdomain: "${subdomain}"`);
       await pool.query(`UPDATE provisioning_jobs SET subdomain = ? WHERE id = ?`, [subdomain, job.id]);
     }
     const fullDocRoot = `${docRootBase}/${subdomain}`;

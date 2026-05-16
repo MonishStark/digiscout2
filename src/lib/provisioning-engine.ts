@@ -23,13 +23,94 @@ import {
 
 const MAX_RETRIES = 3;
 
-function sanitizeSubdomain(name: string) {
-	return name
+// ---------------------------------------------------------------------------
+// Subdomain Generation
+// ---------------------------------------------------------------------------
+
+/** DNS-safe maximum length for a single subdomain label */
+const MAX_SUBDOMAIN_LENGTH = 45;
+
+/** Semantic fallback suffixes tried before random characters */
+const SUBDOMAIN_SEMANTIC_VARIANTS = ["-shop", "-store", "-official", "-co", "-pro"];
+
+/**
+ * Sanitizes a business name into a DNS-safe subdomain base.
+ * Strips accents, replaces non-alphanumeric with hyphens, collapses/trims hyphens.
+ */
+function sanitizeSubdomainBase(name: string): string {
+	return (name || "")
 		.toLowerCase()
-		.replace(/[^a-z0-9]/g, "-")
-		.replace(/-+/g, "-")
-		.replace(/^-+|-+$/g, "")
-		.substring(0, 25);
+		.normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "")   // strip accent marks
+		.replace(/[^a-z0-9]+/g, "-")        // non-alphanumeric → hyphen
+		.replace(/-+/g, "-")                // collapse repeated hyphens
+		.replace(/^-+|-+$/g, "")            // trim leading/trailing hyphens
+		.substring(0, 40);                   // leave room for any suffix
+}
+
+/**
+ * Checks whether a subdomain is already in use by an active provisioning job.
+ * Uses our own DB as the source of truth — fast, no external API call.
+ */
+async function isSubdomainTaken(subdomain: string): Promise<boolean> {
+	const [rows]: any = await pool.query(
+		`SELECT id FROM provisioning_jobs
+		 WHERE subdomain = ? AND status NOT IN ('failed', 'cleaned')
+		 LIMIT 1`,
+		[subdomain],
+	);
+	return rows && rows.length > 0;
+}
+
+/**
+ * Generates the cleanest available subdomain for a business name.
+ *
+ * Priority order:
+ *  1. Plain sanitized name          → "don-rafa-s-cyclery"
+ *  2. Numeric variants 1–5          → "don-rafa-s-cyclery-1"
+ *  3. Semantic variants             → "don-rafa-s-cyclery-shop"
+ *  4. Short random suffix (x4 hex)  → "don-rafa-s-cyclery-a3f1"
+ */
+async function generateUniqueSubdomain(businessName: string): Promise<string> {
+	const base = sanitizeSubdomainBase(businessName);
+
+	if (!base) {
+		// Edge case: empty business name
+		return `site-${crypto.randomBytes(3).toString("hex")}`;
+	}
+
+	// Priority 1: clean subdomain
+	if (!(await isSubdomainTaken(base))) {
+		return base;
+	}
+
+	// Priority 2: numeric variants
+	for (let i = 1; i <= 5; i++) {
+		const candidate = `${base}-${i}`.substring(0, MAX_SUBDOMAIN_LENGTH);
+		if (!(await isSubdomainTaken(candidate))) {
+			return candidate;
+		}
+	}
+
+	// Priority 3: semantic variants
+	for (const suffix of SUBDOMAIN_SEMANTIC_VARIANTS) {
+		const candidate = `${base}${suffix}`.substring(0, MAX_SUBDOMAIN_LENGTH);
+		if (!(await isSubdomainTaken(candidate))) {
+			return candidate;
+		}
+	}
+
+	// Priority 4: short random hex suffix (last resort)
+	for (let attempt = 0; attempt < 10; attempt++) {
+		const suffix = crypto.randomBytes(2).toString("hex"); // 4 chars e.g. "a3f1"
+		const candidate = `${base}-${suffix}`.substring(0, MAX_SUBDOMAIN_LENGTH);
+		if (!(await isSubdomainTaken(candidate))) {
+			return candidate;
+		}
+	}
+
+	// Absolute last resort (collision-safe)
+	return `${base}-${crypto.randomBytes(4).toString("hex")}`.substring(0, MAX_SUBDOMAIN_LENGTH);
 }
 
 function generateSecurePassword() {
@@ -105,9 +186,8 @@ async function executeStateMachine(job: any) {
 
 		if (!subdomain) {
 			const name = job.business_name || job.project_id;
-			const base = sanitizeSubdomain(name);
-			const suffix = crypto.randomBytes(2).toString("hex");
-			subdomain = `${base}-${suffix}`.substring(0, 32);
+			subdomain = await generateUniqueSubdomain(name);
+			await appendLog(job.id, `Generated subdomain: "${subdomain}"`);
 			await pool.query(`UPDATE provisioning_jobs SET subdomain = ? WHERE id = ?`, [subdomain, job.id]);
 		}
 
