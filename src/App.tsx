@@ -42,6 +42,12 @@ export default function App() {
 		fetchLeads();
 	}, []);
 
+	useEffect(() => {
+		if (selectedBusiness) {
+			setActivePage("discover");
+		}
+	}, [selectedBusiness]);
+
 	if (!hasValidKey) {
 		return (
 			<div className='flex h-screen items-center justify-center bg-[#f5f7fb] font-sans text-slate-900'>

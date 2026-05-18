@@ -21,6 +21,8 @@ import {
 	Send,
 	X,
 	Wand2,
+	Copy,
+	Check,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -45,6 +47,13 @@ export default function DeploymentsView({
 	setProjects,
 }: DeploymentsViewProps) {
 	const [deployingId, setDeployingId] = useState<string | null>(null);
+	const [copiedId, setCopiedId] = useState<string | null>(null);
+
+	const handleCopy = (text: string, id: string) => {
+		navigator.clipboard.writeText(text);
+		setCopiedId(id);
+		setTimeout(() => setCopiedId(null), 2000);
+	};
 	const [sendingId, setSendingId] = useState<string | null>(null);
 	const [outreachModalOpen, setOutreachModalOpen] = useState(false);
 	const [outreachProjectId, setOutreachProjectId] = useState<string | null>(
@@ -666,10 +675,14 @@ export default function DeploymentsView({
 														{project.businessName}
 													</h3>
 													<p className='flex flex-wrap items-center gap-2 text-sm text-slate-500'>
-														<span className='inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5'>
+														<a
+															href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(project.businessName + ", " + project.businessAddress)}`}
+															target='_blank'
+															rel='noreferrer'
+															className='inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-700 hover:bg-slate-100 hover:border-violet-300 transition-all cursor-pointer'>
 															<MapPin className='h-3.5 w-3.5 text-violet-500' />
 															{project.businessAddress}
-														</span>
+														</a>
 														<span className='inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5'>
 															<ShieldCheck className='h-3.5 w-3.5 text-emerald-500' />
 															{getGeneratedDate(project.id)}
@@ -699,10 +712,36 @@ export default function DeploymentsView({
 														</a>
 													)}
 													{project.wordpressPassword && (
-														<div className='mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800'>
+														<div className='mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 space-y-1.5'>
 															<p className='font-bold mb-1'>WordPress Admin Credentials</p>
-															<p>User: <span className='font-mono bg-white/50 px-1 rounded'>{project.wordpressOwnerUsername}</span></p>
-															<p>Pass: <span className='font-mono bg-white/50 px-1 rounded'>{project.wordpressPassword}</span></p>
+															<div className='flex items-center gap-1.5'>
+																<span>User:</span>
+																<span className='font-mono bg-white/50 px-1.5 py-0.5 rounded'>{project.wordpressOwnerUsername}</span>
+																<button
+																	onClick={() => handleCopy(project.wordpressOwnerUsername || "", `${project.id}-user`)}
+																	className='text-amber-700 hover:text-amber-900 p-1 rounded hover:bg-amber-100/50 transition-colors flex items-center justify-center'
+																	title='Copy Username'>
+																	{copiedId === `${project.id}-user` ? (
+																		<Check className='h-3.5 w-3.5 text-emerald-600' />
+																	) : (
+																		<Copy className='h-3.5 w-3.5' />
+																	)}
+																</button>
+															</div>
+															<div className='flex items-center gap-1.5'>
+																<span>Pass:</span>
+																<span className='font-mono bg-white/50 px-1.5 py-0.5 rounded'>{project.wordpressPassword}</span>
+																<button
+																	onClick={() => handleCopy(project.wordpressPassword || "", `${project.id}-pass`)}
+																	className='text-amber-700 hover:text-amber-900 p-1 rounded hover:bg-amber-100/50 transition-colors flex items-center justify-center'
+																	title='Copy Password'>
+																	{copiedId === `${project.id}-pass` ? (
+																		<Check className='h-3.5 w-3.5 text-emerald-600' />
+																	) : (
+																		<Copy className='h-3.5 w-3.5' />
+																	)}
+																</button>
+															</div>
 															<p className='mt-1 text-[10px] text-amber-600 italic'>Save these! They are only shown once.</p>
 														</div>
 													)}
