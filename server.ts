@@ -1,4 +1,4 @@
-﻿/** @format */
+/** @format */
 
 import "./src/lib/env";
 import fs from "fs";
@@ -2565,6 +2565,15 @@ ${buildReviewsBlock(business)}
 Reference Images:
 ${buildImageBlock(business)}
 
+WORDPRESS RENDERING CONSTRAINTS (critical - this renders inside WordPress):
+- The HTML renderer must use inline styles for ALL layout-critical properties.
+- Choose section variants that render well with CSS grid and flexbox in isolation.
+- Avoid "immersive" or "cinematic" hero variants — full-bleed backgrounds fail in WordPress.
+- Prefer "editorial-split" or "editorial" for hero — these render most reliably.
+- Gallery variant "editorial-mosaic" must use exactly 3 images — not 4 or 5.
+- Bento features work best with exactly 4 items in a 2x2 or 7/5 span pattern.
+- Do not choose "floating-cards" for testimonials — use "editorial-quotes" or "spotlight".
+
 Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 
 		const modelsToTry = [
@@ -2781,7 +2790,7 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 				if (!html.includes("<style")) {
 					issues.push("Missing <style> block for production styling");
 				}
-				if (html.length < 6000) {
+				if (html.length < 10000) {
 					issues.push("HTML output too small for production layout");
 				}
 				const lower = html.toLowerCase();
@@ -2789,6 +2798,19 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 				if (disallowedPalette.some((color) => lower.includes(color))) {
 					issues.push("Generic default palette detected in CSS");
 				}
+
+				// Check images have explicit height
+				const imgTags = html.match(/<img[^>]+>/g) || [];
+				const imgsWithoutHeight = imgTags.filter(tag => !tag.includes('height'));
+				if (imgsWithoutHeight.length > 0) {
+					issues.push(`${imgsWithoutHeight.length} image(s) missing explicit height — will collapse in WordPress`);
+				}
+
+				// Check bento grid has inline spans
+				if (html.includes('data-variant="bento"') && !html.includes('grid-column: span')) {
+					issues.push('Bento grid items missing inline grid-column spans — will break in WordPress');
+				}
+
 				return {
 					ok: issues.length === 0,
 					issues,
@@ -2796,62 +2818,112 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 				};
 			};
 
-			const wordpressHtmlPrompt = `You are turning an approved website schema into the FINAL WordPress homepage HTML.
+			const wordpressHtmlPrompt = `You are converting an approved WebsiteSchema into the FINAL WordPress homepage HTML.
 
-Return ONLY homepage HTML suitable for WordPress post_content.
-Do not return JSON.
-Do not explain anything.
-Do not wrap the response in markdown unless it is a plain \`\`\`html fenced block.
-Do not output JavaScript.
-Wrap the entire response in a single WordPress HTML block:
-<!-- wp:html -->
-[your style block and homepage markup]
-<!-- /wp:html -->
-Use one initial <style> block if needed, then the homepage markup inside that block.
-Render the sections in the schema order exactly as provided.
-Use the exact business copy and exact media URLs from the schema.
-Do not collapse the page into a common in-house template.
-Make the composition, spacing, typography treatment, and hierarchy feel bespoke to this business.
-Every section must reflect its variant with a visibly different structure.
-Add data attributes for audits: <section data-section="{type}" data-variant="{variant or layout}">.
-Do not reuse a single base layout across different variants.
-If a section has variant "magazine", use a magazine-like layout with asymmetric columns and a strong editorial rhythm.
-If a section has variant "editorial-split", use a split layout with an offset image and a text rail.
-If a section has variant "immersive" or "cinematic", use full-bleed imagery and layered text.
-If a section has variant "bento", use a bento grid with mixed tile sizes.
-If a section has variant "editorial-mosaic", use a mosaic grid with varied spans.
-If a section has variant "floating-cards", use card groupings with depth and staggered offsets.
-If a section has variant "split-columns", use a two-column FAQ layout with distinct left and right columns.
+CRITICAL OUTPUT RULES:
+- Return ONLY HTML. No JSON. No markdown explanation. No JavaScript.
+- Wrap everything in exactly one WordPress block: <!-- wp:html --> ... <!-- /wp:html -->
+- One <style> block at the top inside that wrapper, then all HTML markup after it.
+- Render sections in schema order exactly.
+- Use exact business copy and exact media URLs from the schema. Do not invent content.
 
-Theme palette rules:
-- Derive colors from theme.accentMode and category. Do not default to generic purple or blue.
-- accentMode "luxury": ivory backgrounds, charcoal text, brass or deep gold accents.
-- accentMode "earthy": warm off-whites, clay, olive, muted rust accents.
-- accentMode "fresh": crisp white, deep teal or sea green accents, clean neutrals.
-- accentMode "neon": pale base, electric accent with controlled saturation.
-Define CSS variables that reflect the chosen palette and use them consistently.
-Light theme only.
-No site header chrome, no WordPress admin text, no fake badges like "crafted for premium presentation".
-No generic placeholder copy.
+CRITICAL WORDPRESS COMPATIBILITY (non-negotiable):
+- WordPress themes WILL override your CSS classes. Every layout-critical style MUST be duplicated as inline style="" on the element.
+- NEVER rely solely on CSS classes for: grid-column spans, heights, widths, flex direction, padding, background colors.
+- Every grid item must have its span as an inline style: style="grid-column: span 7"
+- Every section must have: style="padding: 100px 5%; max-width: 1400px; margin: 0 auto;"
+- Every image must have: style="width: 100%; height: [X]px; object-fit: cover; display: block;"
+- The outer wrapper div must have: style="background: [bg]; color: [text]; font-family: [body]; overflow-x: hidden; width: 100%;"
+- Add box-sizing rule: * { box-sizing: border-box !important; }
+- Use !important on all background-color, color, font-family, padding, and margin rules in the <style> block.
+- Hide WordPress chrome: .site-header, .entry-title, .page-title, .breadcrumbs { display: none !important; }
+- Set: .entry-content, .wp-block-post-content { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+
+SECTION LAYOUT RULES (each variant must look visually distinct):
+
+hero "editorial-split":
+- CSS grid, 2 columns: text left (1fr), image right (1.2fr), min-height: 85vh
+- Image: border-radius 500px 500px 0 0 (arched), height: 75vh, object-fit: cover
+- Both columns must have grid-column span as inline style
+
+hero "editorial":
+- Full width, text centered or left-aligned, image below or beside
+- Headline font-size: clamp(3rem, 5vw, 5rem)
+
+features "bento":
+- CSS grid 12 columns, auto-rows: 280px
+- Item 1: grid-column span 7 (inline style), Item 2: span 5, Item 3: span 5, Item 4: span 7
+- Each bento card: border-radius 24px, border: 1px solid outline color, padding: 40px, display flex, flex-direction column, justify-content flex-end
+- DUPLICATE all grid-column spans as inline styles on every card div
+
+features "editorial-list":
+- Numbered list, each item has large number (opacity 0.15), title, description
+- Full width, generous vertical spacing between items
+
+gallery "editorial-mosaic":
+- CSS grid 12 columns
+- Image 1: grid-column span 8, height: 500px (inline style)
+- Image 2: grid-column span 4, height: 500px (inline style)
+- Image 3: grid-column span 12, height: 380px (inline style)
+- ALL spans AND heights must be inline styles on the img or wrapper div
+- Every image: width 100%, object-fit cover, border-radius 16px
+
+testimonials "editorial-quotes":
+- Large italic blockquote, centered, max-width 800px
+- Quote font: heading font, size 2.2rem, font-style italic
+- Author: uppercase, letter-spacing 0.1em, accent color
+- Background: surface color (slightly off-white)
+
+testimonials "spotlight":
+- One featured quote large on left, smaller quotes stacked on right
+- 2-column grid layout
+
+faq "split-columns":
+- 2-column CSS grid: left has title + intro, right has all Q&A items
+- Each FAQ item has border-bottom, padding-bottom 32px, margin-bottom 32px
+- Question: font-weight 600, accent color. Answer: muted color
+
+cta "side-by-side":
+- Full-width band, background: primary color
+- Flex row, space-between, align-items center, padding 80px
+- Title: white, large. Button: white background, primary color text
+
+contact "split-card":
+- 2-column CSS grid inside a card
+- Left: contact details with label/value pairs
+- Right: background image from gallery or solid accent-tinted panel
+- Right panel needs explicit height: 100%, min-height: 400px as inline style
+
+PALETTE RULES:
+- Derive ALL colors from theme.accentMode — do NOT default to generic purple #7c3aed or blue #3b82f6 or teal #0d9488 unless accentMode is "fresh"
+- accentMode "luxury": --bg: #faf8f5; --primary: #8B6914; --accent: #C4952A; --text: #1a1208; --muted: #6b5c3e
+- accentMode "earthy": --bg: #f9f6f1; --primary: #7a5c3e; --accent: #c17f4a; --text: #2d1f0e; --muted: #8a7260
+- accentMode "fresh": --bg: #f4faf8; --primary: #0d6e5e; --accent: #14a88e; --text: #0a1f1b; --muted: #4a7a72
+- accentMode "neon": --bg: #f8f8ff; --primary: #5b2be0; --accent: #9747ff; --text: #0f0a1e; --muted: #6b6880
+- Define as CSS variables and use them on EVERY color property
+
+TYPOGRAPHY RULES:
+- Load Google Fonts with @import at top of <style> block
+- Use the exact heading/body fonts from schema.theme.fonts
+- Set font-family on ALL headings and body text — do not rely on inheritance
+- Heading sizes: h1 clamp(3rem,5vw,5rem), h2 clamp(2rem,4vw,3.5rem), h3 1.5rem
+
+QUALITY RULES:
+- Minimum HTML output: 10,000 characters
+- Every section must have data-section="{type}" and data-variant="{variant}" attributes
+- No placeholder text, no lorem ipsum, no "Your Business Name Here"
+- No fake badges, no "crafted for premium presentation" text
+- Images must render — always set explicit width AND height as inline styles
+- The contact section must show phone number and address from the schema
+- Do not add a site header or navigation bar
 
 BUSINESS:
-${JSON.stringify(
-	{
-		name: business.name,
-		category: business.category,
-		address: business.address,
-		phone: business.phoneNumber,
-		email: business.email,
-		website: business.websiteUri,
-	},
-	null,
-	2,
-)}
+${JSON.stringify({ name: business.name, category: business.category, address: business.address, phone: business.phoneNumber, email: business.email }, null, 2)}
 
 APPROVED SCHEMA:
 ${JSON.stringify(finalSchema, null, 2)}
 
-Return only the final HTML for the homepage body content.`;
+Return only the WordPress HTML block.`;
 
 			persistGenerationDebugFile(
 				debugSession,
