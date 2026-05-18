@@ -37,15 +37,17 @@ function sanitizeBusiness(b: any): Business {
 		address: String(b.address || ""),
 		rating: Number(b.rating || 0),
 		reviewCount: Number(b.reviewCount || 0),
-		location: { 
-			lat: Number(b.location?.lat || 0), 
-			lng: Number(b.location?.lng || 0) 
+		location: {
+			lat: Number(b.location?.lat || 0),
+			lng: Number(b.location?.lng || 0),
 		},
 		websiteUri: b.websiteUri ? String(b.websiteUri) : undefined,
 		email: b.email ? String(b.email) : undefined,
 		phoneNumber: b.phoneNumber ? String(b.phoneNumber) : undefined,
-		photos: Array.isArray(b.photos) ? b.photos.map(p => String(p)) : [],
-		imageSuggestions: Array.isArray(b.imageSuggestions) ? b.imageSuggestions.map(s => String(s)) : [],
+		photos: Array.isArray(b.photos) ? b.photos.map((p) => String(p)) : [],
+		imageSuggestions: Array.isArray(b.imageSuggestions)
+			? b.imageSuggestions.map((s) => String(s))
+			: [],
 		logo: b.logo ? String(b.logo) : undefined,
 		isOpen: Boolean(b.isOpen),
 	};
@@ -130,10 +132,13 @@ export default function Sidebar({
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const [suggestions, setSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
+	const [suggestions, setSuggestions] = useState<
+		google.maps.places.AutocompletePrediction[]
+	>([]);
 	const [showSuggestions, setShowSuggestions] = useState(false);
 	const suggestionRef = useRef<HTMLDivElement>(null);
-	const autocompleteService = useRef<google.maps.places.AutocompleteService | null>(null);
+	const autocompleteService =
+		useRef<google.maps.places.AutocompleteService | null>(null);
 
 	const [categorySuggestions, setCategorySuggestions] = useState<string[]>([]);
 	const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
@@ -153,10 +158,16 @@ export default function Sidebar({
 
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
-			if (suggestionRef.current && !suggestionRef.current.contains(event.target as Node)) {
+			if (
+				suggestionRef.current &&
+				!suggestionRef.current.contains(event.target as Node)
+			) {
 				setShowSuggestions(false);
 			}
-			if (categorySuggestionRef.current && !categorySuggestionRef.current.contains(event.target as Node)) {
+			if (
+				categorySuggestionRef.current &&
+				!categorySuggestionRef.current.contains(event.target as Node)
+			) {
 				setShowCategorySuggestions(false);
 			}
 		};
@@ -165,18 +176,102 @@ export default function Sidebar({
 	}, []);
 
 	const COMMON_PLACE_TYPES = [
-		"Accounting", "Airport", "Amusement Park", "Aquarium", "Art Gallery", "Atm", "Bakery", "Bank", "Bar", "Beauty Salon", 
-		"Bicycle Store", "Book Store", "Bowling Alley", "Bus Station", "Cafe", "Campground", "Car Dealer", "Car Rental", 
-		"Car Repair", "Car Wash", "Casino", "Cemetery", "Church", "City Hall", "Clothing Store", "Convenience Store", 
-		"Courthouse", "Dentist", "Department Store", "Doctor", "Drugstore", "Electrician", "Electronics Store", "Embassy", 
-		"Fire Station", "Florist", "Funeral Home", "Furniture Store", "Gas Station", "Gym", "Hair Care", "Hardware Store", 
-		"Hindu Temple", "Home Goods Store", "Hospital", "Insurance Agency", "Jewelry Store", "Laundry", "Lawyer", "Library", 
-		"Light Rail Station", "Liquor Store", "Local Government Office", "Locksmith", "Lodging", "Meal Delivery", "Meal Takeaway", 
-		"Mosque", "Movie Rental", "Movie Theater", "Moving Company", "Museum", "Night Club", "Painter", "Park", "Parking", 
-		"Pet Store", "Pharmacy", "Physiotherapist", "Plumber", "Police", "Post Office", "Primary School", "Real Estate Agency", 
-		"Restaurant", "Roofing Contractor", "Rv Park", "School", "Secondary School", "Shoe Store", "Shopping Mall", "Spa", 
-		"Stadium", "Storage", "Store", "Subway Station", "Supermarket", "Synagogue", "Taxi Stand", "Tourist Attraction", 
-		"Train Station", "Transit Station", "Travel Agency", "University", "Veterinary Care", "Zoo"
+		"Accounting",
+		"Airport",
+		"Amusement Park",
+		"Aquarium",
+		"Art Gallery",
+		"Atm",
+		"Bakery",
+		"Bank",
+		"Bar",
+		"Beauty Salon",
+		"Bicycle Store",
+		"Book Store",
+		"Bowling Alley",
+		"Bus Station",
+		"Cafe",
+		"Campground",
+		"Car Dealer",
+		"Car Rental",
+		"Car Repair",
+		"Car Wash",
+		"Casino",
+		"Cemetery",
+		"Church",
+		"City Hall",
+		"Clothing Store",
+		"Convenience Store",
+		"Courthouse",
+		"Dentist",
+		"Department Store",
+		"Doctor",
+		"Drugstore",
+		"Electrician",
+		"Electronics Store",
+		"Embassy",
+		"Fire Station",
+		"Florist",
+		"Funeral Home",
+		"Furniture Store",
+		"Gas Station",
+		"Gym",
+		"Hair Care",
+		"Hardware Store",
+		"Hindu Temple",
+		"Home Goods Store",
+		"Hospital",
+		"Insurance Agency",
+		"Jewelry Store",
+		"Laundry",
+		"Lawyer",
+		"Library",
+		"Light Rail Station",
+		"Liquor Store",
+		"Local Government Office",
+		"Locksmith",
+		"Lodging",
+		"Meal Delivery",
+		"Meal Takeaway",
+		"Mosque",
+		"Movie Rental",
+		"Movie Theater",
+		"Moving Company",
+		"Museum",
+		"Night Club",
+		"Painter",
+		"Park",
+		"Parking",
+		"Pet Store",
+		"Pharmacy",
+		"Physiotherapist",
+		"Plumber",
+		"Police",
+		"Post Office",
+		"Primary School",
+		"Real Estate Agency",
+		"Restaurant",
+		"Roofing Contractor",
+		"Rv Park",
+		"School",
+		"Secondary School",
+		"Shoe Store",
+		"Shopping Mall",
+		"Spa",
+		"Stadium",
+		"Storage",
+		"Store",
+		"Subway Station",
+		"Supermarket",
+		"Synagogue",
+		"Taxi Stand",
+		"Tourist Attraction",
+		"Train Station",
+		"Transit Station",
+		"Travel Agency",
+		"University",
+		"Veterinary Care",
+		"Zoo",
 	];
 
 	useEffect(() => {
@@ -185,10 +280,10 @@ export default function Sidebar({
 			return;
 		}
 
-		const filtered = COMMON_PLACE_TYPES.filter(t => 
-			t.toLowerCase().includes(category.toLowerCase())
+		const filtered = COMMON_PLACE_TYPES.filter((t) =>
+			t.toLowerCase().includes(category.toLowerCase()),
 		).slice(0, 8);
-		
+
 		setCategorySuggestions(filtered);
 	}, [category]);
 
@@ -200,17 +295,20 @@ export default function Sidebar({
 
 		const timeoutId = setTimeout(() => {
 			autocompleteService.current?.getPlacePredictions(
-				{ 
+				{
 					input: city,
-					types: ['(regions)'] // Get cities/regions
+					types: ["(regions)"], // Get cities/regions
 				},
 				(predictions, status) => {
-					if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+					if (
+						status === google.maps.places.PlacesServiceStatus.OK &&
+						predictions
+					) {
 						setSuggestions(predictions);
 					} else {
 						setSuggestions([]);
 					}
-				}
+				},
 			);
 		}, 300);
 
@@ -219,7 +317,10 @@ export default function Sidebar({
 	const filteredBusinesses = businesses;
 
 	const handleSearch = async (overrideCategory?: string) => {
-		const searchCategory = overrideCategory || category;
+		const searchCategory =
+			typeof overrideCategory === "string" && overrideCategory.length > 0
+				? overrideCategory
+				: category;
 		if (!city || !searchCategory || !placesLib || !geocodingLib || !map) return;
 		setIsLoading(true);
 		setError(null);
@@ -269,22 +370,29 @@ export default function Sidebar({
 			// Aggressively sanitize the business data to avoid circular references (like Google Maps DOM attributions)
 			const parsedBusinesses: Business[] = places.map((p) => {
 				// displayName is an object { text: string } in the new API
-				const name = p.displayName?.text || (typeof p.displayName === 'string' ? p.displayName : "Unknown Business");
+				const name =
+					p.displayName?.text ||
+					(typeof p.displayName === "string"
+						? p.displayName
+						: "Unknown Business");
 				const address = p.formattedAddress || "No address available";
-				
+
 				return {
 					id: String(p.id || Math.random().toString(36).substr(2, 9)),
 					name: String(name),
 					category: String(searchCategory),
 					address: String(address),
-					rating: typeof p.rating === 'number' ? p.rating : 0,
-					reviewCount: typeof p.userRatingCount === 'number' ? p.userRatingCount : 0,
-					location: { 
-						lat: typeof p.location?.lat === 'function' ? p.location.lat() : 0, 
-						lng: typeof p.location?.lng === 'function' ? p.location.lng() : 0 
+					rating: typeof p.rating === "number" ? p.rating : 0,
+					reviewCount:
+						typeof p.userRatingCount === "number" ? p.userRatingCount : 0,
+					location: {
+						lat: typeof p.location?.lat === "function" ? p.location.lat() : 0,
+						lng: typeof p.location?.lng === "function" ? p.location.lng() : 0,
 					},
 					websiteUri: p.websiteURI ? String(p.websiteURI) : undefined,
-					phoneNumber: p.nationalPhoneNumber ? String(p.nationalPhoneNumber) : undefined,
+					phoneNumber: p.nationalPhoneNumber
+						? String(p.nationalPhoneNumber)
+						: undefined,
 					photos: p.photos
 						? p.photos.map((photo) => String(photo.getURI({ maxWidth: 400 })))
 						: [],
@@ -295,7 +403,7 @@ export default function Sidebar({
 			const websiteMissingCandidates = parsedBusinesses.filter(
 				(b) => !b.websiteUri,
 			);
-			
+
 			let candidatesToQualify =
 				websiteMissingCandidates.length > 0
 					? websiteMissingCandidates
@@ -382,7 +490,7 @@ export default function Sidebar({
 									}}
 									onFocus={() => city.length >= 2 && setShowSuggestions(true)}
 									onKeyDown={(e) => {
-										if (e.key === 'Enter') {
+										if (e.key === "Enter") {
 											handleSearch();
 											setShowSuggestions(false);
 										}
@@ -420,9 +528,11 @@ export default function Sidebar({
 										setCategory(e.target.value);
 										setShowCategorySuggestions(true);
 									}}
-									onFocus={() => category.length > 0 && setShowCategorySuggestions(true)}
+									onFocus={() =>
+										category.length > 0 && setShowCategorySuggestions(true)
+									}
 									onKeyDown={(e) => {
-										if (e.key === 'Enter') {
+										if (e.key === "Enter") {
 											handleSearch();
 											setShowCategorySuggestions(false);
 										}
@@ -455,7 +565,7 @@ export default function Sidebar({
 
 						<div className='flex gap-2 pt-2'>
 							<Button
-								onClick={handleSearch}
+								onClick={() => handleSearch()}
 								disabled={isLoading || !city || !category}
 								className='flex-1 bg-violet-600 hover:bg-violet-500 py-1.5 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-violet-500/20 text-white border-0 h-9'>
 								{isLoading ? (
@@ -498,41 +608,39 @@ export default function Sidebar({
 					) : (
 						<div className='flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar'>
 							{filteredBusinesses.map((business) => (
-									<div
-										key={business.id}
-										className={cn(
-											"sidebar-item p-3 rounded-lg border border-slate-200 bg-white cursor-pointer transition-all shadow-sm",
-											selectedBusiness?.id === business.id
-												? "border-violet-300 ring-1 ring-violet-200 bg-violet-50"
-												: "opacity-90 hover:opacity-100 hover:border-violet-200",
-										)}
-										onClick={() => {
-											setSelectedBusiness(business);
-											if (map) {
-												map.panTo(business.location);
-												map.setZoom(16);
-											}
-										}}>
-										<div className='flex justify-between items-start mb-1'>
-											<h3 className='text-sm font-semibold text-slate-900'>
-												{business.name}
-											</h3>
-											<div className='flex items-center gap-1.5 text-slate-500'>
-												{business.websiteUri && (
-													<Globe className='h-3.5 w-3.5' />
-												)}
-												{business.phoneNumber && (
-													<Phone className='h-3.5 w-3.5' />
-												)}
-												{business.email && <Mail className='h-3.5 w-3.5' />}
-											</div>
-										</div>
-										<div className='flex items-center gap-1 text-[11px] text-slate-500'>
-											<span>{business.rating || "New"} stars</span>
-											<span>•</span>
-											<span>{business.reviewCount || 0} reviews</span>
+								<div
+									key={business.id}
+									className={cn(
+										"sidebar-item p-3 rounded-lg border border-slate-200 bg-white cursor-pointer transition-all shadow-sm",
+										selectedBusiness?.id === business.id
+											? "border-violet-300 ring-1 ring-violet-200 bg-violet-50"
+											: "opacity-90 hover:opacity-100 hover:border-violet-200",
+									)}
+									onClick={() => {
+										setSelectedBusiness(business);
+										if (map) {
+											map.panTo(business.location);
+											map.setZoom(16);
+										}
+									}}>
+									<div className='flex justify-between items-start mb-1'>
+										<h3 className='text-sm font-semibold text-slate-900'>
+											{business.name}
+										</h3>
+										<div className='flex items-center gap-1.5 text-slate-500'>
+											{business.websiteUri && <Globe className='h-3.5 w-3.5' />}
+											{business.phoneNumber && (
+												<Phone className='h-3.5 w-3.5' />
+											)}
+											{business.email && <Mail className='h-3.5 w-3.5' />}
 										</div>
 									</div>
+									<div className='flex items-center gap-1 text-[11px] text-slate-500'>
+										<span>{business.rating || "New"} stars</span>
+										<span>•</span>
+										<span>{business.reviewCount || 0} reviews</span>
+									</div>
+								</div>
 							))}
 						</div>
 					)}
