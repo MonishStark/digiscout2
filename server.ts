@@ -2767,6 +2767,24 @@ Render the sections in the schema order exactly as provided.
 Use the exact business copy and exact media URLs from the schema.
 Do not collapse the page into a common in-house template.
 Make the composition, spacing, typography treatment, and hierarchy feel bespoke to this business.
+Every section must reflect its variant with a visibly different structure.
+Add data attributes for audits: <section data-section="{type}" data-variant="{variant or layout}">.
+Do not reuse a single base layout across different variants.
+If a section has variant "magazine", use a magazine-like layout with asymmetric columns and a strong editorial rhythm.
+If a section has variant "editorial-split", use a split layout with an offset image and a text rail.
+If a section has variant "immersive" or "cinematic", use full-bleed imagery and layered text.
+If a section has variant "bento", use a bento grid with mixed tile sizes.
+If a section has variant "editorial-mosaic", use a mosaic grid with varied spans.
+If a section has variant "floating-cards", use card groupings with depth and staggered offsets.
+If a section has variant "split-columns", use a two-column FAQ layout with distinct left and right columns.
+
+Theme palette rules:
+- Derive colors from theme.accentMode and category. Do not default to generic purple or blue.
+- accentMode "luxury": ivory backgrounds, charcoal text, brass or deep gold accents.
+- accentMode "earthy": warm off-whites, clay, olive, muted rust accents.
+- accentMode "fresh": crisp white, deep teal or sea green accents, clean neutrals.
+- accentMode "neon": pale base, electric accent with controlled saturation.
+Define CSS variables that reflect the chosen palette and use them consistently.
 Light theme only.
 No site header chrome, no WordPress admin text, no fake badges like "crafted for premium presentation".
 No generic placeholder copy.
