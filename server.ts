@@ -941,48 +941,107 @@ function ensureNonTemplateCopy(
 	const genericPattern =
 		/^a\s+premium\s+.+website\s+designed\s+to\s+convert\s+visitors\s+into\s+customers\.?$/i;
 
-	const nextSections = (schema.sections || []).map((section) => {
-		let layout = "default";
-		switch (section.type) {
-			case "hero":
-				layout = "hero-immersive";
-				break;
-			case "features":
-				layout = "feature-grid";
-				break;
-			case "gallery":
-				layout = "gallery-masonry";
-				break;
-			case "testimonials":
-				layout = "testimonial-carousel";
-				break;
-			case "cta":
-				layout = "cta-split";
-				break;
-			case "faq":
-				layout = "faq-accordion";
-				break;
-			case "contact":
-				layout = "contact-form";
-				break;
-			default:
-				layout = "default";
+	const categoryNorm = (categoryLabel || "").toLowerCase();
+	const pickVariant = (sectionType: WebsiteSchema["sections"][number]["type"]) => {
+		if (sectionType === "hero") {
+			if (
+				categoryNorm.includes("salon") ||
+				categoryNorm.includes("spa") ||
+				categoryNorm.includes("wellness")
+			) {
+				return pickBySeed(["editorial", "centered", "split"], seed + 3);
+			}
+			if (
+				categoryNorm.includes("gym") ||
+				categoryNorm.includes("fitness") ||
+				categoryNorm.includes("training")
+			) {
+				return pickBySeed(["immersive", "split", "cinematic"], seed + 5);
+			}
+			if (
+				categoryNorm.includes("dental") ||
+				categoryNorm.includes("law") ||
+				categoryNorm.includes("finance") ||
+				categoryNorm.includes("consult")
+			) {
+				return pickBySeed(["centered", "editorial", "minimal"], seed + 7);
+			}
+			return pickBySeed(["editorial", "split", "immersive"], seed + 11);
 		}
+
+		if (sectionType === "features") {
+			if (
+				categoryNorm.includes("dental") ||
+				categoryNorm.includes("law") ||
+				categoryNorm.includes("finance") ||
+				categoryNorm.includes("consult")
+			) {
+				return pickBySeed(
+					["editorial-list", "editorial-cards", "bento"],
+					seed + 13,
+				);
+			}
+			return pickBySeed(
+				["bento", "editorial-cards", "editorial-list"],
+				seed + 17,
+			);
+		}
+
+		if (sectionType === "gallery") {
+			return pickBySeed(
+				["editorial-mosaic", "stacked-collage"],
+				seed + 19,
+			);
+		}
+
+		if (sectionType === "testimonials") {
+			return pickBySeed(
+				["floating-cards", "editorial-quotes", "spotlight"],
+				seed + 23,
+			);
+		}
+
+		if (sectionType === "faq") {
+			return pickBySeed(["cards", "split-columns"], seed + 29);
+		}
+
+		if (sectionType === "cta") {
+			return pickBySeed(["gradient-band", "split-card"], seed + 31);
+		}
+
+		if (sectionType === "contact") {
+			return pickBySeed(["split-card", "minimal-centered"], seed + 37);
+		}
+
+		return "default";
+	};
+
+	const nextSections = (schema.sections || []).map((section) => {
+		const layout = pickVariant(section.type);
 		const modified = {
 			...section,
 			layout,
+			variant: (section as any).variant || layout,
 		};
 		if (section.type === "hero") {
 			modified.ctaPrimary = modified.ctaPrimary || {};
-			modified.ctaPrimary.label = modified.ctaPrimary.label || "Learn More";
+			modified.ctaPrimary.label = modified.ctaPrimary.label || "Book Now";
 			modified.ctaPrimary.href = modified.ctaPrimary.href || "#contact";
 			if (modified.ctaSecondary) {
-				modified.ctaSecondary.href = modified.ctaSecondary.href || "#about";
+				modified.ctaSecondary.href =
+					modified.ctaSecondary.href || "#services";
 			}
+			modified.media = modified.media || {
+				src:
+					business.photos?.[0] ||
+					business.imageSuggestions?.[0] ||
+					"https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=80",
+				alt: `${businessName} hero image`,
+			};
 		}
 		if (section.type === "cta") {
 			modified.buttonHref = modified.buttonHref || "#contact";
-			modified.buttonLabel = modified.buttonLabel || "Get Started";
+			modified.buttonLabel = modified.buttonLabel || "Start Your Enquiry";
 		}
 		if (section.type === "gallery" && modified.items) {
 			modified.items = modified.items.map((item) => ({
@@ -2070,110 +2129,97 @@ app.post("/api/generate", async (req: Request, res: Response) => {
 
 		const creativeSeed = `${business.id || "lead"}-${Date.now()}`;
 
-		const prompt = `You are an elite creative director and premium brand strategist crafting bespoke websites for local businesses. Every design must feel high-caliber, editorial, and distinctly tailored—never templated or generic. Think Stripe, Framer, and award-winning product sites as inspiration, not local directory listings.
+		const prompt = `You are generating a PREMIUM WORDPRESS HOMEPAGE schema for a real local business.
 
-[CRITICAL MANDATE: LIGHT THEME ONLY]
-You must ONLY generate light themes. Dark modes, charcoal backgrounds, or night-mode aesthetics are STRICTLY FORBIDDEN. All generated hex codes for backgrounds and surfaces must have >90% brightness.
+This output is used to create the final WordPress site. Optimize for the WordPress result, not for a generic preview.
 
-## MANDATORY DESIGN PRINCIPLES
+PRIMARY OBJECTIVE:
+- Make the site feel bespoke, premium, and clearly different from other businesses.
+- Use category-aware composition, specific service copy, and distinct section rhythm.
+- Avoid anything that feels like a safe local-business template.
 
-### Light Theme Only
-- Background: white, cream, light stone, or pale tonal surfaces (never dark, never charcoal)
-- Surface: white, off-white, or very soft neutrals with fine borders
-- Text: dark gray to near-black for clarity and contrast
-- Accents: one bold primary accent, optionally one soft secondary accent
-- STRICTLY NO dark backgrounds, NO heavy blacks, NO night-mode aesthetics
+ABSOLUTE RULES:
+- Light theme only. No black or charcoal backgrounds. No dark hero sections.
+- Return valid JSON only.
+- Do not use generic phrases like "designed to convert", "cutting-edge", "innovative", "best-in-class", or "one-stop shop".
+- Hero must be first. Contact must be last.
+- Sections 2-6 may be reordered for uniqueness.
 
-### Premium Spacing & Composition
-- Generous margins and breathing room between sections
-- Asymmetrical layouts and editorial rhythm preferred over rigid grids
-- Section pacing that alternates between dense and open
-- Never cramped, never busy, always intentional
+SUPPORTED THEME ENUMS:
+- layout: "editorial" | "immersive" | "minimal" | "gallery-forward" | "split-screen"
+- buttonStyle: "pill" | "sharp" | "ghost"
+- surfaceStyle: "glass" | "solid" | "outline"
+- mediaShape: "rounded" | "arched" | "portrait" | "square"
+- density: "airy" | "balanced" | "compact"
+- accentMode: "neon" | "earthy" | "luxury" | "fresh"
 
-### Visual Distinction by Category
-Adapt the core design for category context:
-- **Cafe/Restaurant**: warm, editorial, organic rounded cards, terracotta/ochre accents, serif headlines
-- **Salon/Spa**: luxury minimalism, soft lavender/rose accents, elegant serif or high-fashion typography, split layouts
-- **Dental**: clinical calm, clinical luxury, mint/aqua accents, minimal serif/sans, plenty of white space
-- **Fitness**: energetic confidence, bright white base, bold teal/coral accents, sharp compact buttons, dynamic layout
-- **Real Estate**: architectural premium, warm stone base, slate/gold accents, large image blocks, clean geometry
-- **Dry Cleaning**: polished clinical, crisp blue accents, soft rounded containers, trust-focused messaging
-- **Professional/Consulting**: modern authority, restrained minimal, blue accents, strong sans-serif, high trust signals
+SUPPORTED SECTION VARIANTS:
+- hero.variant: "immersive" | "cinematic" | "editorial" | "editorial-split" | "magazine" | "centered" | "minimal" | "split"
+- features.variant: "bento" | "editorial-cards" | "editorial-list" | "alternating-stack" | "grid"
+- gallery.variant: "editorial-mosaic" | "stacked-collage" | "collage"
+- testimonials.variant: "floating-cards" | "editorial-quotes" | "spotlight"
+- faq.variant: "cards" | "split-columns" | "grid"
+- cta.variant: "gradient-band" | "split-card" | "side-by-side"
+- contact.variant: "split-card" | "minimal-centered" | "centered"
 
-### Uniqueness Enforcement
-- No two sections should use identical layouts or content structures
-- Avoid the pattern: hero → features → gallery → testimonials → FAQ → contact
-- Vary section order; hero and contact are anchors, but vary everything between
-- Use asymmetrical image compositions, split panels, bento grids—not predictable photo carousels
+REQUIRED SECTIONS:
+- hero
+- features
+- gallery
+- testimonials
+- faq
+- cta
+- contact
 
-## SCHEMA REQUIREMENTS
+SECTION CONTENT RULES:
+- hero:
+  - strong headline
+  - specific subheadline tied to the business
+  - ctaPrimary with action label and href "#contact"
+  - optional ctaSecondary with href "#services" or "#gallery"
+  - media { src, alt }
+- features:
+  - 3 to 5 items
+  - use real service names or believable category-specific offerings
+  - descriptions must be concrete, not hype
+- gallery:
+  - 3 to 5 images
+  - use provided business photos first when available
+  - alt text must be descriptive
+- testimonials:
+  - 2 to 4 realistic quotes
+  - mention specific benefits or experiences
+- faq:
+  - 3 to 5 practical customer questions
+  - clear, grounded answers
+- cta:
+  - title
+  - body
+  - buttonLabel
+  - buttonHref "#contact"
+- contact:
+  - present the supplied business details professionally
+  - do not invent email addresses
 
-- **sections** array: 7-9 sections including hero, features, gallery, testimonials, faq, cta, and contact
-- **theme fields**: Set all of: name, style, layout, buttonStyle, surfaceStyle, mediaShape, density, accentMode, typography (heading + body), palette (all 7 colors: background, surface, primary, accent, text, muted, outline), radius, and **customCss** (Inject site-wide premium CSS here).
-- **section fields**: Each section can optionally include a **customCss** field for section-specific styling and a **variant** field (e.g., 'immersive', 'split', 'bento', 'grid').
-- **brand fields**: Include businessName, category, address, phone, email, websiteUri, and **logo** (use the detected logo URL if provided in context).
+UNIQUENESS RULES:
+- Use this seed to make layout and pacing distinct: ${creativeSeed}
+- Do not make every site use the same hero, same feature grid, and same gallery arrangement.
+- Make section order, section variant choices, and tone visibly specific to the business.
+- Match the category:
+  - salon/spa: elegant, airy, editorial
+  - cafe/restaurant: warm, sensory, layered
+  - dental/medical: calm, precise, trust-first
+  - gym/fitness: energetic, bold, high contrast in layout
+  - dry cleaning/laundry: polished, crisp, reassuring
+  - real estate/property: architectural, image-led
+  - professional services: restrained, authoritative
 
-## CUSTOM DESIGN INJECTION (CRITICAL)
-- Use the **customCss** fields to push the design beyond standard boundaries.
-- Implement modern trends: glassmorphism, subtle micro-interactions, complex gradients, and unique section transitions.
-- Use \`backdrop-filter: blur()\`, \`mask-image\`, \`clip-path\`, and CSS variables for a cohesive, premium look.
-- Ensure all custom CSS is scoped correctly or targets the specific section it's in.
-
-- **Typography pairing**: Choose one pairing from these premium tones:
-  - Luxury/Editorial: serif heading (Playfair, Cormorant, Fraunces) + neutral sans body (Inter, IBM Plex Sans)
-  - Modern/Clean: geometric sans heading (Space Grotesk, IBM Plex Sans, Inter) + humanist sans body (Inter)
-  - Clinical/Professional: precise sans heading (IBM Plex Sans) + calm sans body (Inter)
-  - Performance/Energetic: bold display heading (Space Grotesk) + compact sans body (Inter)
-- **Palette colors**: All hex values MUST be for modern light-theme targets: backgrounds light (>90% brightness, e.g., #FFFFFF, #F8FAFC), surfaces light (>85%), text dark (<30% brightness), accents bold but not neon. NEVER use dark background hex codes.
-
-## CONTENT REQUIREMENTS
-
-
-### Hero Section
-- Headline: business name or powerful, benefit-driven hook (not generic)
-- Subheadline: concrete value proposition mentioning category specifics (e.g., "Premium garment care for silk and wool", not "A modern website designed to convert")
-- CTA Primary: action-oriented (Book, Schedule, Learn, Discover—not generic "Get Started")
-- CTA Secondary: optional info link
-- Badges: design system name or category positioning (optional)
-
-### Features (4-6 items)
-- Specific to category: use actual service names, not "Positioning", "Messaging", "Strategy"
-- Examples good: "Expert Color Consultation", "Stress-Free Scheduling", "Premium Material Handling"
-- Examples bad: "Quality Service", "Customer Focus", "Modern Design"
-- Descriptions: concrete benefits, not hype
-
-### Gallery (2-4 items)
-- Real images tied to business (photos or professional visuals)
-- Alt text: descriptive and specific (e.g., "Salon styling station with minimalist design" not "Image")
-
-### Testimonials (2-4 items)
-- Realistic-sounding names (Alex M., Jordan K., Casey P., Morgan T.)
-- Realistic roles (Regular Guest, Local Professional, Returning Client)
-- Quotes mention specific, concrete benefits (e.g., "The online booking made scheduling easy" not "Great service")
-
-### FAQ (4-6 items)
-- Real questions customers ask in this category
-- Answers: clear, professional, action-oriented
-- Category-specific tone and technical depth
-
-### CTA Section
-- Title: benefit-focused call to action
-- Body: brief, outcome-oriented copy
-- Button: action-oriented label
-
-### Contact Section
-- Standard fields with professional presentation
-
-## STYLE ENFORCEMENT
-
-- Tone: professional, human, conversational—never corporate buzzwords
-- Avoid: "cutting-edge", "innovative", "best-in-class", "one-stop shop", "game-changing"
-- Avoid: repeated structures, generic starter phrases, filler words
-- Avoid: dark aesthetics, heavy fonts, cramped layouts, stock phrases
-
-## SEED GUIDANCE
-Use this seed to vary results uniquely: ${creativeSeed}
-Apply seed to: section ordering, layout choices, accent mood, typography pair selection, spacing density
+THEME RULES:
+- backgrounds and surfaces must be very light
+- text must be dark and readable
+- accents should feel premium and category-appropriate
+- typography should feel intentional
+- customCss is optional; include it only if it materially improves the final WordPress site
 
 Business Context:
 - Name: ${business.name}
@@ -2202,7 +2248,7 @@ ${buildReviewsBlock(business)}
 Reference Images:
 ${buildImageBlock(business)}
 
-Return only valid JSON matching the WebsiteSchema TypeScript interface. No markdown, no commentary, no explanations. Valid JSON only.`;
+Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 
 		const modelsToTry = [
 			{ name: "gemini-1.5-pro", timeoutMs: 65000 },

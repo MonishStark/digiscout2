@@ -625,171 +625,425 @@ __export(premium_site_builder_exports, {
 function esc(str) {
   return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
+function hexToRgb(hex) {
+  const clean = (hex || "#000000").replace("#", "");
+  const r = parseInt(clean.slice(0, 2), 16) || 0;
+  const g = parseInt(clean.slice(2, 4), 16) || 0;
+  const b = parseInt(clean.slice(4, 6), 16) || 0;
+  return `${r},${g},${b}`;
+}
+function getSectionValue(section, keys, fallback) {
+  for (const key of keys) {
+    const value = section?.[key] ?? section?.content?.[key];
+    if (value !== void 0 && value !== null && value !== "") {
+      return value;
+    }
+  }
+  return fallback;
+}
+function getSectionItems(section) {
+  return section?.items || section?.content?.items || [];
+}
+function normalizeVariant(section, fallback) {
+  return (section?.variant || section?.layout || section?.styleVariant || fallback).toString().toLowerCase();
+}
+function buttonHtml(label, href, style = "") {
+  return `<a class="wp-block-button__link wp-element-button" href="${esc(
+    href || "#contact"
+  )}" style="${style}">${esc(label)}</a>`;
+}
+function mediaSrc(section, fallback) {
+  return section?.media?.[0]?.url || section?.media?.src || section?.media?.url || fallback;
+}
 function buildPremiumPageContent(schema) {
   const palette = schema.theme?.palette || {
-    background: "#f8f9fa",
+    background: "#f8fafc",
     surface: "#ffffff",
     primary: "#7c3aed",
-    accent: "#1a1a1a",
-    text: "#1a1a1a",
-    muted: "#666666",
+    accent: "#ec4899",
+    text: "#111827",
+    muted: "#6b7280",
     outline: "#e2e8f0"
   };
+  const theme = schema.theme || {};
+  const sections = schema.sections || [];
   const P = palette.primary;
   const BG = palette.background;
   const SURF = palette.surface;
   const TEXT = palette.text;
-  const MUTED = palette.muted || "#666666";
-  const ACCENT = palette.accent || P;
+  const MUTED = palette.muted;
+  const OUTLINE = palette.outline;
+  const ACCENT = palette.accent || palette.primary;
+  const radius = theme.radius || "28px";
+  const typography = theme.typography || {
+    heading: "Cormorant Garamond",
+    body: "Inter"
+  };
   const businessName = schema.brand?.businessName || "Welcome";
-  const theme = schema.theme || {};
-  const radius = theme.radius || "24px";
-  const typography = theme.typography || { heading: "Playfair Display", body: "Inter" };
-  const sections = schema.sections || [];
+  const category = schema.brand?.category || "Premium Service";
   const globalCss = `<!-- wp:html -->
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;700;900&family=Space+Grotesk:wght@300;500;700&family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;500;700;900&family=Plus+Jakarta+Sans:wght@300;500;700;800&display=swap');
-
-*,*::before,*::after{box-sizing:border-box!important;}
-html,body{background:${BG}!important;color:${TEXT}!important;font-family:'${typography.body}',sans-serif!important;margin:0!important;padding:0!important;scroll-behavior:smooth!important;-webkit-font-smoothing:antialiased;}
-
-/* Hide default WP theme elements */
-.site-header,.site-footer,.elementor-location-header,.elementor-location-footer,#masthead,#colophon,.entry-title,.wp-block-post-title,.page-title,.breadcrumbs,.posted-on,.byline,header.entry-header{display:none!important;}
-.site-content,.hentry,.entry-content,.wp-block-post-content,.wp-site-blocks,.is-layout-flow,.elementor,.page,.single{padding:0!important;margin:0!important;max-width:100%!important;width:100%!important;background:${BG}!important;}
-
-/* Advanced Premium Styles */
-.glass{background:rgba(255,255,255,0.7)!important;backdrop-filter:blur(16px)!important;border:1px solid rgba(255,255,255,0.3)!important;box-shadow:0 10px 30px rgba(0,0,0,0.05)!important;}
-.text-gradient{background:linear-gradient(135deg,${P},#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-
-/* Animations */
-@keyframes fadeInUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
-@keyframes scaleIn { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
-@keyframes float { 0%{transform:translateY(0px)} 50%{transform:translateY(-15px)} 100%{transform:translateY(0px)} }
-
-.animate-up { animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
-.animate-scale { animation: scaleIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
-.floating { animation: float 6s ease-in-out infinite; }
-
-.hover-lift{transition:all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)!important;}
-.hover-lift:hover{transform:translateY(-10px) scale(1.02)!important;box-shadow:0 40px 80px rgba(0,0,0,0.12)!important;z-index:10;}
-
-/* Button Overrides */
+*,*::before,*::after{box-sizing:border-box!important}
+html,body{margin:0!important;padding:0!important;background:${BG}!important;color:${TEXT}!important;font-family:'${typography.body}',sans-serif!important;-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
+.site-header,.site-footer,.elementor-location-header,.elementor-location-footer,#masthead,#colophon,.entry-title,.wp-block-post-title,.page-title,.breadcrumbs,.posted-on,.byline,header.entry-header{display:none!important}
+.site-content,.hentry,.entry-content,.wp-block-post-content,.wp-site-blocks,.is-layout-flow,.elementor,.page,.single{padding:0!important;margin:0!important;max-width:100%!important;width:100%!important;background:${BG}!important}
+.glass{background:rgba(255,255,255,.76)!important;backdrop-filter:blur(20px)!important;border:1px solid rgba(255,255,255,.45)!important;box-shadow:0 18px 48px rgba(15,23,42,.08)!important}
+.text-gradient{background:linear-gradient(135deg,${P},${ACCENT});-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hover-lift{transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s cubic-bezier(.2,.8,.2,1),border-color .35s ease!important}
+.hover-lift:hover{transform:translateY(-8px)!important;box-shadow:0 28px 64px rgba(15,23,42,.14)!important}
+.animate-up{animation:fadeInUp .8s cubic-bezier(.2,.8,.2,1) forwards}
+.animate-scale{animation:scaleIn .8s cubic-bezier(.2,.8,.2,1) forwards}
+.section-padding{padding:140px 40px}
+.section-shell{max-width:1320px;margin:0 auto}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;padding:8px 16px;border:1px solid ${OUTLINE};border-radius:999px;background:rgba(255,255,255,.72);font-size:.76rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:${P}}
+.section-title{font-family:'${typography.heading}',serif;font-size:clamp(2.6rem,5vw,5rem);line-height:.94;letter-spacing:-.045em;font-weight:800;color:${TEXT};margin:0 0 18px}
+.section-copy{max-width:640px;font-size:1.08rem;line-height:1.75;color:${MUTED};margin:0}
 .wp-block-button__link,.wp-element-button{
-  background:${P}!important;color:#fff!important;border:none!important;
-  border-radius:${theme.buttonStyle === "sharp" ? "4px" : "99px"}!important;
-  padding:18px 48px!important;font-weight:700!important;cursor:pointer!important;
-  text-decoration:none!important;display:inline-flex!important;align-items:center;justify-content:center;
-  transition:all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)!important;
-  box-shadow: 0 10px 20px rgba(${hexToRgb(P)}, 0.2)!important;
+	background:${P}!important;color:#fff!important;border:none!important;
+	border-radius:${theme.buttonStyle === "sharp" ? "10px" : "999px"}!important;
+	padding:18px 36px!important;font-weight:700!important;text-decoration:none!important;
+	display:inline-flex!important;align-items:center;justify-content:center;cursor:pointer!important;
+	box-shadow:0 14px 32px rgba(${hexToRgb(P)},.24)!important;
+	transition:transform .28s ease,box-shadow .28s ease,background .28s ease!important
 }
-.wp-block-button__link:hover{transform:scale(1.05) translateY(-2px)!important;box-shadow: 0 15px 30px rgba(${hexToRgb(P)}, 0.3)!important;color:#fff!important;}
-
-.section-padding { padding: 160px 40px; }
-@media(max-width:768px){ .section-padding { padding: 80px 24px; } }
-
-/* Custom CSS from Gemini */
-${schema.theme?.customCss || ""}
-${sections.map((s) => s.customCss || "").join("\n")}
+.wp-block-button__link:hover{transform:translateY(-2px) scale(1.02)!important;box-shadow:0 18px 40px rgba(${hexToRgb(P)},.32)!important}
+.button-ghost{background:transparent!important;color:${TEXT}!important;border:1px solid ${OUTLINE}!important;box-shadow:none!important}
+.shape-orb{position:absolute;border-radius:999px;pointer-events:none;filter:blur(4px)}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+@media (max-width: 920px){
+	.section-padding{padding:88px 24px}
+	.two-col,.split-grid,.contact-grid,.cta-split,.feature-bento,.gallery-editorial,.gallery-stack,.testimonial-featured,.faq-split{grid-template-columns:1fr!important}
+}
+${theme.customCss || ""}
+${sections.map((section) => section.customCss || "").join("\n")}
 </style>
 <!-- /wp:html -->
 
 `;
   let html = globalCss;
   sections.forEach((section, index) => {
-    const isEven = index % 2 === 0;
-    const sectionBg = isEven ? BG : SURF;
+    const sectionBg = index % 2 === 0 ? BG : SURF;
     switch (section.type) {
       case "hero":
-        html += renderHero(section, schema, P, TEXT, MUTED, BG, SURF, typography);
+        html += renderHero(
+          section,
+          { businessName, category, typography, P, TEXT, MUTED, BG, SURF, ACCENT, OUTLINE }
+        );
         break;
       case "features":
       case "services":
-        html += renderFeatures(section, schema, P, TEXT, MUTED, BG, SURF, sectionBg, typography, radius);
+        html += renderFeatures(
+          section,
+          { typography, P, TEXT, MUTED, SURF, OUTLINE, radius, sectionBg }
+        );
         break;
       case "gallery":
-        html += renderGallery(section, schema, TEXT, sectionBg, typography);
+        html += renderGallery(
+          section,
+          { typography, TEXT, MUTED, sectionBg, radius }
+        );
         break;
       case "testimonials":
-        html += renderTestimonials(section, schema, P, TEXT, MUTED, sectionBg, typography);
-        break;
-      case "cta":
-        html += renderCTA(section, schema, P, TEXT, typography);
+        html += renderTestimonials(
+          section,
+          { typography, P, TEXT, MUTED, sectionBg, SURF, OUTLINE, radius }
+        );
         break;
       case "faq":
-        html += renderFAQ(section, schema, P, TEXT, MUTED, sectionBg, typography);
+        html += renderFaq(
+          section,
+          { typography, P, TEXT, MUTED, sectionBg, SURF, OUTLINE, radius }
+        );
+        break;
+      case "cta":
+        html += renderCta(
+          section,
+          { typography, P, TEXT, ACCENT, radius }
+        );
         break;
       case "contact":
-        html += renderContact(section, schema, P, TEXT, MUTED, sectionBg, typography);
+        html += renderContact(
+          section,
+          { typography, P, TEXT, MUTED, sectionBg, SURF, OUTLINE, radius, brand: schema.brand || {} }
+        );
         break;
     }
   });
   html += `<!-- wp:html -->
-<footer style="background:#000;padding:100px 40px;text-align:center;">
-  <div style="max-width:1200px;margin:0 auto;">
-    <h2 style="font-family:'${typography.heading}',serif;color:#fff;font-size:2rem;margin-bottom:2rem;">${esc(businessName)}</h2>
-    <p style="color:rgba(255,255,255,0.4);font-size:0.9rem;margin-bottom:4rem;">Crafted with excellence. &copy; ${(/* @__PURE__ */ new Date()).getFullYear()} All rights reserved.</p>
-    <div style="width:40px;height:2px;background:${P};margin:0 auto;"></div>
+<footer style="background:#050816;padding:92px 40px;text-align:center;">
+  <div class="section-shell">
+    <div class="eyebrow" style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14);color:#fff">Digital Presence</div>
+    <h2 style="font-family:'${typography.heading}',serif;color:#fff;font-size:2.2rem;letter-spacing:-.04em;margin:22px 0 12px;">${esc(
+    businessName
+  )}</h2>
+    <p style="color:rgba(255,255,255,.48);font-size:.92rem;margin:0;">Crafted for premium presentation and clear conversion.</p>
   </div>
 </footer>
 <!-- /wp:html -->`;
   return html;
 }
-function renderHero(section, schema, P, TEXT, MUTED, BG, SURF, typography) {
-  const businessName = schema.brand?.businessName || "";
-  const img = section.media?.[0]?.url || section.media?.src || section.media?.url || "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=80";
-  const title = section.headline || section.content?.headline || businessName;
-  const sub = section.subheadline || section.content?.subheadline || "";
-  const cta = section.ctaPrimary?.label || section.content?.ctaPrimary || "Discover More";
-  const variant = section.variant || "immersive";
-  if (variant === "centered" || variant === "immersive") {
-    return `<!-- wp:cover {"url":"${esc(img)}","dimRatio":${variant === "immersive" ? 70 : 40},"overlayColor":"black","minHeight":100,"minHeightUnit":"vh","align":"full"} -->
-<div class="wp-block-cover alignfull section-hero" style="min-height:100vh;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;">
-<span aria-hidden="true" class="wp-block-cover__background has-black-background-color has-background-dim-${variant === "immersive" ? 70 : 40} has-background-dim" style="background:linear-gradient(180deg,rgba(0,0,0,0.7) 0%,rgba(${hexToRgb(P)},0.4) 100%)!important;"></span>
-<img class="wp-block-cover__image-background" alt="${esc(businessName)}" src="${esc(img)}" data-object-fit="cover" style="object-fit:cover;width:100%;height:100%;position:absolute;inset:0;"/>
-<div class="wp-block-cover__inner-container animate-up" style="position:relative;z-index:2;padding:40px 24px;text-align:center;max-width:1100px;margin:0 auto;">
-<div style="display:inline-block;padding:8px 20px;background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border-radius:100px;color:#fff;font-size:0.85rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:2rem;border:1px solid rgba(255,255,255,0.2);">${esc(schema.brand?.category || "Premium Service")}</div>
-<h1 style="font-family:'${typography.heading}',serif;font-size:clamp(3.5rem,10vw,7.5rem);line-height:0.95;font-weight:900;color:#fff;letter-spacing:-0.05em;margin-bottom:2rem;text-shadow:0 20px 50px rgba(0,0,0,0.5);">${esc(title)}</h1>
-<p style="font-size:clamp(1.2rem,2.5vw,1.6rem);color:rgba(255,255,255,0.85);max-width:700px;margin:0 auto 3.5rem;line-height:1.5;font-weight:400;">${esc(sub)}</p>
-<div class="wp-block-buttons" style="justify-content:center;display:flex;"><div class="wp-block-button"><a class="wp-block-button__link wp-element-button">${esc(cta)}</a></div></div>
-</div></div><!-- /wp:cover -->
+function renderHero(section, context) {
+  const { businessName, category, typography, P, TEXT, MUTED, BG, SURF, ACCENT, OUTLINE } = context;
+  const img = mediaSrc(
+    section,
+    "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=80"
+  );
+  const title = getSectionValue(section, ["headline", "title"], businessName);
+  const sub = getSectionValue(
+    section,
+    ["subheadline", "body", "description"],
+    ""
+  );
+  const ctaPrimary = section.ctaPrimary || section.primaryCta || {
+    label: "Discover More",
+    href: "#contact"
+  };
+  const ctaSecondary = section.ctaSecondary || section.secondaryCta || null;
+  const variant = normalizeVariant(section, "split");
+  if (variant === "immersive" || variant === "cinematic") {
+    return `<!-- wp:cover {"url":"${esc(
+      img
+    )}","dimRatio":56,"minHeight":100,"minHeightUnit":"vh","align":"full"} -->
+<div class="wp-block-cover alignfull" style="min-height:100vh;position:relative;overflow:hidden;">
+<span aria-hidden="true" class="wp-block-cover__background has-background-dim" style="background:linear-gradient(180deg,rgba(7,10,23,.14),rgba(7,10,23,.68))"></span>
+<img class="wp-block-cover__image-background" alt="${esc(
+      businessName
+    )}" src="${esc(img)}" data-object-fit="cover" />
+<div class="wp-block-cover__inner-container">
+  <div class="section-shell animate-up" style="min-height:100vh;display:grid;align-items:end;padding:48px 24px 72px;">
+    <div style="max-width:780px;">
+      <div class="eyebrow" style="background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.18);color:#fff">${esc(
+      category
+    )}</div>
+      <h1 style="font-family:'${typography.heading}',serif;font-size:clamp(3.8rem,11vw,8rem);line-height:.88;letter-spacing:-.06em;color:#fff;margin:26px 0 18px;">${esc(
+      title
+    )}</h1>
+      <p style="font-size:clamp(1.16rem,2.6vw,1.5rem);line-height:1.6;color:rgba(255,255,255,.84);max-width:620px;margin:0 0 34px;">${esc(
+      sub
+    )}</p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;">
+        ${buttonHtml(ctaPrimary.label || "Discover More", ctaPrimary.href || "#contact")}
+        ${ctaSecondary ? buttonHtml(
+      ctaSecondary.label || "Explore",
+      ctaSecondary.href || "#services",
+      "background:rgba(255,255,255,.14)!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)!important;box-shadow:none!important"
+    ) : ""}
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+<!-- /wp:cover -->
+
+`;
+  }
+  if (variant === "editorial" || variant === "editorial-split" || variant === "magazine") {
+    return `<!-- wp:html -->
+<section class="section-padding" style="background:${BG};overflow:hidden;">
+  <div class="section-shell split-grid" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(420px,.92fr);gap:44px;align-items:center;">
+    <div class="animate-up">
+      <div class="eyebrow">${esc(category)}</div>
+      <h1 style="font-family:'${typography.heading}',serif;font-size:clamp(3rem,7vw,5.7rem);line-height:.92;letter-spacing:-.05em;color:${TEXT};margin:24px 0 18px;">${esc(
+      title
+    )}</h1>
+      <p style="max-width:520px;font-size:1.14rem;line-height:1.78;color:${MUTED};margin:0 0 34px;">${esc(
+      sub
+    )}</p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;">
+        ${buttonHtml(ctaPrimary.label || "Discover More", ctaPrimary.href || "#contact")}
+        ${ctaSecondary ? buttonHtml(
+      ctaSecondary.label || "Explore",
+      ctaSecondary.href || "#services",
+      "background:transparent!important;color:" + TEXT + "!important;border:1px solid " + OUTLINE + "!important;box-shadow:none!important"
+    ) : ""}
+      </div>
+    </div>
+    <div class="animate-scale" style="position:relative;">
+      <div class="shape-orb" style="width:220px;height:220px;right:-32px;top:-28px;background:rgba(${hexToRgb(
+      ACCENT
+    )},.12)"></div>
+      <img src="${esc(img)}" alt="${esc(
+      businessName
+    )}" style="width:100%;aspect-ratio:4/4.5;object-fit:cover;border-radius:34px;box-shadow:0 24px 70px rgba(15,23,42,.12);" />
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
+  if (variant === "centered" || variant === "minimal") {
+    return `<!-- wp:html -->
+<section class="section-padding" style="background:${BG};">
+  <div class="section-shell animate-up" style="max-width:1080px;text-align:center;">
+    <div class="eyebrow">${esc(category)}</div>
+    <h1 style="font-family:'${typography.heading}',serif;font-size:clamp(3rem,8vw,6.4rem);line-height:.9;letter-spacing:-.06em;color:${TEXT};margin:24px auto 18px;max-width:860px;">${esc(
+      title
+    )}</h1>
+    <p style="font-size:1.15rem;line-height:1.78;color:${MUTED};max-width:680px;margin:0 auto 34px;">${esc(
+      sub
+    )}</p>
+    <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:42px;">
+      ${buttonHtml(ctaPrimary.label || "Discover More", ctaPrimary.href || "#contact")}
+      ${ctaSecondary ? buttonHtml(
+      ctaSecondary.label || "Explore",
+      ctaSecondary.href || "#services",
+      "background:transparent!important;color:" + TEXT + "!important;border:1px solid " + OUTLINE + "!important;box-shadow:none!important"
+    ) : ""}
+    </div>
+    <img src="${esc(img)}" alt="${esc(
+      businessName
+    )}" style="width:100%;max-width:1080px;aspect-ratio:16/9;object-fit:cover;border-radius:38px;box-shadow:0 24px 70px rgba(15,23,42,.12);" />
+  </div>
+</section>
+<!-- /wp:html -->
 
 `;
   }
   return `<!-- wp:html -->
-<section class="section-hero" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));min-height:100vh;background:${BG};overflow:hidden;">
-  <div class="animate-up" style="padding:160px 80px;display:flex;flex-direction:column;justify-content:center;">
-    <div style="color:${P};font-weight:900;text-transform:uppercase;letter-spacing:0.2em;font-size:0.8rem;margin-bottom:2rem;">${esc(schema.brand?.category || "Official Site")}</div>
-    <h1 style="font-family:'${typography.heading}',serif;font-size:clamp(3rem,6vw,5.5rem);line-height:0.9;font-weight:900;color:${TEXT};letter-spacing:-0.04em;margin-bottom:2rem;">${esc(title)}</h1>
-    <p style="font-size:1.3rem;color:${MUTED};margin-bottom:3.5rem;line-height:1.6;max-width:500px;">${esc(sub)}</p>
-    <div style="display:flex;gap:20px;"><a class="wp-block-button__link wp-element-button">${esc(cta)}</a></div>
-  </div>
-  <div class="animate-scale" style="position:relative;min-height:500px;">
-    <img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;" alt="${esc(businessName)}"/>
-    <div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent, rgba(0,0,0,0.1));"></div>
+<section class="section-padding" style="background:${BG};overflow:hidden;">
+  <div class="section-shell two-col" style="display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:36px;align-items:stretch;">
+    <div class="glass animate-up" style="padding:clamp(32px,5vw,64px);border-radius:36px;display:flex;flex-direction:column;justify-content:center;">
+      <div class="eyebrow">${esc(category)}</div>
+      <h1 style="font-family:'${typography.heading}',serif;font-size:clamp(2.8rem,7vw,5.8rem);line-height:.92;letter-spacing:-.05em;color:${TEXT};margin:24px 0 18px;">${esc(
+    title
+  )}</h1>
+      <p style="font-size:1.12rem;line-height:1.76;color:${MUTED};margin:0 0 34px;">${esc(
+    sub
+  )}</p>
+      ${buttonHtml(ctaPrimary.label || "Discover More", ctaPrimary.href || "#contact")}
+    </div>
+    <div class="animate-scale" style="position:relative;min-height:420px;">
+      <img src="${esc(img)}" alt="${esc(
+    businessName
+  )}" style="width:100%;height:100%;min-height:420px;object-fit:cover;border-radius:36px;" />
+    </div>
   </div>
 </section>
 <!-- /wp:html -->
 
 `;
 }
-function renderFeatures(section, schema, P, TEXT, MUTED, BG, SURF, sectionBg, typography, radius) {
-  const items = section.content?.items || section.items || [];
-  const variant = section.variant || "grid";
-  if (variant === "bento") {
-    const cards2 = items.map((item, i) => `
-<div class="bento-item hover-lift" style="grid-column: span ${i % 3 === 0 ? 2 : 1}; border-radius:${radius}; padding:50px; display:flex; flex-direction:column; gap:20px; background:${SURF}; border:1px solid ${schema.theme?.palette?.outline || "#e2e8f0"};">
-  <div style="font-size:2.5rem; opacity:0.3; font-family:'${typography.heading}',serif;">0${i + 1}</div>
-  <h3 style="font-family:'${typography.heading}',serif;font-size:2.2rem;font-weight:800;color:${TEXT};margin:0;letter-spacing:-0.03em;">${esc(item.title || item.name)}</h3>
-  <p style="color:${MUTED};line-height:1.6;font-size:1.15rem;margin:0;">${esc(item.description || item.body)}</p>
-</div>`).join("\n");
+function renderFeatures(section, context) {
+  const { typography, P, TEXT, MUTED, SURF, OUTLINE, radius, sectionBg } = context;
+  const items = getSectionItems(section);
+  const title = getSectionValue(section, ["title", "headline"], "Services");
+  const intro = getSectionValue(
+    section,
+    ["subheadline", "description"],
+    ""
+  );
+  const variant = normalizeVariant(section, "bento");
+  const wrap = (inner) => `<!-- wp:html -->
+<section class="section-padding" style="background:${sectionBg};">
+  <div class="section-shell">
+    <div style="display:flex;justify-content:space-between;align-items:end;gap:28px;flex-wrap:wrap;margin-bottom:66px;">
+      <div>
+        <div class="eyebrow">Services</div>
+        <h2 class="section-title">${esc(title)}</h2>
+      </div>
+      ${intro ? `<p class="section-copy">${esc(intro)}</p>` : ""}
+    </div>
+    ${inner}
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  if (variant === "editorial-list" || variant === "alternating-stack" || variant === "list") {
+    return wrap(`<div style="display:grid;gap:18px;">
+      ${items.map(
+      (item, index) => `<article class="hover-lift" style="display:grid;grid-template-columns:84px minmax(0,1fr);gap:22px;padding:28px 0;border-top:1px solid ${OUTLINE};">
+          <div style="font-family:'${typography.heading}',serif;font-size:2rem;color:${P};opacity:.64;">${String(
+        index + 1
+      ).padStart(2, "0")}</div>
+          <div>
+            <h3 style="font-family:'${typography.heading}',serif;font-size:2rem;letter-spacing:-.03em;color:${TEXT};margin:0 0 10px;">${esc(
+        item.title || item.name
+      )}</h3>
+            <p style="color:${MUTED};line-height:1.75;font-size:1.04rem;margin:0;max-width:760px;">${esc(
+        item.description || item.body
+      )}</p>
+          </div>
+        </article>`
+    ).join("")}
+    </div>`);
+  }
+  if (variant === "editorial-cards" || variant === "grid") {
+    return wrap(`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;">
+      ${items.map(
+      (item, index) => `<article class="glass hover-lift" style="padding:34px;border-radius:${radius};">
+          <div style="display:inline-flex;width:52px;height:52px;border-radius:16px;align-items:center;justify-content:center;background:rgba(${hexToRgb(
+        P
+      )},.12);color:${P};font-weight:800;margin-bottom:18px;">${index + 1}</div>
+          <h3 style="font-family:'${typography.heading}',serif;font-size:1.7rem;letter-spacing:-.03em;color:${TEXT};margin:0 0 10px;">${esc(
+        item.title || item.name
+      )}</h3>
+          <p style="color:${MUTED};line-height:1.72;font-size:1rem;margin:0;">${esc(
+        item.description || item.body
+      )}</p>
+        </article>`
+    ).join("")}
+    </div>`);
+  }
+  return wrap(`<div class="feature-bento" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;">
+      ${items.map((item, index) => {
+    const span = index === 0 ? "span 2" : index % 3 === 0 ? "span 2" : "span 1";
+    return `<article class="hover-lift" style="grid-column:${span};background:${SURF};border:1px solid ${OUTLINE};border-radius:${radius};padding:38px;">
+            <div style="font-family:'${typography.heading}',serif;font-size:2.4rem;color:${P};opacity:.42;margin-bottom:16px;">${String(
+      index + 1
+    ).padStart(2, "0")}</div>
+            <h3 style="font-family:'${typography.heading}',serif;font-size:2rem;line-height:.98;letter-spacing:-.035em;color:${TEXT};margin:0 0 12px;">${esc(
+      item.title || item.name
+    )}</h3>
+            <p style="color:${MUTED};line-height:1.72;font-size:1.03rem;margin:0;">${esc(
+      item.description || item.body
+    )}</p>
+          </article>`;
+  }).join("")}
+    </div>`);
+}
+function renderGallery(section, context) {
+  const { typography, TEXT, MUTED, sectionBg, radius } = context;
+  const items = getSectionItems(section).slice(0, 5);
+  const title = getSectionValue(section, ["title", "headline"], "Inside The Experience");
+  const intro = getSectionValue(
+    section,
+    ["subheadline", "description"],
+    "A visual sense of the work, atmosphere, and detail behind the brand."
+  );
+  const variant = normalizeVariant(section, "editorial-mosaic");
+  if (variant === "stacked-collage" || variant === "collage") {
     return `<!-- wp:html -->
 <section class="section-padding" style="background:${sectionBg};">
-  <div style="max-width:1400px;margin:0 auto;">
-    <div style="margin-bottom:80px;">
-      <h2 style="font-family:'${typography.heading}',serif;font-size:clamp(3rem,5vw,5rem);font-weight:900;color:${TEXT};line-height:1;letter-spacing:-0.04em;">${esc(section.content?.title || section.headline || "Services")}</h2>
+  <div class="section-shell">
+    <div style="margin-bottom:56px;">
+      <div class="eyebrow">Gallery</div>
+      <h2 class="section-title">${esc(title)}</h2>
+      <p class="section-copy">${esc(intro)}</p>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:24px;">
-      ${cards2}
+    <div class="gallery-stack" style="display:grid;grid-template-columns:1.2fr .8fr;gap:20px;align-items:start;">
+      <div style="display:grid;gap:20px;">
+        <figure class="hover-lift" style="margin:0;overflow:hidden;border-radius:${radius};"><img src="${esc(
+      items[0]?.src || items[0]?.url || ""
+    )}" alt="${esc(items[0]?.alt || title)}" style="width:100%;aspect-ratio:4/5;object-fit:cover;" /></figure>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;">
+          ${items.slice(1, 3).map(
+      (item) => `<figure class="hover-lift" style="margin:0;overflow:hidden;border-radius:${radius};"><img src="${esc(
+        item?.src || item?.url || ""
+      )}" alt="${esc(item?.alt || title)}" style="width:100%;aspect-ratio:1/1;object-fit:cover;" /></figure>`
+    ).join("")}
+        </div>
+      </div>
+      <div style="display:grid;gap:20px;">
+        ${items.slice(3, 5).map(
+      (item) => `<figure class="hover-lift" style="margin:0;overflow:hidden;border-radius:${radius};"><img src="${esc(
+        item?.src || item?.url || ""
+      )}" alt="${esc(item?.alt || title)}" style="width:100%;aspect-ratio:${item === items[3] ? "3/4" : "1/1"};object-fit:cover;" /></figure>`
+    ).join("")}
+      </div>
     </div>
   </div>
 </section>
@@ -797,23 +1051,24 @@ function renderFeatures(section, schema, P, TEXT, MUTED, BG, SURF, sectionBg, ty
 
 `;
   }
-  const cards = items.map((item, i) => `
-<div class="glass hover-lift" style="border-radius:${radius};padding:60px 45px;display:flex;flex-direction:column;gap:25px;">
-  <div style="width:64px;height:64px;border-radius:20px;background:${P};color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.8rem;box-shadow:0 15px 30px rgba(${hexToRgb(P)},0.25);">
-    ${i + 1}
-  </div>
-  <h3 style="font-family:'${typography.heading}',serif;font-size:1.8rem;font-weight:700;color:${TEXT};margin:0;letter-spacing:-0.02em;">${esc(item.title || item.name)}</h3>
-  <p style="color:${MUTED};line-height:1.7;font-size:1.1rem;margin:0;opacity:0.9;">${esc(item.description || item.body)}</p>
-</div>`).join("\n");
   return `<!-- wp:html -->
-<section class="section-padding section-features" style="background:${sectionBg};">
-  <div style="max-width:1300px;margin:0 auto;">
-    <div style="text-align:center;margin-bottom:100px;max-width:800px;margin-left:auto;margin-right:auto;">
-      <h2 style="font-family:'${typography.heading}',serif;font-size:clamp(2.5rem,5vw,4.5rem);font-weight:900;color:${TEXT};line-height:1;letter-spacing:-0.04em;margin-bottom:1.5rem;">${esc(section.content?.title || section.headline || "Unmatched Excellence")}</h2>
-      <div style="width:60px;height:4px;background:${P};margin:0 auto;"></div>
+<section class="section-padding" style="background:${sectionBg};">
+  <div class="section-shell">
+    <div style="display:flex;justify-content:space-between;align-items:end;gap:28px;flex-wrap:wrap;margin-bottom:56px;">
+      <div>
+        <div class="eyebrow">Gallery</div>
+        <h2 class="section-title">${esc(title)}</h2>
+      </div>
+      <p class="section-copy">${esc(intro)}</p>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:40px;">
-      ${cards}
+    <div class="gallery-editorial" style="display:grid;grid-template-columns:1.05fr .95fr .75fr;gap:20px;align-items:start;">
+      ${items.map(
+    (item, index) => `<figure class="hover-lift" style="margin:0;overflow:hidden;border-radius:${radius};grid-column:${index === 0 ? "span 2" : "span 1"};">
+          <img src="${esc(item?.src || item?.url || "")}" alt="${esc(
+      item?.alt || title
+    )}" style="width:100%;aspect-ratio:${index === 0 ? "16/10" : index % 2 === 0 ? "4/5" : "1/1"};object-fit:cover;" />
+        </figure>`
+  ).join("")}
     </div>
   </div>
 </section>
@@ -821,21 +1076,87 @@ function renderFeatures(section, schema, P, TEXT, MUTED, BG, SURF, sectionBg, ty
 
 `;
 }
-function renderGallery(section, schema, TEXT, Bg, typography) {
-  const items = section.content?.items || section.items || [];
-  const figures = items.slice(0, 4).map((item, i) => `
-<div class="hover-lift" style="overflow:hidden;border-radius:30px;aspect-ratio:${i % 2 === 0 ? "4/5" : "1"};position:relative;grid-column: span ${i === 0 ? 2 : 1};">
-  <img src="${esc(item.src || item.url)}" style="width:100%;height:100%;object-fit:cover;" alt="Gallery"/>
-</div>`).join("\n");
-  return `<!-- wp:html -->
-<section class="section-padding section-gallery" style="background:${Bg};">
-  <div style="max-width:1300px;margin:0 auto;">
-    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:80px;flex-wrap:wrap;gap:30px;">
-      <h2 style="font-family:'${typography.heading}',serif;font-size:clamp(2.5rem,5vw,4.5rem);font-weight:900;color:${TEXT};line-height:0.9;letter-spacing:-0.04em;">Inside The <br/><span class="text-gradient">Experience</span></h2>
-      <p style="max-width:400px;font-size:1.1rem;color:${Bg === "#fff" ? "#666" : "rgba(255,255,255,0.6)"};line-height:1.6;">${esc(section.content?.subheadline || section.subheadline || "A visual journey through our craft, space, and the results we deliver for our clients every day.")}</p>
+function renderTestimonials(section, context) {
+  const { typography, P, TEXT, MUTED, sectionBg, SURF, OUTLINE, radius } = context;
+  const items = getSectionItems(section);
+  const title = getSectionValue(section, ["title", "headline"], "What Clients Say");
+  const variant = normalizeVariant(section, "floating-cards");
+  if (variant === "editorial-quotes" || variant === "spotlight") {
+    const lead = items[0];
+    const supporting = items.slice(1);
+    return `<!-- wp:html -->
+<section class="section-padding" style="background:${sectionBg};">
+  <div class="section-shell">
+    <div style="margin-bottom:56px;text-align:center;">
+      <div class="eyebrow">Testimonials</div>
+      <h2 class="section-title">${esc(title)}</h2>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:25px;">
-      ${figures}
+    <div class="testimonial-featured" style="display:grid;grid-template-columns:1.15fr .85fr;gap:24px;">
+      <article class="hover-lift" style="background:${SURF};border:1px solid ${OUTLINE};border-radius:${radius};padding:42px;">
+        <div style="font-family:'${typography.heading}',serif;font-size:5rem;color:${P};opacity:.16;line-height:.7;">\u201C</div>
+        <p style="font-size:1.36rem;line-height:1.72;color:${TEXT};margin:-14px 0 22px;">${esc(
+      lead?.quote || ""
+    )}</p>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:50px;height:50px;border-radius:999px;background:${P};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;">${esc(
+      (lead?.author || "A").charAt(0)
+    )}</div>
+          <div><div style="font-weight:700;color:${TEXT};">${esc(
+      lead?.author || "Client"
+    )}</div><div style="font-size:.82rem;color:${MUTED};text-transform:uppercase;letter-spacing:.16em;">${esc(
+      lead?.role || "Verified Client"
+    )}</div></div>
+        </div>
+      </article>
+      <div style="display:grid;gap:20px;">
+        ${supporting.map(
+      (item) => `<article class="glass hover-lift" style="padding:28px;border-radius:${radius};">
+            <p style="font-size:1.02rem;line-height:1.72;color:${TEXT};margin:0 0 14px;">${esc(
+        item?.quote || ""
+      )}</p>
+            <div style="font-weight:700;color:${TEXT};">${esc(
+        item?.author || "Client"
+      )}</div>
+            <div style="font-size:.78rem;color:${P};text-transform:uppercase;letter-spacing:.16em;">${esc(
+        item?.role || "Verified Client"
+      )}</div>
+          </article>`
+    ).join("")}
+      </div>
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
+  return `<!-- wp:html -->
+<section class="section-padding" style="background:${sectionBg};">
+  <div class="section-shell">
+    <div style="margin-bottom:56px;text-align:center;">
+      <div class="eyebrow">Testimonials</div>
+      <h2 class="section-title">${esc(title)}</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px;">
+      ${items.map(
+    (item) => `<article class="glass hover-lift" style="padding:34px;border-radius:${radius};position:relative;">
+          <div style="font-family:'${typography.heading}',serif;font-size:4rem;color:${P};opacity:.12;line-height:.7;margin-bottom:10px;">\u201C</div>
+          <p style="font-size:1.06rem;line-height:1.74;color:${TEXT};margin:0 0 18px;">${esc(
+      item?.quote || ""
+    )}</p>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:44px;height:44px;border-radius:999px;background:${P};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;">${esc(
+      (item?.author || "A").charAt(0)
+    )}</div>
+            <div>
+              <div style="font-weight:700;color:${TEXT};">${esc(item?.author || "Client")}</div>
+              <div style="font-size:.78rem;color:${MUTED};text-transform:uppercase;letter-spacing:.16em;">${esc(
+      item?.role || "Verified Client"
+    )}</div>
+            </div>
+          </div>
+        </article>`
+  ).join("")}
     </div>
   </div>
 </section>
@@ -843,112 +1164,183 @@ function renderGallery(section, schema, TEXT, Bg, typography) {
 
 `;
 }
-function renderTestimonials(section, schema, P, TEXT, MUTED, Bg, typography) {
-  const items = section.content?.items || section.items || [];
-  const cards = items.map((item) => `
-<div class="glass" style="padding:50px;border-radius:40px;display:flex;flex-direction:column;gap:30px;position:relative;overflow:hidden;">
-  <div style="font-size:5rem;position:absolute;top:-10px;left:20px;opacity:0.05;font-family:serif;">&ldquo;</div>
-  <p style="font-size:1.3rem;font-weight:500;color:${TEXT};line-height:1.6;position:relative;z-index:2;">${esc(item.quote)}</p>
-  <div style="display:flex;align-items:center;gap:15px;">
-    <div style="width:50px;height:50px;background:${P};border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;">${item.author ? item.author.charAt(0) : "A"}</div>
+function renderFaq(section, context) {
+  const { typography, P, TEXT, MUTED, sectionBg, SURF, OUTLINE, radius } = context;
+  const items = getSectionItems(section);
+  const title = getSectionValue(section, ["title", "headline"], "Common Questions");
+  const variant = normalizeVariant(section, "cards");
+  if (variant === "split-columns" || variant === "grid") {
+    return `<!-- wp:html -->
+<section class="section-padding" style="background:${sectionBg};">
+  <div class="section-shell">
+    <div style="margin-bottom:56px;text-align:center;">
+      <div class="eyebrow">FAQ</div>
+      <h2 class="section-title">${esc(title)}</h2>
+    </div>
+    <div class="faq-split" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;">
+      ${items.map(
+      (item) => `<article class="hover-lift" style="background:${SURF};border:1px solid ${OUTLINE};border-radius:${radius};padding:28px;">
+          <h4 style="font-family:'${typography.heading}',serif;font-size:1.42rem;letter-spacing:-.02em;color:${TEXT};margin:0 0 10px;">${esc(
+        item?.question || item?.title || ""
+      )}</h4>
+          <p style="font-size:1rem;line-height:1.7;color:${MUTED};margin:0;">${esc(
+        item?.answer || item?.description || ""
+      )}</p>
+        </article>`
+    ).join("")}
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
+  return `<!-- wp:html -->
+<section class="section-padding" style="background:${sectionBg};">
+  <div class="section-shell" style="max-width:1080px;">
+    <div style="margin-bottom:44px;text-align:center;">
+      <div class="eyebrow">FAQ</div>
+      <h2 class="section-title">${esc(title)}</h2>
+    </div>
+    <div style="display:grid;gap:14px;">
+      ${items.map(
+    (item) => `<details class="glass hover-lift" style="padding:24px 28px;border-radius:${radius};">
+          <summary style="cursor:pointer;font-weight:700;font-size:1.04rem;color:${TEXT};list-style:none;">${esc(
+      item?.question || item?.title || ""
+    )}</summary>
+          <p style="font-size:1rem;line-height:1.72;color:${MUTED};margin:14px 0 0;">${esc(
+      item?.answer || item?.description || ""
+    )}</p>
+        </details>`
+  ).join("")}
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+}
+function renderCta(section, context) {
+  const { typography, P, TEXT, ACCENT, radius } = context;
+  const title = getSectionValue(section, ["title", "headline"], "Ready To Take The Next Step?");
+  const body = getSectionValue(
+    section,
+    ["body", "description", "subheadline"],
+    "Reach out and start the conversation."
+  );
+  const label = getSectionValue(section, ["buttonLabel"], "Contact Us");
+  const href = getSectionValue(section, ["buttonHref"], "#contact");
+  const variant = normalizeVariant(section, "gradient-band");
+  if (variant === "split-card" || variant === "side-by-side") {
+    return `<!-- wp:html -->
+<section class="section-padding" style="background:linear-gradient(135deg,rgba(${hexToRgb(
+      P
+    )},.14),rgba(${hexToRgb(
+      ACCENT
+    )},.18));">
+  <div class="section-shell cta-split" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:30px;align-items:center;background:#fff;border:1px solid rgba(${hexToRgb(
+      P
+    )},.12);border-radius:${radius};padding:42px;">
     <div>
-      <div style="font-weight:800;color:${TEXT};font-size:1.1rem;">${esc(item.author || item.name)}</div>
-      <div style="color:${P};font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;">${esc(item.role || "Verified Client")}</div>
+      <div class="eyebrow">Call To Action</div>
+      <h2 class="section-title" style="margin-top:18px;">${esc(title)}</h2>
+      <p class="section-copy">${esc(body)}</p>
     </div>
+    <div>${buttonHtml(label, href)}</div>
   </div>
-</div>`).join("\n");
+</section>
+<!-- /wp:html -->
+
+`;
+  }
   return `<!-- wp:html -->
-<section class="section-padding section-testimonials" style="background:${Bg};">
-  <div style="max-width:1200px;margin:0 auto;">
-    <h2 style="font-family:'${typography.heading}',serif;font-size:3.5rem;font-weight:900;color:${TEXT};margin-bottom:100px;text-align:center;letter-spacing:-0.03em;">What They <span class="text-gradient">Say</span></h2>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:30px;">
-      ${cards}
-    </div>
+<section class="section-padding" style="background:linear-gradient(135deg,${P},${ACCENT});position:relative;overflow:hidden;">
+  <div class="shape-orb" style="width:220px;height:220px;top:-60px;right:-40px;background:rgba(255,255,255,.12)"></div>
+  <div class="shape-orb" style="width:180px;height:180px;bottom:-40px;left:-50px;background:rgba(255,255,255,.08)"></div>
+  <div class="section-shell animate-up" style="text-align:center;position:relative;z-index:2;max-width:900px;">
+    <div class="eyebrow" style="background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.18);color:#fff">Call To Action</div>
+    <h2 style="font-family:'${typography.heading}',serif;font-size:clamp(2.8rem,6vw,5rem);line-height:.92;letter-spacing:-.05em;color:#fff;margin:24px 0 16px;">${esc(
+    title
+  )}</h2>
+    <p style="font-size:1.18rem;line-height:1.72;color:rgba(255,255,255,.86);max-width:640px;margin:0 auto 32px;">${esc(
+    body
+  )}</p>
+    ${buttonHtml(
+    label,
+    href,
+    `background:#fff!important;color:${P}!important;border-radius:${radius}!important`
+  )}
   </div>
 </section>
 <!-- /wp:html -->
 
 `;
 }
-function renderCTA(section, schema, P, TEXT, typography) {
-  const title = section.content?.title || section.title || "Ready to Level Up?";
-  const body = section.content?.body || section.body || "Join hundreds of businesses growing with our premium solutions.";
-  const label = section.content?.buttonLabel || section.buttonLabel || "Get Started Now";
-  return `<!-- wp:html -->
-<section class="section-cta" style="padding:140px 40px;background:linear-gradient(135deg, ${P}, #ec4899);text-align:center;position:relative;overflow:hidden;">
-  <div class="floating" style="position:absolute;top:-100px;right:-100px;width:300px;height:300px;background:rgba(255,255,255,0.1);border-radius:50%;"></div>
-  <div class="floating" style="position:absolute;bottom:-50px;left:-50px;width:200px;height:200px;background:rgba(255,255,255,0.05);border-radius:50%;animation-delay:2s;"></div>
-  <div style="max-width:900px;margin:0 auto;position:relative;z-index:5;">
-    <h2 style="font-family:'${typography.heading}',serif;font-size:clamp(3rem,6vw,5rem);font-weight:900;color:#fff;margin-bottom:2rem;line-height:1;letter-spacing:-0.04em;">${esc(title)}</h2>
-    <p style="font-size:1.4rem;color:rgba(255,255,255,0.9);margin-bottom:4rem;max-width:600px;margin-left:auto;margin-right:auto;line-height:1.5;">${esc(body)}</p>
-    <a class="wp-block-button__link" style="background:#fff!important;color:${P}!important;font-size:1.2rem;">${esc(label)}</a>
+function renderContact(section, context) {
+  const { typography, P, TEXT, MUTED, sectionBg, SURF, OUTLINE, radius, brand } = context;
+  const title = getSectionValue(section, ["title", "headline"], "Visit Or Reach Out");
+  const body = getSectionValue(
+    section,
+    ["body", "description", "subheadline"],
+    "We're ready when you are."
+  );
+  const variant = normalizeVariant(section, "split-card");
+  const contactFacts = [
+    brand.phone ? `<div><div style="font-size:.74rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:${P};margin-bottom:8px;">Phone</div><div style="font-size:1.18rem;color:${TEXT};">${esc(
+      brand.phone
+    )}</div></div>` : "",
+    brand.email && brand.email.includes("@") && !/^none|n\/a$/i.test(brand.email) ? `<div><div style="font-size:.74rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:${P};margin-bottom:8px;">Email</div><div style="font-size:1.18rem;color:${TEXT};">${esc(
+      brand.email
+    )}</div></div>` : "",
+    brand.address ? `<div><div style="font-size:.74rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:${P};margin-bottom:8px;">Address</div><div style="font-size:1.06rem;line-height:1.68;color:${TEXT};">${esc(
+      brand.address
+    )}</div></div>` : ""
+  ].filter(Boolean).join("");
+  if (variant === "minimal-centered" || variant === "centered") {
+    return `<!-- wp:html -->
+<section id="contact" class="section-padding" style="background:${sectionBg};">
+  <div class="section-shell" style="max-width:960px;text-align:center;">
+    <div class="eyebrow">Contact</div>
+    <h2 class="section-title" style="margin-top:18px;">${esc(title)}</h2>
+    <p class="section-copy" style="margin:0 auto 34px;">${esc(body)}</p>
+    <div style="display:grid;gap:18px;justify-items:center;">
+      ${contactFacts}
+    </div>
   </div>
 </section>
 <!-- /wp:html -->
 
 `;
-}
-function renderContact(section, schema, P, TEXT, MUTED, Bg, typography) {
-  const brand = schema.brand || {};
-  const variant = section.variant || "split";
-  const title = section.content?.title || section.title || "Let's Connect";
-  const body = section.content?.body || section.body || "We're ready to discuss your vision and how our expertise can bring it to life.";
+  }
   return `<!-- wp:html -->
-<section id="contact" class="section-padding section-contact" style="background:${Bg};">
-  <div style="max-width:1300px;margin:0 auto;display:grid;grid-template-columns:${variant === "split" ? "1fr 1fr" : "1fr"};gap:100px;align-items:center;">
-    <div class="animate-up" style="${variant === "centered" ? "text-align:center;" : ""}">
-      <h2 style="font-family:'${typography.heading}',serif;font-size:4.5rem;font-weight:900;color:${TEXT};margin-bottom:2rem;letter-spacing:-0.04em;line-height:0.9;">${esc(title).replace(" ", '<br/><span class="text-gradient">').concat("</span>")}</h2>
-      <p style="color:${MUTED};font-size:1.3rem;margin-bottom:4rem;line-height:1.6;">${esc(body)}</p>
-      
-      <div style="display:flex;flex-direction:column;gap:35px; ${variant === "centered" ? "align-items:center;" : ""}">
-        ${brand.phone ? `<div><h4 style="color:${P};font-weight:900;text-transform:uppercase;letter-spacing:0.1em;font-size:0.8rem;margin-bottom:10px;">Direct Line</h4><p style="font-size:1.8rem;font-weight:500;color:${TEXT}">${esc(brand.phone)}</p></div>` : ""}
-        ${brand.email && !brand.email.toLowerCase().includes("none") && !brand.email.toLowerCase().includes("n/a") && brand.email.includes("@") ? `<div><h4 style="color:${P};font-weight:900;text-transform:uppercase;letter-spacing:0.1em;font-size:0.8rem;margin-bottom:10px;">Email</h4><p style="font-size:1.8rem;font-weight:500;color:${TEXT}">${esc(brand.email)}</p></div>` : ""}
-        ${brand.address ? `<div><h4 style="color:${P};font-weight:900;text-transform:uppercase;letter-spacing:0.1em;font-size:0.8rem;margin-bottom:10px;">Location</h4><p style="font-size:1.4rem;font-weight:400;color:${TEXT};line-height:1.4;">${esc(brand.address)}</p></div>` : ""}
+<section id="contact" class="section-padding" style="background:${sectionBg};">
+  <div class="section-shell contact-grid" style="display:grid;grid-template-columns:minmax(0,.9fr) minmax(340px,.8fr);gap:28px;align-items:start;">
+    <div class="animate-up">
+      <div class="eyebrow">Contact</div>
+      <h2 class="section-title" style="margin-top:18px;">${esc(title)}</h2>
+      <p class="section-copy" style="margin-bottom:32px;">${esc(body)}</p>
+      <div style="display:grid;gap:24px;">${contactFacts}</div>
+    </div>
+    <div class="glass animate-scale" style="padding:32px;border-radius:${radius};">
+      <h3 style="font-family:'${typography.heading}',serif;font-size:1.9rem;letter-spacing:-.03em;color:${TEXT};margin:0 0 18px;">Send A Message</h3>
+      <div style="display:grid;gap:14px;">
+        <div style="height:54px;border-radius:14px;background:rgba(${hexToRgb(
+    P
+  )},.06);border:1px solid ${OUTLINE};"></div>
+        <div style="height:54px;border-radius:14px;background:rgba(${hexToRgb(
+    P
+  )},.06);border:1px solid ${OUTLINE};"></div>
+        <div style="height:148px;border-radius:14px;background:rgba(${hexToRgb(
+    P
+  )},.06);border:1px solid ${OUTLINE};"></div>
+        <div style="margin-top:6px;">${buttonHtml("Send Enquiry", "#")}</div>
       </div>
     </div>
-    ${variant === "split" ? `
-    <div class="glass animate-scale" style="padding:60px;border-radius:50px;">
-      <h3 style="font-family:'${typography.heading}',serif;font-size:2rem;font-weight:800;margin-bottom:2rem;">Send a Message</h3>
-      <div style="display:flex;flex-direction:column;gap:20px;">
-        <div style="height:60px;background:rgba(0,0,0,0.05);border-radius:15px;border:1px solid rgba(0,0,0,0.1);"></div>
-        <div style="height:60px;background:rgba(0,0,0,0.05);border-radius:15px;border:1px solid rgba(0,0,0,0.1);"></div>
-        <div style="height:150px;background:rgba(0,0,0,0.05);border-radius:15px;border:1px solid rgba(0,0,0,0.1);"></div>
-        <div style="height:60px;background:${P};border-radius:15px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;">Submit Enquiry</div>
-      </div>
-    </div>` : ""}
   </div>
 </section>
 <!-- /wp:html -->
 
 `;
-}
-function renderFAQ(section, schema, P, TEXT, MUTED, Bg, typography) {
-  const items = section.content?.items || section.items || [];
-  const variant = section.variant || "minimal";
-  const cards = items.map((item) => `
-<div class="glass" style="padding:40px;border-radius:25px; ${variant === "minimal" ? "background:transparent!important; border:none!important; border-bottom:1px solid rgba(0,0,0,0.1)!important; border-radius:0!important; padding:30px 0!important;" : ""}">
-  <h4 style="font-family:'${typography.heading}',serif;font-size:1.4rem;font-weight:800;color:${TEXT};margin-bottom:15px;line-height:1.3;">${esc(item.question || item.title)}</h4>
-  <p style="color:${MUTED};font-size:1.1rem;line-height:1.6;margin:0;">${esc(item.answer || item.description)}</p>
-</div>`).join("\n");
-  return `<!-- wp:html -->
-<section class="section-padding section-faq" style="background:${Bg};">
-  <div style="max-width:1100px;margin:0 auto;">
-    <h2 style="font-family:'${typography.heading}',serif;font-size:3.5rem;font-weight:900;color:${TEXT};margin-bottom:80px;text-align:center;letter-spacing:-0.03em;">${esc(section.content?.title || section.title || "Common Inquiries")}</h2>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(450px,1fr));gap:30px;">
-      ${cards}
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-}
-function hexToRgb(hex) {
-  const clean = hex.replace("#", "");
-  const r = parseInt(clean.slice(0, 2), 16) || 0;
-  const g = parseInt(clean.slice(2, 4), 16) || 0;
-  const b = parseInt(clean.slice(4, 6), 16) || 0;
-  return `${r},${g},${b}`;
 }
 var init_premium_site_builder = __esm({
   "src/lib/premium-site-builder.ts"() {
@@ -2801,48 +3193,77 @@ function ensureNonTemplateCopy(schema, business) {
   const categoryLabel = business.category || schema.brand.category || "local business";
   const businessName = business.name || schema.brand.businessName || "This business";
   const genericPattern = /^a\s+premium\s+.+website\s+designed\s+to\s+convert\s+visitors\s+into\s+customers\.?$/i;
-  const nextSections = (schema.sections || []).map((section) => {
-    let layout = "default";
-    switch (section.type) {
-      case "hero":
-        layout = "hero-immersive";
-        break;
-      case "features":
-        layout = "feature-grid";
-        break;
-      case "gallery":
-        layout = "gallery-masonry";
-        break;
-      case "testimonials":
-        layout = "testimonial-carousel";
-        break;
-      case "cta":
-        layout = "cta-split";
-        break;
-      case "faq":
-        layout = "faq-accordion";
-        break;
-      case "contact":
-        layout = "contact-form";
-        break;
-      default:
-        layout = "default";
+  const categoryNorm = (categoryLabel || "").toLowerCase();
+  const pickVariant = (sectionType) => {
+    if (sectionType === "hero") {
+      if (categoryNorm.includes("salon") || categoryNorm.includes("spa") || categoryNorm.includes("wellness")) {
+        return pickBySeed(["editorial", "centered", "split"], seed + 3);
+      }
+      if (categoryNorm.includes("gym") || categoryNorm.includes("fitness") || categoryNorm.includes("training")) {
+        return pickBySeed(["immersive", "split", "cinematic"], seed + 5);
+      }
+      if (categoryNorm.includes("dental") || categoryNorm.includes("law") || categoryNorm.includes("finance") || categoryNorm.includes("consult")) {
+        return pickBySeed(["centered", "editorial", "minimal"], seed + 7);
+      }
+      return pickBySeed(["editorial", "split", "immersive"], seed + 11);
     }
+    if (sectionType === "features") {
+      if (categoryNorm.includes("dental") || categoryNorm.includes("law") || categoryNorm.includes("finance") || categoryNorm.includes("consult")) {
+        return pickBySeed(
+          ["editorial-list", "editorial-cards", "bento"],
+          seed + 13
+        );
+      }
+      return pickBySeed(
+        ["bento", "editorial-cards", "editorial-list"],
+        seed + 17
+      );
+    }
+    if (sectionType === "gallery") {
+      return pickBySeed(
+        ["editorial-mosaic", "stacked-collage"],
+        seed + 19
+      );
+    }
+    if (sectionType === "testimonials") {
+      return pickBySeed(
+        ["floating-cards", "editorial-quotes", "spotlight"],
+        seed + 23
+      );
+    }
+    if (sectionType === "faq") {
+      return pickBySeed(["cards", "split-columns"], seed + 29);
+    }
+    if (sectionType === "cta") {
+      return pickBySeed(["gradient-band", "split-card"], seed + 31);
+    }
+    if (sectionType === "contact") {
+      return pickBySeed(["split-card", "minimal-centered"], seed + 37);
+    }
+    return "default";
+  };
+  const nextSections = (schema.sections || []).map((section) => {
+    const layout = pickVariant(section.type);
     const modified = {
       ...section,
-      layout
+      layout,
+      variant: section.variant || layout
     };
     if (section.type === "hero") {
       modified.ctaPrimary = modified.ctaPrimary || {};
-      modified.ctaPrimary.label = modified.ctaPrimary.label || "Learn More";
+      modified.ctaPrimary.label = modified.ctaPrimary.label || "Book Now";
       modified.ctaPrimary.href = modified.ctaPrimary.href || "#contact";
       if (modified.ctaSecondary) {
-        modified.ctaSecondary.href = modified.ctaSecondary.href || "#about";
+        modified.ctaSecondary.href = modified.ctaSecondary.href || "#services";
       }
+      modified.media = modified.media || {
+        src: business.photos?.[0] || business.imageSuggestions?.[0] || "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=80",
+        alt: `${businessName} hero image`
+      };
     }
     if (section.type === "cta") {
       modified.buttonHref = modified.buttonHref || "#contact";
-      modified.buttonLabel = modified.buttonLabel || "Get Started";
+      modified.buttonLabel = modified.buttonLabel || "Start Your Enquiry";
     }
     if (section.type === "gallery" && modified.items) {
       modified.items = modified.items.map((item) => ({
@@ -3710,110 +4131,97 @@ app.post("/api/generate", async (req, res) => {
     const specialties = Array.isArray(business.specialties) ? business.specialties.join(", ") : business.specialties || "General services";
     const tone = business.tone || "professional";
     const creativeSeed = `${business.id || "lead"}-${Date.now()}`;
-    const prompt = `You are an elite creative director and premium brand strategist crafting bespoke websites for local businesses. Every design must feel high-caliber, editorial, and distinctly tailored\u2014never templated or generic. Think Stripe, Framer, and award-winning product sites as inspiration, not local directory listings.
+    const prompt = `You are generating a PREMIUM WORDPRESS HOMEPAGE schema for a real local business.
 
-[CRITICAL MANDATE: LIGHT THEME ONLY]
-You must ONLY generate light themes. Dark modes, charcoal backgrounds, or night-mode aesthetics are STRICTLY FORBIDDEN. All generated hex codes for backgrounds and surfaces must have >90% brightness.
+This output is used to create the final WordPress site. Optimize for the WordPress result, not for a generic preview.
 
-## MANDATORY DESIGN PRINCIPLES
+PRIMARY OBJECTIVE:
+- Make the site feel bespoke, premium, and clearly different from other businesses.
+- Use category-aware composition, specific service copy, and distinct section rhythm.
+- Avoid anything that feels like a safe local-business template.
 
-### Light Theme Only
-- Background: white, cream, light stone, or pale tonal surfaces (never dark, never charcoal)
-- Surface: white, off-white, or very soft neutrals with fine borders
-- Text: dark gray to near-black for clarity and contrast
-- Accents: one bold primary accent, optionally one soft secondary accent
-- STRICTLY NO dark backgrounds, NO heavy blacks, NO night-mode aesthetics
+ABSOLUTE RULES:
+- Light theme only. No black or charcoal backgrounds. No dark hero sections.
+- Return valid JSON only.
+- Do not use generic phrases like "designed to convert", "cutting-edge", "innovative", "best-in-class", or "one-stop shop".
+- Hero must be first. Contact must be last.
+- Sections 2-6 may be reordered for uniqueness.
 
-### Premium Spacing & Composition
-- Generous margins and breathing room between sections
-- Asymmetrical layouts and editorial rhythm preferred over rigid grids
-- Section pacing that alternates between dense and open
-- Never cramped, never busy, always intentional
+SUPPORTED THEME ENUMS:
+- layout: "editorial" | "immersive" | "minimal" | "gallery-forward" | "split-screen"
+- buttonStyle: "pill" | "sharp" | "ghost"
+- surfaceStyle: "glass" | "solid" | "outline"
+- mediaShape: "rounded" | "arched" | "portrait" | "square"
+- density: "airy" | "balanced" | "compact"
+- accentMode: "neon" | "earthy" | "luxury" | "fresh"
 
-### Visual Distinction by Category
-Adapt the core design for category context:
-- **Cafe/Restaurant**: warm, editorial, organic rounded cards, terracotta/ochre accents, serif headlines
-- **Salon/Spa**: luxury minimalism, soft lavender/rose accents, elegant serif or high-fashion typography, split layouts
-- **Dental**: clinical calm, clinical luxury, mint/aqua accents, minimal serif/sans, plenty of white space
-- **Fitness**: energetic confidence, bright white base, bold teal/coral accents, sharp compact buttons, dynamic layout
-- **Real Estate**: architectural premium, warm stone base, slate/gold accents, large image blocks, clean geometry
-- **Dry Cleaning**: polished clinical, crisp blue accents, soft rounded containers, trust-focused messaging
-- **Professional/Consulting**: modern authority, restrained minimal, blue accents, strong sans-serif, high trust signals
+SUPPORTED SECTION VARIANTS:
+- hero.variant: "immersive" | "cinematic" | "editorial" | "editorial-split" | "magazine" | "centered" | "minimal" | "split"
+- features.variant: "bento" | "editorial-cards" | "editorial-list" | "alternating-stack" | "grid"
+- gallery.variant: "editorial-mosaic" | "stacked-collage" | "collage"
+- testimonials.variant: "floating-cards" | "editorial-quotes" | "spotlight"
+- faq.variant: "cards" | "split-columns" | "grid"
+- cta.variant: "gradient-band" | "split-card" | "side-by-side"
+- contact.variant: "split-card" | "minimal-centered" | "centered"
 
-### Uniqueness Enforcement
-- No two sections should use identical layouts or content structures
-- Avoid the pattern: hero \u2192 features \u2192 gallery \u2192 testimonials \u2192 FAQ \u2192 contact
-- Vary section order; hero and contact are anchors, but vary everything between
-- Use asymmetrical image compositions, split panels, bento grids\u2014not predictable photo carousels
+REQUIRED SECTIONS:
+- hero
+- features
+- gallery
+- testimonials
+- faq
+- cta
+- contact
 
-## SCHEMA REQUIREMENTS
+SECTION CONTENT RULES:
+- hero:
+  - strong headline
+  - specific subheadline tied to the business
+  - ctaPrimary with action label and href "#contact"
+  - optional ctaSecondary with href "#services" or "#gallery"
+  - media { src, alt }
+- features:
+  - 3 to 5 items
+  - use real service names or believable category-specific offerings
+  - descriptions must be concrete, not hype
+- gallery:
+  - 3 to 5 images
+  - use provided business photos first when available
+  - alt text must be descriptive
+- testimonials:
+  - 2 to 4 realistic quotes
+  - mention specific benefits or experiences
+- faq:
+  - 3 to 5 practical customer questions
+  - clear, grounded answers
+- cta:
+  - title
+  - body
+  - buttonLabel
+  - buttonHref "#contact"
+- contact:
+  - present the supplied business details professionally
+  - do not invent email addresses
 
-- **sections** array: 7-9 sections including hero, features, gallery, testimonials, faq, cta, and contact
-- **theme fields**: Set all of: name, style, layout, buttonStyle, surfaceStyle, mediaShape, density, accentMode, typography (heading + body), palette (all 7 colors: background, surface, primary, accent, text, muted, outline), radius, and **customCss** (Inject site-wide premium CSS here).
-- **section fields**: Each section can optionally include a **customCss** field for section-specific styling and a **variant** field (e.g., 'immersive', 'split', 'bento', 'grid').
-- **brand fields**: Include businessName, category, address, phone, email, websiteUri, and **logo** (use the detected logo URL if provided in context).
+UNIQUENESS RULES:
+- Use this seed to make layout and pacing distinct: ${creativeSeed}
+- Do not make every site use the same hero, same feature grid, and same gallery arrangement.
+- Make section order, section variant choices, and tone visibly specific to the business.
+- Match the category:
+  - salon/spa: elegant, airy, editorial
+  - cafe/restaurant: warm, sensory, layered
+  - dental/medical: calm, precise, trust-first
+  - gym/fitness: energetic, bold, high contrast in layout
+  - dry cleaning/laundry: polished, crisp, reassuring
+  - real estate/property: architectural, image-led
+  - professional services: restrained, authoritative
 
-## CUSTOM DESIGN INJECTION (CRITICAL)
-- Use the **customCss** fields to push the design beyond standard boundaries.
-- Implement modern trends: glassmorphism, subtle micro-interactions, complex gradients, and unique section transitions.
-- Use \`backdrop-filter: blur()\`, \`mask-image\`, \`clip-path\`, and CSS variables for a cohesive, premium look.
-- Ensure all custom CSS is scoped correctly or targets the specific section it's in.
-
-- **Typography pairing**: Choose one pairing from these premium tones:
-  - Luxury/Editorial: serif heading (Playfair, Cormorant, Fraunces) + neutral sans body (Inter, IBM Plex Sans)
-  - Modern/Clean: geometric sans heading (Space Grotesk, IBM Plex Sans, Inter) + humanist sans body (Inter)
-  - Clinical/Professional: precise sans heading (IBM Plex Sans) + calm sans body (Inter)
-  - Performance/Energetic: bold display heading (Space Grotesk) + compact sans body (Inter)
-- **Palette colors**: All hex values MUST be for modern light-theme targets: backgrounds light (>90% brightness, e.g., #FFFFFF, #F8FAFC), surfaces light (>85%), text dark (<30% brightness), accents bold but not neon. NEVER use dark background hex codes.
-
-## CONTENT REQUIREMENTS
-
-
-### Hero Section
-- Headline: business name or powerful, benefit-driven hook (not generic)
-- Subheadline: concrete value proposition mentioning category specifics (e.g., "Premium garment care for silk and wool", not "A modern website designed to convert")
-- CTA Primary: action-oriented (Book, Schedule, Learn, Discover\u2014not generic "Get Started")
-- CTA Secondary: optional info link
-- Badges: design system name or category positioning (optional)
-
-### Features (4-6 items)
-- Specific to category: use actual service names, not "Positioning", "Messaging", "Strategy"
-- Examples good: "Expert Color Consultation", "Stress-Free Scheduling", "Premium Material Handling"
-- Examples bad: "Quality Service", "Customer Focus", "Modern Design"
-- Descriptions: concrete benefits, not hype
-
-### Gallery (2-4 items)
-- Real images tied to business (photos or professional visuals)
-- Alt text: descriptive and specific (e.g., "Salon styling station with minimalist design" not "Image")
-
-### Testimonials (2-4 items)
-- Realistic-sounding names (Alex M., Jordan K., Casey P., Morgan T.)
-- Realistic roles (Regular Guest, Local Professional, Returning Client)
-- Quotes mention specific, concrete benefits (e.g., "The online booking made scheduling easy" not "Great service")
-
-### FAQ (4-6 items)
-- Real questions customers ask in this category
-- Answers: clear, professional, action-oriented
-- Category-specific tone and technical depth
-
-### CTA Section
-- Title: benefit-focused call to action
-- Body: brief, outcome-oriented copy
-- Button: action-oriented label
-
-### Contact Section
-- Standard fields with professional presentation
-
-## STYLE ENFORCEMENT
-
-- Tone: professional, human, conversational\u2014never corporate buzzwords
-- Avoid: "cutting-edge", "innovative", "best-in-class", "one-stop shop", "game-changing"
-- Avoid: repeated structures, generic starter phrases, filler words
-- Avoid: dark aesthetics, heavy fonts, cramped layouts, stock phrases
-
-## SEED GUIDANCE
-Use this seed to vary results uniquely: ${creativeSeed}
-Apply seed to: section ordering, layout choices, accent mood, typography pair selection, spacing density
+THEME RULES:
+- backgrounds and surfaces must be very light
+- text must be dark and readable
+- accents should feel premium and category-appropriate
+- typography should feel intentional
+- customCss is optional; include it only if it materially improves the final WordPress site
 
 Business Context:
 - Name: ${business.name}
@@ -3842,7 +4250,7 @@ ${buildReviewsBlock(business)}
 Reference Images:
 ${buildImageBlock(business)}
 
-Return only valid JSON matching the WebsiteSchema TypeScript interface. No markdown, no commentary, no explanations. Valid JSON only.`;
+Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
     const modelsToTry = [
       { name: "gemini-1.5-pro", timeoutMs: 65e3 },
       { name: "gemini-1.5-flash", timeoutMs: 35e3 }
