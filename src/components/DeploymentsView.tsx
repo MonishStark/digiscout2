@@ -1,7 +1,7 @@
 /** @format */
 
 import React, { useState } from "react";
-import { WebsiteProject } from "../types";
+import { WebsiteProject, Business } from "../types";
 import { renderWebsiteArtifact } from "../lib/website-renderer";
 import {
 	Globe,
@@ -20,10 +20,20 @@ import {
 	ExternalLink,
 	Send,
 	X,
+	Wand2,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { deleteProvisionedWordPressSite } from "../lib/wordpress-client";
+import { deleteProvisionedWordPressSite, provisionWordPressSite } from "../lib/wordpress-client";
+import { generateWebsite } from "../lib/gemini";
+import { schemaToGutenbergBlocks, buildWordPressProvisioningPlan } from "../lib/wordpress";
+import {
+	buildPreviewSummaryMarkdown,
+	fetchGenerationDebugSummary,
+	buildRendererVariantLog,
+	renderWordPressDebugHtml,
+	writeGenerationDebugFile,
+} from "../lib/generation-debug";
 
 interface DeploymentsViewProps {
 	projects: WebsiteProject[];
@@ -63,6 +73,166 @@ export default function DeploymentsView({
 				error instanceof Error ? error.message : "Failed to stop deployment.",
 			);
 			return false;
+		} finally {
+			setDeployingId(null);
+		}
+	};
+
+	const handleGenerateWebsiteForLead = async (project: WebsiteProject) => {
+		setDeployingId(project.id);
+		try {
+			console.log("[Generate] Starting website generation for lead:", project.businessName);
+			
+			// Construct a Business object from the lead's properties
+			const business: Business = {
+				id: project.businessId,
+				name: project.businessName,
+				category: project.businessCategory || "General",
+				address: project.businessAddress,
+				rating: project.rating,
+				reviewCount: project.reviewCount,
+				email: project.email,
+				phoneNumber: project.phoneNumber,
+				logo: project.logo,
+				location: { lat: 39.8283, lng: -98.5795 } // default US center
+			};
+
+			const generationResult = await generateWebsite(business);
+			const schema = generationResult.schema;
+			const debugTraceId = generationResult.debugTraceId;
+			const debugFallbackUsed = generationResult.debugFallbackUsed;
+			
+			console.log("[Generate] Schema generated for lead:", schema.meta?.siteId);
+			const combinedCode = renderWebsiteArtifact({
+				schema,
+				html: "",
+				css: "",
+				js: "",
+			});
+			const wordpressBlocks = schemaToGutenbergBlocks(schema);
+			const provisioningPlan = buildWordPressProvisioningPlan(schema, business);
+
+			if (debugTraceId) {
+				const debugSummary = await fetchGenerationDebugSummary(debugTraceId);
+				const wordpressDebugHtml = renderWordPressDebugHtml({
+					schema,
+					wordpressBlocks,
+					provisioningPlan,
+				});
+
+				await Promise.all([
+					writeGenerationDebugFile(
+						debugTraceId,
+						"06-renderer-input.json",
+						schema,
+					),
+					writeGenerationDebugFile(
+						debugTraceId,
+						"07-rendered-html.html",
+						combinedCode,
+					),
+					writeGenerationDebugFile(
+						debugTraceId,
+						"renderer_variant.log",
+						buildRendererVariantLog({
+							traceId: debugTraceId,
+							schema,
+							renderedHtml: combinedCode,
+							wordpressBlocks,
+							debugFallbackUsed,
+						}),
+					),
+					writeGenerationDebugFile(
+						debugTraceId,
+						"08-wordpress-blocks.html",
+						wordpressDebugHtml,
+					),
+					writeGenerationDebugFile(
+						debugTraceId,
+						"09-final-preview-summary.md",
+						buildPreviewSummaryMarkdown({
+							traceId: debugTraceId,
+							schema,
+							renderedHtml: combinedCode,
+							wordpressBlocks: wordpressDebugHtml,
+							summary: debugSummary,
+							debugFallbackUsed,
+						}),
+					),
+					writeGenerationDebugFile(
+						debugTraceId,
+						"10-errors.log",
+						[
+							...(debugSummary?.warnings || []).map(
+								(line) => `[warning] ${line}`,
+							),
+							...(debugSummary?.errors || []).map((line) => `[server] ${line}`),
+							...(debugFallbackUsed
+								? ["[fallback] backend fallback was used"]
+								: []),
+						].join("\n"),
+						true,
+					),
+				]).catch(err => console.warn("Failed to write debug files:", err));
+			}
+
+			// Update frontend state immediately to show generating progress
+			setProjects((prev) =>
+				prev.map((p) =>
+					p.id === project.id
+						? {
+								...p,
+								websiteContent: combinedCode,
+								websiteSchema: schema,
+								wordpressBlocks,
+								wordpressSiteType: "multisite",
+								provisioningStatus: "provisioning",
+								subsiteCreationStatus: "in_progress",
+								adminCreationStatus: "pending",
+								themeInstallStatus: "pending",
+								mediaImportStatus: "pending",
+								contentImportStatus: "pending",
+								homepageSetupStatus: "pending",
+								credentialsStatus: "pending",
+								outreachStatus: "Pending",
+							}
+						: p
+				)
+			);
+
+			console.log("[WordPress Provision] Provisioning WordPress site for lead:", project.businessName);
+			await provisionWordPressSite({
+				projectId: project.id,
+				business,
+				websiteSchema: schema,
+			});
+
+			setProjects((prev) =>
+				prev.map((p) =>
+					p.id === project.id
+						? {
+								...p,
+								provisioningStatus: "pending",
+								lastProvisionedAt: new Date().toISOString(),
+							}
+						: p
+				)
+			);
+
+		} catch (error) {
+			console.error("Failed to generate website for lead:", error);
+			alert("Failed to generate website. Check console.");
+			setProjects((prev) =>
+				prev.map((p) =>
+					p.id === project.id
+						? {
+								...p,
+								provisioningStatus: "failed",
+								provisioningError: String(error),
+							}
+						: p
+				)
+			);
 		} finally {
 			setDeployingId(null);
 		}
@@ -296,6 +466,8 @@ export default function DeploymentsView({
 		switch (project.provisioningStatus) {
 			case "completed":
 				return "CMS Ready";
+			case "lead":
+				return "Lead Profile";
 			case "pending":
 				return "Queueing";
 			case "creating_subdomain":
@@ -321,6 +493,8 @@ export default function DeploymentsView({
 		switch (project.provisioningStatus) {
 			case "completed":
 				return "border-cyan-200 bg-cyan-50 text-cyan-700";
+			case "lead":
+				return "border-violet-200 bg-violet-50 text-violet-700";
 			case "failed":
 				return "border-rose-200 bg-rose-50 text-rose-700";
 			case "pending":
@@ -340,7 +514,7 @@ export default function DeploymentsView({
 		const activeProjects = projects.filter(
 			(p) =>
 				p.provisioningStatus &&
-				!["completed", "failed", "ready", "dry-run"].includes(
+				!["completed", "failed", "ready", "dry-run", "lead"].includes(
 					p.provisioningStatus,
 				),
 		);
@@ -425,7 +599,19 @@ export default function DeploymentsView({
 								<div className='relative flex flex-col gap-5 xl:flex-row xl:items-stretch xl:gap-6'>
 									{/* ── MINI PREVIEW ── */}
 									<div className='relative h-[200px] w-full overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50 shadow-[0_20px_50px_rgba(15,23,42,0.08)] sm:h-[220px] xl:h-auto xl:w-[320px] xl:flex-shrink-0'>
-										{project.wordpressSiteUrl && isLive ? (
+										{project.provisioningStatus === "lead" ? (
+											<div className='flex h-full w-full flex-col items-center justify-center p-6 text-center'>
+												<div className='mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-violet-100 text-violet-600'>
+													<BriefcaseBusiness className='h-6 w-6' />
+												</div>
+												<p className='text-sm font-semibold text-slate-700'>
+													Lead Profile
+												</p>
+												<p className='mt-1 text-xs text-slate-500 max-w-[200px]'>
+													No website generated yet. Click "Generate Website" to start.
+												</p>
+											</div>
+										) : project.wordpressSiteUrl && isLive ? (
 											<iframe
 												src={project.wordpressSiteUrl}
 												className='absolute left-0 top-0 h-full w-full border-0'
@@ -544,19 +730,33 @@ export default function DeploymentsView({
 													)}
 												</div>
 												<div className='flex flex-wrap items-center gap-2 xl:justify-end'>
-													<Button
-														onClick={() => handleSendOutreach(project.id)}
-														disabled={
-															!isLive || sendingId === project.id
-														}
-														className='h-10 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60'>
-														{sendingId === project.id ? (
-															<Activity className='mr-2 h-4 w-4 animate-spin' />
-														) : (
-															<Mail className='mr-2 h-4 w-4' />
-														)}
-														Send Outreach
-													</Button>
+													{project.provisioningStatus === "lead" ? (
+														<Button
+															onClick={() => handleGenerateWebsiteForLead(project)}
+															disabled={isActionLoading}
+															className='h-10 rounded-2xl bg-violet-600 px-4 text-white hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60 border-none font-semibold flex items-center justify-center gap-2 shadow-xl shadow-violet-600/15'>
+															{isActionLoading ? (
+																<Activity className='h-4 w-4 animate-spin' />
+															) : (
+																<Wand2 className='h-4 w-4' />
+															)}
+															Generate Website
+														</Button>
+													) : (
+														<Button
+															onClick={() => handleSendOutreach(project.id)}
+															disabled={
+																!isLive || sendingId === project.id
+															}
+															className='h-10 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60'>
+															{sendingId === project.id ? (
+																<Activity className='mr-2 h-4 w-4 animate-spin' />
+															) : (
+																<Mail className='mr-2 h-4 w-4' />
+															)}
+															Send Outreach
+														</Button>
+													)}
 													<Button
 														onClick={() => handleDeleteLead(project.id)}
 														className='h-10 rounded-2xl border border-rose-200 bg-rose-50 px-4 text-rose-700 transition-all duration-200 hover:border-rose-600 hover:bg-rose-600 hover:text-white shadow-none'>

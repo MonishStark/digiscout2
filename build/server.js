@@ -1331,7 +1331,7 @@ async function initializeDatabase() {
 				project_id VARCHAR(255) NOT NULL,
 				business_name VARCHAR(255) NULL,
 				website_schema JSON NULL,
-				status ENUM('pending', 'creating_subdomain', 'creating_database', 'installing_wordpress', 'configuring_wordpress', 'deploying_content', 'validating', 'completed', 'failed') DEFAULT 'pending',
+				status ENUM('lead', 'pending', 'creating_subdomain', 'creating_database', 'installing_wordpress', 'configuring_wordpress', 'deploying_content', 'validating', 'completed', 'failed') DEFAULT 'lead',
 				subdomain VARCHAR(255) NULL,
 				db_name VARCHAR(255) NULL,
 				db_user VARCHAR(255) NULL,
@@ -1366,6 +1366,10 @@ async function initializeDatabase() {
 				INDEX idx_trace (trace_id)
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 		`);
+    try {
+      await pool.query(`ALTER TABLE provisioning_jobs MODIFY COLUMN status ENUM('lead', 'pending', 'creating_subdomain', 'creating_database', 'installing_wordpress', 'configuring_wordpress', 'deploying_content', 'validating', 'completed', 'failed') DEFAULT 'lead'`);
+    } catch (e) {
+    }
     try {
       await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN website_schema JSON NULL AFTER business_name`);
     } catch (e) {
@@ -2151,7 +2155,7 @@ async function pollQueue() {
     await connection.beginTransaction();
     const [rows] = await connection.query(`
 			SELECT id FROM provisioning_jobs 
-			WHERE status NOT IN ('completed', 'failed') 
+			WHERE status NOT IN ('completed', 'failed', 'lead') 
 			  AND (locked_at IS NULL OR locked_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE))
 			ORDER BY created_at ASC 
 			LIMIT 1
@@ -4284,7 +4288,7 @@ app.post(
   "/api/wordpress/provision-site",
   async (req, res) => {
     try {
-      const { projectId, business, websiteSchema, provisioningPlan } = req.body;
+      const { projectId, business, websiteSchema, provisioningPlan, status } = req.body;
       if (!projectId || !business || !websiteSchema) {
         return res.status(400).json({
           error: "Missing projectId, business, or websiteSchema."
@@ -4294,21 +4298,41 @@ app.post(
       const traceId = websiteSchema.meta?.traceId || websiteSchema._validation?.traceId || null;
       const isPreview = String(projectId).includes("preview-");
       const previewExpiresAt = isPreview ? new Date(Date.now() + 24 * 60 * 60 * 1e3) : null;
-      await pool.query(
-        `INSERT INTO provisioning_jobs (id, project_id, business_name, website_schema, status, trace_id, is_preview, preview_expires_at) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?)`,
-        [
-          jobId,
-          projectId,
-          business.name,
-          JSON.stringify(websiteSchema),
-          traceId,
-          isPreview,
-          previewExpiresAt
-        ]
+      const [existing] = await pool.query(
+        `SELECT id FROM provisioning_jobs WHERE project_id = ? LIMIT 1`,
+        [projectId]
       );
+      const targetStatus = status || "pending";
+      let activeJobId = jobId;
+      if (existing && existing.length > 0) {
+        activeJobId = existing[0].id;
+        await pool.query(
+          `UPDATE provisioning_jobs SET website_schema = ?, status = ?, trace_id = ?, updated_at = NOW() WHERE project_id = ?`,
+          [
+            JSON.stringify(websiteSchema),
+            targetStatus,
+            traceId,
+            projectId
+          ]
+        );
+      } else {
+        await pool.query(
+          `INSERT INTO provisioning_jobs (id, project_id, business_name, website_schema, status, trace_id, is_preview, preview_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            jobId,
+            projectId,
+            business.name,
+            JSON.stringify(websiteSchema),
+            targetStatus,
+            traceId,
+            isPreview,
+            previewExpiresAt
+          ]
+        );
+      }
       return res.json({
         success: true,
-        jobId,
+        jobId: activeJobId,
         message: isPreview ? "Preview provisioning queued" : "Provisioning job queued successfully",
         previewExpiresAt
       });

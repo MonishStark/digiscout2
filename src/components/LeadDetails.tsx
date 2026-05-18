@@ -44,8 +44,88 @@ export default function LeadDetails({
 	setActivePage,
 }: LeadDetailsProps) {
 	const [isGenerating, setIsGenerating] = useState(false);
+	const [isAddingLead, setIsAddingLead] = useState(false);
 
 	const existingProject = projects.find((p) => p.businessId === business.id);
+
+	const handleAddLead = async () => {
+		setIsAddingLead(true);
+		try {
+			const leadId = business.id + "-" + Date.now();
+			const partialSchema = {
+				schemaVersion: "1.0",
+				meta: {
+					siteId: leadId,
+					businessId: business.id,
+					slug: (business.name || "site")
+						.toLowerCase()
+						.replace(/[^a-z0-9]+/g, "-")
+						.replace(/(^-|-$)/g, ""),
+					version: 1,
+					target: "wordpress"
+				},
+				brand: {
+					businessName: business.name || "Demo Business",
+					category: business.category || "Local Business",
+					address: business.address || "",
+					phone: business.phoneNumber || "",
+					email: business.email || "",
+					websiteUri: business.websiteUri || "",
+					logo: business.logo || ""
+				},
+				_validation: {
+					rating: business.rating || 0,
+					reviewCount: business.reviewCount || 0
+				},
+				sections: []
+			};
+
+			const API_URL = ((import.meta as any).env?.VITE_API_URL as string | undefined) || "http://localhost:5001";
+			const response = await fetch(`${API_URL}/api/wordpress/provision-site`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					projectId: leadId,
+					business,
+					websiteSchema: partialSchema,
+					status: "lead"
+				}),
+			});
+
+			if (!response.ok) {
+				throw new Error("Failed to save lead");
+			}
+
+			if (setProjects) {
+				setProjects((prev) => {
+					const filtered = prev.filter((p) => p.businessId !== business.id);
+					return [
+						...filtered,
+						{
+							id: leadId,
+							businessId: business.id,
+							businessName: business.name,
+							businessCategory: business.category,
+							businessAddress: business.address,
+							rating: business.rating,
+							reviewCount: business.reviewCount,
+							email: business.email,
+							phoneNumber: business.phoneNumber,
+							logo: business.logo,
+							websiteContent: "",
+							websiteSchema: partialSchema as any,
+							provisioningStatus: "lead",
+						},
+					];
+				});
+			}
+		} catch (error) {
+			console.error("Failed to add lead:", error);
+			alert("Failed to add lead. Check console.");
+		} finally {
+			setIsAddingLead(false);
+		}
+	};
 
 	const getImageSources = () => {
 		const imageSources = [
@@ -364,25 +444,55 @@ export default function LeadDetails({
 								Automated Pitch Generation
 							</h3>
 							<p className='text-xs text-slate-600 mb-6 max-w-sm mx-auto'>
-								Use Gemini 3.1 Pro to create a premium website schema, preview
+								Create a premium website schema, preview
 								it instantly, and provision a dedicated WordPress Multisite CMS
 								for {business.name}.
 							</p>
-							<Button
-								onClick={handleGenerate}
-								disabled={isGenerating}
-								className='w-full bg-violet-600 hover:bg-violet-500 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-xl shadow-violet-600/15 text-white border-0 h-12'>
-								{isGenerating ? (
-									<span className='flex items-center gap-2'>
-										<Wand2 className='w-5 h-5 animate-spin' /> Generating &
-										Provisioning...
-									</span>
-								) : (
-									<span className='flex items-center gap-2'>
-										<Wand2 className='w-5 h-5' /> Generate & Provision Website
-									</span>
-								)}
-							</Button>
+							<div className='flex flex-col gap-3'>
+								<Button
+									onClick={handleAddLead}
+									disabled={isAddingLead}
+									className='w-full bg-violet-600 hover:bg-violet-500 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-xl shadow-violet-600/15 text-white border-0 h-12'>
+									{isAddingLead ? (
+										<span className='flex items-center gap-2'>
+											<Wand2 className='w-5 h-5 animate-spin' /> Adding to Leads...
+										</span>
+									) : (
+										<span className='flex items-center gap-2'>
+											<Wand2 className='w-5 h-5' /> Add to Leads
+										</span>
+									)}
+								</Button>
+								<Button
+									onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.name + ", " + business.address)}`, "_blank")}
+									className='w-full bg-white hover:bg-slate-50 py-3 rounded-xl font-bold text-sm transition-all text-slate-700 border border-slate-200 h-12 flex items-center justify-center gap-2 shadow-none'>
+									<MapPin className='w-4 h-4 text-rose-500' /> Open Google Maps Location
+								</Button>
+							</div>
+						</div>
+					) : existingProject.provisioningStatus === "lead" ? (
+						<div className='bg-violet-50 border border-violet-200 rounded-xl p-6 text-center'>
+							<div className='w-16 h-16 rounded-full bg-violet-100 border border-violet-200 flex items-center justify-center mx-auto mb-4'>
+								<CheckCircle2 className='w-8 h-8 text-violet-600' />
+							</div>
+							<h3 className='text-lg font-bold mb-2 text-violet-700'>
+								Lead Added!
+							</h3>
+							<p className='text-xs text-slate-600 mb-6 max-w-sm mx-auto'>
+								{business.name} is in your leads dashboard. You can generate a premium website prototype for them from the Leads tab.
+							</p>
+							<div className='flex flex-col gap-3'>
+								<Button
+									onClick={() => setActivePage?.("leads")}
+									className='w-full bg-violet-600 hover:bg-violet-500 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 text-white border-0 h-12 shadow-xl shadow-violet-600/15'>
+									Go to Leads <ChevronRight className='w-4 h-4 ml-1' />
+								</Button>
+								<Button
+									onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.name + ", " + business.address)}`, "_blank")}
+									className='w-full bg-white hover:bg-slate-50 py-3 rounded-xl font-bold text-sm transition-all text-slate-700 border border-slate-200 h-12 flex items-center justify-center gap-2 shadow-none'>
+									<MapPin className='w-4 h-4 text-rose-500' /> Open Google Maps Location
+								</Button>
+							</div>
 						</div>
 					) : (
 						<div className='bg-emerald-50 border border-emerald-200 rounded-xl p-6 text-center'>
@@ -397,11 +507,18 @@ export default function LeadDetails({
 								its WordPress Multisite provisioning status, site URL, and admin
 								access details.
 							</p>
-							<Button
-								onClick={() => setActivePage?.("leads")}
-								className='w-full bg-white hover:bg-slate-50 py-3 rounded-xl font-bold text-sm transition-all text-slate-700 border border-slate-200 h-12'>
-								Go to Leads <ChevronRight className='w-4 h-4 ml-1' />
-							</Button>
+							<div className='flex flex-col gap-3'>
+								<Button
+									onClick={() => setActivePage?.("leads")}
+									className='w-full bg-white hover:bg-slate-50 py-3 rounded-xl font-bold text-sm transition-all text-slate-700 border border-slate-200 h-12 shadow-none'>
+									Go to Leads <ChevronRight className='w-4 h-4 ml-1' />
+								</Button>
+								<Button
+									onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.name + ", " + business.address)}`, "_blank")}
+									className='w-full bg-white hover:bg-slate-50 py-3 rounded-xl font-bold text-sm transition-all text-slate-700 border border-slate-200 h-12 flex items-center justify-center gap-2 shadow-none'>
+									<MapPin className='w-4 h-4 text-rose-500' /> Open Google Maps Location
+								</Button>
+							</div>
 						</div>
 					)}
 				</div>

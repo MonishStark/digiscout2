@@ -22,7 +22,7 @@ export async function initializeDatabase() {
 				project_id VARCHAR(255) NOT NULL,
 				business_name VARCHAR(255) NULL,
 				website_schema JSON NULL,
-				status ENUM('pending', 'creating_subdomain', 'creating_database', 'installing_wordpress', 'configuring_wordpress', 'deploying_content', 'validating', 'completed', 'failed') DEFAULT 'pending',
+				status ENUM('lead', 'pending', 'creating_subdomain', 'creating_database', 'installing_wordpress', 'configuring_wordpress', 'deploying_content', 'validating', 'completed', 'failed') DEFAULT 'lead',
 				subdomain VARCHAR(255) NULL,
 				db_name VARCHAR(255) NULL,
 				db_user VARCHAR(255) NULL,
@@ -61,6 +61,9 @@ export async function initializeDatabase() {
 		`);
 
 		// Migrations
+		try {
+			await pool.query(`ALTER TABLE provisioning_jobs MODIFY COLUMN status ENUM('lead', 'pending', 'creating_subdomain', 'creating_database', 'installing_wordpress', 'configuring_wordpress', 'deploying_content', 'validating', 'completed', 'failed') DEFAULT 'lead'`);
+		} catch (e) {}
 		try {
 			await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN website_schema JSON NULL AFTER business_name`);
 		} catch (e) {}

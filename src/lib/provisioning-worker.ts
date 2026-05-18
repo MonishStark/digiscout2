@@ -28,7 +28,7 @@ async function pollQueue() {
 
 		const [rows]: any = await connection.query(`
 			SELECT id FROM provisioning_jobs 
-			WHERE status NOT IN ('completed', 'failed') 
+			WHERE status NOT IN ('completed', 'failed', 'lead') 
 			  AND (locked_at IS NULL OR locked_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE))
 			ORDER BY created_at ASC 
 			LIMIT 1
