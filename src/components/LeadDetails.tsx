@@ -75,7 +75,10 @@ export default function LeadDetails({
 				},
 				_validation: {
 					rating: business.rating || 0,
-					reviewCount: business.reviewCount || 0
+					reviewCount: business.reviewCount || 0,
+					photos: business.photos || [],
+					imageSuggestions: business.imageSuggestions || [],
+					logo: business.logo || "",
 				},
 				sections: []
 			};
@@ -112,6 +115,8 @@ export default function LeadDetails({
 							email: business.email,
 							phoneNumber: business.phoneNumber,
 							logo: business.logo,
+							photos: business.photos || [],
+							imageSuggestions: business.imageSuggestions || [],
 							websiteContent: "",
 							websiteSchema: partialSchema as any,
 							provisioningStatus: "lead",
@@ -286,6 +291,8 @@ export default function LeadDetails({
 							email: business.email,
 							phoneNumber: business.phoneNumber,
 							logo: business.logo,
+							photos: business.photos || [],
+							imageSuggestions: business.imageSuggestions || [],
 							websiteContent: combinedCode,
 							websiteSchema: schema,
 							wordpressBlocks,

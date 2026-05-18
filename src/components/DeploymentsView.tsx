@@ -103,6 +103,12 @@ export default function DeploymentsView({
 				email: project.email,
 				phoneNumber: project.phoneNumber,
 				logo: project.logo,
+				photos:
+					project.photos ||
+					((project.websiteSchema as any)?._validation?.photos ?? []),
+				imageSuggestions:
+					project.imageSuggestions ||
+					((project.websiteSchema as any)?._validation?.imageSuggestions ?? []),
 				location: { lat: 39.8283, lng: -98.5795 } // default US center
 			};
 
@@ -220,6 +226,9 @@ export default function DeploymentsView({
 								websiteContent: combinedCode,
 								websiteSchema: schema,
 								wordpressBlocks,
+								photos: p.photos || business.photos || [],
+								imageSuggestions:
+									p.imageSuggestions || business.imageSuggestions || [],
 								wordpressSiteType: "multisite",
 								provisioningStatus: "provisioning",
 								subsiteCreationStatus: "in_progress",

@@ -1204,7 +1204,18 @@ function enforceLightTheme(
 	};
 }
 
-function pickDesignProfile(category: string) {
+function collectBusinessImages(business: any): string[] {
+	return Array.from(
+		new Set(
+			[...(business?.photos || []), ...(business?.imageSuggestions || [])].filter(
+				(value): value is string =>
+					typeof value === "string" && value.trim().length > 0,
+			),
+		),
+	);
+}
+
+function pickDesignProfile(category: string, seed = 0) {
 	const normalized = (category || "").toLowerCase();
 
 	if (
@@ -1212,26 +1223,51 @@ function pickDesignProfile(category: string) {
 		normalized.includes("cafe") ||
 		normalized.includes("bakery")
 	) {
-		return {
-			name: "Warm Editorial",
-			style: "editorial hospitality",
-			layout: "editorial" as const,
-			buttonStyle: "pill" as const,
-			surfaceStyle: "glass" as const,
-			mediaShape: "arched" as const,
-			density: "airy" as const,
-			accentMode: "earthy" as const,
-			palette: {
-				background: "#fcf3ea",
-				surface: "#ffffff",
-				primary: "#c2410c",
-				accent: "#f59e0b",
-				text: "#1f2937",
-				muted: "#6b7280",
-				outline: "rgba(194, 65, 12, 0.12)",
-			},
-			typography: { heading: "Playfair Display", body: "Inter" },
-		};
+		return pickBySeed(
+			[
+				{
+					name: "Warm Editorial",
+					style: "editorial hospitality",
+					layout: "editorial" as const,
+					buttonStyle: "pill" as const,
+					surfaceStyle: "glass" as const,
+					mediaShape: "arched" as const,
+					density: "airy" as const,
+					accentMode: "earthy" as const,
+					palette: {
+						background: "#fcf3ea",
+						surface: "#ffffff",
+						primary: "#c2410c",
+						accent: "#f59e0b",
+						text: "#1f2937",
+						muted: "#6b7280",
+						outline: "rgba(194, 65, 12, 0.12)",
+					},
+					typography: { heading: "Playfair Display", body: "Inter" },
+				},
+				{
+					name: "Layered Bistro",
+					style: "sensory hospitality",
+					layout: "gallery-forward" as const,
+					buttonStyle: "sharp" as const,
+					surfaceStyle: "solid" as const,
+					mediaShape: "rounded" as const,
+					density: "balanced" as const,
+					accentMode: "earthy" as const,
+					palette: {
+						background: "#f8f1ea",
+						surface: "#fffdf9",
+						primary: "#9a3412",
+						accent: "#d97706",
+						text: "#292524",
+						muted: "#78716c",
+						outline: "rgba(154, 52, 18, 0.12)",
+					},
+					typography: { heading: "Cormorant Garamond", body: "Inter" },
+				},
+			],
+			seed + 101,
+		);
 	}
 
 	if (
@@ -1239,26 +1275,91 @@ function pickDesignProfile(category: string) {
 		normalized.includes("spa") ||
 		normalized.includes("wellness")
 	) {
-		return {
-			name: "Soft Luxe",
-			style: "luxury wellness",
-			layout: "split-screen" as const,
-			buttonStyle: "pill" as const,
-			surfaceStyle: "glass" as const,
-			mediaShape: "portrait" as const,
-			density: "balanced" as const,
-			accentMode: "luxury" as const,
-			palette: {
-				background: "#f8f4f5",
-				surface: "#ffffff",
-				primary: "#9333ea",
-				accent: "#e9d5ff",
-				text: "#1f2937",
-				muted: "#9ca3af",
-				outline: "rgba(147, 51, 234, 0.12)",
-			},
-			typography: { heading: "Cormorant Garamond", body: "Inter" },
-		};
+		return pickBySeed(
+			[
+				{
+					name: "Soft Luxe",
+					style: "luxury wellness",
+					layout: "split-screen" as const,
+					buttonStyle: "pill" as const,
+					surfaceStyle: "glass" as const,
+					mediaShape: "portrait" as const,
+					density: "balanced" as const,
+					accentMode: "luxury" as const,
+					palette: {
+						background: "#f8f4f5",
+						surface: "#ffffff",
+						primary: "#9333ea",
+						accent: "#e9d5ff",
+						text: "#1f2937",
+						muted: "#9ca3af",
+						outline: "rgba(147, 51, 234, 0.12)",
+					},
+					typography: { heading: "Cormorant Garamond", body: "Inter" },
+				},
+				{
+					name: "Editorial Blush",
+					style: "airy salon editorial",
+					layout: "editorial" as const,
+					buttonStyle: "ghost" as const,
+					surfaceStyle: "outline" as const,
+					mediaShape: "arched" as const,
+					density: "airy" as const,
+					accentMode: "luxury" as const,
+					palette: {
+						background: "#fbf6f3",
+						surface: "#fffdfb",
+						primary: "#b45363",
+						accent: "#f4c2d7",
+						text: "#2d1f24",
+						muted: "#7f6a72",
+						outline: "rgba(180, 83, 99, 0.12)",
+					},
+					typography: { heading: "Playfair Display", body: "Plus Jakarta Sans" },
+				},
+				{
+					name: "Champagne Studio",
+					style: "polished beauty studio",
+					layout: "gallery-forward" as const,
+					buttonStyle: "sharp" as const,
+					surfaceStyle: "solid" as const,
+					mediaShape: "rounded" as const,
+					density: "balanced" as const,
+					accentMode: "earthy" as const,
+					palette: {
+						background: "#faf7f1",
+						surface: "#fffdfa",
+						primary: "#8b6b3f",
+						accent: "#d4b483",
+						text: "#2b2117",
+						muted: "#8b8177",
+						outline: "rgba(139, 107, 63, 0.12)",
+					},
+					typography: { heading: "Cormorant Garamond", body: "Outfit" },
+				},
+				{
+					name: "Modern Atelier",
+					style: "clean creative salon",
+					layout: "minimal" as const,
+					buttonStyle: "pill" as const,
+					surfaceStyle: "glass" as const,
+					mediaShape: "square" as const,
+					density: "compact" as const,
+					accentMode: "fresh" as const,
+					palette: {
+						background: "#f5f4f8",
+						surface: "#ffffff",
+						primary: "#4f46e5",
+						accent: "#c7d2fe",
+						text: "#1f2937",
+						muted: "#6b7280",
+						outline: "rgba(79, 70, 229, 0.10)",
+					},
+					typography: { heading: "Space Grotesk", body: "Inter" },
+				},
+			],
+			seed + 131,
+		);
 	}
 
 	if (
@@ -1393,26 +1494,51 @@ function pickDesignProfile(category: string) {
 		};
 	}
 
-	return {
-		name: "Luxe Bright",
-		style: "premium luminous editorial",
-		layout: "editorial" as const,
-		buttonStyle: "pill" as const,
-		surfaceStyle: "glass" as const,
-		mediaShape: "rounded" as const,
-		density: "balanced" as const,
-		accentMode: "neon" as const,
-		palette: {
-			background: "#f8fafc",
-			surface: "#ffffff",
-			primary: "#7c3aed",
-			accent: "#0ea5e9",
-			text: "#0f172a",
-			muted: "#64748b",
-			outline: "rgba(124, 58, 237, 0.12)",
-		},
-		typography: { heading: "Inter", body: "Inter" },
-	};
+	return pickBySeed(
+		[
+			{
+				name: "Luxe Bright",
+				style: "premium luminous editorial",
+				layout: "editorial" as const,
+				buttonStyle: "pill" as const,
+				surfaceStyle: "glass" as const,
+				mediaShape: "rounded" as const,
+				density: "balanced" as const,
+				accentMode: "neon" as const,
+				palette: {
+					background: "#f8fafc",
+					surface: "#ffffff",
+					primary: "#7c3aed",
+					accent: "#0ea5e9",
+					text: "#0f172a",
+					muted: "#64748b",
+					outline: "rgba(124, 58, 237, 0.12)",
+				},
+				typography: { heading: "Inter", body: "Inter" },
+			},
+			{
+				name: "Studio Neutral",
+				style: "minimal luminous studio",
+				layout: "minimal" as const,
+				buttonStyle: "sharp" as const,
+				surfaceStyle: "outline" as const,
+				mediaShape: "arched" as const,
+				density: "airy" as const,
+				accentMode: "fresh" as const,
+				palette: {
+					background: "#f8f7f4",
+					surface: "#fffefd",
+					primary: "#1d4ed8",
+					accent: "#14b8a6",
+					text: "#1f2937",
+					muted: "#6b7280",
+					outline: "rgba(29, 78, 216, 0.10)",
+				},
+				typography: { heading: "IBM Plex Serif", body: "Inter" },
+			},
+		],
+		seed + 199,
+	);
 }
 
 function buildCategorySpecificFeatures(
@@ -1858,7 +1984,8 @@ function createFallbackWebsiteSchema(business: any): WebsiteSchema {
 	const siteName = business.name || "Demo Business";
 	const categoryLabel = business.category || "local business";
 	const copySeed = hashSeed(`${business.id || siteName}-${categoryLabel}`);
-	const design = pickDesignProfile(business.category || "");
+	const design = pickDesignProfile(business.category || "", copySeed);
+	const imagePool = collectBusinessImages(business);
 	const layoutVariant = pickBySeed(
 		[
 			"editorial",
@@ -1895,7 +2022,7 @@ function createFallbackWebsiteSchema(business: any): WebsiteSchema {
 					: "split";
 	const featureLayout = layoutVariant === "minimal" ? "list" : "cards";
 	const heroImage =
-		business.photos?.[0] ||
+		imagePool[0] ||
 		"https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=80";
 	const heroSubheadline = buildUniqueHeroSubheadline(
 		siteName,
@@ -1962,17 +2089,26 @@ function createFallbackWebsiteSchema(business: any): WebsiteSchema {
 				items: [
 					{
 						src:
-							business.photos?.[1] ||
-							business.photos?.[0] ||
+							imagePool[1] ||
+							imagePool[0] ||
 							"https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1200&q=80",
 						alt: `${siteName} gallery 1`,
 					},
 					{
 						src:
-							business.photos?.[2] ||
-							business.photos?.[1] ||
+							imagePool[2] ||
+							imagePool[1] ||
+							imagePool[0] ||
 							"https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80",
 						alt: `${siteName} gallery 2`,
+					},
+					{
+						src:
+							imagePool[3] ||
+							imagePool[2] ||
+							imagePool[1] ||
+							"https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1200&q=80",
+						alt: `${siteName} gallery 3`,
 					},
 				],
 			});
@@ -2043,6 +2179,7 @@ function createFallbackWebsiteSchema(business: any): WebsiteSchema {
 			phone: business.phoneNumber || "",
 			email: business.email || "",
 			websiteUri: business.websiteUri || "",
+			logo: business.logo || imagePool[0] || "",
 		},
 		seo: {
 			title: `${siteName} | Preview`,
@@ -2055,6 +2192,13 @@ function createFallbackWebsiteSchema(business: any): WebsiteSchema {
 			],
 		},
 		sections: allSections,
+		_validation: {
+			repairs: [],
+			validatedAt: new Date().toISOString(),
+			photos: business.photos || [],
+			imageSuggestions: business.imageSuggestions || [],
+			logo: business.logo || "",
+		} as any,
 	};
 
 	return ensureNonTemplateCopy(schema, business);
@@ -2114,10 +2258,14 @@ app.post("/api/generate", async (req: Request, res: Response) => {
 		}
 
 		const buildImageBlock = (b: any) => {
-
-			const sources = [...(b.photos || []), ...(b.imageSuggestions || [])];
+			const sources = collectBusinessImages(b);
 			return sources.length
-				? sources.map((u: string, i: number) => `${i + 1}. ${u}`).join("\n")
+				? sources
+						.map(
+							(u: string, i: number) =>
+								`${i + 1}. ${u}${i < (b.photos || []).length ? " (business photo / Google Maps source)" : " (additional reference image)"}`,
+						)
+						.join("\n")
 				: "No direct image URLs provided.";
 		};
 
@@ -2158,6 +2306,8 @@ ABSOLUTE RULES:
 - Do not use generic phrases like "designed to convert", "cutting-edge", "innovative", "best-in-class", or "one-stop shop".
 - Hero must be first. Contact must be last.
 - Sections 2-6 may be reordered for uniqueness.
+- If reference images are provided, use those exact URLs first for hero and gallery media.
+- Do not use unrelated stock imagery when real business photos are available.
 
 SUPPORTED THEME ENUMS:
 - layout: "editorial" | "immersive" | "minimal" | "gallery-forward" | "split-screen"
@@ -2199,6 +2349,7 @@ SECTION CONTENT RULES:
 - gallery:
   - 3 to 5 images
   - use provided business photos first when available
+  - do not substitute unrelated imagery if business photos already cover the scene, storefront, staff, work, or interior
   - alt text must be descriptive
 - testimonials:
   - 2 to 4 realistic quotes
@@ -2280,9 +2431,13 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 			try {
 				const restUrl = process.env.GEMINI_REST_URL;
 				if (restUrl && GENAI_KEY) {
-					console.error(`[Gemini] Attempting direct REST call to ${restUrl}...`);
+					const modelRestUrl = restUrl.replace(
+						/\/models\/[^/:?]+(?=:generateContent)/,
+						`/models/${model.name}`,
+					);
+					console.error(`[Gemini] Attempting direct REST call to ${modelRestUrl}...`);
 
-					const url = `${restUrl}${restUrl.includes("?") ? "&" : "?"}key=${GENAI_KEY}`;
+					const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${GENAI_KEY}`;
 
 					const fetchResponse = await Promise.race([
 
@@ -3013,6 +3168,9 @@ app.get("/api/leads", async (req, res) => {
 				reviewCount: schema._validation?.reviewCount || 0,
 				email: schema.brand?.email || "",
 				phoneNumber: schema.brand?.phone || "",
+				logo: schema.brand?.logo || schema._validation?.logo || "",
+				photos: schema._validation?.photos || [],
+				imageSuggestions: schema._validation?.imageSuggestions || [],
 				wordpressPassword: rawPassword,
 				websiteContent: "", 
 			};

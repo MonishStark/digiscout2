@@ -333,6 +333,9 @@ export interface WebsiteProject extends WordPressProvisioningState {
 	reviewCount?: number;
 	email?: string;
 	phoneNumber?: string;
+	logo?: string;
+	photos?: string[];
+	imageSuggestions?: string[];
 	websiteContent: string;
 	websiteSchema?: WebsiteSchema;
 	wordpressBlocks?: string;
