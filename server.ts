@@ -2539,105 +2539,92 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 			{ name: "gemini-flash-latest", timeoutMs: 45000 },
 		] as const;
 
+		const callGeminiText = async (
+			promptText: string,
+			stageLabel: "schema" | "wordpress-html",
+		): Promise<string> => {
+			let stageRawText = "";
+			let stageLastError: unknown = null;
+
+			for (const model of modelsToTry) {
+				try {
+					const restUrl = process.env.GEMINI_REST_URL;
+					if (restUrl && GENAI_KEY) {
+						const modelRestUrl = restUrl.includes("{model}")
+							? restUrl.replace("{model}", model.name)
+							: restUrl;
+						console.error(`[Gemini] Attempting ${stageLabel} direct REST call to ${modelRestUrl}...`);
+
+						const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${GENAI_KEY}`;
+
+						const fetchResponse = await Promise.race([
+							fetch(url, {
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({
+									contents: [{ parts: [{ text: promptText }] }],
+									generationConfig: {
+										temperature: stageLabel === "schema" ? 0.9 : 0.75,
+										maxOutputTokens: stageLabel === "schema" ? 8192 : 12288,
+									},
+								}),
+							}),
+							new Promise<Response>((_, reject) =>
+								setTimeout(() => reject(new Error(`REST timeout after ${model.timeoutMs}ms`)), model.timeoutMs)
+							),
+						]);
+
+						if (!fetchResponse.ok) {
+							throw new Error(`REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`);
+						}
+
+						const data = await fetchResponse.json() as any;
+						stageRawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+					} else {
+						console.error(`[Gemini] Attempting ${stageLabel} SDK call for ${model.name}...`);
+						const genAI = await getSDKGenAI();
+						if (!genAI) {
+							throw new Error("Gemini SDK not available.");
+						}
+						const response = (await Promise.race([
+							genAI.getGenerativeModel({ model: model.name }).generateContent(promptText),
+							new Promise((_, reject) =>
+								setTimeout(
+									() =>
+										reject(
+											new Error(`${model.name} request timed out after ${model.timeoutMs}ms`),
+										),
+									model.timeoutMs,
+								),
+							),
+						])) as any;
+
+						const result = await response.response;
+						stageRawText = result.text().trim();
+					}
+
+					if (stageRawText) {
+						console.error(`[Gemini] ${model.name} ${stageLabel} success! Response length: ${stageRawText.length}`);
+						return stageRawText;
+					}
+
+					console.error(`[Gemini] ${model.name} returned empty ${stageLabel} text.`);
+				} catch (error) {
+					stageLastError = error;
+					console.error(`[Gemini] ${model.name} ${stageLabel} failed:`, error instanceof Error ? error.message : error);
+					fs.writeSync(2, `[Gemini] ${stageLabel.toUpperCase()} ERROR DETAIL: ${JSON.stringify(error)}\n`);
+				}
+			}
+
+			throw stageLastError || new Error(`All Gemini ${stageLabel} attempts failed`);
+		};
+
 		console.error(`[Gemini] Starting generation for ${business.name} with model ${modelsToTry[0].name}`);
 		fs.writeSync(2, `\n--- GEMINI PROMPT START ---\n${prompt}\n--- GEMINI PROMPT END ---\n`);
 		persistGenerationDebugFile(debugSession, "02-generation-prompt.md", prompt);
 
-		let rawText = "";
-		let lastError: unknown = null;
-
-		for (const model of modelsToTry) {
-			try {
-				const restUrl = process.env.GEMINI_REST_URL;
-				if (restUrl && GENAI_KEY) {
-					const modelRestUrl = restUrl.includes("{model}")
-						? restUrl.replace("{model}", model.name)
-						: restUrl;
-					console.error(`[Gemini] Attempting direct REST call to ${modelRestUrl}...`);
-
-					const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${GENAI_KEY}`;
-
-					const fetchResponse = await Promise.race([
-
-						fetch(url, {
-							method: "POST",
-							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({
-								contents: [{ parts: [{ text: prompt }] }],
-								generationConfig: {
-									temperature: 0.9,
-									maxOutputTokens: 8192,
-								},
-							}),
-						}),
-
-						new Promise<Response>((_, reject) =>
-							setTimeout(() => reject(new Error(`REST timeout after ${model.timeoutMs}ms`)), model.timeoutMs)
-						),
-					]);
-
-					if (!fetchResponse.ok) {
-						throw new Error(`REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`);
-					}
-					const data = await fetchResponse.json() as any;
-					rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-				} else {
-					console.error(`[Gemini] Attempting SDK call for ${model.name}...`);
-					const genAI = await getSDKGenAI();
-					if (!genAI) {
-						throw new Error("Gemini SDK not available.");
-					}
-					const response = (await Promise.race([
-						genAI.getGenerativeModel({ model: model.name }).generateContent(prompt),
-						new Promise((_, reject) =>
-							setTimeout(
-								() =>
-									reject(
-										new Error(
-											`${model.name} request timed out after ${model.timeoutMs}ms`,
-										),
-									),
-								model.timeoutMs,
-							),
-						),
-					])) as any;
-
-					const result = await response.response;
-					rawText = result.text().trim();
-				}
-
-
-
-
-
-
-
-
-
-
-
-
-
-				
-				if (rawText) {
-					console.error(`[Gemini] ${model.name} success! Response length: ${rawText.length}`);
-					fs.writeSync(2, `\n--- GEMINI RESPONSE START ---\n${rawText}\n--- GEMINI RESPONSE END ---\n`);
-
-					break;
-				}
-
-				console.error(`[Gemini] ${model.name} returned empty text.`);
-			} catch (error) {
-				lastError = error;
-				console.error(`[Gemini] ${model.name} failed:`, error instanceof Error ? error.message : error);
-				fs.writeSync(2, `[Gemini] ERROR DETAIL: ${JSON.stringify(error)}\n`);
-			}
-		}
-
-		if (!rawText) {
-			console.error("[Gemini] ALL MODELS FAILED. Falling back to template.");
-			throw lastError || new Error("All Gemini model attempts failed");
-		}
+		const rawText = await callGeminiText(prompt, "schema");
+		fs.writeSync(2, `\n--- GEMINI RESPONSE START ---\n${rawText}\n--- GEMINI RESPONSE END ---\n`);
 
 		persistGenerationDebugFile(
 			debugSession,
@@ -2674,6 +2661,57 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 		const { validateWebsiteSchema } = await import("./src/lib/website-schema-validator");
 		const validation = validateWebsiteSchema(parsedSchema);
 		const finalSchema = validation.repairedSchema || parsedSchema;
+
+		try {
+			const wordpressHtmlPrompt = `You are turning an approved website schema into the FINAL WordPress homepage HTML.
+
+Return ONLY homepage HTML suitable for WordPress post_content.
+Do not return JSON.
+Do not explain anything.
+Do not wrap the response in markdown unless it is a plain \`\`\`html fenced block.
+Do not output JavaScript.
+Use one initial <style> block if needed, then the homepage markup.
+Render the sections in the schema order exactly as provided.
+Use the exact business copy and exact media URLs from the schema.
+Do not collapse the page into a common in-house template.
+Make the composition, spacing, typography treatment, and hierarchy feel bespoke to this business.
+Light theme only.
+No site header chrome, no WordPress admin text, no fake badges like "crafted for premium presentation".
+No generic placeholder copy.
+
+BUSINESS:
+${JSON.stringify({
+	name: business.name,
+	category: business.category,
+	address: business.address,
+	phone: business.phoneNumber,
+	email: business.email,
+	website: business.websiteUri,
+}, null, 2)}
+
+APPROVED SCHEMA:
+${JSON.stringify(finalSchema, null, 2)}
+
+Return only the final HTML for the homepage body content.`;
+
+			persistGenerationDebugFile(debugSession, "05a-wordpress-html-prompt.md", wordpressHtmlPrompt);
+			const rawWordPressHtml = await callGeminiText(wordpressHtmlPrompt, "wordpress-html");
+			fs.writeSync(2, `\n--- GEMINI WORDPRESS HTML START ---\n${rawWordPressHtml}\n--- GEMINI WORDPRESS HTML END ---\n`);
+			persistGenerationDebugFile(debugSession, "05b-wordpress-html-raw.txt", rawWordPressHtml);
+
+			const extractedWordPressHtml = extractHtmlDocument(rawWordPressHtml) || rawWordPressHtml.trim();
+			if (extractedWordPressHtml) {
+				(finalSchema as any)._wordpressHtml = extractedWordPressHtml;
+				(finalSchema as any)._renderSource = "gemini-html";
+				persistGenerationDebugFile(debugSession, "05c-wordpress-html-final.html", extractedWordPressHtml);
+			}
+		} catch (wordpressHtmlError) {
+			(finalSchema as any)._renderSource = "local-builder";
+			appendGenerationDebugError(
+				debugSession,
+				`wordpress_html_generation_failed: ${wordpressHtmlError instanceof Error ? wordpressHtmlError.message : String(wordpressHtmlError)}`,
+			);
+		}
 
 		// 4. Trace Log to DB
 		try {

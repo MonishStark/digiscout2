@@ -429,9 +429,15 @@ async function injectWebsiteContent(
 			await runRemoteShellCommand(deleteCmd, logCallback);
 		} catch (e) { /* non-fatal */ }
 
-		await logCallback("Building premium Gutenberg content...");
-		const { buildPremiumPageContent } = await import("./premium-site-builder");
-		const content = buildPremiumPageContent(schema);
+		let content = "";
+		if (typeof schema?._wordpressHtml === "string" && schema._wordpressHtml.trim()) {
+			await logCallback("Using Gemini-generated WordPress homepage HTML...");
+			content = schema._wordpressHtml.trim();
+		} else {
+			await logCallback("Gemini HTML unavailable. Building homepage with local premium-site-builder...");
+			const { buildPremiumPageContent } = await import("./premium-site-builder");
+			content = buildPremiumPageContent(schema);
+		}
 
 		// Write content to temp file on remote server (avoids shell escaping limits)
 		const tmpFile = `/tmp/ds_home_${Date.now()}.html`;
