@@ -1,4 +1,7 @@
+/** @format */
+
 import crypto from "crypto";
+import fs from "fs";
 import { pool } from "./db";
 import {
 	addSubdomain,
@@ -31,7 +34,13 @@ const MAX_RETRIES = 3;
 const MAX_SUBDOMAIN_LENGTH = 45;
 
 /** Semantic fallback suffixes tried before random characters */
-const SUBDOMAIN_SEMANTIC_VARIANTS = ["-shop", "-store", "-official", "-co", "-pro"];
+const SUBDOMAIN_SEMANTIC_VARIANTS = [
+	"-shop",
+	"-store",
+	"-official",
+	"-co",
+	"-pro",
+];
 
 /**
  * Sanitizes a business name into a DNS-safe subdomain base.
@@ -41,11 +50,11 @@ function sanitizeSubdomainBase(name: string): string {
 	return (name || "")
 		.toLowerCase()
 		.normalize("NFD")
-		.replace(/[\u0300-\u036f]/g, "")   // strip accent marks
-		.replace(/[^a-z0-9]+/g, "-")        // non-alphanumeric → hyphen
-		.replace(/-+/g, "-")                // collapse repeated hyphens
-		.replace(/^-+|-+$/g, "")            // trim leading/trailing hyphens
-		.substring(0, 40);                   // leave room for any suffix
+		.replace(/[\u0300-\u036f]/g, "") // strip accent marks
+		.replace(/[^a-z0-9]+/g, "-") // non-alphanumeric → hyphen
+		.replace(/-+/g, "-") // collapse repeated hyphens
+		.replace(/^-+|-+$/g, "") // trim leading/trailing hyphens
+		.substring(0, 40); // leave room for any suffix
 }
 
 /**
@@ -110,7 +119,10 @@ async function generateUniqueSubdomain(businessName: string): Promise<string> {
 	}
 
 	// Absolute last resort (collision-safe)
-	return `${base}-${crypto.randomBytes(4).toString("hex")}`.substring(0, MAX_SUBDOMAIN_LENGTH);
+	return `${base}-${crypto.randomBytes(4).toString("hex")}`.substring(
+		0,
+		MAX_SUBDOMAIN_LENGTH,
+	);
 }
 
 function generateSecurePassword() {
@@ -129,7 +141,11 @@ function encrypt(text: string) {
 function decrypt(encryptedValue: string): string {
 	const [ivHex, encHex] = encryptedValue.split(":");
 	const key = process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
-	const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(key), Buffer.from(ivHex, "hex"));
+	const decipher = crypto.createDecipheriv(
+		"aes-256-cbc",
+		Buffer.from(key),
+		Buffer.from(ivHex, "hex"),
+	);
 	let decrypted = decipher.update(Buffer.from(encHex, "hex"));
 	decrypted = Buffer.concat([decrypted, decipher.final()]);
 	return decrypted.toString();
@@ -139,6 +155,7 @@ async function appendLog(jobId: string, message: string) {
 	const timestamp = new Date().toISOString();
 	const logEntry = `[${timestamp}] ${message}`;
 	console.log(`[Job ${jobId}] ${message}`);
+	fs.writeSync(2, `[Job ${jobId}] ${message}\n`);
 
 	await pool.query(
 		`UPDATE provisioning_jobs SET logs = JSON_ARRAY_APPEND(COALESCE(logs, JSON_ARRAY()), '$', ?) WHERE id = ?`,
@@ -147,7 +164,10 @@ async function appendLog(jobId: string, message: string) {
 }
 
 export async function processJob(jobId: string) {
-	const [rows]: any = await pool.query(`SELECT * FROM provisioning_jobs WHERE id = ?`, [jobId]);
+	const [rows]: any = await pool.query(
+		`SELECT * FROM provisioning_jobs WHERE id = ?`,
+		[jobId],
+	);
 	if (!rows || rows.length === 0) return;
 
 	const job = rows[0];
@@ -159,19 +179,29 @@ export async function processJob(jobId: string) {
 		await appendLog(job.id, `ERROR: ${error.message}`);
 
 		if (job.retry_count < MAX_RETRIES) {
-			await appendLog(job.id, `Retrying later (Attempt ${job.retry_count + 1}/${MAX_RETRIES})`);
-			await pool.query(`UPDATE provisioning_jobs SET retry_count = retry_count + 1, locked_at = NULL WHERE id = ?`, [job.id]);
+			await appendLog(
+				job.id,
+				`Retrying later (Attempt ${job.retry_count + 1}/${MAX_RETRIES})`,
+			);
+			await pool.query(
+				`UPDATE provisioning_jobs SET retry_count = retry_count + 1, locked_at = NULL WHERE id = ?`,
+				[job.id],
+			);
 		} else {
 			await appendLog(job.id, `Max retries reached. Initiating rollback.`);
 			await rollbackJob(job);
-			await pool.query(`UPDATE provisioning_jobs SET status = 'failed', locked_at = NULL WHERE id = ?`, [job.id]);
+			await pool.query(
+				`UPDATE provisioning_jobs SET status = 'failed', locked_at = NULL WHERE id = ?`,
+				[job.id],
+			);
 		}
 	}
 }
 
 async function executeStateMachine(job: any) {
 	const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscoutwp.online";
-	const docRootBase = process.env.WP_DOCROOT_BASE || "/home/digigesf/public_html/sites";
+	const docRootBase =
+		process.env.WP_DOCROOT_BASE || "/home/digigesf/public_html/sites";
 
 	let subdomain = job.subdomain;
 	let dbName = job.db_name;
@@ -181,14 +211,20 @@ async function executeStateMachine(job: any) {
 
 	// ── STEP 1: Creating Subdomain ──────────────────────────────────────────
 	if (job.status === "pending" || job.status === "creating_subdomain") {
-		await pool.query(`UPDATE provisioning_jobs SET status = 'creating_subdomain' WHERE id = ?`, [job.id]);
+		await pool.query(
+			`UPDATE provisioning_jobs SET status = 'creating_subdomain' WHERE id = ?`,
+			[job.id],
+		);
 		await appendLog(job.id, "Starting subdomain creation on remote WP server");
 
 		if (!subdomain) {
 			const name = job.business_name || job.project_id;
 			subdomain = await generateUniqueSubdomain(name);
 			await appendLog(job.id, `Generated subdomain: "${subdomain}"`);
-			await pool.query(`UPDATE provisioning_jobs SET subdomain = ? WHERE id = ?`, [subdomain, job.id]);
+			await pool.query(
+				`UPDATE provisioning_jobs SET subdomain = ? WHERE id = ?`,
+				[subdomain, job.id],
+			);
 		}
 
 		const fullDocRoot = `${docRootBase}/${subdomain}`;
@@ -196,23 +232,34 @@ async function executeStateMachine(job: any) {
 
 		// Create subdomain via cPanel UAPI on the remote WP server
 		await addSubdomain(subdomain, rootDomain, fullDocRoot);
-		await appendLog(job.id, `Created subdomain: ${subdomain}.${rootDomain} → ${fullDocRoot}`);
+		await appendLog(
+			job.id,
+			`Created subdomain: ${subdomain}.${rootDomain} → ${fullDocRoot}`,
+		);
 
 		job.status = "creating_database";
 	}
 
 	// ── STEP 2: Creating Database ───────────────────────────────────────────
 	if (job.status === "creating_database") {
-		await pool.query(`UPDATE provisioning_jobs SET status = 'creating_database' WHERE id = ?`, [job.id]);
+		await pool.query(
+			`UPDATE provisioning_jobs SET status = 'creating_database' WHERE id = ?`,
+			[job.id],
+		);
 		await appendLog(job.id, "Creating database on remote WP server cPanel");
 
-		const dbPrefix = process.env.CPANEL_USERNAME ? `${process.env.CPANEL_USERNAME}_` : "db_";
+		const dbPrefix = process.env.CPANEL_USERNAME
+			? `${process.env.CPANEL_USERNAME}_`
+			: "db_";
 
 		if (!dbName) {
 			const suffix = crypto.randomBytes(4).toString("hex");
 			dbName = `${dbPrefix}${suffix}`.substring(0, 64);
 			dbUser = `${dbPrefix}u${suffix}`.substring(0, 32);
-			await pool.query(`UPDATE provisioning_jobs SET db_name = ?, db_user = ? WHERE id = ?`, [dbName, dbUser, job.id]);
+			await pool.query(
+				`UPDATE provisioning_jobs SET db_name = ?, db_user = ? WHERE id = ?`,
+				[dbName, dbUser, job.id],
+			);
 		}
 
 		const dbPassword = generateSecurePassword();
@@ -220,17 +267,29 @@ async function executeStateMachine(job: any) {
 		await createDatabaseUser(dbUser, dbPassword);
 		await setDatabasePrivileges(dbUser, dbName);
 
-		await pool.query(`UPDATE provisioning_jobs SET db_pass_encrypted = ? WHERE id = ?`, [encrypt(dbPassword), job.id]);
+		await pool.query(
+			`UPDATE provisioning_jobs SET db_pass_encrypted = ? WHERE id = ?`,
+			[encrypt(dbPassword), job.id],
+		);
 		(job as any)._tempDbPass = dbPassword;
-		await appendLog(job.id, `Created remote database: ${dbName} and user: ${dbUser}`);
+		await appendLog(
+			job.id,
+			`Created remote database: ${dbName} and user: ${dbUser}`,
+		);
 
 		job.status = "installing_wordpress";
 	}
 
 	// ── STEP 3: Installing WordPress ────────────────────────────────────────
 	if (job.status === "installing_wordpress") {
-		await pool.query(`UPDATE provisioning_jobs SET status = 'installing_wordpress' WHERE id = ?`, [job.id]);
-		await appendLog(job.id, "Starting remote WordPress installation via SSH/WP-CLI");
+		await pool.query(
+			`UPDATE provisioning_jobs SET status = 'installing_wordpress' WHERE id = ?`,
+			[job.id],
+		);
+		await appendLog(
+			job.id,
+			"Starting remote WordPress installation via SSH/WP-CLI",
+		);
 
 		// Decrypt db password if coming from a retry
 		let dbPassword = (job as any)._tempDbPass;
@@ -249,7 +308,9 @@ async function executeStateMachine(job: any) {
 		// Verify WP-CLI is reachable on remote server
 		const wpCliStatus = await checkWpCliAvailable();
 		if (!wpCliStatus.available) {
-			throw new Error(`WP-CLI not reachable on remote server: ${wpCliStatus.error}`);
+			throw new Error(
+				`WP-CLI not reachable on remote server: ${wpCliStatus.error}`,
+			);
 		}
 		await appendLog(job.id, `WP-CLI available: ${wpCliStatus.version}`);
 
@@ -257,7 +318,9 @@ async function executeStateMachine(job: any) {
 
 		// Create the remote directory explicitly before WP download
 		await appendLog(job.id, `Creating remote directory: ${fullDocRoot}`);
-		await runRemoteShellCommand(`mkdir -p "${fullDocRoot}"`, (log) => appendLog(job.id, log));
+		await runRemoteShellCommand(`mkdir -p "${fullDocRoot}"`, (log) =>
+			appendLog(job.id, log),
+		);
 
 		// Download WordPress core to remote server
 		await downloadWordPressCore(fullDocRoot, (log) => appendLog(job.id, log));
@@ -274,7 +337,14 @@ async function executeStateMachine(job: any) {
 		}
 
 		// Create wp-config.php — DB host is localhost on the remote WP server
-		await createWpConfig(fullDocRoot, dbName, dbUser, dbPassword, "localhost", (log) => appendLog(job.id, log));
+		await createWpConfig(
+			fullDocRoot,
+			dbName,
+			dbUser,
+			dbPassword,
+			"localhost",
+			(log) => appendLog(job.id, log),
+		);
 
 		// Install WordPress
 		const rawAdminPass = (job as any)._tempAdminPass || decrypt(wpAdminPass);
@@ -295,40 +365,71 @@ async function executeStateMachine(job: any) {
 
 	// ── STEP 4: Configuring WordPress ───────────────────────────────────────
 	if (job.status === "configuring_wordpress") {
-		await pool.query(`UPDATE provisioning_jobs SET status = 'configuring_wordpress' WHERE id = ?`, [job.id]);
+		await pool.query(
+			`UPDATE provisioning_jobs SET status = 'configuring_wordpress' WHERE id = ?`,
+			[job.id],
+		);
 		const fullDocRoot = `${docRootBase}/${subdomain}`;
 
-		await configurePermalinks(fullDocRoot, "/%postname%/", (log) => appendLog(job.id, log));
+		await configurePermalinks(fullDocRoot, "/%postname%/", (log) =>
+			appendLog(job.id, log),
+		);
 		await appendLog(job.id, "Configured remote permalinks");
 
 		// Hello Elementor = truly blank canvas, zero opinionated defaults
 		await appendLog(job.id, "Installing Hello Elementor theme...");
 		try {
-			await runWpCommand(`theme install hello-elementor --activate`, fullDocRoot, (log) => appendLog(job.id, log));
+			await runWpCommand(
+				`theme install hello-elementor --activate`,
+				fullDocRoot,
+				(log) => appendLog(job.id, log),
+			);
 			await appendLog(job.id, "Hello Elementor theme activated");
 		} catch (e: any) {
-			await appendLog(job.id, `Warning: Theme install failed (${e.message}), using default`);
+			await appendLog(
+				job.id,
+				`Warning: Theme install failed (${e.message}), using default`,
+			);
 		}
 
 		try {
-			await runWpCommand(`theme delete twentytwentyfive twentytwentyfour twentytwentythree astra`, fullDocRoot, (log) => appendLog(job.id, log));
-		} catch (e) { /* non-fatal */ }
+			await runWpCommand(
+				`theme delete twentytwentyfive twentytwentyfour twentytwentythree astra`,
+				fullDocRoot,
+				(log) => appendLog(job.id, log),
+			);
+		} catch (e) {
+			/* non-fatal */
+		}
 
-		await runWpCommand(`option update default_comment_status closed`, fullDocRoot, (log) => appendLog(job.id, log)).catch(() => {});
-		await runWpCommand(`option update blogdescription ""`, fullDocRoot, (log) => appendLog(job.id, log)).catch(() => {});
+		await runWpCommand(
+			`option update default_comment_status closed`,
+			fullDocRoot,
+			(log) => appendLog(job.id, log),
+		).catch(() => {});
+		await runWpCommand(`option update blogdescription ""`, fullDocRoot, (log) =>
+			appendLog(job.id, log),
+		).catch(() => {});
 
 		job.status = "deploying_content";
 	}
 
 	// ── STEP 5: Deploying Gutenberg Content ─────────────────────────────────
 	if (job.status === "deploying_content") {
-		await pool.query(`UPDATE provisioning_jobs SET status = 'deploying_content' WHERE id = ?`, [job.id]);
-		await appendLog(job.id, "Deploying Gutenberg content blocks to remote WordPress...");
+		await pool.query(
+			`UPDATE provisioning_jobs SET status = 'deploying_content' WHERE id = ?`,
+			[job.id],
+		);
+		await appendLog(
+			job.id,
+			"Deploying Gutenberg content blocks to remote WordPress...",
+		);
 
 		const fullDocRoot = `${docRootBase}/${subdomain}`;
-		const schema = typeof job.website_schema === "string"
-			? JSON.parse(job.website_schema)
-			: job.website_schema;
+		const schema =
+			typeof job.website_schema === "string"
+				? JSON.parse(job.website_schema)
+				: job.website_schema;
 
 		if (schema) {
 			const { schemaToGutenbergBlocks } = await import("./wordpress");
@@ -340,7 +441,13 @@ async function executeStateMachine(job: any) {
 				[homepageBlocks, job.id],
 			);
 
-			await injectWebsiteContent(fullDocRoot, schema, homepageBlocks, wpAdminUser, (log) => appendLog(job.id, log));
+			await injectWebsiteContent(
+				fullDocRoot,
+				schema,
+				homepageBlocks,
+				wpAdminUser,
+				(log) => appendLog(job.id, log),
+			);
 			await appendLog(job.id, "Content injected successfully on remote server");
 		} else {
 			await appendLog(job.id, "WARNING: No website schema found to inject.");
@@ -351,24 +458,32 @@ async function executeStateMachine(job: any) {
 
 	// ── STEP 6: Completed ───────────────────────────────────────────────────
 	if (job.status === "completed") {
-		await pool.query(`UPDATE provisioning_jobs SET status = 'completed', locked_at = NULL WHERE id = ?`, [job.id]);
+		await pool.query(
+			`UPDATE provisioning_jobs SET status = 'completed', locked_at = NULL WHERE id = ?`,
+			[job.id],
+		);
 
 		// Always start with http — SSL polling worker will upgrade to https
 		const httpUrl = `http://${subdomain}.${rootDomain}`;
 
-		await pool.query(`
+		await pool.query(
+			`
 			INSERT IGNORE INTO isolated_deployments
 				(id, project_id, subdomain_url, wp_admin_url, admin_username, encrypted_admin_password, website_schema, ssl_status)
 			VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
-		`, [
-			crypto.randomUUID(),
-			job.project_id,
-			httpUrl,
-			`${httpUrl}/wp-admin`,
-			wpAdminUser,
-			wpAdminPass,
-			typeof job.website_schema === "string" ? job.website_schema : JSON.stringify(job.website_schema),
-		]);
+		`,
+			[
+				crypto.randomUUID(),
+				job.project_id,
+				httpUrl,
+				`${httpUrl}/wp-admin`,
+				wpAdminUser,
+				wpAdminPass,
+				typeof job.website_schema === "string"
+					? job.website_schema
+					: JSON.stringify(job.website_schema),
+			],
+		);
 
 		// Write to audit log
 		if (job.trace_id) {
@@ -379,13 +494,22 @@ async function executeStateMachine(job: any) {
 						job.trace_id,
 						"provisioning_completed",
 						`Remote WordPress site provisioned at ${httpUrl}`,
-						JSON.stringify({ url: httpUrl, jobId: job.id, remoteHost: process.env.WP_SSH_HOST }),
+						JSON.stringify({
+							url: httpUrl,
+							jobId: job.id,
+							remoteHost: process.env.WP_SSH_HOST,
+						}),
 					],
 				);
-			} catch (e) { /* non-fatal */ }
+			} catch (e) {
+				/* non-fatal */
+			}
 		}
 
-		await appendLog(job.id, `Job completed! Remote WP site live at ${httpUrl} (SSL polling started)`);
+		await appendLog(
+			job.id,
+			`Job completed! Remote WP site live at ${httpUrl} (SSL polling started)`,
+		);
 	}
 }
 
@@ -437,22 +561,37 @@ async function injectWebsiteContent(
 			// Get IDs first and only delete if not empty to avoid "usage" errors
 			const deleteCmd = `/usr/local/sbin/wp post list --post_type=post,page --format=ids --path="${docRoot}" --allow-root | xargs -r /usr/local/sbin/wp post delete --force --allow-root --path="${docRoot}"`;
 			await runRemoteShellCommand(deleteCmd, logCallback);
-		} catch (e) { /* non-fatal */ }
+		} catch (e) {
+			/* non-fatal */
+		}
 
 		let content = "";
-		if (typeof schema?._wordpressHtml === "string" && schema._wordpressHtml.trim()) {
+		const renderSource =
+			schema?._renderSource ||
+			(schema?._wordpressHtml ? "gemini-html" : "local-builder");
+		if (
+			typeof schema?._wordpressHtml === "string" &&
+			schema._wordpressHtml.trim()
+		) {
 			await logCallback("Using Gemini-generated WordPress homepage HTML...");
 			content = ensureWordPressHtmlBlock(schema._wordpressHtml);
 		} else {
-			await logCallback("Gemini HTML unavailable. Building homepage with local premium-site-builder...");
-			const { buildPremiumPageContent } = await import("./premium-site-builder");
+			await logCallback(
+				"Gemini HTML unavailable. Building homepage with local premium-site-builder...",
+			);
+			const { buildPremiumPageContent } =
+				await import("./premium-site-builder");
 			content = buildPremiumPageContent(schema);
 		}
+		const contentHash = crypto.createHash("sha1").update(content).digest("hex");
+		await logCallback(
+			`Content source=${renderSource} length=${content.length} sha1=${contentHash}`,
+		);
 
 		// Write content to temp file on remote server (avoids shell escaping limits)
 		const tmpFile = `/tmp/ds_home_${Date.now()}.html`;
 		await logCallback(`Writing to remote temp file: ${tmpFile}`);
-		
+
 		// Use a more robust way to write large content to remote file
 		// We use base64 to avoid shell escaping issues with complex HTML
 		const base64Content = Buffer.from(content).toString("base64");
@@ -464,102 +603,175 @@ async function injectWebsiteContent(
 		await logCallback("Creating Home page in WordPress...");
 		const homePageIdOut = await runWpCommand(
 			`post create --post_type=page --post_title="Home" --post_content="$(cat '${tmpFile}')" --post_status=publish --format=ids --user="${adminUser}"`,
-			docRoot, logCallback,
+			docRoot,
+			logCallback,
 		);
 		const homePageId = homePageIdOut.stdout.replace(/[^0-9]/g, "").trim();
-		await runRemoteShellCommand(`rm -f '${tmpFile}'`, logCallback).catch(() => {});
+		await runRemoteShellCommand(`rm -f '${tmpFile}'`, logCallback).catch(
+			() => {},
+		);
 
 		if (!homePageId || homePageId === "0") {
 			throw new Error("Home page creation failed — invalid ID returned");
 		}
 
-		await logCallback(`Home page created with ID: ${homePageId}. Setting as front page...`);
-		await runWpCommand(`option update show_on_front page`, docRoot, logCallback);
-		await runWpCommand(`option update page_on_front ${homePageId}`, docRoot, logCallback);
-		
+		await logCallback(
+			`Home page created with ID: ${homePageId}. Setting as front page...`,
+		);
+		await runWpCommand(
+			`option update show_on_front page`,
+			docRoot,
+			logCallback,
+		);
+		await runWpCommand(
+			`option update page_on_front ${homePageId}`,
+			docRoot,
+			logCallback,
+		);
+
 		if (schema.brand?.businessName) {
-			await runWpCommand(`option update blogname "${esc(schema.brand.businessName)}"`, docRoot, logCallback);
+			await runWpCommand(
+				`option update blogname "${esc(schema.brand.businessName)}"`,
+				docRoot,
+				logCallback,
+			);
 		}
-		
-		await runWpCommand(`rewrite structure "/%postname%/"`, docRoot, logCallback);
+
+		await runWpCommand(
+			`rewrite structure "/%postname%/"`,
+			docRoot,
+			logCallback,
+		);
 		await runWpCommand(`rewrite flush`, docRoot, logCallback);
 
 		// Robust Media Import for Logo
 		if (schema.brand?.logo) {
 			try {
 				await logCallback(`Attempting to import logo: ${schema.brand.logo}`);
-				
+
 				// Try to import directly first
 				let mediaId = "";
 				try {
-					const mediaOut = await runWpCommand(`media import "${schema.brand.logo}" --porcelain`, docRoot, logCallback);
+					const mediaOut = await runWpCommand(
+						`media import "${schema.brand.logo}" --porcelain`,
+						docRoot,
+						logCallback,
+					);
 					mediaId = mediaOut.stdout.trim();
 				} catch (e) {
 					// If direct import fails (likely due to missing extension), download to temp file first
-					await logCallback("Direct import failed. Retrying with local temp file...");
-					const ext = schema.brand.logo.toLowerCase().includes(".png") ? "png" : "jpg";
+					await logCallback(
+						"Direct import failed. Retrying with local temp file...",
+					);
+					const ext = schema.brand.logo.toLowerCase().includes(".png")
+						? "png"
+						: "jpg";
 					const remoteTmpMedia = `/tmp/ds_logo_${Date.now()}.${ext}`;
-					await runRemoteShellCommand(`curl -sL "${schema.brand.logo}" -o "${remoteTmpMedia}"`, logCallback);
-					const mediaOut = await runWpCommand(`media import "${remoteTmpMedia}" --porcelain`, docRoot, logCallback);
+					await runRemoteShellCommand(
+						`curl -sL "${schema.brand.logo}" -o "${remoteTmpMedia}"`,
+						logCallback,
+					);
+					const mediaOut = await runWpCommand(
+						`media import "${remoteTmpMedia}" --porcelain`,
+						docRoot,
+						logCallback,
+					);
 					mediaId = mediaOut.stdout.trim();
-					await runRemoteShellCommand(`rm -f "${remoteTmpMedia}"`, logCallback).catch(() => {});
+					await runRemoteShellCommand(
+						`rm -f "${remoteTmpMedia}"`,
+						logCallback,
+					).catch(() => {});
 				}
 
 				if (/^\d+$/.test(mediaId)) {
-					await logCallback(`Logo imported successfully (ID: ${mediaId}). Setting as site icon.`);
-					await runWpCommand(`option update site_icon ${mediaId}`, docRoot, logCallback);
+					await logCallback(
+						`Logo imported successfully (ID: ${mediaId}). Setting as site icon.`,
+					);
+					await runWpCommand(
+						`option update site_icon ${mediaId}`,
+						docRoot,
+						logCallback,
+					);
 				}
-			} catch (e: any) { 
-				await logCallback(`Warning: logo import failed: ${e.message}`); 
+			} catch (e: any) {
+				await logCallback(`Warning: logo import failed: ${e.message}`);
 			}
 		}
 
 		await logCallback("Premium WordPress site injection complete ✓");
 	} catch (error: any) {
-		await logCallback(`CRITICAL ERROR during content injection: ${error.message}`);
+		await logCallback(
+			`CRITICAL ERROR during content injection: ${error.message}`,
+		);
 		throw error;
 	}
 }
 
-
 async function rollbackJob(job: any) {
 	await appendLog(job.id, "[ROLLBACK] Starting remote cleanup...");
-	const docRootBase = process.env.WP_DOCROOT_BASE || "/home/digigesf/public_html/sites";
+	const docRootBase =
+		process.env.WP_DOCROOT_BASE || "/home/digigesf/public_html/sites";
 
 	if (job.subdomain) {
 		try {
 			const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscoutwp.online";
 			await deleteSubdomain(job.subdomain, rootDomain);
-			await appendLog(job.id, `[ROLLBACK] Deleted subdomain ${job.subdomain}.${rootDomain}`);
+			await appendLog(
+				job.id,
+				`[ROLLBACK] Deleted subdomain ${job.subdomain}.${rootDomain}`,
+			);
 		} catch (e: any) {
-			await appendLog(job.id, `[ROLLBACK] Failed to delete subdomain: ${e.message}`);
+			await appendLog(
+				job.id,
+				`[ROLLBACK] Failed to delete subdomain: ${e.message}`,
+			);
 		}
 
 		// Delete remote directory via SSH
 		const fullDocRoot = `${docRootBase}/${job.subdomain}`;
 		try {
-			await runRemoteShellCommand(`rm -rf "${fullDocRoot}"`, (log) => appendLog(job.id, log));
-			await appendLog(job.id, `[ROLLBACK] Deleted remote directory: ${fullDocRoot}`);
+			await runRemoteShellCommand(`rm -rf "${fullDocRoot}"`, (log) =>
+				appendLog(job.id, log),
+			);
+			await appendLog(
+				job.id,
+				`[ROLLBACK] Deleted remote directory: ${fullDocRoot}`,
+			);
 		} catch (e: any) {
-			await appendLog(job.id, `[ROLLBACK] Failed to delete remote directory: ${e.message}`);
+			await appendLog(
+				job.id,
+				`[ROLLBACK] Failed to delete remote directory: ${e.message}`,
+			);
 		}
 	}
 
 	if (job.db_name) {
 		try {
 			await deleteDatabase(job.db_name);
-			await appendLog(job.id, `[ROLLBACK] Deleted remote database: ${job.db_name}`);
+			await appendLog(
+				job.id,
+				`[ROLLBACK] Deleted remote database: ${job.db_name}`,
+			);
 		} catch (e: any) {
-			await appendLog(job.id, `[ROLLBACK] Failed to delete database: ${e.message}`);
+			await appendLog(
+				job.id,
+				`[ROLLBACK] Failed to delete database: ${e.message}`,
+			);
 		}
 	}
 
 	if (job.db_user) {
 		try {
 			await deleteDatabaseUser(job.db_user);
-			await appendLog(job.id, `[ROLLBACK] Deleted remote DB user: ${job.db_user}`);
+			await appendLog(
+				job.id,
+				`[ROLLBACK] Deleted remote DB user: ${job.db_user}`,
+			);
 		} catch (e: any) {
-			await appendLog(job.id, `[ROLLBACK] Failed to delete DB user: ${e.message}`);
+			await appendLog(
+				job.id,
+				`[ROLLBACK] Failed to delete DB user: ${e.message}`,
+			);
 		}
 	}
 
@@ -571,7 +783,9 @@ async function rollbackJob(job: any) {
 // ---------------------------------------------------------------------------
 
 export async function deleteProvisionedWordPressSite(projectId: string) {
-	console.log(`[Cleanup] Starting comprehensive remote deletion for project ${projectId}`);
+	console.log(
+		`[Cleanup] Starting comprehensive remote deletion for project ${projectId}`,
+	);
 
 	// 1. Fetch all related jobs to ensure we have the subdomain and DB names
 	const [rows]: any = await pool.query(
@@ -580,9 +794,15 @@ export async function deleteProvisionedWordPressSite(projectId: string) {
 	);
 
 	if (!rows || rows.length === 0) {
-		console.warn(`[Cleanup] No provisioning job found in DB for project ${projectId}. Attempting database-only purge.`);
-		await pool.query(`DELETE FROM isolated_deployments WHERE project_id = ?`, [projectId]);
-		await pool.query(`DELETE FROM provisioning_jobs WHERE project_id = ?`, [projectId]);
+		console.warn(
+			`[Cleanup] No provisioning job found in DB for project ${projectId}. Attempting database-only purge.`,
+		);
+		await pool.query(`DELETE FROM isolated_deployments WHERE project_id = ?`, [
+			projectId,
+		]);
+		await pool.query(`DELETE FROM provisioning_jobs WHERE project_id = ?`, [
+			projectId,
+		]);
 		return;
 	}
 
@@ -591,21 +811,35 @@ export async function deleteProvisionedWordPressSite(projectId: string) {
 		try {
 			await rollbackJob(job);
 		} catch (e: any) {
-			console.error(`[Cleanup] Rollback failed for job ${job.id}: ${e.message}`);
+			console.error(
+				`[Cleanup] Rollback failed for job ${job.id}: ${e.message}`,
+			);
 			// Continue to next job or purge — we don't want to block the DB deletion
 		}
 	}
 
 	// 3. Purge from local database tables
 	try {
-		const [del1] = await pool.query(`DELETE FROM isolated_deployments WHERE project_id = ?`, [projectId]);
-		const [del2] = await pool.query(`DELETE FROM provisioning_jobs WHERE project_id = ?`, [projectId]);
-		
-		console.log(`[Cleanup] Project ${projectId} purged from local DB. Jobs removed: ${(del2 as any).affectedRows}`);
+		const [del1] = await pool.query(
+			`DELETE FROM isolated_deployments WHERE project_id = ?`,
+			[projectId],
+		);
+		const [del2] = await pool.query(
+			`DELETE FROM provisioning_jobs WHERE project_id = ?`,
+			[projectId],
+		);
+
+		console.log(
+			`[Cleanup] Project ${projectId} purged from local DB. Jobs removed: ${(del2 as any).affectedRows}`,
+		);
 	} catch (e: any) {
-		console.error(`[Cleanup] Failed to purge project ${projectId} from local DB: ${e.message}`);
+		console.error(
+			`[Cleanup] Failed to purge project ${projectId} from local DB: ${e.message}`,
+		);
 		throw e;
 	}
 
-	console.log(`[Cleanup] Project ${projectId} remote resources and local records fully processed.`);
+	console.log(
+		`[Cleanup] Project ${projectId} remote resources and local records fully processed.`,
+	);
 }

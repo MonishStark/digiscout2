@@ -3,7 +3,10 @@
 import "./src/lib/env";
 import fs from "fs";
 // Low-level write to stderr to bypass console redirection
-fs.writeSync(2, `[BOOT] Server process starting at ${new Date().toISOString()}\n`);
+fs.writeSync(
+	2,
+	`[BOOT] Server process starting at ${new Date().toISOString()}\n`,
+);
 fs.writeSync(2, `[BOOT] CWD: ${process.cwd()}\n`);
 fs.writeSync(2, `[BOOT] DB_USER: ${process.env.DB_USER || "NOT SET"}\n`);
 
@@ -34,6 +37,10 @@ import { deleteProvisionedWordPressSite } from "./src/lib/provisioning-engine";
 
 const app = express();
 const PORT = process.env.PORT || 5001;
+
+const logStderr = (message: string) => {
+	fs.writeSync(2, `${message}\n`);
+};
 
 app.use(
 	cors({
@@ -230,8 +237,6 @@ async function readRequestBody(req: Request): Promise<Buffer> {
 	return Buffer.concat(chunks);
 }
 
-
-
 async function getSDKGenAI() {
 	if (!GENAI_KEY) return null;
 	if (!GoogleGenerativeAI) {
@@ -350,7 +355,11 @@ function extractHtmlDocument(text: string): string | null {
 		if (candidate.includes("<")) return candidate;
 	}
 
-	if (trimmed.includes("<!-- wp:html -->") || trimmed.includes("<section") || trimmed.includes("<style")) {
+	if (
+		trimmed.includes("<!-- wp:html -->") ||
+		trimmed.includes("<section") ||
+		trimmed.includes("<style")
+	) {
 		return trimmed;
 	}
 
@@ -508,12 +517,14 @@ Return only valid JSON in this exact shape:
 			} as any);
 
 			const result = await modelInstance.generateContent({
-				contents: [{ role: 'user', parts: [{ text: prompt }] }],
-				generationConfig: { temperature: 0.1 }
+				contents: [{ role: "user", parts: [{ text: prompt }] }],
+				generationConfig: { temperature: 0.1 },
 			});
 
 			const response = await result.response;
-			const parsed = parseLeadQualificationOutput((response.text() || "").trim());
+			const parsed = parseLeadQualificationOutput(
+				(response.text() || "").trim(),
+			);
 			if (parsed) {
 				return parsed;
 			}
@@ -589,11 +600,17 @@ function parseWebsiteSchemaOutput(
 			if (normalized.startsWith("feature") || normalized.startsWith("service"))
 				return "features";
 			if (normalized.startsWith("gallery")) return "gallery";
-			if (normalized.startsWith("testimonial") || normalized.startsWith("review"))
+			if (
+				normalized.startsWith("testimonial") ||
+				normalized.startsWith("review")
+			)
 				return "testimonials";
 			if (normalized.startsWith("faq") || normalized.startsWith("question"))
 				return "faq";
-			if (normalized.startsWith("cta") || normalized.startsWith("call-to-action"))
+			if (
+				normalized.startsWith("cta") ||
+				normalized.startsWith("call-to-action")
+			)
 				return "cta";
 			if (normalized.startsWith("contact")) return "contact";
 			return null;
@@ -801,7 +818,7 @@ function parseWebsiteSchemaOutput(
 						warnings: [] as string[],
 					};
 
-			const merged: WebsiteSchema = {
+		const merged: WebsiteSchema = {
 			meta: {
 				...fallback.meta,
 				...(root.meta || {}),
@@ -1037,7 +1054,9 @@ function ensureNonTemplateCopy(
 		/^a\s+premium\s+.+website\s+designed\s+to\s+convert\s+visitors\s+into\s+customers\.?$/i;
 
 	const categoryNorm = (categoryLabel || "").toLowerCase();
-	const pickVariant = (sectionType: WebsiteSchema["sections"][number]["type"]) => {
+	const pickVariant = (
+		sectionType: WebsiteSchema["sections"][number]["type"],
+	) => {
 		if (sectionType === "hero") {
 			if (
 				categoryNorm.includes("salon") ||
@@ -1106,10 +1125,7 @@ function ensureNonTemplateCopy(
 					seed + 19,
 				);
 			}
-			return pickBySeed(
-				["editorial-mosaic", "stacked-collage"],
-				seed + 19,
-			);
+			return pickBySeed(["editorial-mosaic", "stacked-collage"], seed + 19);
 		}
 
 		if (sectionType === "testimonials") {
@@ -1124,11 +1140,17 @@ function ensureNonTemplateCopy(
 		}
 
 		if (sectionType === "cta") {
-			return pickBySeed(["gradient-band", "split-card", "side-by-side"], seed + 31);
+			return pickBySeed(
+				["gradient-band", "split-card", "side-by-side"],
+				seed + 31,
+			);
 		}
 
 		if (sectionType === "contact") {
-			return pickBySeed(["split-card", "minimal-centered", "centered"], seed + 37);
+			return pickBySeed(
+				["split-card", "minimal-centered", "centered"],
+				seed + 37,
+			);
 		}
 
 		return "default";
@@ -1146,8 +1168,7 @@ function ensureNonTemplateCopy(
 			modified.ctaPrimary.label = modified.ctaPrimary.label || "Book Now";
 			modified.ctaPrimary.href = modified.ctaPrimary.href || "#contact";
 			if (modified.ctaSecondary) {
-				modified.ctaSecondary.href =
-					modified.ctaSecondary.href || "#services";
+				modified.ctaSecondary.href = modified.ctaSecondary.href || "#services";
 			}
 			modified.media = modified.media || {
 				src:
@@ -1311,7 +1332,10 @@ function enforceLightTheme(
 function collectBusinessImages(business: any): string[] {
 	return Array.from(
 		new Set(
-			[...(business?.photos || []), ...(business?.imageSuggestions || [])].filter(
+			[
+				...(business?.photos || []),
+				...(business?.imageSuggestions || []),
+			].filter(
 				(value): value is string =>
 					typeof value === "string" && value.trim().length > 0,
 			),
@@ -1419,7 +1443,10 @@ function pickDesignProfile(category: string, seed = 0) {
 						muted: "#7f6a72",
 						outline: "rgba(180, 83, 99, 0.12)",
 					},
-					typography: { heading: "Playfair Display", body: "Plus Jakarta Sans" },
+					typography: {
+						heading: "Playfair Display",
+						body: "Plus Jakarta Sans",
+					},
 				},
 				{
 					name: "Champagne Studio",
@@ -2132,7 +2159,10 @@ function createFallbackWebsiteSchema(business: any): WebsiteSchema {
 						: "split";
 	const featureLayout =
 		categoryNorm.includes("salon") || categoryNorm.includes("spa")
-			? pickBySeed(["bento", "alternating-stack", "editorial-cards"], copySeed + 9)
+			? pickBySeed(
+					["bento", "alternating-stack", "editorial-cards"],
+					copySeed + 9,
+				)
 			: layoutVariant === "minimal"
 				? "list"
 				: "cards";
@@ -2327,6 +2357,9 @@ app.post("/api/generate", async (req: Request, res: Response) => {
 		}
 
 		const debugSession = createGenerationDebugSession(business);
+		logStderr(
+			`[Generate] start traceId=${debugSession.traceId} business=${business.name} mode=${WEBSITE_GENERATION_MODE}`,
+		);
 		res.setHeader("x-debug-generation-id", debugSession.traceId);
 		res.setHeader("x-debug-generation-fallback", "false");
 		persistGenerationDebugFile(
@@ -2553,7 +2586,9 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 						const modelRestUrl = restUrl.includes("{model}")
 							? restUrl.replace("{model}", model.name)
 							: restUrl;
-						console.error(`[Gemini] Attempting ${stageLabel} direct REST call to ${modelRestUrl}...`);
+						console.error(
+							`[Gemini] Attempting ${stageLabel} direct REST call to ${modelRestUrl}...`,
+						);
 
 						const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${GENAI_KEY}`;
 
@@ -2570,29 +2605,44 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 								}),
 							}),
 							new Promise<Response>((_, reject) =>
-								setTimeout(() => reject(new Error(`REST timeout after ${model.timeoutMs}ms`)), model.timeoutMs)
+								setTimeout(
+									() =>
+										reject(
+											new Error(`REST timeout after ${model.timeoutMs}ms`),
+										),
+									model.timeoutMs,
+								),
 							),
 						]);
 
 						if (!fetchResponse.ok) {
-							throw new Error(`REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`);
+							throw new Error(
+								`REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`,
+							);
 						}
 
-						const data = await fetchResponse.json() as any;
-						stageRawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+						const data = (await fetchResponse.json()) as any;
+						stageRawText =
+							data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 					} else {
-						console.error(`[Gemini] Attempting ${stageLabel} SDK call for ${model.name}...`);
+						console.error(
+							`[Gemini] Attempting ${stageLabel} SDK call for ${model.name}...`,
+						);
 						const genAI = await getSDKGenAI();
 						if (!genAI) {
 							throw new Error("Gemini SDK not available.");
 						}
 						const response = (await Promise.race([
-							genAI.getGenerativeModel({ model: model.name }).generateContent(promptText),
+							genAI
+								.getGenerativeModel({ model: model.name })
+								.generateContent(promptText),
 							new Promise((_, reject) =>
 								setTimeout(
 									() =>
 										reject(
-											new Error(`${model.name} request timed out after ${model.timeoutMs}ms`),
+											new Error(
+												`${model.name} request timed out after ${model.timeoutMs}ms`,
+											),
 										),
 									model.timeoutMs,
 								),
@@ -2604,27 +2654,47 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 					}
 
 					if (stageRawText) {
-						console.error(`[Gemini] ${model.name} ${stageLabel} success! Response length: ${stageRawText.length}`);
+						console.error(
+							`[Gemini] ${model.name} ${stageLabel} success! Response length: ${stageRawText.length}`,
+						);
 						return stageRawText;
 					}
 
-					console.error(`[Gemini] ${model.name} returned empty ${stageLabel} text.`);
+					console.error(
+						`[Gemini] ${model.name} returned empty ${stageLabel} text.`,
+					);
 				} catch (error) {
 					stageLastError = error;
-					console.error(`[Gemini] ${model.name} ${stageLabel} failed:`, error instanceof Error ? error.message : error);
-					fs.writeSync(2, `[Gemini] ${stageLabel.toUpperCase()} ERROR DETAIL: ${JSON.stringify(error)}\n`);
+					console.error(
+						`[Gemini] ${model.name} ${stageLabel} failed:`,
+						error instanceof Error ? error.message : error,
+					);
+					fs.writeSync(
+						2,
+						`[Gemini] ${stageLabel.toUpperCase()} ERROR DETAIL: ${JSON.stringify(error)}\n`,
+					);
 				}
 			}
 
-			throw stageLastError || new Error(`All Gemini ${stageLabel} attempts failed`);
+			throw (
+				stageLastError || new Error(`All Gemini ${stageLabel} attempts failed`)
+			);
 		};
 
-		console.error(`[Gemini] Starting generation for ${business.name} with model ${modelsToTry[0].name}`);
-		fs.writeSync(2, `\n--- GEMINI PROMPT START ---\n${prompt}\n--- GEMINI PROMPT END ---\n`);
+		console.error(
+			`[Gemini] Starting generation for ${business.name} with model ${modelsToTry[0].name}`,
+		);
+		fs.writeSync(
+			2,
+			`\n--- GEMINI PROMPT START ---\n${prompt}\n--- GEMINI PROMPT END ---\n`,
+		);
 		persistGenerationDebugFile(debugSession, "02-generation-prompt.md", prompt);
 
 		const rawText = await callGeminiText(prompt, "schema");
-		fs.writeSync(2, `\n--- GEMINI RESPONSE START ---\n${rawText}\n--- GEMINI RESPONSE END ---\n`);
+		fs.writeSync(
+			2,
+			`\n--- GEMINI RESPONSE START ---\n${rawText}\n--- GEMINI RESPONSE END ---\n`,
+		);
 
 		persistGenerationDebugFile(
 			debugSession,
@@ -2637,7 +2707,7 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 			business,
 			debugSession,
 		);
-		
+
 		if (!parsedSchema) {
 			console.warn(
 				"[Generate] Gemini output could not be parsed as WebsiteSchema, using fallback schema.",
@@ -2658,7 +2728,8 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 		}
 
 		// 3. Strict Validation & Auto-Repair
-		const { validateWebsiteSchema } = await import("./src/lib/website-schema-validator");
+		const { validateWebsiteSchema } =
+			await import("./src/lib/website-schema-validator");
 		const validation = validateWebsiteSchema(parsedSchema);
 		const finalSchema = validation.repairedSchema || parsedSchema;
 
@@ -2684,30 +2755,53 @@ No site header chrome, no WordPress admin text, no fake badges like "crafted for
 No generic placeholder copy.
 
 BUSINESS:
-${JSON.stringify({
-	name: business.name,
-	category: business.category,
-	address: business.address,
-	phone: business.phoneNumber,
-	email: business.email,
-	website: business.websiteUri,
-}, null, 2)}
+${JSON.stringify(
+	{
+		name: business.name,
+		category: business.category,
+		address: business.address,
+		phone: business.phoneNumber,
+		email: business.email,
+		website: business.websiteUri,
+	},
+	null,
+	2,
+)}
 
 APPROVED SCHEMA:
 ${JSON.stringify(finalSchema, null, 2)}
 
 Return only the final HTML for the homepage body content.`;
 
-			persistGenerationDebugFile(debugSession, "05a-wordpress-html-prompt.md", wordpressHtmlPrompt);
-			const rawWordPressHtml = await callGeminiText(wordpressHtmlPrompt, "wordpress-html");
-			fs.writeSync(2, `\n--- GEMINI WORDPRESS HTML START ---\n${rawWordPressHtml}\n--- GEMINI WORDPRESS HTML END ---\n`);
-			persistGenerationDebugFile(debugSession, "05b-wordpress-html-raw.txt", rawWordPressHtml);
+			persistGenerationDebugFile(
+				debugSession,
+				"05a-wordpress-html-prompt.md",
+				wordpressHtmlPrompt,
+			);
+			const rawWordPressHtml = await callGeminiText(
+				wordpressHtmlPrompt,
+				"wordpress-html",
+			);
+			fs.writeSync(
+				2,
+				`\n--- GEMINI WORDPRESS HTML START ---\n${rawWordPressHtml}\n--- GEMINI WORDPRESS HTML END ---\n`,
+			);
+			persistGenerationDebugFile(
+				debugSession,
+				"05b-wordpress-html-raw.txt",
+				rawWordPressHtml,
+			);
 
-			const extractedWordPressHtml = extractHtmlDocument(rawWordPressHtml) || rawWordPressHtml.trim();
+			const extractedWordPressHtml =
+				extractHtmlDocument(rawWordPressHtml) || rawWordPressHtml.trim();
 			if (extractedWordPressHtml) {
 				(finalSchema as any)._wordpressHtml = extractedWordPressHtml;
 				(finalSchema as any)._renderSource = "gemini-html";
-				persistGenerationDebugFile(debugSession, "05c-wordpress-html-final.html", extractedWordPressHtml);
+				persistGenerationDebugFile(
+					debugSession,
+					"05c-wordpress-html-final.html",
+					extractedWordPressHtml,
+				);
 			}
 		} catch (wordpressHtmlError) {
 			(finalSchema as any)._renderSource = "local-builder";
@@ -2717,6 +2811,16 @@ Return only the final HTML for the homepage body content.`;
 			);
 		}
 
+		const renderSource = (finalSchema as any)._renderSource || "unknown";
+		const wpHtml = (finalSchema as any)._wordpressHtml as string | undefined;
+		const schemaHash = crypto
+			.createHash("sha1")
+			.update(JSON.stringify(finalSchema))
+			.digest("hex");
+		logStderr(
+			`[Generate] complete traceId=${debugSession.traceId} business=${business.name} renderSource=${renderSource} wpHtml=${wpHtml ? `yes(${wpHtml.length})` : "no"} schemaSha1=${schemaHash}`,
+		);
+
 		// 4. Trace Log to DB
 		try {
 			await pool.query(
@@ -2724,14 +2828,16 @@ Return only the final HTML for the homepage body content.`;
 				[
 					debugSession.traceId,
 					"generation_completed",
-					validation.isValid ? "Valid schema generated" : "Schema repaired during validation",
+					validation.isValid
+						? "Valid schema generated"
+						: "Schema repaired during validation",
 					JSON.stringify({
 						model: modelsToTry[0].name,
 						isValid: validation.isValid,
 						repairs: validation.repairs,
-						errors: validation.errors
-					})
-				]
+						errors: validation.errors,
+					}),
+				],
 			);
 		} catch (e) {
 			console.error("[DB] Audit log failed:", e);
@@ -2742,11 +2848,11 @@ Return only the final HTML for the homepage body content.`;
 			"05-normalized-schema.json",
 			finalSchema,
 		);
-		
+
 		debugSession.sectionTypes = finalSchema.sections.map(
 			(section) => section.type,
 		);
-		
+
 		res.setHeader("x-debug-generation-fallback", "false");
 		return res.json(finalSchema);
 	} catch (error) {
@@ -2927,7 +3033,10 @@ app.post(
 
 app.post(
 	"/api/enrich-business",
-	async (req: Request<{}, {}, EnrichBusinessRequest & { photos?: string[] }>, res: Response) => {
+	async (
+		req: Request<{}, {}, EnrichBusinessRequest & { photos?: string[] }>,
+		res: Response,
+	) => {
 		try {
 			const { websiteUri, businessName, category, photos } = req.body;
 			if (!businessName) {
@@ -2998,7 +3107,7 @@ app.post(
 			const email = extractEmails(html)[0];
 			const phones = extractPhones(html);
 			const imageSuggestions = extractImages(html);
-			
+
 			// Second choice: Website logo detection
 			const websiteLogo = extractLogo(html, websiteUri);
 			if (websiteLogo) {
@@ -3028,15 +3137,19 @@ app.post(
 function extractLogo(html: string, baseUrl: string): string | undefined {
 	try {
 		// 1. Try manifest/icons or link rel shortcuts
-		const iconRegex = /<link[^>]+rel=["'](?:shortcut )?icon["'][^>]+href=["']([^"']+)["']/i;
-		const appleIconRegex = /<link[^>]+rel=["']apple-touch-icon["'][^>]+href=["']([^"']+)["']/i;
-		const ogImageRegex = /<meta[^>]+property=["']og:logo["'][^>]+content=["']([^"']+)["']/i;
+		const iconRegex =
+			/<link[^>]+rel=["'](?:shortcut )?icon["'][^>]+href=["']([^"']+)["']/i;
+		const appleIconRegex =
+			/<link[^>]+rel=["']apple-touch-icon["'][^>]+href=["']([^"']+)["']/i;
+		const ogImageRegex =
+			/<meta[^>]+property=["']og:logo["'][^>]+content=["']([^"']+)["']/i;
 		const schemaLogoRegex = /["']logo["']\s*:\s*["']([^"']+)["']/i;
 
-		const match = html.match(ogImageRegex) || 
-		              html.match(appleIconRegex) || 
-					  html.match(iconRegex) ||
-					  html.match(schemaLogoRegex);
+		const match =
+			html.match(ogImageRegex) ||
+			html.match(appleIconRegex) ||
+			html.match(iconRegex) ||
+			html.match(schemaLogoRegex);
 
 		if (match && match[1]) {
 			let logoUrl = match[1];
@@ -3122,64 +3235,76 @@ app.post(
 		res: Response,
 	) => {
 		try {
-			const { projectId, business, websiteSchema, provisioningPlan, status } = req.body;
+			const { projectId, business, websiteSchema, provisioningPlan, status } =
+				req.body;
 			if (!projectId || !business || !websiteSchema) {
 				return res.status(400).json({
 					error: "Missing projectId, business, or websiteSchema.",
 				});
 			}
 
+			const renderSource = (websiteSchema as any)._renderSource || "unknown";
+			const wpHtml = (websiteSchema as any)._wordpressHtml as
+				| string
+				| undefined;
+			logStderr(
+				`[Provisioning] queue request projectId=${projectId} business=${business.name} traceId=${websiteSchema.meta?.traceId || "n/a"} renderSource=${renderSource} wpHtml=${wpHtml ? `yes(${wpHtml.length})` : "no"}`,
+			);
+
 			const jobId = crypto.randomUUID();
-			const traceId = websiteSchema.meta?.traceId || websiteSchema._validation?.traceId || null;
+			const traceId =
+				websiteSchema.meta?.traceId ||
+				websiteSchema._validation?.traceId ||
+				null;
 			const isPreview = String(projectId).includes("preview-");
-			const previewExpiresAt = isPreview 
+			const previewExpiresAt = isPreview
 				? new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
 				: null;
 
 			const [existing]: any = await pool.query(
 				`SELECT id FROM provisioning_jobs WHERE project_id = ? LIMIT 1`,
-				[projectId]
+				[projectId],
 			);
 
-			const targetStatus = status || 'pending';
+			const targetStatus = status || "pending";
 			let activeJobId = jobId;
 
 			if (existing && existing.length > 0) {
 				activeJobId = existing[0].id;
 				await pool.query(
 					`UPDATE provisioning_jobs SET website_schema = ?, status = ?, trace_id = ?, updated_at = NOW() WHERE project_id = ?`,
-					[
-						JSON.stringify(websiteSchema),
-						targetStatus,
-						traceId,
-						projectId
-					]
+					[JSON.stringify(websiteSchema), targetStatus, traceId, projectId],
 				);
 			} else {
 				await pool.query(
 					`INSERT INTO provisioning_jobs (id, project_id, business_name, website_schema, status, trace_id, is_preview, preview_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 					[
-						jobId, 
-						projectId, 
-						business.name, 
+						jobId,
+						projectId,
+						business.name,
 						JSON.stringify(websiteSchema),
 						targetStatus,
 						traceId,
 						isPreview,
-						previewExpiresAt
-					]
+						previewExpiresAt,
+					],
 				);
 			}
 
 			return res.json({
 				success: true,
 				jobId: activeJobId,
-				message: isPreview ? "Preview provisioning queued" : "Provisioning job queued successfully",
-				previewExpiresAt
+				message: isPreview
+					? "Preview provisioning queued"
+					: "Provisioning job queued successfully",
+				previewExpiresAt,
 			});
 		} catch (error) {
 			return res.status(500).json({
-				error: error instanceof Error ? error.message : "Failed to queue provisioning job",
+				error:
+					error instanceof Error
+						? error.message
+						: "Failed to queue provisioning job",
 			});
 		}
 	},
@@ -3193,7 +3318,7 @@ app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
 			 FROM provisioning_jobs 
 			 LEFT JOIN isolated_deployments ON provisioning_jobs.project_id = isolated_deployments.project_id
 			 WHERE provisioning_jobs.project_id = ? ORDER BY provisioning_jobs.created_at DESC LIMIT 1`,
-			[projectId]
+			[projectId],
 		);
 
 		if (!rows || rows.length === 0) {
@@ -3201,8 +3326,14 @@ app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
 		}
 
 		const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscout.online";
-		const liveUrl = rows[0].subdomain_url || (rows[0].subdomain ? `http://${rows[0].subdomain}.${rootDomain}` : null);
-		const adminUrl = rows[0].wp_admin_url || (rows[0].subdomain ? `http://${rows[0].subdomain}.${rootDomain}/wp-admin` : null);
+		const liveUrl =
+			rows[0].subdomain_url ||
+			(rows[0].subdomain ? `http://${rows[0].subdomain}.${rootDomain}` : null);
+		const adminUrl =
+			rows[0].wp_admin_url ||
+			(rows[0].subdomain
+				? `http://${rows[0].subdomain}.${rootDomain}/wp-admin`
+				: null);
 		const effectiveStatus =
 			rows[0].status === "completed" || liveUrl || adminUrl
 				? "completed"
@@ -3210,9 +3341,15 @@ app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
 		let rawPassword = null;
 		if (effectiveStatus === "completed" && rows[0].wp_admin_pass_encrypted) {
 			try {
-				const [ivHex, encryptedHex] = rows[0].wp_admin_pass_encrypted.split(":");
-				const key = process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
-				const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(key), Buffer.from(ivHex, "hex"));
+				const [ivHex, encryptedHex] =
+					rows[0].wp_admin_pass_encrypted.split(":");
+				const key =
+					process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
+				const decipher = crypto.createDecipheriv(
+					"aes-256-cbc",
+					Buffer.from(key),
+					Buffer.from(ivHex, "hex"),
+				);
 				let decrypted = decipher.update(Buffer.from(encryptedHex, "hex"));
 				decrypted = Buffer.concat([decrypted, decipher.final()]);
 				rawPassword = decrypted.toString();
@@ -3225,13 +3362,15 @@ app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
 			success: true,
 			status: effectiveStatus,
 			logs: rows[0].logs || [],
-			deployment: liveUrl ? {
-				liveUrl,
-				adminUrl,
-				username: rows[0].wp_admin_user || 'admin',
-				password: rawPassword,
-				sslStatus: rows[0].ssl_status || 'pending'
-			} : null
+			deployment: liveUrl
+				? {
+						liveUrl,
+						adminUrl,
+						username: rows[0].wp_admin_user || "admin",
+						password: rawPassword,
+						sslStatus: rows[0].ssl_status || "pending",
+					}
+				: null,
 		});
 	} catch (error) {
 		return res.status(500).json({
@@ -3243,27 +3382,39 @@ app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
 app.get("/api/generate/replay/:traceId", async (req, res) => {
 	const { traceId } = req.params;
 	try {
-		const inputPath = path.join(DEBUG_ROOT_DIR, traceId, "06-renderer-input.json");
+		const inputPath = path.join(
+			DEBUG_ROOT_DIR,
+			traceId,
+			"06-renderer-input.json",
+		);
 		if (!fs.existsSync(inputPath)) {
-			return res.status(404).json({ error: "Trace not found or missing renderer input" });
+			return res
+				.status(404)
+				.json({ error: "Trace not found or missing renderer input" });
 		}
-		
+
 		const schemaContent = fs.readFileSync(inputPath, "utf-8");
 		const rawSchema = JSON.parse(schemaContent);
-		
-		const { validateWebsiteSchema } = await import("./src/lib/website-schema-validator");
+
+		const { validateWebsiteSchema } =
+			await import("./src/lib/website-schema-validator");
 		const { schemaToGutenbergBlocks } = await import("./src/lib/wordpress");
-		
+
 		const validatedSchema = validateWebsiteSchema(rawSchema);
 		const blocks = schemaToGutenbergBlocks(validatedSchema);
-		
+
 		return res.json({
 			success: true,
 			schema: validatedSchema,
-			blocks
+			blocks,
 		});
 	} catch (error) {
-		return res.status(500).json({ error: error instanceof Error ? error.message : "Failed to replay trace" });
+		return res
+			.status(500)
+			.json({
+				error:
+					error instanceof Error ? error.message : "Failed to replay trace",
+			});
 	}
 });
 
@@ -3305,7 +3456,7 @@ app.get("/api/leads", async (req, res) => {
 				idp.ssl_status as sslStatus
 			 FROM provisioning_jobs pj
 			 LEFT JOIN isolated_deployments idp ON pj.project_id = idp.project_id
-			 ORDER BY pj.created_at DESC`
+			 ORDER BY pj.created_at DESC`,
 		);
 
 		const leads = rows.map((row: any) => {
@@ -3313,8 +3464,13 @@ app.get("/api/leads", async (req, res) => {
 			if (row.wp_admin_pass_encrypted) {
 				try {
 					const [ivHex, encryptedHex] = row.wp_admin_pass_encrypted.split(":");
-					const key = process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
-					const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(key), Buffer.from(ivHex, "hex"));
+					const key =
+						process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
+					const decipher = crypto.createDecipheriv(
+						"aes-256-cbc",
+						Buffer.from(key),
+						Buffer.from(ivHex, "hex"),
+					);
 					let decrypted = decipher.update(Buffer.from(encryptedHex, "hex"));
 					decrypted = Buffer.concat([decrypted, decipher.final()]);
 					rawPassword = decrypted.toString();
@@ -3335,7 +3491,7 @@ app.get("/api/leads", async (req, res) => {
 				photos: schema._validation?.photos || [],
 				imageSuggestions: schema._validation?.imageSuggestions || [],
 				wordpressPassword: rawPassword,
-				websiteContent: "", 
+				websiteContent: "",
 			};
 		});
 
@@ -3455,27 +3611,30 @@ app.delete("/api/sites/:siteId", async (req: Request, res: Response) => {
 async function pollSslStatus() {
 	try {
 		const [deployments]: any = await pool.query(
-			`SELECT * FROM isolated_deployments WHERE ssl_status = 'pending' LIMIT 5`
+			`SELECT * FROM isolated_deployments WHERE ssl_status = 'pending' LIMIT 5`,
 		);
 
 		for (const dep of deployments) {
 			const httpsUrl = dep.subdomain_url.replace("http://", "https://");
 			const host = httpsUrl.replace("https://", "").split("/")[0];
-			
+
 			console.log(`[SSL Worker] Checking SSL for ${host}`);
 
 			try {
 				const https = await import("https");
 				await new Promise((resolve, reject) => {
-					const req = https.get({
-						hostname: host,
-						port: 443,
-						path: "/",
-						timeout: 5000,
-						rejectUnauthorized: true // We want to know if the cert is valid
-					}, (res) => {
-						resolve(true);
-					});
+					const req = https.get(
+						{
+							hostname: host,
+							port: 443,
+							path: "/",
+							timeout: 5000,
+							rejectUnauthorized: true, // We want to know if the cert is valid
+						},
+						(res) => {
+							resolve(true);
+						},
+					);
 
 					req.on("error", (e) => reject(e));
 					req.on("timeout", () => {
@@ -3487,7 +3646,7 @@ async function pollSslStatus() {
 				console.log(`[SSL Worker] SSL is VALID for ${httpsUrl}. Upgrading...`);
 				await pool.query(
 					`UPDATE isolated_deployments SET ssl_status = 'valid', subdomain_url = ?, wp_admin_url = ? WHERE id = ?`,
-					[httpsUrl, `${httpsUrl}/wp-admin`, dep.id]
+					[httpsUrl, `${httpsUrl}/wp-admin`, dep.id],
 				);
 			} catch (error) {
 				// SSL not ready yet
@@ -3503,20 +3662,27 @@ async function pollSslStatus() {
 async function pollCleanupPreviewSites() {
 	try {
 		const [deployments]: any = await pool.query(
-			`SELECT project_id, preview_expires_at, status FROM provisioning_jobs WHERE preview_expires_at < NOW() AND status != 'cleaned' LIMIT 10`
+			`SELECT project_id, preview_expires_at, status FROM provisioning_jobs WHERE preview_expires_at < NOW() AND status != 'cleaned' LIMIT 10`,
 		);
 
 		for (const dep of deployments) {
-			console.log(`[Cleanup Worker] Cleaning up expired preview for project ${dep.project_id}`);
+			console.log(
+				`[Cleanup Worker] Cleaning up expired preview for project ${dep.project_id}`,
+			);
 			try {
 				await deleteProvisionedWordPressSite(dep.project_id);
 				await pool.query(
 					`UPDATE provisioning_jobs SET status = 'cleaned' WHERE project_id = ?`,
-					[dep.project_id]
+					[dep.project_id],
 				);
-				console.log(`[Cleanup Worker] Cleanup successful for project ${dep.project_id}`);
+				console.log(
+					`[Cleanup Worker] Cleanup successful for project ${dep.project_id}`,
+				);
 			} catch (error) {
-				console.error(`[Cleanup Worker] Failed to clean up ${dep.project_id}:`, error);
+				console.error(
+					`[Cleanup Worker] Failed to clean up ${dep.project_id}:`,
+					error,
+				);
 			}
 		}
 	} catch (error) {

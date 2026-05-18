@@ -1533,7 +1533,7 @@ var env_default = process.env;
 import crypto2 from "crypto";
 import cors from "cors";
 import express from "express";
-import fs2 from "fs";
+import fs3 from "fs";
 import path2 from "path";
 
 // src/lib/callhippo-service.ts
@@ -1841,6 +1841,7 @@ async function initializeDatabase() {
 
 // src/lib/provisioning-engine.ts
 import crypto from "crypto";
+import fs2 from "fs";
 
 // src/lib/cpanel-uapi.ts
 import { exec } from "child_process";
@@ -2135,7 +2136,13 @@ async function runRemoteShellCommand(command, logCallback) {
 // src/lib/provisioning-engine.ts
 var MAX_RETRIES = 3;
 var MAX_SUBDOMAIN_LENGTH = 45;
-var SUBDOMAIN_SEMANTIC_VARIANTS = ["-shop", "-store", "-official", "-co", "-pro"];
+var SUBDOMAIN_SEMANTIC_VARIANTS = [
+  "-shop",
+  "-store",
+  "-official",
+  "-co",
+  "-pro"
+];
 function sanitizeSubdomainBase(name) {
   return (name || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "").substring(0, 40);
 }
@@ -2175,7 +2182,10 @@ async function generateUniqueSubdomain(businessName) {
       return candidate;
     }
   }
-  return `${base}-${crypto.randomBytes(4).toString("hex")}`.substring(0, MAX_SUBDOMAIN_LENGTH);
+  return `${base}-${crypto.randomBytes(4).toString("hex")}`.substring(
+    0,
+    MAX_SUBDOMAIN_LENGTH
+  );
 }
 function generateSecurePassword() {
   return crypto.randomBytes(16).toString("hex") + "!aA1";
@@ -2191,7 +2201,11 @@ function encrypt(text) {
 function decrypt(encryptedValue) {
   const [ivHex, encHex] = encryptedValue.split(":");
   const key = process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
-  const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(key), Buffer.from(ivHex, "hex"));
+  const decipher = crypto.createDecipheriv(
+    "aes-256-cbc",
+    Buffer.from(key),
+    Buffer.from(ivHex, "hex")
+  );
   let decrypted = decipher.update(Buffer.from(encHex, "hex"));
   decrypted = Buffer.concat([decrypted, decipher.final()]);
   return decrypted.toString();
@@ -2200,13 +2214,18 @@ async function appendLog(jobId, message) {
   const timestamp = (/* @__PURE__ */ new Date()).toISOString();
   const logEntry = `[${timestamp}] ${message}`;
   console.log(`[Job ${jobId}] ${message}`);
+  fs2.writeSync(2, `[Job ${jobId}] ${message}
+`);
   await pool.query(
     `UPDATE provisioning_jobs SET logs = JSON_ARRAY_APPEND(COALESCE(logs, JSON_ARRAY()), '$', ?) WHERE id = ?`,
     [logEntry, jobId]
   );
 }
 async function processJob(jobId) {
-  const [rows] = await pool.query(`SELECT * FROM provisioning_jobs WHERE id = ?`, [jobId]);
+  const [rows] = await pool.query(
+    `SELECT * FROM provisioning_jobs WHERE id = ?`,
+    [jobId]
+  );
   if (!rows || rows.length === 0) return;
   const job = rows[0];
   if (job.status === "completed" || job.status === "failed") return;
@@ -2215,12 +2234,21 @@ async function processJob(jobId) {
   } catch (error) {
     await appendLog(job.id, `ERROR: ${error.message}`);
     if (job.retry_count < MAX_RETRIES) {
-      await appendLog(job.id, `Retrying later (Attempt ${job.retry_count + 1}/${MAX_RETRIES})`);
-      await pool.query(`UPDATE provisioning_jobs SET retry_count = retry_count + 1, locked_at = NULL WHERE id = ?`, [job.id]);
+      await appendLog(
+        job.id,
+        `Retrying later (Attempt ${job.retry_count + 1}/${MAX_RETRIES})`
+      );
+      await pool.query(
+        `UPDATE provisioning_jobs SET retry_count = retry_count + 1, locked_at = NULL WHERE id = ?`,
+        [job.id]
+      );
     } else {
       await appendLog(job.id, `Max retries reached. Initiating rollback.`);
       await rollbackJob(job);
-      await pool.query(`UPDATE provisioning_jobs SET status = 'failed', locked_at = NULL WHERE id = ?`, [job.id]);
+      await pool.query(
+        `UPDATE provisioning_jobs SET status = 'failed', locked_at = NULL WHERE id = ?`,
+        [job.id]
+      );
     }
   }
 }
@@ -2233,42 +2261,69 @@ async function executeStateMachine(job) {
   let wpAdminUser = job.wp_admin_user || "admin";
   let wpAdminPass = job.wp_admin_pass_encrypted;
   if (job.status === "pending" || job.status === "creating_subdomain") {
-    await pool.query(`UPDATE provisioning_jobs SET status = 'creating_subdomain' WHERE id = ?`, [job.id]);
+    await pool.query(
+      `UPDATE provisioning_jobs SET status = 'creating_subdomain' WHERE id = ?`,
+      [job.id]
+    );
     await appendLog(job.id, "Starting subdomain creation on remote WP server");
     if (!subdomain) {
       const name = job.business_name || job.project_id;
       subdomain = await generateUniqueSubdomain(name);
       await appendLog(job.id, `Generated subdomain: "${subdomain}"`);
-      await pool.query(`UPDATE provisioning_jobs SET subdomain = ? WHERE id = ?`, [subdomain, job.id]);
+      await pool.query(
+        `UPDATE provisioning_jobs SET subdomain = ? WHERE id = ?`,
+        [subdomain, job.id]
+      );
     }
     const fullDocRoot = `${docRootBase}/${subdomain}`;
     await appendLog(job.id, `Remote doc root will be: ${fullDocRoot}`);
     await addSubdomain(subdomain, rootDomain, fullDocRoot);
-    await appendLog(job.id, `Created subdomain: ${subdomain}.${rootDomain} \u2192 ${fullDocRoot}`);
+    await appendLog(
+      job.id,
+      `Created subdomain: ${subdomain}.${rootDomain} \u2192 ${fullDocRoot}`
+    );
     job.status = "creating_database";
   }
   if (job.status === "creating_database") {
-    await pool.query(`UPDATE provisioning_jobs SET status = 'creating_database' WHERE id = ?`, [job.id]);
+    await pool.query(
+      `UPDATE provisioning_jobs SET status = 'creating_database' WHERE id = ?`,
+      [job.id]
+    );
     await appendLog(job.id, "Creating database on remote WP server cPanel");
     const dbPrefix = process.env.CPANEL_USERNAME ? `${process.env.CPANEL_USERNAME}_` : "db_";
     if (!dbName) {
       const suffix = crypto.randomBytes(4).toString("hex");
       dbName = `${dbPrefix}${suffix}`.substring(0, 64);
       dbUser = `${dbPrefix}u${suffix}`.substring(0, 32);
-      await pool.query(`UPDATE provisioning_jobs SET db_name = ?, db_user = ? WHERE id = ?`, [dbName, dbUser, job.id]);
+      await pool.query(
+        `UPDATE provisioning_jobs SET db_name = ?, db_user = ? WHERE id = ?`,
+        [dbName, dbUser, job.id]
+      );
     }
     const dbPassword = generateSecurePassword();
     await createDatabase(dbName);
     await createDatabaseUser(dbUser, dbPassword);
     await setDatabasePrivileges(dbUser, dbName);
-    await pool.query(`UPDATE provisioning_jobs SET db_pass_encrypted = ? WHERE id = ?`, [encrypt(dbPassword), job.id]);
+    await pool.query(
+      `UPDATE provisioning_jobs SET db_pass_encrypted = ? WHERE id = ?`,
+      [encrypt(dbPassword), job.id]
+    );
     job._tempDbPass = dbPassword;
-    await appendLog(job.id, `Created remote database: ${dbName} and user: ${dbUser}`);
+    await appendLog(
+      job.id,
+      `Created remote database: ${dbName} and user: ${dbUser}`
+    );
     job.status = "installing_wordpress";
   }
   if (job.status === "installing_wordpress") {
-    await pool.query(`UPDATE provisioning_jobs SET status = 'installing_wordpress' WHERE id = ?`, [job.id]);
-    await appendLog(job.id, "Starting remote WordPress installation via SSH/WP-CLI");
+    await pool.query(
+      `UPDATE provisioning_jobs SET status = 'installing_wordpress' WHERE id = ?`,
+      [job.id]
+    );
+    await appendLog(
+      job.id,
+      "Starting remote WordPress installation via SSH/WP-CLI"
+    );
     let dbPassword = job._tempDbPass;
     if (!dbPassword && job.db_pass_encrypted) {
       try {
@@ -2282,12 +2337,17 @@ async function executeStateMachine(job) {
     }
     const wpCliStatus = await checkWpCliAvailable();
     if (!wpCliStatus.available) {
-      throw new Error(`WP-CLI not reachable on remote server: ${wpCliStatus.error}`);
+      throw new Error(
+        `WP-CLI not reachable on remote server: ${wpCliStatus.error}`
+      );
     }
     await appendLog(job.id, `WP-CLI available: ${wpCliStatus.version}`);
     const fullDocRoot = `${docRootBase}/${subdomain}`;
     await appendLog(job.id, `Creating remote directory: ${fullDocRoot}`);
-    await runRemoteShellCommand(`mkdir -p "${fullDocRoot}"`, (log) => appendLog(job.id, log));
+    await runRemoteShellCommand(
+      `mkdir -p "${fullDocRoot}"`,
+      (log) => appendLog(job.id, log)
+    );
     await downloadWordPressCore(fullDocRoot, (log) => appendLog(job.id, log));
     if (!wpAdminPass) {
       const rawPass = generateSecurePassword();
@@ -2298,7 +2358,14 @@ async function executeStateMachine(job) {
         [wpAdminUser, wpAdminPass, job.id]
       );
     }
-    await createWpConfig(fullDocRoot, dbName, dbUser, dbPassword, "localhost", (log) => appendLog(job.id, log));
+    await createWpConfig(
+      fullDocRoot,
+      dbName,
+      dbUser,
+      dbPassword,
+      "localhost",
+      (log) => appendLog(job.id, log)
+    );
     const rawAdminPass = job._tempAdminPass || decrypt(wpAdminPass);
     const siteUrl = `http://${subdomain}.${rootDomain}`;
     await installWordPress(
@@ -2314,30 +2381,62 @@ async function executeStateMachine(job) {
     job.status = "configuring_wordpress";
   }
   if (job.status === "configuring_wordpress") {
-    await pool.query(`UPDATE provisioning_jobs SET status = 'configuring_wordpress' WHERE id = ?`, [job.id]);
+    await pool.query(
+      `UPDATE provisioning_jobs SET status = 'configuring_wordpress' WHERE id = ?`,
+      [job.id]
+    );
     const fullDocRoot = `${docRootBase}/${subdomain}`;
-    await configurePermalinks(fullDocRoot, "/%postname%/", (log) => appendLog(job.id, log));
+    await configurePermalinks(
+      fullDocRoot,
+      "/%postname%/",
+      (log) => appendLog(job.id, log)
+    );
     await appendLog(job.id, "Configured remote permalinks");
     await appendLog(job.id, "Installing Hello Elementor theme...");
     try {
-      await runWpCommand(`theme install hello-elementor --activate`, fullDocRoot, (log) => appendLog(job.id, log));
+      await runWpCommand(
+        `theme install hello-elementor --activate`,
+        fullDocRoot,
+        (log) => appendLog(job.id, log)
+      );
       await appendLog(job.id, "Hello Elementor theme activated");
     } catch (e) {
-      await appendLog(job.id, `Warning: Theme install failed (${e.message}), using default`);
+      await appendLog(
+        job.id,
+        `Warning: Theme install failed (${e.message}), using default`
+      );
     }
     try {
-      await runWpCommand(`theme delete twentytwentyfive twentytwentyfour twentytwentythree astra`, fullDocRoot, (log) => appendLog(job.id, log));
+      await runWpCommand(
+        `theme delete twentytwentyfive twentytwentyfour twentytwentythree astra`,
+        fullDocRoot,
+        (log) => appendLog(job.id, log)
+      );
     } catch (e) {
     }
-    await runWpCommand(`option update default_comment_status closed`, fullDocRoot, (log) => appendLog(job.id, log)).catch(() => {
+    await runWpCommand(
+      `option update default_comment_status closed`,
+      fullDocRoot,
+      (log) => appendLog(job.id, log)
+    ).catch(() => {
     });
-    await runWpCommand(`option update blogdescription ""`, fullDocRoot, (log) => appendLog(job.id, log)).catch(() => {
+    await runWpCommand(
+      `option update blogdescription ""`,
+      fullDocRoot,
+      (log) => appendLog(job.id, log)
+    ).catch(() => {
     });
     job.status = "deploying_content";
   }
   if (job.status === "deploying_content") {
-    await pool.query(`UPDATE provisioning_jobs SET status = 'deploying_content' WHERE id = ?`, [job.id]);
-    await appendLog(job.id, "Deploying Gutenberg content blocks to remote WordPress...");
+    await pool.query(
+      `UPDATE provisioning_jobs SET status = 'deploying_content' WHERE id = ?`,
+      [job.id]
+    );
+    await appendLog(
+      job.id,
+      "Deploying Gutenberg content blocks to remote WordPress..."
+    );
     const fullDocRoot = `${docRootBase}/${subdomain}`;
     const schema = typeof job.website_schema === "string" ? JSON.parse(job.website_schema) : job.website_schema;
     if (schema) {
@@ -2347,7 +2446,13 @@ async function executeStateMachine(job) {
         `UPDATE provisioning_jobs SET gutenberg_trace = ?, status = 'deploying_content' WHERE id = ?`,
         [homepageBlocks, job.id]
       );
-      await injectWebsiteContent(fullDocRoot, schema, homepageBlocks, wpAdminUser, (log) => appendLog(job.id, log));
+      await injectWebsiteContent(
+        fullDocRoot,
+        schema,
+        homepageBlocks,
+        wpAdminUser,
+        (log) => appendLog(job.id, log)
+      );
       await appendLog(job.id, "Content injected successfully on remote server");
     } else {
       await appendLog(job.id, "WARNING: No website schema found to inject.");
@@ -2355,21 +2460,27 @@ async function executeStateMachine(job) {
     job.status = "completed";
   }
   if (job.status === "completed") {
-    await pool.query(`UPDATE provisioning_jobs SET status = 'completed', locked_at = NULL WHERE id = ?`, [job.id]);
+    await pool.query(
+      `UPDATE provisioning_jobs SET status = 'completed', locked_at = NULL WHERE id = ?`,
+      [job.id]
+    );
     const httpUrl = `http://${subdomain}.${rootDomain}`;
-    await pool.query(`
+    await pool.query(
+      `
 			INSERT IGNORE INTO isolated_deployments
 				(id, project_id, subdomain_url, wp_admin_url, admin_username, encrypted_admin_password, website_schema, ssl_status)
 			VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
-		`, [
-      crypto.randomUUID(),
-      job.project_id,
-      httpUrl,
-      `${httpUrl}/wp-admin`,
-      wpAdminUser,
-      wpAdminPass,
-      typeof job.website_schema === "string" ? job.website_schema : JSON.stringify(job.website_schema)
-    ]);
+		`,
+      [
+        crypto.randomUUID(),
+        job.project_id,
+        httpUrl,
+        `${httpUrl}/wp-admin`,
+        wpAdminUser,
+        wpAdminPass,
+        typeof job.website_schema === "string" ? job.website_schema : JSON.stringify(job.website_schema)
+      ]
+    );
     if (job.trace_id) {
       try {
         await pool.query(
@@ -2378,13 +2489,20 @@ async function executeStateMachine(job) {
             job.trace_id,
             "provisioning_completed",
             `Remote WordPress site provisioned at ${httpUrl}`,
-            JSON.stringify({ url: httpUrl, jobId: job.id, remoteHost: process.env.WP_SSH_HOST })
+            JSON.stringify({
+              url: httpUrl,
+              jobId: job.id,
+              remoteHost: process.env.WP_SSH_HOST
+            })
           ]
         );
       } catch (e) {
       }
     }
-    await appendLog(job.id, `Job completed! Remote WP site live at ${httpUrl} (SSL polling started)`);
+    await appendLog(
+      job.id,
+      `Job completed! Remote WP site live at ${httpUrl} (SSL polling started)`
+    );
   }
 }
 function esc2(str) {
@@ -2409,14 +2527,21 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, adminUser,
     } catch (e) {
     }
     let content = "";
+    const renderSource = schema?._renderSource || (schema?._wordpressHtml ? "gemini-html" : "local-builder");
     if (typeof schema?._wordpressHtml === "string" && schema._wordpressHtml.trim()) {
       await logCallback("Using Gemini-generated WordPress homepage HTML...");
       content = ensureWordPressHtmlBlock(schema._wordpressHtml);
     } else {
-      await logCallback("Gemini HTML unavailable. Building homepage with local premium-site-builder...");
+      await logCallback(
+        "Gemini HTML unavailable. Building homepage with local premium-site-builder..."
+      );
       const { buildPremiumPageContent: buildPremiumPageContent2 } = await Promise.resolve().then(() => (init_premium_site_builder(), premium_site_builder_exports));
       content = buildPremiumPageContent2(schema);
     }
+    const contentHash = crypto.createHash("sha1").update(content).digest("hex");
+    await logCallback(
+      `Content source=${renderSource} length=${content.length} sha1=${contentHash}`
+    );
     const tmpFile = `/tmp/ds_home_${Date.now()}.html`;
     await logCallback(`Writing to remote temp file: ${tmpFile}`);
     const base64Content = Buffer.from(content).toString("base64");
@@ -2431,39 +2556,81 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, adminUser,
       logCallback
     );
     const homePageId = homePageIdOut.stdout.replace(/[^0-9]/g, "").trim();
-    await runRemoteShellCommand(`rm -f '${tmpFile}'`, logCallback).catch(() => {
-    });
+    await runRemoteShellCommand(`rm -f '${tmpFile}'`, logCallback).catch(
+      () => {
+      }
+    );
     if (!homePageId || homePageId === "0") {
       throw new Error("Home page creation failed \u2014 invalid ID returned");
     }
-    await logCallback(`Home page created with ID: ${homePageId}. Setting as front page...`);
-    await runWpCommand(`option update show_on_front page`, docRoot, logCallback);
-    await runWpCommand(`option update page_on_front ${homePageId}`, docRoot, logCallback);
+    await logCallback(
+      `Home page created with ID: ${homePageId}. Setting as front page...`
+    );
+    await runWpCommand(
+      `option update show_on_front page`,
+      docRoot,
+      logCallback
+    );
+    await runWpCommand(
+      `option update page_on_front ${homePageId}`,
+      docRoot,
+      logCallback
+    );
     if (schema.brand?.businessName) {
-      await runWpCommand(`option update blogname "${esc2(schema.brand.businessName)}"`, docRoot, logCallback);
+      await runWpCommand(
+        `option update blogname "${esc2(schema.brand.businessName)}"`,
+        docRoot,
+        logCallback
+      );
     }
-    await runWpCommand(`rewrite structure "/%postname%/"`, docRoot, logCallback);
+    await runWpCommand(
+      `rewrite structure "/%postname%/"`,
+      docRoot,
+      logCallback
+    );
     await runWpCommand(`rewrite flush`, docRoot, logCallback);
     if (schema.brand?.logo) {
       try {
         await logCallback(`Attempting to import logo: ${schema.brand.logo}`);
         let mediaId = "";
         try {
-          const mediaOut = await runWpCommand(`media import "${schema.brand.logo}" --porcelain`, docRoot, logCallback);
+          const mediaOut = await runWpCommand(
+            `media import "${schema.brand.logo}" --porcelain`,
+            docRoot,
+            logCallback
+          );
           mediaId = mediaOut.stdout.trim();
         } catch (e) {
-          await logCallback("Direct import failed. Retrying with local temp file...");
+          await logCallback(
+            "Direct import failed. Retrying with local temp file..."
+          );
           const ext = schema.brand.logo.toLowerCase().includes(".png") ? "png" : "jpg";
           const remoteTmpMedia = `/tmp/ds_logo_${Date.now()}.${ext}`;
-          await runRemoteShellCommand(`curl -sL "${schema.brand.logo}" -o "${remoteTmpMedia}"`, logCallback);
-          const mediaOut = await runWpCommand(`media import "${remoteTmpMedia}" --porcelain`, docRoot, logCallback);
+          await runRemoteShellCommand(
+            `curl -sL "${schema.brand.logo}" -o "${remoteTmpMedia}"`,
+            logCallback
+          );
+          const mediaOut = await runWpCommand(
+            `media import "${remoteTmpMedia}" --porcelain`,
+            docRoot,
+            logCallback
+          );
           mediaId = mediaOut.stdout.trim();
-          await runRemoteShellCommand(`rm -f "${remoteTmpMedia}"`, logCallback).catch(() => {
+          await runRemoteShellCommand(
+            `rm -f "${remoteTmpMedia}"`,
+            logCallback
+          ).catch(() => {
           });
         }
         if (/^\d+$/.test(mediaId)) {
-          await logCallback(`Logo imported successfully (ID: ${mediaId}). Setting as site icon.`);
-          await runWpCommand(`option update site_icon ${mediaId}`, docRoot, logCallback);
+          await logCallback(
+            `Logo imported successfully (ID: ${mediaId}). Setting as site icon.`
+          );
+          await runWpCommand(
+            `option update site_icon ${mediaId}`,
+            docRoot,
+            logCallback
+          );
         }
       } catch (e) {
         await logCallback(`Warning: logo import failed: ${e.message}`);
@@ -2471,7 +2638,9 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, adminUser,
     }
     await logCallback("Premium WordPress site injection complete \u2713");
   } catch (error) {
-    await logCallback(`CRITICAL ERROR during content injection: ${error.message}`);
+    await logCallback(
+      `CRITICAL ERROR during content injection: ${error.message}`
+    );
     throw error;
   }
 }
@@ -2482,64 +2651,113 @@ async function rollbackJob(job) {
     try {
       const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscoutwp.online";
       await deleteSubdomain(job.subdomain, rootDomain);
-      await appendLog(job.id, `[ROLLBACK] Deleted subdomain ${job.subdomain}.${rootDomain}`);
+      await appendLog(
+        job.id,
+        `[ROLLBACK] Deleted subdomain ${job.subdomain}.${rootDomain}`
+      );
     } catch (e) {
-      await appendLog(job.id, `[ROLLBACK] Failed to delete subdomain: ${e.message}`);
+      await appendLog(
+        job.id,
+        `[ROLLBACK] Failed to delete subdomain: ${e.message}`
+      );
     }
     const fullDocRoot = `${docRootBase}/${job.subdomain}`;
     try {
-      await runRemoteShellCommand(`rm -rf "${fullDocRoot}"`, (log) => appendLog(job.id, log));
-      await appendLog(job.id, `[ROLLBACK] Deleted remote directory: ${fullDocRoot}`);
+      await runRemoteShellCommand(
+        `rm -rf "${fullDocRoot}"`,
+        (log) => appendLog(job.id, log)
+      );
+      await appendLog(
+        job.id,
+        `[ROLLBACK] Deleted remote directory: ${fullDocRoot}`
+      );
     } catch (e) {
-      await appendLog(job.id, `[ROLLBACK] Failed to delete remote directory: ${e.message}`);
+      await appendLog(
+        job.id,
+        `[ROLLBACK] Failed to delete remote directory: ${e.message}`
+      );
     }
   }
   if (job.db_name) {
     try {
       await deleteDatabase(job.db_name);
-      await appendLog(job.id, `[ROLLBACK] Deleted remote database: ${job.db_name}`);
+      await appendLog(
+        job.id,
+        `[ROLLBACK] Deleted remote database: ${job.db_name}`
+      );
     } catch (e) {
-      await appendLog(job.id, `[ROLLBACK] Failed to delete database: ${e.message}`);
+      await appendLog(
+        job.id,
+        `[ROLLBACK] Failed to delete database: ${e.message}`
+      );
     }
   }
   if (job.db_user) {
     try {
       await deleteDatabaseUser(job.db_user);
-      await appendLog(job.id, `[ROLLBACK] Deleted remote DB user: ${job.db_user}`);
+      await appendLog(
+        job.id,
+        `[ROLLBACK] Deleted remote DB user: ${job.db_user}`
+      );
     } catch (e) {
-      await appendLog(job.id, `[ROLLBACK] Failed to delete DB user: ${e.message}`);
+      await appendLog(
+        job.id,
+        `[ROLLBACK] Failed to delete DB user: ${e.message}`
+      );
     }
   }
   await appendLog(job.id, "[ROLLBACK] Remote cleanup finished.");
 }
 async function deleteProvisionedWordPressSite(projectId) {
-  console.log(`[Cleanup] Starting comprehensive remote deletion for project ${projectId}`);
+  console.log(
+    `[Cleanup] Starting comprehensive remote deletion for project ${projectId}`
+  );
   const [rows] = await pool.query(
     `SELECT * FROM provisioning_jobs WHERE project_id = ?`,
     [projectId]
   );
   if (!rows || rows.length === 0) {
-    console.warn(`[Cleanup] No provisioning job found in DB for project ${projectId}. Attempting database-only purge.`);
-    await pool.query(`DELETE FROM isolated_deployments WHERE project_id = ?`, [projectId]);
-    await pool.query(`DELETE FROM provisioning_jobs WHERE project_id = ?`, [projectId]);
+    console.warn(
+      `[Cleanup] No provisioning job found in DB for project ${projectId}. Attempting database-only purge.`
+    );
+    await pool.query(`DELETE FROM isolated_deployments WHERE project_id = ?`, [
+      projectId
+    ]);
+    await pool.query(`DELETE FROM provisioning_jobs WHERE project_id = ?`, [
+      projectId
+    ]);
     return;
   }
   for (const job of rows) {
     try {
       await rollbackJob(job);
     } catch (e) {
-      console.error(`[Cleanup] Rollback failed for job ${job.id}: ${e.message}`);
+      console.error(
+        `[Cleanup] Rollback failed for job ${job.id}: ${e.message}`
+      );
     }
   }
   try {
-    const [del1] = await pool.query(`DELETE FROM isolated_deployments WHERE project_id = ?`, [projectId]);
-    const [del2] = await pool.query(`DELETE FROM provisioning_jobs WHERE project_id = ?`, [projectId]);
-    console.log(`[Cleanup] Project ${projectId} purged from local DB. Jobs removed: ${del2.affectedRows}`);
+    const [del1] = await pool.query(
+      `DELETE FROM isolated_deployments WHERE project_id = ?`,
+      [projectId]
+    );
+    const [del2] = await pool.query(
+      `DELETE FROM provisioning_jobs WHERE project_id = ?`,
+      [projectId]
+    );
+    console.log(
+      `[Cleanup] Project ${projectId} purged from local DB. Jobs removed: ${del2.affectedRows}`
+    );
   } catch (e) {
-    console.error(`[Cleanup] Failed to purge project ${projectId} from local DB: ${e.message}`);
+    console.error(
+      `[Cleanup] Failed to purge project ${projectId} from local DB: ${e.message}`
+    );
     throw e;
   }
-  console.log(`[Cleanup] Project ${projectId} remote resources and local records fully processed.`);
+  console.log(
+    `[Cleanup] Project ${projectId} remote resources and local records fully processed.`
+  );
 }
 
 // src/lib/provisioning-worker.ts
@@ -2587,15 +2805,22 @@ async function pollQueue() {
 }
 
 // server.ts
-fs2.writeSync(2, `[BOOT] Server process starting at ${(/* @__PURE__ */ new Date()).toISOString()}
+fs3.writeSync(
+  2,
+  `[BOOT] Server process starting at ${(/* @__PURE__ */ new Date()).toISOString()}
+`
+);
+fs3.writeSync(2, `[BOOT] CWD: ${process.cwd()}
 `);
-fs2.writeSync(2, `[BOOT] CWD: ${process.cwd()}
-`);
-fs2.writeSync(2, `[BOOT] DB_USER: ${process.env.DB_USER || "NOT SET"}
+fs3.writeSync(2, `[BOOT] DB_USER: ${process.env.DB_USER || "NOT SET"}
 `);
 var GoogleGenerativeAI = null;
 var app = express();
 var PORT = process.env.PORT || 5001;
+var logStderr = (message) => {
+  fs3.writeSync(2, `${message}
+`);
+};
 app.use(
   cors({
     exposedHeaders: ["x-debug-generation-id", "x-debug-generation-fallback"]
@@ -2622,12 +2847,12 @@ function createGenerationDebugSession(business) {
   let folderName = traceId;
   let folderPath = path2.join(DEBUG_ROOT_DIR, folderName);
   let suffix = 2;
-  while (fs2.existsSync(folderPath)) {
+  while (fs3.existsSync(folderPath)) {
     folderName = `${traceId}-${suffix}`;
     folderPath = path2.join(DEBUG_ROOT_DIR, folderName);
     suffix += 1;
   }
-  fs2.mkdirSync(folderPath, { recursive: true });
+  fs3.mkdirSync(folderPath, { recursive: true });
   const session = {
     traceId,
     folderName,
@@ -2653,15 +2878,15 @@ function formatDebugPayload(content) {
   return JSON.stringify(content, null, 2);
 }
 function persistGenerationDebugFile(session, fileName, content, append = false) {
-  fs2.mkdirSync(session.folderPath, { recursive: true });
+  fs3.mkdirSync(session.folderPath, { recursive: true });
   const targetPath = path2.join(session.folderPath, fileName);
   const payload = formatDebugPayload(content);
-  if (append && fs2.existsSync(targetPath)) {
-    fs2.appendFileSync(targetPath, `${payload}
+  if (append && fs3.existsSync(targetPath)) {
+    fs3.appendFileSync(targetPath, `${payload}
 `, "utf8");
     return;
   }
-  fs2.writeFileSync(targetPath, payload, "utf8");
+  fs3.writeFileSync(targetPath, payload, "utf8");
 }
 function appendGenerationDebugError(session, message) {
   const line = `[${(/* @__PURE__ */ new Date()).toISOString()}] ${message}`;
@@ -2887,7 +3112,9 @@ Return only valid JSON in this exact shape:
         generationConfig: { temperature: 0.1 }
       });
       const response = await result.response;
-      const parsed = parseLeadQualificationOutput((response.text() || "").trim());
+      const parsed = parseLeadQualificationOutput(
+        (response.text() || "").trim()
+      );
       if (parsed) {
         return parsed;
       }
@@ -3302,10 +3529,7 @@ function ensureNonTemplateCopy(schema, business) {
           seed + 19
         );
       }
-      return pickBySeed(
-        ["editorial-mosaic", "stacked-collage"],
-        seed + 19
-      );
+      return pickBySeed(["editorial-mosaic", "stacked-collage"], seed + 19);
     }
     if (sectionType === "testimonials") {
       return pickBySeed(
@@ -3317,10 +3541,16 @@ function ensureNonTemplateCopy(schema, business) {
       return pickBySeed(["cards", "split-columns", "grid"], seed + 29);
     }
     if (sectionType === "cta") {
-      return pickBySeed(["gradient-band", "split-card", "side-by-side"], seed + 31);
+      return pickBySeed(
+        ["gradient-band", "split-card", "side-by-side"],
+        seed + 31
+      );
     }
     if (sectionType === "contact") {
-      return pickBySeed(["split-card", "minimal-centered", "centered"], seed + 37);
+      return pickBySeed(
+        ["split-card", "minimal-centered", "centered"],
+        seed + 37
+      );
     }
     return "default";
   };
@@ -3468,7 +3698,10 @@ function enforceLightTheme(theme) {
 function collectBusinessImages(business) {
   return Array.from(
     new Set(
-      [...business?.photos || [], ...business?.imageSuggestions || []].filter(
+      [
+        ...business?.photos || [],
+        ...business?.imageSuggestions || []
+      ].filter(
         (value) => typeof value === "string" && value.trim().length > 0
       )
     )
@@ -3564,7 +3797,10 @@ function pickDesignProfile(category, seed = 0) {
             muted: "#7f6a72",
             outline: "rgba(180, 83, 99, 0.12)"
           },
-          typography: { heading: "Playfair Display", body: "Plus Jakarta Sans" }
+          typography: {
+            heading: "Playfair Display",
+            body: "Plus Jakarta Sans"
+          }
         },
         {
           name: "Champagne Studio",
@@ -4140,7 +4376,10 @@ function createFallbackWebsiteSchema(business) {
     ["magazine", "editorial-split", "centered", "minimal", "split"],
     copySeed + 5
   ) : layoutVariant === "minimal" ? "centered" : layoutVariant === "immersive" ? "immersive" : layoutVariant === "split-screen" ? "split" : "split";
-  const featureLayout = categoryNorm.includes("salon") || categoryNorm.includes("spa") ? pickBySeed(["bento", "alternating-stack", "editorial-cards"], copySeed + 9) : layoutVariant === "minimal" ? "list" : "cards";
+  const featureLayout = categoryNorm.includes("salon") || categoryNorm.includes("spa") ? pickBySeed(
+    ["bento", "alternating-stack", "editorial-cards"],
+    copySeed + 9
+  ) : layoutVariant === "minimal" ? "list" : "cards";
   const heroImage = imagePool[0] || "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=80";
   const heroSubheadline = buildUniqueHeroSubheadline(
     siteName,
@@ -4297,6 +4536,9 @@ app.post("/api/generate", async (req, res) => {
       return res.status(400).json({ error: "Missing business payload" });
     }
     const debugSession = createGenerationDebugSession(business);
+    logStderr(
+      `[Generate] start traceId=${debugSession.traceId} business=${business.name} mode=${WEBSITE_GENERATION_MODE}`
+    );
     res.setHeader("x-debug-generation-id", debugSession.traceId);
     res.setHeader("x-debug-generation-fallback", "false");
     persistGenerationDebugFile(
@@ -4495,7 +4737,9 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
           const restUrl = process.env.GEMINI_REST_URL;
           if (restUrl && GENAI_KEY) {
             const modelRestUrl = restUrl.includes("{model}") ? restUrl.replace("{model}", model.name) : restUrl;
-            console.error(`[Gemini] Attempting ${stageLabel} direct REST call to ${modelRestUrl}...`);
+            console.error(
+              `[Gemini] Attempting ${stageLabel} direct REST call to ${modelRestUrl}...`
+            );
             const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${GENAI_KEY}`;
             const fetchResponse = await Promise.race([
               fetch(url, {
@@ -4510,16 +4754,25 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
                 })
               }),
               new Promise(
-                (_, reject) => setTimeout(() => reject(new Error(`REST timeout after ${model.timeoutMs}ms`)), model.timeoutMs)
+                (_, reject) => setTimeout(
+                  () => reject(
+                    new Error(`REST timeout after ${model.timeoutMs}ms`)
+                  ),
+                  model.timeoutMs
+                )
               )
             ]);
             if (!fetchResponse.ok) {
-              throw new Error(`REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`);
+              throw new Error(
+                `REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`
+              );
             }
             const data = await fetchResponse.json();
             stageRawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
           } else {
-            console.error(`[Gemini] Attempting ${stageLabel} SDK call for ${model.name}...`);
+            console.error(
+              `[Gemini] Attempting ${stageLabel} SDK call for ${model.name}...`
+            );
             const genAI = await getSDKGenAI();
             if (!genAI) {
               throw new Error("Gemini SDK not available.");
@@ -4529,7 +4782,9 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
               new Promise(
                 (_, reject) => setTimeout(
                   () => reject(
-                    new Error(`${model.name} request timed out after ${model.timeoutMs}ms`)
+                    new Error(
+                      `${model.name} request timed out after ${model.timeoutMs}ms`
+                    )
                   ),
                   model.timeoutMs
                 )
@@ -4539,32 +4794,50 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
             stageRawText = result.text().trim();
           }
           if (stageRawText) {
-            console.error(`[Gemini] ${model.name} ${stageLabel} success! Response length: ${stageRawText.length}`);
+            console.error(
+              `[Gemini] ${model.name} ${stageLabel} success! Response length: ${stageRawText.length}`
+            );
             return stageRawText;
           }
-          console.error(`[Gemini] ${model.name} returned empty ${stageLabel} text.`);
+          console.error(
+            `[Gemini] ${model.name} returned empty ${stageLabel} text.`
+          );
         } catch (error) {
           stageLastError = error;
-          console.error(`[Gemini] ${model.name} ${stageLabel} failed:`, error instanceof Error ? error.message : error);
-          fs2.writeSync(2, `[Gemini] ${stageLabel.toUpperCase()} ERROR DETAIL: ${JSON.stringify(error)}
-`);
+          console.error(
+            `[Gemini] ${model.name} ${stageLabel} failed:`,
+            error instanceof Error ? error.message : error
+          );
+          fs3.writeSync(
+            2,
+            `[Gemini] ${stageLabel.toUpperCase()} ERROR DETAIL: ${JSON.stringify(error)}
+`
+          );
         }
       }
       throw stageLastError || new Error(`All Gemini ${stageLabel} attempts failed`);
     };
-    console.error(`[Gemini] Starting generation for ${business.name} with model ${modelsToTry[0].name}`);
-    fs2.writeSync(2, `
+    console.error(
+      `[Gemini] Starting generation for ${business.name} with model ${modelsToTry[0].name}`
+    );
+    fs3.writeSync(
+      2,
+      `
 --- GEMINI PROMPT START ---
 ${prompt}
 --- GEMINI PROMPT END ---
-`);
+`
+    );
     persistGenerationDebugFile(debugSession, "02-generation-prompt.md", prompt);
     const rawText = await callGeminiText(prompt, "schema");
-    fs2.writeSync(2, `
+    fs3.writeSync(
+      2,
+      `
 --- GEMINI RESPONSE START ---
 ${rawText}
 --- GEMINI RESPONSE END ---
-`);
+`
+    );
     persistGenerationDebugFile(
       debugSession,
       "03-gemini-raw-response.txt",
@@ -4618,32 +4891,54 @@ No site header chrome, no WordPress admin text, no fake badges like "crafted for
 No generic placeholder copy.
 
 BUSINESS:
-${JSON.stringify({
-        name: business.name,
-        category: business.category,
-        address: business.address,
-        phone: business.phoneNumber,
-        email: business.email,
-        website: business.websiteUri
-      }, null, 2)}
+${JSON.stringify(
+        {
+          name: business.name,
+          category: business.category,
+          address: business.address,
+          phone: business.phoneNumber,
+          email: business.email,
+          website: business.websiteUri
+        },
+        null,
+        2
+      )}
 
 APPROVED SCHEMA:
 ${JSON.stringify(finalSchema, null, 2)}
 
 Return only the final HTML for the homepage body content.`;
-      persistGenerationDebugFile(debugSession, "05a-wordpress-html-prompt.md", wordpressHtmlPrompt);
-      const rawWordPressHtml = await callGeminiText(wordpressHtmlPrompt, "wordpress-html");
-      fs2.writeSync(2, `
+      persistGenerationDebugFile(
+        debugSession,
+        "05a-wordpress-html-prompt.md",
+        wordpressHtmlPrompt
+      );
+      const rawWordPressHtml = await callGeminiText(
+        wordpressHtmlPrompt,
+        "wordpress-html"
+      );
+      fs3.writeSync(
+        2,
+        `
 --- GEMINI WORDPRESS HTML START ---
 ${rawWordPressHtml}
 --- GEMINI WORDPRESS HTML END ---
-`);
-      persistGenerationDebugFile(debugSession, "05b-wordpress-html-raw.txt", rawWordPressHtml);
+`
+      );
+      persistGenerationDebugFile(
+        debugSession,
+        "05b-wordpress-html-raw.txt",
+        rawWordPressHtml
+      );
       const extractedWordPressHtml = extractHtmlDocument(rawWordPressHtml) || rawWordPressHtml.trim();
       if (extractedWordPressHtml) {
         finalSchema._wordpressHtml = extractedWordPressHtml;
         finalSchema._renderSource = "gemini-html";
-        persistGenerationDebugFile(debugSession, "05c-wordpress-html-final.html", extractedWordPressHtml);
+        persistGenerationDebugFile(
+          debugSession,
+          "05c-wordpress-html-final.html",
+          extractedWordPressHtml
+        );
       }
     } catch (wordpressHtmlError) {
       finalSchema._renderSource = "local-builder";
@@ -4652,6 +4947,12 @@ ${rawWordPressHtml}
         `wordpress_html_generation_failed: ${wordpressHtmlError instanceof Error ? wordpressHtmlError.message : String(wordpressHtmlError)}`
       );
     }
+    const renderSource = finalSchema._renderSource || "unknown";
+    const wpHtml = finalSchema._wordpressHtml;
+    const schemaHash = crypto2.createHash("sha1").update(JSON.stringify(finalSchema)).digest("hex");
+    logStderr(
+      `[Generate] complete traceId=${debugSession.traceId} business=${business.name} renderSource=${renderSource} wpHtml=${wpHtml ? `yes(${wpHtml.length})` : "no"} schemaSha1=${schemaHash}`
+    );
     try {
       await pool.query(
         `INSERT INTO generation_audit_logs (trace_id, step, message, data) VALUES (?, ?, ?, ?)`,
@@ -4989,6 +5290,11 @@ app.post(
           error: "Missing projectId, business, or websiteSchema."
         });
       }
+      const renderSource = websiteSchema._renderSource || "unknown";
+      const wpHtml = websiteSchema._wordpressHtml;
+      logStderr(
+        `[Provisioning] queue request projectId=${projectId} business=${business.name} traceId=${websiteSchema.meta?.traceId || "n/a"} renderSource=${renderSource} wpHtml=${wpHtml ? `yes(${wpHtml.length})` : "no"}`
+      );
       const jobId = crypto2.randomUUID();
       const traceId = websiteSchema.meta?.traceId || websiteSchema._validation?.traceId || null;
       const isPreview = String(projectId).includes("preview-");
@@ -5003,12 +5309,7 @@ app.post(
         activeJobId = existing[0].id;
         await pool.query(
           `UPDATE provisioning_jobs SET website_schema = ?, status = ?, trace_id = ?, updated_at = NOW() WHERE project_id = ?`,
-          [
-            JSON.stringify(websiteSchema),
-            targetStatus,
-            traceId,
-            projectId
-          ]
+          [JSON.stringify(websiteSchema), targetStatus, traceId, projectId]
         );
       } else {
         await pool.query(
@@ -5060,7 +5361,11 @@ app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
       try {
         const [ivHex, encryptedHex] = rows[0].wp_admin_pass_encrypted.split(":");
         const key = process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
-        const decipher = crypto2.createDecipheriv("aes-256-cbc", Buffer.from(key), Buffer.from(ivHex, "hex"));
+        const decipher = crypto2.createDecipheriv(
+          "aes-256-cbc",
+          Buffer.from(key),
+          Buffer.from(ivHex, "hex")
+        );
         let decrypted = decipher.update(Buffer.from(encryptedHex, "hex"));
         decrypted = Buffer.concat([decrypted, decipher.final()]);
         rawPassword = decrypted.toString();
@@ -5089,11 +5394,15 @@ app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
 app.get("/api/generate/replay/:traceId", async (req, res) => {
   const { traceId } = req.params;
   try {
-    const inputPath = path2.join(DEBUG_ROOT_DIR, traceId, "06-renderer-input.json");
-    if (!fs2.existsSync(inputPath)) {
+    const inputPath = path2.join(
+      DEBUG_ROOT_DIR,
+      traceId,
+      "06-renderer-input.json"
+    );
+    if (!fs3.existsSync(inputPath)) {
       return res.status(404).json({ error: "Trace not found or missing renderer input" });
     }
-    const schemaContent = fs2.readFileSync(inputPath, "utf-8");
+    const schemaContent = fs3.readFileSync(inputPath, "utf-8");
     const rawSchema = JSON.parse(schemaContent);
     const { validateWebsiteSchema: validateWebsiteSchema2 } = await Promise.resolve().then(() => (init_website_schema_validator(), website_schema_validator_exports));
     const { schemaToGutenbergBlocks: schemaToGutenbergBlocks2 } = await Promise.resolve().then(() => (init_wordpress(), wordpress_exports));
@@ -5105,7 +5414,9 @@ app.get("/api/generate/replay/:traceId", async (req, res) => {
       blocks
     });
   } catch (error) {
-    return res.status(500).json({ error: error instanceof Error ? error.message : "Failed to replay trace" });
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : "Failed to replay trace"
+    });
   }
 });
 app.delete("/api/wordpress/site/:projectId", async (req, res) => {
@@ -5149,7 +5460,11 @@ app.get("/api/leads", async (req, res) => {
         try {
           const [ivHex, encryptedHex] = row.wp_admin_pass_encrypted.split(":");
           const key = process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
-          const decipher = crypto2.createDecipheriv("aes-256-cbc", Buffer.from(key), Buffer.from(ivHex, "hex"));
+          const decipher = crypto2.createDecipheriv(
+            "aes-256-cbc",
+            Buffer.from(key),
+            Buffer.from(ivHex, "hex")
+          );
           let decrypted = decipher.update(Buffer.from(encryptedHex, "hex"));
           decrypted = Buffer.concat([decrypted, decipher.final()]);
           rawPassword = decrypted.toString();
@@ -5278,16 +5593,19 @@ async function pollSslStatus() {
       try {
         const https = await import("https");
         await new Promise((resolve, reject) => {
-          const req = https.get({
-            hostname: host,
-            port: 443,
-            path: "/",
-            timeout: 5e3,
-            rejectUnauthorized: true
-            // We want to know if the cert is valid
-          }, (res) => {
-            resolve(true);
-          });
+          const req = https.get(
+            {
+              hostname: host,
+              port: 443,
+              path: "/",
+              timeout: 5e3,
+              rejectUnauthorized: true
+              // We want to know if the cert is valid
+            },
+            (res) => {
+              resolve(true);
+            }
+          );
           req.on("error", (e) => reject(e));
           req.on("timeout", () => {
             req.destroy();
@@ -5313,16 +5631,23 @@ async function pollCleanupPreviewSites() {
       `SELECT project_id, preview_expires_at, status FROM provisioning_jobs WHERE preview_expires_at < NOW() AND status != 'cleaned' LIMIT 10`
     );
     for (const dep of deployments) {
-      console.log(`[Cleanup Worker] Cleaning up expired preview for project ${dep.project_id}`);
+      console.log(
+        `[Cleanup Worker] Cleaning up expired preview for project ${dep.project_id}`
+      );
       try {
         await deleteProvisionedWordPressSite(dep.project_id);
         await pool.query(
           `UPDATE provisioning_jobs SET status = 'cleaned' WHERE project_id = ?`,
           [dep.project_id]
         );
-        console.log(`[Cleanup Worker] Cleanup successful for project ${dep.project_id}`);
+        console.log(
+          `[Cleanup Worker] Cleanup successful for project ${dep.project_id}`
+        );
       } catch (error) {
-        console.error(`[Cleanup Worker] Failed to clean up ${dep.project_id}:`, error);
+        console.error(
+          `[Cleanup Worker] Failed to clean up ${dep.project_id}:`,
+          error
+        );
       }
     }
   } catch (error) {
