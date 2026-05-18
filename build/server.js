@@ -5053,9 +5053,10 @@ app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
     const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscout.online";
     const liveUrl = rows[0].subdomain_url || (rows[0].subdomain ? `http://${rows[0].subdomain}.${rootDomain}` : null);
     const adminUrl = rows[0].wp_admin_url || (rows[0].subdomain ? `http://${rows[0].subdomain}.${rootDomain}/wp-admin` : null);
+    const effectiveStatus = rows[0].status === "completed" || liveUrl || adminUrl ? "completed" : rows[0].status;
     return res.json({
       success: true,
-      status: rows[0].status,
+      status: effectiveStatus,
       logs: rows[0].logs || [],
       deployment: liveUrl ? {
         liveUrl,

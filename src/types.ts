@@ -307,6 +307,7 @@ export interface WordPressProvisioningState {
 	wordpressSiteSlug?: string;
 	wordpressSiteUrl?: string;
 	wordpressAdminUrl?: string;
+	sslStatus?: "pending" | "valid";
 	wordpressOwnerUsername?: string;
 	wordpressOwnerEmail?: string;
 	wordpressPasswordSetupUrl?: string;

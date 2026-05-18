@@ -422,7 +422,7 @@ export default function DeploymentsView({
 
 	const getPreviewHtml = (project: WebsiteProject) => {
 		// If WP site is live, return null — we'll use src iframe instead
-		if (project.wordpressSiteUrl && project.provisioningStatus === "completed") {
+		if (project.wordpressSiteUrl) {
 			return null;
 		}
 		if (project.websiteSchema) {
@@ -509,7 +509,7 @@ export default function DeploymentsView({
 	const getProvisioningLabel = (project: WebsiteProject) => {
 		switch (project.provisioningStatus) {
 			case "completed":
-				return "CMS Ready";
+				return project.sslStatus === "pending" ? "Site Live" : "CMS Ready";
 			case "lead":
 				return "Lead Profile";
 			case "pending":
@@ -536,7 +536,9 @@ export default function DeploymentsView({
 	const getProvisioningTone = (project: WebsiteProject) => {
 		switch (project.provisioningStatus) {
 			case "completed":
-				return "border-cyan-200 bg-cyan-50 text-cyan-700";
+				return project.sslStatus === "pending"
+					? "border-emerald-200 bg-emerald-50 text-emerald-700"
+					: "border-cyan-200 bg-cyan-50 text-cyan-700";
 			case "lead":
 				return "border-violet-200 bg-violet-50 text-violet-700";
 			case "failed":
@@ -581,11 +583,14 @@ export default function DeploymentsView({
 								p.id === project.id
 									? {
 											...p,
-											provisioningStatus: data.status,
+											provisioningStatus:
+												data.status ||
+												(data.deployment?.liveUrl ? "completed" : p.provisioningStatus),
 											wordpressSiteUrl: data.deployment?.liveUrl,
 											wordpressAdminUrl: data.deployment?.adminUrl,
 											wordpressOwnerUsername: data.deployment?.username,
 											wordpressPassword: data.deployment?.password,
+											sslStatus: data.deployment?.sslStatus,
 										}
 									: p,
 							),
