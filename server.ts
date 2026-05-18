@@ -2732,6 +2732,23 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 			await import("./src/lib/website-schema-validator");
 		const validation = validateWebsiteSchema(parsedSchema);
 		const finalSchema = validation.repairedSchema || parsedSchema;
+		const sectionSummary = (finalSchema.sections || []).map(
+			(section: any, index: number) => ({
+				index,
+				type: section.type,
+				layout: section.layout || null,
+				variant: section.variant || null,
+				id: section.id || null,
+			}),
+		);
+		logStderr(
+			`[Generate] layouts traceId=${debugSession.traceId} sections=${JSON.stringify(sectionSummary)} repairs=${JSON.stringify(validation.repairs || [])}`,
+		);
+		persistGenerationDebugFile(debugSession, "05d-layout-summary.json", {
+			sections: sectionSummary,
+			repairs: validation.repairs || [],
+			errors: validation.errors || [],
+		});
 
 		try {
 			const wordpressHtmlPrompt = `You are turning an approved website schema into the FINAL WordPress homepage HTML.
@@ -3409,12 +3426,9 @@ app.get("/api/generate/replay/:traceId", async (req, res) => {
 			blocks,
 		});
 	} catch (error) {
-		return res
-			.status(500)
-			.json({
-				error:
-					error instanceof Error ? error.message : "Failed to replay trace",
-			});
+		return res.status(500).json({
+			error: error instanceof Error ? error.message : "Failed to replay trace",
+		});
 	}
 });
 

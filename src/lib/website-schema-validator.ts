@@ -1,6 +1,6 @@
-import { 
-	ValidationResult 
-} from "../types";
+/** @format */
+
+import { ValidationResult } from "../types";
 import {
 	HERO_LAYOUTS,
 	FEATURES_LAYOUTS,
@@ -11,10 +11,51 @@ import {
 	CONTACT_LAYOUTS,
 } from "./layout-registry";
 
+const HERO_VARIANTS = [
+	"immersive",
+	"cinematic",
+	"editorial",
+	"editorial-split",
+	"magazine",
+	"centered",
+	"minimal",
+	"split",
+] as const;
+
+const FEATURES_VARIANTS = [
+	"bento",
+	"editorial-cards",
+	"editorial-list",
+	"alternating-stack",
+	"grid",
+] as const;
+
+const GALLERY_VARIANTS = [
+	"editorial-mosaic",
+	"stacked-collage",
+	"collage",
+] as const;
+
+const TESTIMONIALS_VARIANTS = [
+	"floating-cards",
+	"editorial-quotes",
+	"spotlight",
+] as const;
+
+const CTA_VARIANTS = ["gradient-band", "split-card", "side-by-side"] as const;
+
+const FAQ_VARIANTS = ["cards", "split-columns", "grid"] as const;
+
+const CONTACT_VARIANTS = [
+	"split-card",
+	"minimal-centered",
+	"centered",
+] as const;
+
 export function validateWebsiteSchema(schema: any): ValidationResult {
 	const errors: string[] = [];
 	const repairs: string[] = [];
-	
+
 	if (!schema) {
 		return { isValid: false, errors: ["Schema is null or undefined"] };
 	}
@@ -25,56 +66,136 @@ export function validateWebsiteSchema(schema: any): ValidationResult {
 		repairs.push("version_forced_1.0");
 	}
 
-	if (!schema.meta || !schema.theme || !schema.brand || !Array.isArray(schema.sections)) {
-		return { isValid: false, errors: ["Missing core top-level objects (meta, theme, brand, sections)"] };
+	if (
+		!schema.meta ||
+		!schema.theme ||
+		!schema.brand ||
+		!Array.isArray(schema.sections)
+	) {
+		return {
+			isValid: false,
+			errors: ["Missing core top-level objects (meta, theme, brand, sections)"],
+		};
 	}
 
 	// 2. Section Layout Enforcement
-	const repairedSections = schema.sections.map((section: any, index: number) => {
-		const type = (section.type || "unknown").toLowerCase();
-		section.type = type; // Normalize case
-		
-		const validateLayout = (layout: string, allowed: readonly string[], fallback: string) => {
-			if (!allowed.includes(layout as any)) {
-				errors.push(`Section ${index} (${type}): Invalid layout "${layout}"`);
+	const repairedSections = schema.sections.map(
+		(section: any, index: number) => {
+			const type = (section.type || "unknown").toLowerCase();
+			section.type = type; // Normalize case
+
+			const normalizeValue = (value?: string) =>
+				(value || "").toString().toLowerCase();
+
+			const validateLayout = (
+				layout: string | undefined,
+				variant: string | undefined,
+				allowed: readonly string[],
+				variantAllowed: readonly string[],
+				fallback: string,
+			) => {
+				const normalizedLayout = normalizeValue(layout);
+				const normalizedVariant = normalizeValue(variant);
+				const layoutValid = allowed.includes(normalizedLayout as any);
+				const variantValid = variantAllowed.includes(normalizedVariant as any);
+
+				if (layoutValid) {
+					section.layout = normalizedLayout;
+					return;
+				}
+				if (variantValid) {
+					section.layout = normalizedVariant;
+					repairs.push(
+						`section_${index}_layout_repair: ${normalizedLayout || "(missing)"} -> ${normalizedVariant}`,
+					);
+					return;
+				}
+
+				errors.push(
+					`Section ${index} (${type}): Invalid layout "${normalizedLayout || normalizedVariant || "(missing)"}"`,
+				);
 				section.layout = fallback;
-				repairs.push(`section_${index}_layout_repair: ${layout} -> ${fallback}`);
+				repairs.push(
+					`section_${index}_layout_repair: ${normalizedLayout || normalizedVariant || "(missing)"} -> ${fallback}`,
+				);
+			};
+
+			switch (type) {
+				case "hero":
+					validateLayout(
+						section.layout,
+						section.variant,
+						[...HERO_LAYOUTS, ...HERO_VARIANTS],
+						HERO_VARIANTS,
+						"editorial-left",
+					);
+					break;
+				case "features":
+					validateLayout(
+						section.layout,
+						section.variant,
+						[...FEATURES_LAYOUTS, ...FEATURES_VARIANTS],
+						FEATURES_VARIANTS,
+						"feature-cards",
+					);
+					break;
+				case "gallery":
+					validateLayout(
+						section.layout,
+						section.variant,
+						[...GALLERY_LAYOUTS, ...GALLERY_VARIANTS],
+						GALLERY_VARIANTS,
+						"standard-grid",
+					);
+					break;
+				case "testimonials":
+					validateLayout(
+						section.layout,
+						section.variant,
+						[...TESTIMONIALS_LAYOUTS, ...TESTIMONIALS_VARIANTS],
+						TESTIMONIALS_VARIANTS,
+						"floating-cards",
+					);
+					break;
+				case "cta":
+					validateLayout(
+						section.layout,
+						section.variant,
+						[...CTA_LAYOUTS, ...CTA_VARIANTS],
+						CTA_VARIANTS,
+						"centered-premium",
+					);
+					break;
+				case "faq":
+					validateLayout(
+						section.layout,
+						section.variant,
+						[...FAQ_LAYOUTS, ...FAQ_VARIANTS],
+						FAQ_VARIANTS,
+						"accordion-clean",
+					);
+					break;
+				case "contact":
+					validateLayout(
+						section.layout,
+						section.variant,
+						[...CONTACT_LAYOUTS, ...CONTACT_VARIANTS],
+						CONTACT_VARIANTS,
+						"split-card",
+					);
+					break;
+				default:
+					errors.push(`Section ${index}: Unknown section type "${type}"`);
 			}
-		};
 
-		switch (type) {
-			case "hero":
-				validateLayout(section.layout, HERO_LAYOUTS, "editorial-left");
-				break;
-			case "features":
-				validateLayout(section.layout, FEATURES_LAYOUTS, "feature-cards");
-				break;
-			case "gallery":
-				validateLayout(section.layout, GALLERY_LAYOUTS, "standard-grid");
-				break;
-			case "testimonials":
-				validateLayout(section.layout, TESTIMONIALS_LAYOUTS, "floating-cards");
-				break;
-			case "cta":
-				validateLayout(section.layout, CTA_LAYOUTS, "centered-premium");
-				break;
-			case "faq":
-				validateLayout(section.layout, FAQ_LAYOUTS, "accordion-clean");
-				break;
-			case "contact":
-				validateLayout(section.layout, CONTACT_LAYOUTS, "split-card");
-				break;
-			default:
-				errors.push(`Section ${index}: Unknown section type "${type}"`);
-		}
-		
-		if (!section.id) {
-			section.id = `${type}-${index}`;
-			repairs.push(`section_${index}_missing_id_auto_gen`);
-		}
+			if (!section.id) {
+				section.id = `${type}-${index}`;
+				repairs.push(`section_${index}_missing_id_auto_gen`);
+			}
 
-		return section;
-	});
+			return section;
+		},
+	);
 
 	// 3. Section Order Enforcement (Business Logic)
 	const sectionTypes = repairedSections.map((s: any) => s.type);
@@ -88,10 +209,12 @@ export function validateWebsiteSchema(schema: any): ValidationResult {
 			repairs.push("hero_moved_to_front");
 		}
 	}
-	
+
 	if (sectionTypes[sectionTypes.length - 1] !== "contact") {
 		errors.push("Layout sequencing error: Contact must be last");
-		const contactIdx = repairedSections.findIndex((s: any) => s.type === "contact");
+		const contactIdx = repairedSections.findIndex(
+			(s: any) => s.type === "contact",
+		);
 		if (contactIdx >= 0 && contactIdx < repairedSections.length - 1) {
 			const contact = repairedSections.splice(contactIdx, 1)[0];
 			repairedSections.push(contact);
@@ -106,13 +229,13 @@ export function validateWebsiteSchema(schema: any): ValidationResult {
 	return {
 		isValid: errors.length === 0,
 		errors,
-		repairedSchema: { 
-			...schema, 
+		repairedSchema: {
+			...schema,
 			sections: repairedSections,
-			_validation: { 
-				repairs, 
-				validatedAt: new Date().toISOString() 
-			} 
+			_validation: {
+				repairs,
+				validatedAt: new Date().toISOString(),
+			},
 		} as WebsiteSchema,
 	};
 }

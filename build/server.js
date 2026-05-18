@@ -1407,49 +1407,114 @@ function validateWebsiteSchema(schema) {
     repairs.push("version_forced_1.0");
   }
   if (!schema.meta || !schema.theme || !schema.brand || !Array.isArray(schema.sections)) {
-    return { isValid: false, errors: ["Missing core top-level objects (meta, theme, brand, sections)"] };
-  }
-  const repairedSections = schema.sections.map((section, index) => {
-    const type = (section.type || "unknown").toLowerCase();
-    section.type = type;
-    const validateLayout = (layout, allowed, fallback) => {
-      if (!allowed.includes(layout)) {
-        errors.push(`Section ${index} (${type}): Invalid layout "${layout}"`);
-        section.layout = fallback;
-        repairs.push(`section_${index}_layout_repair: ${layout} -> ${fallback}`);
-      }
+    return {
+      isValid: false,
+      errors: ["Missing core top-level objects (meta, theme, brand, sections)"]
     };
-    switch (type) {
-      case "hero":
-        validateLayout(section.layout, HERO_LAYOUTS, "editorial-left");
-        break;
-      case "features":
-        validateLayout(section.layout, FEATURES_LAYOUTS, "feature-cards");
-        break;
-      case "gallery":
-        validateLayout(section.layout, GALLERY_LAYOUTS, "standard-grid");
-        break;
-      case "testimonials":
-        validateLayout(section.layout, TESTIMONIALS_LAYOUTS, "floating-cards");
-        break;
-      case "cta":
-        validateLayout(section.layout, CTA_LAYOUTS, "centered-premium");
-        break;
-      case "faq":
-        validateLayout(section.layout, FAQ_LAYOUTS, "accordion-clean");
-        break;
-      case "contact":
-        validateLayout(section.layout, CONTACT_LAYOUTS, "split-card");
-        break;
-      default:
-        errors.push(`Section ${index}: Unknown section type "${type}"`);
+  }
+  const repairedSections = schema.sections.map(
+    (section, index) => {
+      const type = (section.type || "unknown").toLowerCase();
+      section.type = type;
+      const normalizeValue = (value) => (value || "").toString().toLowerCase();
+      const validateLayout = (layout, variant, allowed, variantAllowed, fallback) => {
+        const normalizedLayout = normalizeValue(layout);
+        const normalizedVariant = normalizeValue(variant);
+        const layoutValid = allowed.includes(normalizedLayout);
+        const variantValid = variantAllowed.includes(normalizedVariant);
+        if (layoutValid) {
+          section.layout = normalizedLayout;
+          return;
+        }
+        if (variantValid) {
+          section.layout = normalizedVariant;
+          repairs.push(
+            `section_${index}_layout_repair: ${normalizedLayout || "(missing)"} -> ${normalizedVariant}`
+          );
+          return;
+        }
+        errors.push(
+          `Section ${index} (${type}): Invalid layout "${normalizedLayout || normalizedVariant || "(missing)"}"`
+        );
+        section.layout = fallback;
+        repairs.push(
+          `section_${index}_layout_repair: ${normalizedLayout || normalizedVariant || "(missing)"} -> ${fallback}`
+        );
+      };
+      switch (type) {
+        case "hero":
+          validateLayout(
+            section.layout,
+            section.variant,
+            [...HERO_LAYOUTS, ...HERO_VARIANTS],
+            HERO_VARIANTS,
+            "editorial-left"
+          );
+          break;
+        case "features":
+          validateLayout(
+            section.layout,
+            section.variant,
+            [...FEATURES_LAYOUTS, ...FEATURES_VARIANTS],
+            FEATURES_VARIANTS,
+            "feature-cards"
+          );
+          break;
+        case "gallery":
+          validateLayout(
+            section.layout,
+            section.variant,
+            [...GALLERY_LAYOUTS, ...GALLERY_VARIANTS],
+            GALLERY_VARIANTS,
+            "standard-grid"
+          );
+          break;
+        case "testimonials":
+          validateLayout(
+            section.layout,
+            section.variant,
+            [...TESTIMONIALS_LAYOUTS, ...TESTIMONIALS_VARIANTS],
+            TESTIMONIALS_VARIANTS,
+            "floating-cards"
+          );
+          break;
+        case "cta":
+          validateLayout(
+            section.layout,
+            section.variant,
+            [...CTA_LAYOUTS, ...CTA_VARIANTS],
+            CTA_VARIANTS,
+            "centered-premium"
+          );
+          break;
+        case "faq":
+          validateLayout(
+            section.layout,
+            section.variant,
+            [...FAQ_LAYOUTS, ...FAQ_VARIANTS],
+            FAQ_VARIANTS,
+            "accordion-clean"
+          );
+          break;
+        case "contact":
+          validateLayout(
+            section.layout,
+            section.variant,
+            [...CONTACT_LAYOUTS, ...CONTACT_VARIANTS],
+            CONTACT_VARIANTS,
+            "split-card"
+          );
+          break;
+        default:
+          errors.push(`Section ${index}: Unknown section type "${type}"`);
+      }
+      if (!section.id) {
+        section.id = `${type}-${index}`;
+        repairs.push(`section_${index}_missing_id_auto_gen`);
+      }
+      return section;
     }
-    if (!section.id) {
-      section.id = `${type}-${index}`;
-      repairs.push(`section_${index}_missing_id_auto_gen`);
-    }
-    return section;
-  });
+  );
   const sectionTypes = repairedSections.map((s) => s.type);
   if (sectionTypes[0] !== "hero") {
     errors.push("Layout sequencing error: Hero must be first");
@@ -1462,7 +1527,9 @@ function validateWebsiteSchema(schema) {
   }
   if (sectionTypes[sectionTypes.length - 1] !== "contact") {
     errors.push("Layout sequencing error: Contact must be last");
-    const contactIdx = repairedSections.findIndex((s) => s.type === "contact");
+    const contactIdx = repairedSections.findIndex(
+      (s) => s.type === "contact"
+    );
     if (contactIdx >= 0 && contactIdx < repairedSections.length - 1) {
       const contact = repairedSections.splice(contactIdx, 1)[0];
       repairedSections.push(contact);
@@ -1484,9 +1551,44 @@ function validateWebsiteSchema(schema) {
     }
   };
 }
+var HERO_VARIANTS, FEATURES_VARIANTS, GALLERY_VARIANTS, TESTIMONIALS_VARIANTS, CTA_VARIANTS, FAQ_VARIANTS, CONTACT_VARIANTS;
 var init_website_schema_validator = __esm({
   "src/lib/website-schema-validator.ts"() {
     init_layout_registry();
+    HERO_VARIANTS = [
+      "immersive",
+      "cinematic",
+      "editorial",
+      "editorial-split",
+      "magazine",
+      "centered",
+      "minimal",
+      "split"
+    ];
+    FEATURES_VARIANTS = [
+      "bento",
+      "editorial-cards",
+      "editorial-list",
+      "alternating-stack",
+      "grid"
+    ];
+    GALLERY_VARIANTS = [
+      "editorial-mosaic",
+      "stacked-collage",
+      "collage"
+    ];
+    TESTIMONIALS_VARIANTS = [
+      "floating-cards",
+      "editorial-quotes",
+      "spotlight"
+    ];
+    CTA_VARIANTS = ["gradient-band", "split-card", "side-by-side"];
+    FAQ_VARIANTS = ["cards", "split-columns", "grid"];
+    CONTACT_VARIANTS = [
+      "split-card",
+      "minimal-centered",
+      "centered"
+    ];
   }
 });
 
@@ -4874,6 +4976,23 @@ ${rawText}
     const { validateWebsiteSchema: validateWebsiteSchema2 } = await Promise.resolve().then(() => (init_website_schema_validator(), website_schema_validator_exports));
     const validation = validateWebsiteSchema2(parsedSchema);
     const finalSchema = validation.repairedSchema || parsedSchema;
+    const sectionSummary = (finalSchema.sections || []).map(
+      (section, index) => ({
+        index,
+        type: section.type,
+        layout: section.layout || null,
+        variant: section.variant || null,
+        id: section.id || null
+      })
+    );
+    logStderr(
+      `[Generate] layouts traceId=${debugSession.traceId} sections=${JSON.stringify(sectionSummary)} repairs=${JSON.stringify(validation.repairs || [])}`
+    );
+    persistGenerationDebugFile(debugSession, "05d-layout-summary.json", {
+      sections: sectionSummary,
+      repairs: validation.repairs || [],
+      errors: validation.errors || []
+    });
     try {
       const wordpressHtmlPrompt = `You are turning an approved website schema into the FINAL WordPress homepage HTML.
 
