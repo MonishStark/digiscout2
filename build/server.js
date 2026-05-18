@@ -710,11 +710,16 @@ html,body{margin:0!important;padding:0!important;background:${BG}!important;colo
 .wp-block-button__link:hover{transform:translateY(-2px) scale(1.02)!important;box-shadow:0 18px 40px rgba(${hexToRgb(P)},.32)!important}
 .button-ghost{background:transparent!important;color:${TEXT}!important;border:1px solid ${OUTLINE}!important;box-shadow:none!important}
 .shape-orb{position:absolute;border-radius:999px;pointer-events:none;filter:blur(4px)}
+[data-reveal]{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s ease}
+[data-reveal].is-visible{opacity:1;transform:translateY(0)}
 @keyframes fadeInUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
 @keyframes scaleIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
 @media (max-width: 920px){
 	.section-padding{padding:88px 24px}
 	.two-col,.split-grid,.contact-grid,.cta-split,.feature-bento,.gallery-editorial,.gallery-stack,.testimonial-featured,.faq-split{grid-template-columns:1fr!important}
+}
+@media (prefers-reduced-motion: reduce){
+	[data-reveal]{opacity:1;transform:none;transition:none}
 }
 ${theme.customCss || ""}
 ${sections.map((section) => section.customCss || "").join("\n")}
@@ -722,7 +727,43 @@ ${sections.map((section) => section.customCss || "").join("\n")}
 <!-- /wp:html -->
 
 `;
-  let html = globalCss;
+  const revealScript = `<!-- wp:html -->
+<script>
+(() => {
+	const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+	const targets = document.querySelectorAll(
+		'.section-padding .section-shell, .section-padding .glass, .section-padding .hover-lift, .section-padding img, .section-padding .section-title, .section-padding .section-copy, .section-padding .eyebrow'
+	);
+	targets.forEach((el, index) => {
+		el.setAttribute('data-reveal', '');
+		if (reduce) {
+			el.classList.add('is-visible');
+			return;
+		}
+		el.style.transitionDelay = String((index % 6) * 80) + 'ms';
+	});
+	if (reduce || !('IntersectionObserver' in window)) {
+		targets.forEach((el) => el.classList.add('is-visible'));
+		return;
+	}
+	const observer = new IntersectionObserver(
+		(entries, obs) => {
+			entries.forEach((entry) => {
+				if (entry.isIntersecting) {
+					entry.target.classList.add('is-visible');
+					obs.unobserve(entry.target);
+				}
+			});
+		},
+		{ threshold: 0.15, rootMargin: '0px 0px -10% 0px' }
+	);
+	targets.forEach((el) => observer.observe(el));
+})();
+</script>
+<!-- /wp:html -->
+
+`;
+  let html = globalCss + revealScript;
   sections.forEach((section, index) => {
     const sectionBg = index % 2 === 0 ? BG : SURF;
     switch (section.type) {
@@ -1632,11 +1673,86 @@ if (!process.env.DB_USER) {
 var env_default = process.env;
 
 // server.ts
+import fs3 from "fs";
 import crypto2 from "crypto";
 import cors from "cors";
 import express from "express";
-import fs3 from "fs";
 import path2 from "path";
+
+// services/openrouter.ts
+var DEFAULT_BASE_URL = "https://openrouter.ai/api/v1/chat/completions";
+async function callOpenRouter({
+  model,
+  prompt,
+  temperature = 0.7,
+  maxTokens = 12e3
+}) {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENROUTER_API_KEY is not set");
+  }
+  const baseUrl = process.env.OPENROUTER_BASE_URL || DEFAULT_BASE_URL;
+  const response = await fetch(baseUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model,
+      temperature,
+      max_tokens: maxTokens,
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`OpenRouter failed: ${response.status} ${text}`);
+  }
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || "";
+  return { content, usage: data.usage };
+}
+async function generateWithFallback({
+  prompt,
+  models,
+  temperature = 0.7,
+  maxTokens = 12e3,
+  minLength = 100
+}) {
+  let lastError = null;
+  const attempts = [];
+  const startedAt = Date.now();
+  for (const model of models) {
+    try {
+      console.log(`[OpenRouter] Trying ${model}`);
+      attempts.push(model);
+      const result = await callOpenRouter({
+        model,
+        prompt,
+        temperature,
+        maxTokens
+      });
+      if (result.content && result.content.length >= minLength) {
+        return {
+          model,
+          content: result.content,
+          fallbackUsed: attempts.length > 1,
+          attempts,
+          requestMs: Date.now() - startedAt,
+          usage: result.usage
+        };
+      }
+      throw new Error(
+        `OpenRouter empty/short response (${result.content.length})`
+      );
+    } catch (err) {
+      console.error(`[OpenRouter] ${model} failed`, err);
+      lastError = err;
+    }
+  }
+  throw lastError || new Error("OpenRouter failed for all models");
+}
 
 // src/lib/callhippo-service.ts
 async function sendOutreachViaCallHippo(request, apiKey) {
@@ -2675,13 +2791,19 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, adminUser,
     } catch (e) {
     }
     let content = "";
-    const renderSource = schema?._renderSource || (schema?._wordpressHtml ? "gemini-html" : "local-builder");
+    const requireOpenRouterHtml = (process.env.REQUIRE_OPENROUTER_HTML || "").toLowerCase() === "true";
+    const renderSource = schema?._renderSource || (schema?._wordpressHtml ? "openrouter-html" : "local-builder");
     if (typeof schema?._wordpressHtml === "string" && schema._wordpressHtml.trim()) {
-      await logCallback("Using Gemini-generated WordPress homepage HTML...");
+      await logCallback("Using OpenRouter-generated WordPress homepage HTML...");
       content = ensureWordPressHtmlBlock(schema._wordpressHtml);
     } else {
+      if (requireOpenRouterHtml) {
+        throw new Error(
+          "OpenRouter HTML is required but was not generated. Check OpenRouter config/quota."
+        );
+      }
       await logCallback(
-        "Gemini HTML unavailable. Building homepage with local premium-site-builder..."
+        "OpenRouter HTML unavailable. Building homepage with local premium-site-builder..."
       );
       const { buildPremiumPageContent: buildPremiumPageContent2 } = await Promise.resolve().then(() => (init_premium_site_builder(), premium_site_builder_exports));
       content = buildPremiumPageContent2(schema);
@@ -3090,7 +3212,8 @@ async function getSDKGenAI() {
 }
 var GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_API_KEY;
 var CALLHIPPO_API_KEY = process.env.CALLHIPPO_API_KEY;
-var WEBSITE_GENERATION_MODE = process.env.WEBSITE_GENERATION_MODE || "gemini";
+var OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+var WEBSITE_GENERATION_MODE = process.env.WEBSITE_GENERATION_MODE || "openrouter";
 function extractEmails(html) {
   const emailPattern = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
   return Array.from(new Set(html.match(emailPattern) || [])).slice(0, 3);
@@ -4285,7 +4408,7 @@ function buildCategorySpecificTestimonials(category, businessName, seed) {
   if (categoryNorm.includes("cafe") || categoryNorm.includes("restaurant")) {
     return [
       {
-        quote: "The new site actually reflects what makes this place special\u2014it brought me back to visit.",
+        quote: "The new site actually reflects what makes this place special\u0393\xC7\xF6it brought me back to visit.",
         author: name1,
         role: role1
       },
@@ -4299,7 +4422,7 @@ function buildCategorySpecificTestimonials(category, businessName, seed) {
   if (categoryNorm.includes("salon") || categoryNorm.includes("spa")) {
     return [
       {
-        quote: "The website shows professionalism and care\u2014exactly what I experienced when I visited.",
+        quote: "The website shows professionalism and care\u0393\xC7\xF6exactly what I experienced when I visited.",
         author: name1,
         role: role1
       },
@@ -4327,7 +4450,7 @@ function buildCategorySpecificTestimonials(category, businessName, seed) {
   if (categoryNorm.includes("gym") || categoryNorm.includes("fitness")) {
     return [
       {
-        quote: "The online tour showed real community energy\u2014joined immediately and haven't looked back.",
+        quote: "The online tour showed real community energy\u0393\xC7\xF6joined immediately and haven't looked back.",
         author: name1,
         role: role1
       },
@@ -4341,7 +4464,7 @@ function buildCategorySpecificTestimonials(category, businessName, seed) {
   if (categoryNorm.includes("real estate") || categoryNorm.includes("property")) {
     return [
       {
-        quote: "Their online listing brought clarity to a complex market\u2014guided me through the whole process with expertise.",
+        quote: "Their online listing brought clarity to a complex market\u0393\xC7\xF6guided me through the whole process with expertise.",
         author: name1,
         role: role1
       },
@@ -4355,7 +4478,7 @@ function buildCategorySpecificTestimonials(category, businessName, seed) {
   if (categoryNorm.includes("dry clean") || categoryNorm.includes("laundry")) {
     return [
       {
-        quote: "My premium items have never looked better\u2014trusted professionals who care about quality.",
+        quote: "My premium items have never looked better\u0393\xC7\xF6trusted professionals who care about quality.",
         author: name1,
         role: role1
       },
@@ -4473,7 +4596,7 @@ function buildCategorySpecificFaqs(category, businessName, seed) {
       },
       {
         question: "What if something goes wrong with my garment?",
-        answer: "We stand behind our work and have industry insurance. We'll discuss solutions immediately\u2014your satisfaction matters."
+        answer: "We stand behind our work and have industry insurance. We'll discuss solutions immediately\u0393\xC7\xF6your satisfaction matters."
       }
     ];
   }
@@ -4663,7 +4786,7 @@ function createFallbackWebsiteSchema(business) {
     },
     seo: {
       title: `${siteName} | Preview`,
-      description: `Premium website for ${siteName}\u2014${categoryLabel} services with modern design and seamless booking.`,
+      description: `Premium website for ${siteName}\u0393\xC7\xF6${categoryLabel} services with modern design and seamless booking.`,
       keywords: [
         business.category || "local",
         "services",
@@ -4717,11 +4840,11 @@ app.post("/api/generate", async (req, res) => {
       );
       return res.json(fallbackSchema);
     }
-    if (!GENAI_KEY && !process.env.GEMINI_REST_URL) {
+    if (!OPENROUTER_API_KEY) {
       debugSession.fallbackReason = "missing-config";
       appendGenerationDebugError(
         debugSession,
-        "fallback_triggered: no Gemini API configuration found"
+        "fallback_triggered: no OpenRouter API configuration found"
       );
       res.setHeader("x-debug-generation-fallback", "true");
       const fallbackSchema = createFallbackWebsiteSchema(business);
@@ -4850,6 +4973,15 @@ THEME RULES:
 - prefer visibly different composition, spacing rhythm, and section hierarchy from other sites in the same category
 - customCss is optional; include it only if it materially improves the final WordPress site
 
+DESIGN DIRECTION REQUIREMENTS:
+- Favor asymmetrical layouts and editorial composition.
+- Use layered imagery and premium typography.
+- Establish a modern spacing rhythm with deliberate negative space.
+- If category is salon/spa, push a luxury salon aesthetic with refined hierarchy.
+- Avoid generic SaaS layouts and repetitive card grids.
+- Prefer cinematic hero composition when it suits the business.
+- Ensure the structure remains mobile-first and responsive.
+
 Business Context:
 - Name: ${business.name}
 - Category: ${business.category || "Local Service"}
@@ -4878,122 +5010,57 @@ Reference Images:
 ${buildImageBlock(business)}
 
 Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
-    const modelsToTry = [
-      { name: "gemini-flash-latest", timeoutMs: 45e3 },
-      { name: "gemini-flash-latest", timeoutMs: 45e3 }
+    const schemaModels = [
+      "deepseek/deepseek-v3.2",
+      "qwen/qwen3-coder-480b-a35b:free",
+      "deepseek/deepseek-v4-flash:free",
+      "openai/gpt-oss-120b:free"
     ];
-    const callGeminiText = async (promptText, stageLabel) => {
-      let stageRawText = "";
-      let stageLastError = null;
-      for (const model of modelsToTry) {
-        try {
-          const restUrl = process.env.GEMINI_REST_URL;
-          if (restUrl && GENAI_KEY) {
-            const modelRestUrl = restUrl.includes("{model}") ? restUrl.replace("{model}", model.name) : restUrl;
-            console.error(
-              `[Gemini] Attempting ${stageLabel} direct REST call to ${modelRestUrl}...`
-            );
-            const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${GENAI_KEY}`;
-            const fetchResponse = await Promise.race([
-              fetch(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  contents: [{ parts: [{ text: promptText }] }],
-                  generationConfig: {
-                    temperature: stageLabel === "schema" ? 0.9 : 0.75,
-                    maxOutputTokens: stageLabel === "schema" ? 8192 : 12288
-                  }
-                })
-              }),
-              new Promise(
-                (_, reject) => setTimeout(
-                  () => reject(
-                    new Error(`REST timeout after ${model.timeoutMs}ms`)
-                  ),
-                  model.timeoutMs
-                )
-              )
-            ]);
-            if (!fetchResponse.ok) {
-              throw new Error(
-                `REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`
-              );
-            }
-            const data = await fetchResponse.json();
-            stageRawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          } else {
-            console.error(
-              `[Gemini] Attempting ${stageLabel} SDK call for ${model.name}...`
-            );
-            const genAI = await getSDKGenAI();
-            if (!genAI) {
-              throw new Error("Gemini SDK not available.");
-            }
-            const response = await Promise.race([
-              genAI.getGenerativeModel({ model: model.name }).generateContent(promptText),
-              new Promise(
-                (_, reject) => setTimeout(
-                  () => reject(
-                    new Error(
-                      `${model.name} request timed out after ${model.timeoutMs}ms`
-                    )
-                  ),
-                  model.timeoutMs
-                )
-              )
-            ]);
-            const result = await response.response;
-            stageRawText = result.text().trim();
-          }
-          if (stageRawText) {
-            console.error(
-              `[Gemini] ${model.name} ${stageLabel} success! Response length: ${stageRawText.length}`
-            );
-            return stageRawText;
-          }
-          console.error(
-            `[Gemini] ${model.name} returned empty ${stageLabel} text.`
-          );
-        } catch (error) {
-          stageLastError = error;
-          console.error(
-            `[Gemini] ${model.name} ${stageLabel} failed:`,
-            error instanceof Error ? error.message : error
-          );
-          fs3.writeSync(
-            2,
-            `[Gemini] ${stageLabel.toUpperCase()} ERROR DETAIL: ${JSON.stringify(error)}
-`
-          );
-        }
-      }
-      throw stageLastError || new Error(`All Gemini ${stageLabel} attempts failed`);
-    };
+    const htmlModels = [
+      "qwen/qwen3-coder-480b-a35b:free",
+      "deepseek/deepseek-v3.2",
+      "deepseek/deepseek-v4-flash:free",
+      "openai/gpt-oss-120b:free"
+    ];
     console.error(
-      `[Gemini] Starting generation for ${business.name} with model ${modelsToTry[0].name}`
+      `[OpenRouter] Starting generation for ${business.name} with model ${schemaModels[0]}`
     );
     fs3.writeSync(
       2,
       `
---- GEMINI PROMPT START ---
+--- OPENROUTER SCHEMA PROMPT START ---
 ${prompt}
---- GEMINI PROMPT END ---
+--- OPENROUTER SCHEMA PROMPT END ---
 `
     );
     persistGenerationDebugFile(debugSession, "02-generation-prompt.md", prompt);
-    const rawText = await callGeminiText(prompt, "schema");
+    const schemaResult = await generateWithFallback({
+      prompt,
+      models: schemaModels,
+      temperature: 0.9,
+      maxTokens: 8192,
+      minLength: 200
+    });
+    const rawText = schemaResult.content;
+    logStderr(
+      `[OpenRouter] schema success model=${schemaResult.model} durationMs=${schemaResult.requestMs} outputLength=${rawText.length} fallbackUsed=${schemaResult.fallbackUsed} attempts=${schemaResult.attempts.join(",")}`
+    );
+    if (schemaResult.usage) {
+      logStderr(
+        `[OpenRouter] schema usage prompt=${schemaResult.usage.prompt_tokens || 0} completion=${schemaResult.usage.completion_tokens || 0} total=${schemaResult.usage.total_tokens || 0}`
+      );
+    }
     fs3.writeSync(
       2,
       `
---- GEMINI RESPONSE START ---
+--- OPENROUTER SCHEMA RESPONSE START ---
 ${rawText}
---- GEMINI RESPONSE END ---
+--- OPENROUTER SCHEMA RESPONSE END ---
 `
     );
     persistGenerationDebugFile(
       debugSession,
-      "03-gemini-raw-response.txt",
+      "03-openrouter-raw-response.txt",
       rawText
     );
     const parsedSchema = parseWebsiteSchemaOutput(
@@ -5003,7 +5070,7 @@ ${rawText}
     );
     if (!parsedSchema) {
       console.warn(
-        "[Generate] Gemini output could not be parsed as WebsiteSchema, using fallback schema."
+        "[Generate] OpenRouter output could not be parsed as WebsiteSchema, using fallback schema."
       );
       debugSession.fallbackReason = "parse-failure";
       appendGenerationDebugError(
@@ -5080,12 +5147,15 @@ ${rawText}
       };
       const wordpressHtmlPrompt = `You are turning an approved website schema into the FINAL WordPress homepage HTML.
 
-Return ONLY homepage HTML suitable for WordPress post_content.
-Do not return JSON.
-Do not explain anything.
-Do not wrap the response in markdown unless it is a plain \`\`\`html fenced block.
-Do not output JavaScript.
-Wrap the entire response in a single WordPress HTML block:
+			Return ONLY homepage HTML suitable for WordPress post_content.
+			Do not return JSON.
+			Do not explain anything.
+			Do not wrap the response in markdown unless it is a plain \`\`\`html fenced block.
+			Do not output JavaScript.
+			No <script> tags.
+			No React/Vue/JS frameworks.
+			No external JS dependencies.
+			Wrap the entire response in a single WordPress HTML block:
 <!-- wp:html -->
 [your style block and homepage markup]
 <!-- /wp:html -->
@@ -5111,10 +5181,20 @@ Theme palette rules:
 - accentMode "earthy": warm off-whites, clay, olive, muted rust accents.
 - accentMode "fresh": crisp white, deep teal or sea green accents, clean neutrals.
 - accentMode "neon": pale base, electric accent with controlled saturation.
-Define CSS variables that reflect the chosen palette and use them consistently.
-Light theme only.
-No site header chrome, no WordPress admin text, no fake badges like "crafted for premium presentation".
-No generic placeholder copy.
+			Define CSS variables that reflect the chosen palette and use them consistently.
+			Light theme only.
+			Use inline CSS or one lightweight <style> block only.
+			Keep markup valid for WP Custom HTML blocks.
+			Avoid malformed comments, excessive nesting, and unsupported CSS features.
+			No site header chrome, no WordPress admin text, no fake badges like "crafted for premium presentation".
+			No generic placeholder copy.
+
+			Design direction requirements:
+			- Asymmetrical, editorial composition with layered imagery.
+			- Premium typography with intentional hierarchy and spacing rhythm.
+			- Avoid repetitive card grids and generic SaaS layouts.
+			- Cinematic hero section with layered text and media.
+			- Mobile-first responsive CSS with clean semantic HTML.
 
 BUSINESS:
 ${JSON.stringify(
@@ -5139,16 +5219,28 @@ Return only the final HTML for the homepage body content.`;
         "05a-wordpress-html-prompt.md",
         wordpressHtmlPrompt
       );
-      const rawWordPressHtml = await callGeminiText(
-        wordpressHtmlPrompt,
-        "wordpress-html"
+      const htmlResult = await generateWithFallback({
+        prompt: wordpressHtmlPrompt,
+        models: htmlModels,
+        temperature: 0.7,
+        maxTokens: 12e3,
+        minLength: 800
+      });
+      const rawWordPressHtml = htmlResult.content;
+      logStderr(
+        `[OpenRouter] html success model=${htmlResult.model} durationMs=${htmlResult.requestMs} outputLength=${rawWordPressHtml.length} fallbackUsed=${htmlResult.fallbackUsed} attempts=${htmlResult.attempts.join(",")}`
       );
+      if (htmlResult.usage) {
+        logStderr(
+          `[OpenRouter] html usage prompt=${htmlResult.usage.prompt_tokens || 0} completion=${htmlResult.usage.completion_tokens || 0} total=${htmlResult.usage.total_tokens || 0}`
+        );
+      }
       fs3.writeSync(
         2,
         `
---- GEMINI WORDPRESS HTML START ---
+--- OPENROUTER WORDPRESS HTML START ---
 ${rawWordPressHtml}
---- GEMINI WORDPRESS HTML END ---
+--- OPENROUTER WORDPRESS HTML END ---
 `
       );
       persistGenerationDebugFile(
@@ -5178,16 +5270,20 @@ Revise the HTML to fix all issues. Return only the final HTML.`;
           "05b2-wordpress-html-retry-prompt.md",
           retryPrompt
         );
-        const retryWordPressHtml = await callGeminiText(
-          retryPrompt,
-          "wordpress-html"
-        );
+        const retryResult = await generateWithFallback({
+          prompt: retryPrompt,
+          models: htmlModels,
+          temperature: 0.7,
+          maxTokens: 12e3,
+          minLength: 800
+        });
+        const retryWordPressHtml = retryResult.content;
         fs3.writeSync(
           2,
           `
---- GEMINI WORDPRESS HTML RETRY START ---
+--- OPENROUTER WORDPRESS HTML RETRY START ---
 ${retryWordPressHtml}
---- GEMINI WORDPRESS HTML RETRY END ---
+--- OPENROUTER WORDPRESS HTML RETRY END ---
 `
         );
         persistGenerationDebugFile(
@@ -5199,7 +5295,28 @@ ${retryWordPressHtml}
       }
       if (extractedWordPressHtml) {
         finalSchema._wordpressHtml = extractedWordPressHtml;
-        finalSchema._renderSource = "gemini-html";
+        finalSchema._renderSource = "openrouter-html";
+        finalSchema._renderModel = htmlResult.model;
+        finalSchema._renderFallbackUsed = htmlResult.fallbackUsed;
+        finalSchema._renderMeta = {
+          renderModel: htmlResult.model,
+          renderSource: "openrouter-html",
+          fallbackUsed: htmlResult.fallbackUsed,
+          schema: {
+            model: schemaResult.model,
+            fallbackUsed: schemaResult.fallbackUsed,
+            requestMs: schemaResult.requestMs,
+            usage: schemaResult.usage || null,
+            attempts: schemaResult.attempts
+          },
+          html: {
+            model: htmlResult.model,
+            fallbackUsed: htmlResult.fallbackUsed,
+            requestMs: htmlResult.requestMs,
+            usage: htmlResult.usage || null,
+            attempts: htmlResult.attempts
+          }
+        };
         persistGenerationDebugFile(
           debugSession,
           "05c-wordpress-html-final.html",
@@ -5227,7 +5344,10 @@ ${retryWordPressHtml}
           "generation_completed",
           validation.isValid ? "Valid schema generated" : "Schema repaired during validation",
           JSON.stringify({
-            model: modelsToTry[0].name,
+            model: schemaResult.model,
+            renderModel: finalSchema._renderModel || null,
+            renderSource: finalSchema._renderSource || "unknown",
+            fallbackUsed: Boolean(finalSchema._renderFallbackUsed),
             isValid: validation.isValid,
             repairs: validation.repairs,
             errors: validation.errors

@@ -570,18 +570,25 @@ async function injectWebsiteContent(
 		}
 
 		let content = "";
+		const requireOpenRouterHtml =
+			(process.env.REQUIRE_OPENROUTER_HTML || "").toLowerCase() === "true";
 		const renderSource =
 			schema?._renderSource ||
-			(schema?._wordpressHtml ? "gemini-html" : "local-builder");
+			(schema?._wordpressHtml ? "openrouter-html" : "local-builder");
 		if (
 			typeof schema?._wordpressHtml === "string" &&
 			schema._wordpressHtml.trim()
 		) {
-			await logCallback("Using Gemini-generated WordPress homepage HTML...");
+			await logCallback("Using OpenRouter-generated WordPress homepage HTML...");
 			content = ensureWordPressHtmlBlock(schema._wordpressHtml);
 		} else {
+			if (requireOpenRouterHtml) {
+				throw new Error(
+					"OpenRouter HTML is required but was not generated. Check OpenRouter config/quota.",
+				);
+			}
 			await logCallback(
-				"Gemini HTML unavailable. Building homepage with local premium-site-builder...",
+				"OpenRouter HTML unavailable. Building homepage with local premium-site-builder...",
 			);
 			const { buildPremiumPageContent } =
 				await import("./premium-site-builder");

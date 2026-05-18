@@ -122,18 +122,58 @@ html,body{margin:0!important;padding:0!important;background:${BG}!important;colo
 .wp-block-button__link:hover{transform:translateY(-2px) scale(1.02)!important;box-shadow:0 18px 40px rgba(${hexToRgb(P)},.32)!important}
 .button-ghost{background:transparent!important;color:${TEXT}!important;border:1px solid ${OUTLINE}!important;box-shadow:none!important}
 .shape-orb{position:absolute;border-radius:999px;pointer-events:none;filter:blur(4px)}
+[data-reveal]{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s ease}
+[data-reveal].is-visible{opacity:1;transform:translateY(0)}
 @keyframes fadeInUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
 @keyframes scaleIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
 @media (max-width: 920px){
 	.section-padding{padding:88px 24px}
 	.two-col,.split-grid,.contact-grid,.cta-split,.feature-bento,.gallery-editorial,.gallery-stack,.testimonial-featured,.faq-split{grid-template-columns:1fr!important}
 }
+@media (prefers-reduced-motion: reduce){
+	[data-reveal]{opacity:1;transform:none;transition:none}
+}
 ${theme.customCss || ""}
 ${sections.map((section: any) => section.customCss || "").join("\n")}
 </style>
 <!-- /wp:html -->\n\n`;
 
-	let html = globalCss;
+	const revealScript = `<!-- wp:html -->
+<script>
+(() => {
+	const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+	const targets = document.querySelectorAll(
+		'.section-padding .section-shell, .section-padding .glass, .section-padding .hover-lift, .section-padding img, .section-padding .section-title, .section-padding .section-copy, .section-padding .eyebrow'
+	);
+	targets.forEach((el, index) => {
+		el.setAttribute('data-reveal', '');
+		if (reduce) {
+			el.classList.add('is-visible');
+			return;
+		}
+		el.style.transitionDelay = String((index % 6) * 80) + 'ms';
+	});
+	if (reduce || !('IntersectionObserver' in window)) {
+		targets.forEach((el) => el.classList.add('is-visible'));
+		return;
+	}
+	const observer = new IntersectionObserver(
+		(entries, obs) => {
+			entries.forEach((entry) => {
+				if (entry.isIntersecting) {
+					entry.target.classList.add('is-visible');
+					obs.unobserve(entry.target);
+				}
+			});
+		},
+		{ threshold: 0.15, rootMargin: '0px 0px -10% 0px' }
+	);
+	targets.forEach((el) => observer.observe(el));
+})();
+</script>
+<!-- /wp:html -->\n\n`;
+
+	let html = globalCss + revealScript;
 	sections.forEach((section: any, index: number) => {
 		const sectionBg = index % 2 === 0 ? BG : SURF;
 		switch (section.type) {
