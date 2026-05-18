@@ -730,6 +730,10 @@ async function rollbackJob(job: any) {
 				job.id,
 				`[ROLLBACK] Failed to delete subdomain: ${e.message}`,
 			);
+			await appendLog(
+				job.id,
+				"[ROLLBACK] Tip: configure CPANEL_DELETE_SUBDOMAIN_CMD if UAPI delete is unavailable.",
+			);
 		}
 
 		// Delete remote directory via SSH

@@ -7,6 +7,8 @@
  *
  * Instead of: HTTPS → server166.web-hosting.com:2083
  * We now use:  SSH  → digigesf@digiscoutwp.online "uapi Mysql create_database ..."
+ *
+ * @format
  */
 
 import { exec } from "child_process";
@@ -33,13 +35,16 @@ function getSshPrefix(): string {
 	const keyFlag = keyPath ? `-i "${keyPath}"` : "";
 	return [
 		"ssh",
-		"-p", port,
+		"-p",
+		port,
 		keyFlag,
 		"-o StrictHostKeyChecking=no",
 		"-o ConnectTimeout=30",
 		"-o BatchMode=yes",
 		`${user}@${host}`,
-	].filter(Boolean).join(" ");
+	]
+		.filter(Boolean)
+		.join(" ");
 }
 
 /**
@@ -72,17 +77,23 @@ async function callUapiRemote(
 		try {
 			parsed = JSON.parse(stdout);
 		} catch (e) {
-			throw new Error(`cPanel UAPI returned invalid JSON: ${stdout.substring(0, 300)}`);
+			throw new Error(
+				`cPanel UAPI returned invalid JSON: ${stdout.substring(0, 300)}`,
+			);
 		}
 
 		// cPanel UAPI response envelope: { result: { status: 1, data: ..., errors: [] } }
 		const result = parsed?.result;
 		if (!result) {
-			throw new Error(`Unexpected cPanel UAPI response shape: ${JSON.stringify(parsed).substring(0, 300)}`);
+			throw new Error(
+				`Unexpected cPanel UAPI response shape: ${JSON.stringify(parsed).substring(0, 300)}`,
+			);
 		}
 
 		if (result.status === 0 || (result.errors && result.errors.length > 0)) {
-			const errMsg = Array.isArray(result.errors) ? result.errors.join(", ") : "Unknown cPanel error";
+			const errMsg = Array.isArray(result.errors)
+				? result.errors.join(", ")
+				: "Unknown cPanel error";
 			throw new Error(`cPanel UAPI Error (${module}::${func}): ${errMsg}`);
 		}
 
@@ -91,7 +102,9 @@ async function callUapiRemote(
 	} catch (error: any) {
 		// Re-throw with better context if it's not already a formatted error
 		if (error.message?.includes("cPanel UAPI")) throw error;
-		throw new Error(`cPanel SSH command failed (${module}::${func}): ${error.message}`);
+		throw new Error(
+			`cPanel SSH command failed (${module}::${func}): ${error.message}`,
+		);
 	}
 }
 
@@ -120,8 +133,10 @@ export async function addSubdomain(
 
 export async function deleteSubdomain(subdomain: string, rootDomain: string) {
 	const fullDomain = `${subdomain}.${rootDomain}`;
-	process.stderr.write(`[cPanel-SSH] Attempting to delete domain/subdomain: ${fullDomain}\n`);
-	
+	process.stderr.write(
+		`[cPanel-SSH] Attempting to delete domain/subdomain: ${fullDomain}\n`,
+	);
+
 	// 1. Try modern Domains::remove_domain first (best for newer cPanel)
 	try {
 		await callUapiRemote("Domains", "remove_domain", {
@@ -129,7 +144,9 @@ export async function deleteSubdomain(subdomain: string, rootDomain: string) {
 		});
 		return true;
 	} catch (e: any) {
-		console.warn(`[cPanel-SSH] Domains::remove_domain failed: ${e.message}. Trying legacy fallback...`);
+		console.warn(
+			`[cPanel-SSH] Domains::remove_domain failed: ${e.message}. Trying legacy fallback...`,
+		);
 	}
 
 	// 2. Try legacy SubDomain::delsubdomain (standard fallback)
@@ -140,7 +157,9 @@ export async function deleteSubdomain(subdomain: string, rootDomain: string) {
 		});
 		return true;
 	} catch (e: any) {
-		console.warn(`[cPanel-SSH] SubDomain::delsubdomain (sub part) failed: ${e.message}. Trying full domain variant...`);
+		console.warn(
+			`[cPanel-SSH] SubDomain::delsubdomain (sub part) failed: ${e.message}. Trying full domain variant...`,
+		);
 	}
 
 	// 3. Try legacy SubDomain::delsubdomain with the FULL domain (needed by some cPanel configs)
@@ -151,7 +170,9 @@ export async function deleteSubdomain(subdomain: string, rootDomain: string) {
 		});
 		return true;
 	} catch (e: any) {
-		console.warn(`[cPanel-SSH] SubDomain::delsubdomain (full part) failed: ${e.message}.`);
+		console.warn(
+			`[cPanel-SSH] SubDomain::delsubdomain (full part) failed: ${e.message}.`,
+		);
 	}
 
 	// 4. Try legacy SubDomain::delete_subdomain (another common variant)
@@ -162,7 +183,9 @@ export async function deleteSubdomain(subdomain: string, rootDomain: string) {
 		});
 		return true;
 	} catch (e: any) {
-		console.warn(`[cPanel-SSH] SubDomain::delete_subdomain failed: ${e.message}.`);
+		console.warn(
+			`[cPanel-SSH] SubDomain::delete_subdomain failed: ${e.message}.`,
+		);
 	}
 
 	// 5. Try legacy cpapi2 fallback (for older/custom cPanel environments)
@@ -170,11 +193,15 @@ export async function deleteSubdomain(subdomain: string, rootDomain: string) {
 		const sshPrefix = getSshPrefix();
 		const cpapi2Cmd = `cpapi2 --output=json SubDomain delsubdomain domain=${subdomain} rootdomain=${rootDomain}`;
 		const fullCmd = `${sshPrefix} '${cpapi2Cmd}'`;
-		process.stderr.write(`[cPanel-SSH] Attempting cpapi2 fallback for delsubdomain...\n`);
+		process.stderr.write(
+			`[cPanel-SSH] Attempting cpapi2 fallback for delsubdomain...\n`,
+		);
 		await execAsync(fullCmd, { timeout: 60000 });
 		return true;
 	} catch (e: any) {
-		console.warn(`[cPanel-SSH] cpapi2 SubDomain::delsubdomain failed: ${e.message}`);
+		console.warn(
+			`[cPanel-SSH] cpapi2 SubDomain::delsubdomain failed: ${e.message}`,
+		);
 	}
 
 	// 6. Try DomainInfo::delete_domain (last resort)
@@ -184,9 +211,36 @@ export async function deleteSubdomain(subdomain: string, rootDomain: string) {
 		});
 		return true;
 	} catch (e: any) {
-		console.error(`[cPanel-SSH] All subdomain deletion methods failed for ${fullDomain}. Final error: ${e.message}`);
-		throw e; // Final failure
+		console.error(
+			`[cPanel-SSH] All UAPI subdomain deletion methods failed for ${fullDomain}. Final error: ${e.message}`,
+		);
 	}
+
+	// 7. Optional custom fallback command for hosts without UAPI delete support
+	const customCmd = process.env.CPANEL_DELETE_SUBDOMAIN_CMD;
+	if (customCmd) {
+		try {
+			const sshPrefix = getSshPrefix();
+			const resolved = customCmd
+				.replace(/\{\{subdomain\}\}/g, subdomain)
+				.replace(/\{\{rootDomain\}\}/g, rootDomain)
+				.replace(/\{\{fullDomain\}\}/g, fullDomain);
+			const fullCmd = `${sshPrefix} '${resolved}'`;
+			process.stderr.write(
+				`[cPanel-SSH] Attempting custom subdomain delete command for ${fullDomain}\n`,
+			);
+			await execAsync(fullCmd, { timeout: 60000 });
+			return true;
+		} catch (e: any) {
+			console.error(
+				`[cPanel-SSH] Custom subdomain delete command failed for ${fullDomain}: ${e.message}`,
+			);
+		}
+	}
+
+	throw new Error(
+		`Subdomain deletion failed for ${fullDomain}. UAPI modules unavailable and no custom delete command succeeded.`,
+	);
 }
 
 export async function createDatabase(dbName: string) {

@@ -30,9 +30,7 @@ export default function OutreachView({
 		if (!confirmDelete) return;
 
 		try {
-			if (project.wordpressSiteId) {
-				await deleteProvisionedWordPressSite(project.wordpressSiteId);
-			}
+			await deleteProvisionedWordPressSite(project.id);
 
 			setProjects((prev) => prev.filter((item) => item.id !== projectId));
 		} catch (error) {
@@ -99,7 +97,10 @@ export default function OutreachView({
 							<div className='flex items-center justify-between gap-3'>
 								<span className='text-white/50'>Deployment</span>
 								<Badge className='bg-white/10 text-white/80 border border-white/15'>
-									{project.provisioningStatus === "completed" || project.provisioningStatus === "ready" ? "Live" : "Draft"}
+									{project.provisioningStatus === "completed" ||
+									project.provisioningStatus === "ready"
+										? "Live"
+										: "Draft"}
 								</Badge>
 							</div>
 							{project.wordpressSiteUrl && (

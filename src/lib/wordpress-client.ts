@@ -66,16 +66,16 @@ export async function provisionWordPressSite(
 }
 
 export async function deleteProvisionedWordPressSite(
-	siteId: number | string,
+	projectId: number | string,
 ): Promise<void> {
-	const response = await fetch(`${API_URL}/api/wordpress/site/${siteId}`, {
+	const response = await fetch(`${API_URL}/api/wordpress/site/${projectId}`, {
 		method: "DELETE",
 	});
 
 	if (!response.ok) {
 		const payload = await response.json().catch(() => ({}));
 		throw new Error(
-			payload.error || `Failed to delete provisioned site ${siteId}.`,
+			payload.error || `Failed to delete provisioned site ${projectId}.`,
 		);
 	}
 }

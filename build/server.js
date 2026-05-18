@@ -1988,11 +1988,15 @@ async function callUapiRemote(module, func, params) {
     try {
       parsed = JSON.parse(stdout);
     } catch (e) {
-      throw new Error(`cPanel UAPI returned invalid JSON: ${stdout.substring(0, 300)}`);
+      throw new Error(
+        `cPanel UAPI returned invalid JSON: ${stdout.substring(0, 300)}`
+      );
     }
     const result = parsed?.result;
     if (!result) {
-      throw new Error(`Unexpected cPanel UAPI response shape: ${JSON.stringify(parsed).substring(0, 300)}`);
+      throw new Error(
+        `Unexpected cPanel UAPI response shape: ${JSON.stringify(parsed).substring(0, 300)}`
+      );
     }
     if (result.status === 0 || result.errors && result.errors.length > 0) {
       const errMsg = Array.isArray(result.errors) ? result.errors.join(", ") : "Unknown cPanel error";
@@ -2003,7 +2007,9 @@ async function callUapiRemote(module, func, params) {
     return result.data;
   } catch (error) {
     if (error.message?.includes("cPanel UAPI")) throw error;
-    throw new Error(`cPanel SSH command failed (${module}::${func}): ${error.message}`);
+    throw new Error(
+      `cPanel SSH command failed (${module}::${func}): ${error.message}`
+    );
   }
 }
 async function addSubdomain(subdomain, rootDomain, documentRoot) {
@@ -2018,15 +2024,19 @@ async function addSubdomain(subdomain, rootDomain, documentRoot) {
 }
 async function deleteSubdomain(subdomain, rootDomain) {
   const fullDomain = `${subdomain}.${rootDomain}`;
-  process.stderr.write(`[cPanel-SSH] Attempting to delete domain/subdomain: ${fullDomain}
-`);
+  process.stderr.write(
+    `[cPanel-SSH] Attempting to delete domain/subdomain: ${fullDomain}
+`
+  );
   try {
     await callUapiRemote("Domains", "remove_domain", {
       domain: fullDomain
     });
     return true;
   } catch (e) {
-    console.warn(`[cPanel-SSH] Domains::remove_domain failed: ${e.message}. Trying legacy fallback...`);
+    console.warn(
+      `[cPanel-SSH] Domains::remove_domain failed: ${e.message}. Trying legacy fallback...`
+    );
   }
   try {
     await callUapiRemote("SubDomain", "delsubdomain", {
@@ -2035,7 +2045,9 @@ async function deleteSubdomain(subdomain, rootDomain) {
     });
     return true;
   } catch (e) {
-    console.warn(`[cPanel-SSH] SubDomain::delsubdomain (sub part) failed: ${e.message}. Trying full domain variant...`);
+    console.warn(
+      `[cPanel-SSH] SubDomain::delsubdomain (sub part) failed: ${e.message}. Trying full domain variant...`
+    );
   }
   try {
     await callUapiRemote("SubDomain", "delsubdomain", {
@@ -2044,7 +2056,9 @@ async function deleteSubdomain(subdomain, rootDomain) {
     });
     return true;
   } catch (e) {
-    console.warn(`[cPanel-SSH] SubDomain::delsubdomain (full part) failed: ${e.message}.`);
+    console.warn(
+      `[cPanel-SSH] SubDomain::delsubdomain (full part) failed: ${e.message}.`
+    );
   }
   try {
     await callUapiRemote("SubDomain", "delete_subdomain", {
@@ -2053,18 +2067,24 @@ async function deleteSubdomain(subdomain, rootDomain) {
     });
     return true;
   } catch (e) {
-    console.warn(`[cPanel-SSH] SubDomain::delete_subdomain failed: ${e.message}.`);
+    console.warn(
+      `[cPanel-SSH] SubDomain::delete_subdomain failed: ${e.message}.`
+    );
   }
   try {
     const sshPrefix = getSshPrefix();
     const cpapi2Cmd = `cpapi2 --output=json SubDomain delsubdomain domain=${subdomain} rootdomain=${rootDomain}`;
     const fullCmd = `${sshPrefix} '${cpapi2Cmd}'`;
-    process.stderr.write(`[cPanel-SSH] Attempting cpapi2 fallback for delsubdomain...
-`);
+    process.stderr.write(
+      `[cPanel-SSH] Attempting cpapi2 fallback for delsubdomain...
+`
+    );
     await execAsync(fullCmd, { timeout: 6e4 });
     return true;
   } catch (e) {
-    console.warn(`[cPanel-SSH] cpapi2 SubDomain::delsubdomain failed: ${e.message}`);
+    console.warn(
+      `[cPanel-SSH] cpapi2 SubDomain::delsubdomain failed: ${e.message}`
+    );
   }
   try {
     await callUapiRemote("DomainInfo", "delete_domain", {
@@ -2072,9 +2092,31 @@ async function deleteSubdomain(subdomain, rootDomain) {
     });
     return true;
   } catch (e) {
-    console.error(`[cPanel-SSH] All subdomain deletion methods failed for ${fullDomain}. Final error: ${e.message}`);
-    throw e;
+    console.error(
+      `[cPanel-SSH] All UAPI subdomain deletion methods failed for ${fullDomain}. Final error: ${e.message}`
+    );
   }
+  const customCmd = process.env.CPANEL_DELETE_SUBDOMAIN_CMD;
+  if (customCmd) {
+    try {
+      const sshPrefix = getSshPrefix();
+      const resolved = customCmd.replace(/\{\{subdomain\}\}/g, subdomain).replace(/\{\{rootDomain\}\}/g, rootDomain).replace(/\{\{fullDomain\}\}/g, fullDomain);
+      const fullCmd = `${sshPrefix} '${resolved}'`;
+      process.stderr.write(
+        `[cPanel-SSH] Attempting custom subdomain delete command for ${fullDomain}
+`
+      );
+      await execAsync(fullCmd, { timeout: 6e4 });
+      return true;
+    } catch (e) {
+      console.error(
+        `[cPanel-SSH] Custom subdomain delete command failed for ${fullDomain}: ${e.message}`
+      );
+    }
+  }
+  throw new Error(
+    `Subdomain deletion failed for ${fullDomain}. UAPI modules unavailable and no custom delete command succeeded.`
+  );
 }
 async function createDatabase(dbName) {
   return callUapiRemote("Mysql", "create_database", { name: dbName });
@@ -2766,6 +2808,10 @@ async function rollbackJob(job) {
       await appendLog(
         job.id,
         `[ROLLBACK] Failed to delete subdomain: ${e.message}`
+      );
+      await appendLog(
+        job.id,
+        "[ROLLBACK] Tip: configure CPANEL_DELETE_SUBDOMAIN_CMD if UAPI delete is unavailable."
       );
     }
     const fullDocRoot = `${docRootBase}/${job.subdomain}`;
