@@ -34,6 +34,7 @@ import {
 import { pool, initializeDatabase } from "./src/lib/db";
 import { startProvisioningWorker } from "./src/lib/provisioning-worker";
 import { deleteProvisionedWordPressSite } from "./src/lib/provisioning-engine";
+import { buildPremiumPageContent } from "./src/lib/premium-site-builder";
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -252,6 +253,290 @@ async function getSDKGenAI() {
 }
 
 const GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_API_KEY;
+
+async function generateCreativeDirection(business: any, debugSession: any): Promise<any> {
+	const modelsToTry = [
+		{ name: "gemini-flash-latest", timeoutMs: 45000 },
+		{ name: "gemini-flash-latest", timeoutMs: 45000 },
+	] as const;
+
+	const buildImageBlock = (b: any) => {
+		const sources = typeof collectBusinessImages === "function" ? collectBusinessImages(b) : (b.photos || []);
+		return sources.length ? sources.slice(0, 10).map((u: string, i: number) => `${i + 1}. ${u}`).join("\n") : "None";
+	};
+
+	const buildReviewsBlock = (b: any) => {
+		if (Array.isArray(b.reviews) && b.reviews.length) {
+			return b.reviews.slice(0, 5).map((r: any, i: number) => `${i + 1}. ${r.rating || ""} - ${r.text || r.comment || ""}`).join("\n");
+		}
+		return "None";
+	};
+
+	const prompt = `You are a premium Senior Staff Brand Director and Art Director.
+Your task is to analyze the local business data below and establish a highly custom, unique, and premium Creative Direction Brief.
+
+This brief will dictate the brand personality, visual identity, storytelling flow, composition style, and spacing pacing for their website. Avoid generic and repetitive templates at all costs.
+
+Business Context:
+- Name: ${business.name}
+- Category: ${business.category || "Local Service"}
+- Address: ${business.address || "N/A"}
+- Phone: ${business.phoneNumber || "N/A"}
+- Email: ${business.email || "N/A"}
+- Neighborhood / Vibe: ${business.neighborhood || business.vibe || "Unknown"}
+- Specialties: ${Array.isArray(business.specialties) ? business.specialties.join(", ") : business.specialties || "General"}
+- Tone: ${business.tone || "professional"}
+- Reviews:
+${buildReviewsBlock(business)}
+- Reference Images:
+${buildImageBlock(business)}
+
+INSTRUCTIONS:
+1. Infer the Business Personality along these six spectrums (score 0 to 100):
+   - luxuryVsApproachable (0 = extremely friendly/budget, 100 = high-end premium luxury)
+   - technicalVsEmotional (0 = emotional/sensory, 100 = precise/clinical/technical)
+   - modernVsHeritage (0 = timeless/heritage/vintage, 100 = bleeding-edge modern)
+   - industrialVsEditorial (0 = raw/structural/industrial, 100 = high-fashion editorial layout)
+   - minimalistVsLayered (0 = high-density sensory layered, 100 = clean ultra-minimalist)
+   - premiumVsEnergetic (0 = high-intensity energetic/playful, 100 = premium/restrained)
+
+2. Determine the Visual Theme Mode. Do NOT restrict to light themes. Choose the mode that fits best:
+   - "light": Warm-white, clean, high visibility. Best for medical, local cleaners, organic day-spas.
+   - "dark": Deep premium black, charcoal, or dark navy. Best for high-end cocktail bars, premium photography, high-end design agencies.
+   - "charcoal": Textured dark grays, industrial, cool silver accents. Best for fitness gyms, specialty coffee, architectural firms.
+   - "textured-neutral": Warm linen, eggshell, textured beige, soft taupe. Best for fine-dining restaurants, boutique hotels, artisan pottery.
+   - "high-contrast": Stark black and white, bold neon accents, raw layout. Best for energetic fitness clubs, boxing gyms, modern tattoo parlors.
+   - "atmospheric-gradient": Ethereal glassmorphism, glowing colorful background gradients. Best for digital brands, modern hair studios, dynamic creative spaces.
+
+3. Establish the Brand Concept and Art Direction Brief:
+   - emotionalTone (e.g. "Warm, slow-paced luxury" or "Raw, high-octane energetic speed")
+   - brandPersonalityDescription
+   - typographyMood (e.g. Serif headings + clean sans-serif body, or stark monospaced typography)
+   - headingFontFamily and bodyFontFamily pairings
+   - spacingRhythm: Choose "airy" (generous negative space, editorial spacing), "balanced" (standard premium spacing), or "compact" (dense, clean, high information density)
+   - layoutPacing (narrative flow pacing and section rhythm description)
+   - compositionPhilosophy (e.g., asymmetrical grids, layered overlapping elements, cinematic full-bleed sections, or centered balanced grids)
+   - mediaTreatment (how photos should be styled: round corners, arched frames, moody luxury shadow overlays)
+   - motionPersonality (interaction transition details)
+   - premiumReferences (specific real-world high-end design inspirations)
+   - atmosphericDirectionDescription
+
+4. Construct a Design Token Engine output specifically fitted for the category's visual design language:
+   - Spacing Scale: Choose responsive vertical intervals using relative sizing (e.g., clamp for section padding, and custom variables for element spacing matching spacing density).
+   - Typography Scale: Responsive header scales using fluid clamp() declarations.
+   - Radius System: Values from soft rounded shapes to sharp geometric cuts.
+   - Shadow System: Advanced layered box-shadow styles utilizing smooth transparency ramps.
+   - Texture System: Choose "grain", "noise", "backdrop-glass", or "none" with a CSS styleString descriptor.
+   - Animation Timing System: Choose premium custom cubic-bezier easing curves.
+   - Layering Depth System: Specify CSS z-index hierarchies.
+   - Gradient System: Inferred ambient background glows and brand highlights.
+
+Return ONLY a valid JSON object matching the following structure (no markdown, no backticks, no other text):
+{
+  "emotionalTone": "...",
+  "brandPersonality": {
+    "luxuryVsApproachable": 50,
+    "technicalVsEmotional": 50,
+    "modernVsHeritage": 50,
+    "industrialVsEditorial": 50,
+    "minimalistVsLayered": 50,
+    "premiumVsEnergetic": 50
+  },
+  "visualIdentity": {
+    "themeMode": "light",
+    "colorPalettePhilosophy": "...",
+    "primaryColorIntent": "...",
+    "accentColorIntent": "...",
+    "backgroundColorIntent": "...",
+    "surfaceColorIntent": "..."
+  },
+  "compositionPhilosophy": {
+    "alignment": "asymmetrical",
+    "layoutCadence": "...",
+    "spacingRhythm": "balanced",
+    "sectionTransitions": "..."
+  },
+  "typographyMood": {
+    "headingFontFamily": "...",
+    "bodyFontFamily": "...",
+    "moodDescriptor": "..."
+  },
+  "mediaTreatment": {
+    "style": "...",
+    "shapes": ["..."]
+  },
+  "motionAndInteractions": {
+    "personality": "subtle",
+    "feel": "..."
+  },
+  "premiumReferences": ["..."],
+  "atmosphericDirectionDescription": "...",
+  "designTokens": {
+    "spacingScale": {
+      "xs": "...",
+      "sm": "...",
+      "md": "...",
+      "lg": "...",
+      "xl": "...",
+      "xxl": "..."
+    },
+    "typographyScale": {
+      "heroHeadline": "clamp(...)",
+      "sectionHeadline": "clamp(...)",
+      "bodyText": "clamp(...)",
+      "headingFont": "...",
+      "bodyFont": "..."
+    },
+    "radiusSystem": {
+      "sm": "...",
+      "md": "...",
+      "lg": "...",
+      "full": "..."
+    },
+    "shadowSystem": {
+      "soft": "...",
+      "premium": "...",
+      "intense": "..."
+    },
+    "textureSystem": {
+      "mode": "grain",
+      "styleString": "..."
+    },
+    "animationTimingSystem": {
+      "easingCurve": "...",
+      "revealDuration": "..."
+    },
+    "layeringDepthSystem": {
+      "zBack": "...",
+      "zBase": "...",
+      "zOverlay": "..."
+    },
+    "colorRamp": {
+      "background": "...",
+      "surface": "...",
+      "primary": "...",
+      "accent": "...",
+      "text": "...",
+      "muted": "...",
+      "outline": "..."
+    },
+    "gradientSystem": {
+      "ambientLighting": "...",
+      "brandGradient": "..."
+    }
+  }
+}`;
+
+	let responseText = "";
+	let lastError: any = null;
+
+	for (const model of modelsToTry) {
+		try {
+			const restUrl = process.env.GEMINI_REST_URL;
+			const key = process.env.GEMINI_API_KEY || process.env.GENAI_KEY || GENAI_KEY;
+			if (restUrl && key) {
+				const modelRestUrl = restUrl.includes("{model}")
+					? restUrl.replace("{model}", model.name)
+					: restUrl;
+				const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
+				const fetchResponse = await Promise.race([
+					fetch(url, {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							contents: [{ parts: [{ text: prompt }] }],
+							generationConfig: {
+								temperature: 0.85,
+								maxOutputTokens: 2048,
+							},
+						}),
+					}),
+					new Promise<Response>((_, reject) =>
+						setTimeout(() => reject(new Error(`Creative Direction timeout after ${model.timeoutMs}ms`)), model.timeoutMs)
+					),
+				]);
+
+				if (!fetchResponse.ok) {
+					throw new Error(`REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`);
+				}
+				const data = await fetchResponse.json() as any;
+				responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+			} else {
+				const genAI = await getSDKGenAI();
+				if (!genAI) {
+					throw new Error("SDK not available");
+				}
+				const modelInstance = genAI.getGenerativeModel({ model: model.name });
+				const response = await Promise.race([
+					modelInstance.generateContent(prompt),
+					new Promise<any>((_, reject) =>
+						setTimeout(() => reject(new Error(`Timeout after ${model.timeoutMs}ms`)), model.timeoutMs)
+					),
+				]);
+				const result = await response.response;
+				responseText = result.text().trim();
+			}
+
+			if (responseText) {
+				break;
+			}
+		} catch (err) {
+			lastError = err;
+			console.error(`[Creative Direction] attempt failed for ${model.name}:`, err);
+		}
+	}
+
+	if (!responseText) {
+		throw lastError || new Error("Failed to generate creative direction");
+	}
+
+	try {
+		const cleaned = responseText.replace(/```json\s*/i, "").replace(/```\s*$/i, "").trim();
+		return JSON.parse(cleaned);
+	} catch (e) {
+		console.error("[Creative Direction] JSON parse failed, returning fallback art brief", e);
+		return {
+			emotionalTone: "Warm, professional, trust-first",
+			brandPersonality: {
+				luxuryVsApproachable: 40,
+				technicalVsEmotional: 30,
+				modernVsHeritage: 50,
+				industrialVsEditorial: 30,
+				minimalistVsLayered: 40,
+				premiumVsEnergetic: 60
+			},
+			visualIdentity: {
+				themeMode: "light",
+				colorPalettePhilosophy: "Earthy modern elegance",
+				primaryColorIntent: "#1e3a8a",
+				accentColorIntent: "#3b82f6",
+				backgroundColorIntent: "#fafafa",
+				surfaceColorIntent: "#ffffff"
+			},
+			compositionPhilosophy: {
+				alignment: "balanced",
+				layoutCadence: "Clear vertical hierarchy, balanced visual weights",
+				spacingRhythm: "balanced",
+				sectionTransitions: "Clean margins with subtle boundaries"
+			},
+			typographyMood: {
+				headingFontFamily: "Outfit",
+				bodyFontFamily: "Inter",
+				moodDescriptor: "Clean and modern professional"
+			},
+			mediaTreatment: {
+				style: "bright-clean",
+				shapes: ["rounded"]
+			},
+			motionAndInteractions: {
+				personality: "subtle",
+				feel: "Fade transitions and quiet slide overlays"
+			},
+			premiumReferences: ["Apple", "Stripe Layouts"],
+			atmosphericDirectionDescription: "Clean, inviting, highly structured page layout"
+		};
+	}
+}
 
 const CALLHIPPO_API_KEY = process.env.CALLHIPPO_API_KEY;
 const WEBSITE_GENERATION_MODE = process.env.WEBSITE_GENERATION_MODE || "gemini";
@@ -2405,6 +2690,15 @@ app.post("/api/generate", async (req: Request, res: Response) => {
 			return res.json(fallbackSchema);
 		}
 
+		// Stage 0: Creative Direction Generation Brief
+		console.error(`[Generate] Generating Creative Direction stage 0...`);
+		const creativeDirection = await generateCreativeDirection(business, debugSession);
+		persistGenerationDebugFile(
+			debugSession,
+			"01a-creative-direction.json",
+			creativeDirection,
+		);
+
 		const buildImageBlock = (b: any) => {
 			const sources = collectBusinessImages(b);
 			return sources.length
@@ -2438,105 +2732,99 @@ app.post("/api/generate", async (req: Request, res: Response) => {
 		const tone = business.tone || "professional";
 
 		const creativeSeed = `${business.id || "lead"}-${Date.now()}`;
+		const dynamicVariationSeed = crypto.randomUUID().slice(0, 8);
+		const variationBriefs = [
+			"Enforce an asymmetrical, high-end editorial composition. Avoid grids where every card is equal size; use offset cards or split layouts.",
+			"Enforce a clean, layered minimal aesthetic. Use large typography, generous negative margins, and overlapping media panels.",
+			"Enforce a cinematic, grid-forward dynamic layout. Mix bento cells (span layouts) with full-bleed atmospheric banners.",
+			"Enforce a highly structured, content-rich storytelling split layout. Alternate left-aligned text with large asymmetrical shapes.",
+		];
+		const chosenVariationBrief = variationBriefs[Math.abs(creativeSeed.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)) % variationBriefs.length];
 
-		const prompt = `You are generating a PREMIUM WORDPRESS HOMEPAGE schema for a real local business.
+		const prompt = `You are generating a PREMIUM WORDPRESS HOMEPAGE schema for a real local business based on a custom-designed Creative Direction Brief.
 
-This output is used to create the final WordPress site. Optimize for the WordPress result, not for a generic preview.
+CREATIVE DIRECTION BRIEF:
+${JSON.stringify(creativeDirection, null, 2)}
 
 PRIMARY OBJECTIVE:
-- Make the site feel bespoke, premium, and clearly different from other businesses.
-- Use category-aware composition, specific service copy, and distinct section rhythm.
-- Avoid anything that feels like a safe local-business template.
+- Generate a highly bespoke, custom-themed WebsiteSchema that implements the Creative Direction Brief with extreme visual restraint, elegance, and emotional sophistication.
+- Think like a world-class human art director: favor generous breathing room (whitespace), architectural composition alignment, and calm, confident typography over over-designed layouts and decorative clutter.
+- Break free from templates. Create a unique pacing, visual flow, and section rhythm specifically suited for this business, prioritizing fewer, more high-impact sections over many repetitive ones.
+- Enforce the brand's visual identity (theme mode, color palette, custom gradients, typography pairing) with absolute consistency. Avoid excessive mutations or contrast mismatch.
+- Adopt a visual reference language suited perfectly to the business category:
+  * "Restoration / Construction": Cinematic industrial precision, architectural structural tension, and technical confidence.
+  * "Luxury Salon / Spa": Editorial elegance, airy premium warmth, soft hierarchies, and delicate linen/terracotta atmospheres.
+  * "Restaurant": Sensory intimacy, layered warm tones, and cinematic storytelling spacing.
+  * "Law Firm / Medical": Restrained authority, intelligent whitespace, minimal serif typography confidence, and clean outlines.
+  * "Gym / Fitness": Kinetic energy, high tension composition, but clean, well-spaced, non-chaotic layout blocks.
 
-ABSOLUTE RULES:
-- Light theme only. No black or charcoal backgrounds. No dark hero sections.
-- Return valid JSON only.
-- Do not use generic phrases like "designed to convert", "cutting-edge", "innovative", "best-in-class", or "one-stop shop".
-- Hero must be first. Contact must be last.
-- Sections 2-6 may be reordered for uniqueness.
-- If reference images are provided, use those exact URLs first for hero and gallery media.
-- Do not use unrelated stock imagery when real business photos are available.
-- Avoid the common local-business pattern of: split hero -> 3 cards -> simple gallery -> testimonials -> FAQ -> CTA -> contact unless the seed clearly justifies it.
-- Each site should feel like a different art direction, not a recolor of the same template.
+DYNAMIC SECTIONS & COMPOSITION ORCHESTRATION:
+- Do NOT use a standard, repetitive section structure.
+- You have full creative control over which sections exist, their sequence, and their hierarchy to optimize the brand's narrative.
+- You do NOT write raw HTML. Instead, you are the Creative Director and Orchestrator.
+- For EVERY section in the "sections" array, you MUST generate a highly custom "composition" object instructing our premium rendering engine how to build that section.
 
-SUPPORTED THEME ENUMS:
-- layout: "editorial" | "immersive" | "minimal" | "gallery-forward" | "split-screen"
-- buttonStyle: "pill" | "sharp" | "ghost"
-- surfaceStyle: "glass" | "solid" | "outline"
-- mediaShape: "rounded" | "arched" | "portrait" | "square"
-- density: "airy" | "balanced" | "compact"
-- accentMode: "neon" | "earthy" | "luxury" | "fresh"
+COMPOSITION DICTIONARY OPTIONS (Choose appropriate properties matching business category tone):
+"composition": {
+  "sectionType": Choose from [
+    "cinematicHero", "editorialHero", "splitNarrativeHero", 
+    "asymmetricalFeatures", "glassFeatureCards", "processNarrative", 
+    "immersiveGallery", "floatingImageStack", 
+    "floatingTestimonialWall", 
+    "layeredCTA", 
+    "luxuryMetricsStrip", "storytellingTimeline", "transformationShowcase", 
+    "premiumContactPanel", "accordionClean"
+  ],
+  "layoutBehavior": Choose from [
+    "offset-right", "offset-left", "grid-stagger", "asymmetrical", "side-by-side", "split-grid", "centered-dramatic"
+  ],
+  "visualDepth": Choose from [
+    "layered-atmospheric", "glassmorphic", "frosted-glow", "dramatic-depth", "flat-minimalist"
+  ],
+  "motionStyle": Choose from [
+    "premiumFade", "cinematicReveal", "staggerLift", "softFloat", "atmosphericParallax", "editorialSlide", "luxuryGlow"
+  ],
+  "imageTreatment": Choose from [
+    "layeredGlass", "editorialCrop", "cinematicBleed", "atmosphericOverlay", "luxuryFrame", "brutalistSharp", "floatingDepth"
+  ],
+  "spacingMode": Choose from [
+    "luxury-editorial", "balanced", "compact", "airy"
+  ],
+  "themeIntensity": Choose from [
+    "dramatic", "soft", "balanced", "high-contrast"
+  ],
+  "hierarchyWeight": Choose from [
+    "dominant", "supporting", "breathing", "cinematicPause", "transitionary"
+  ]
+}
 
-SUPPORTED SECTION VARIANTS:
-- hero.variant: "immersive" | "cinematic" | "editorial" | "editorial-split" | "magazine" | "centered" | "minimal" | "split"
-- features.variant: "bento" | "editorial-cards" | "editorial-list" | "alternating-stack" | "grid"
-- gallery.variant: "editorial-mosaic" | "stacked-collage" | "collage"
-- testimonials.variant: "floating-cards" | "editorial-quotes" | "spotlight"
-- faq.variant: "cards" | "split-columns" | "grid"
-- cta.variant: "gradient-band" | "split-card" | "side-by-side"
-- contact.variant: "split-card" | "minimal-centered" | "centered"
+UNIQUENESS ENFORCEMENT BRIEF:
+- Variation Seed: ${dynamicVariationSeed}
+- Layout Fingerprint Direction: ${chosenVariationBrief}
+- Ensure that the order of sections, the typography weights, the padding spacing cadence, and CTA structures actively avoid duplicating typical structures.
 
-REQUIRED SECTIONS:
-- hero
-- features
-- gallery
-- testimonials
-- faq
-- cta
-- contact
-
-SECTION CONTENT RULES:
-- hero:
-  - strong headline
-  - specific subheadline tied to the business
-  - ctaPrimary with action label and href "#contact"
-  - optional ctaSecondary with href "#services" or "#gallery"
-  - media { src, alt }
-- features:
-  - 3 to 5 items
-  - use real service names or believable category-specific offerings
-  - descriptions must be concrete, not hype
-- gallery:
-  - 3 to 5 images
-  - use provided business photos first when available
-  - do not substitute unrelated imagery if business photos already cover the scene, storefront, staff, work, or interior
-  - alt text must be descriptive
-- testimonials:
-  - 2 to 4 realistic quotes
-  - mention specific benefits or experiences
-- faq:
-  - 3 to 5 practical customer questions
-  - clear, grounded answers
-- cta:
-  - title
-  - body
-  - buttonLabel
-  - buttonHref "#contact"
-- contact:
-  - present the supplied business details professionally
-  - do not invent email addresses
-
-UNIQUENESS RULES:
-- Use this seed to make layout and pacing distinct: ${creativeSeed}
-- Do not make every site use the same hero, same feature grid, and same gallery arrangement.
-- Make section order, section variant choices, and tone visibly specific to the business.
-- Match the category:
-  - salon/spa: elegant, airy, editorial
-  - cafe/restaurant: warm, sensory, layered
-  - dental/medical: calm, precise, trust-first
-  - gym/fitness: energetic, bold, high contrast in layout
-  - dry cleaning/laundry: polished, crisp, reassuring
-  - real estate/property: architectural, image-led
-  - professional services: restrained, authoritative
-
-THEME RULES:
-- backgrounds and surfaces must be very light
-- text must be dark and readable
-- accents should feel premium and category-appropriate
-- typography should feel intentional
-- choose a distinct heading/body font pairing for this specific business
-- prefer visibly different composition, spacing rhythm, and section hierarchy from other sites in the same category
-- customCss is optional; include it only if it materially improves the final WordPress site
+THEME DESIGN SYSTEM:
+- Choose the theme mode determined in the Creative Direction Brief: "${creativeDirection.visualIdentity.themeMode}".
+- For "dark" or "charcoal" themes, backgrounds and surfaces should be deep, atmospheric, or textured, and text must be high-contrast light.
+- Derive all palette colors (background, surface, primary, accent, text, muted, outline) directly from the visualIdentity and brand personality intents.
+- Generative Design DNA: You MUST generate a "designDNA" object under "theme". This DNA system drives the adaptive visual rendering and mutation rules:
+  "designDNA": {
+    "spacingPersonality": Choose from ["compressed", "balanced", "airy", "luxury-editorial", "brutalist-dense"],
+    "compositionAggression": Number (0 to 100 representing layout mutation/offset levels),
+    "hierarchyIntensity": Number (0 to 100 representing font size scales & weight variance),
+    "motionEnergy": Number (0 to 100 representing stagger/speed timings),
+    "visualDensity": Number (0 to 100 representing complexity/content density),
+    "asymmetryLevel": Number (0 to 100 representing vertical alignment shifts and margins offsets),
+    "atmosphereIntensity": Number (0 to 100 representing ambient radial glow levels & noise opacity),
+    "typographyDominance": Choose from ["restrained", "balanced", "dominant-serif", "brutalist-impact", "cinematic-oversized", "layered-typography-walls", "vertical-accents"],
+    "imageWeight": Number (0 to 100 representing image coverage vs text layout),
+    "luxuryScore": Number (0 to 100 representing rounded smooth cards, high-end serif styling),
+    "cinematicScore": Number (0 to 100 representing dark themes, immersive split and bleed panels),
+    "brutalismScore": Number (0 to 100 representing blocky outlines, sharp text, raw structural elements),
+    "editorialScore": Number (0 to 100 representing warm neutral tones, spacious asymmetric structures),
+    "softnessScore": Number (0 to 100 representing rounded curves, fluid overlays, low-contrast shadows),
+    "visualAtmosphere": Choose from ["industrial-grit", "luxury-glow", "soft-editorial-warmth", "cinematic-darkness", "energetic-neon", "architectural-minimalism"]
+  }
 
 Business Context:
 - Name: ${business.name}
@@ -2565,16 +2853,7 @@ ${buildReviewsBlock(business)}
 Reference Images:
 ${buildImageBlock(business)}
 
-WORDPRESS RENDERING CONSTRAINTS (critical - this renders inside WordPress):
-- The HTML renderer must use inline styles for ALL layout-critical properties.
-- Choose section variants that render well with CSS grid and flexbox in isolation.
-- Avoid "immersive" or "cinematic" hero variants — full-bleed backgrounds fail in WordPress.
-- Prefer "editorial-split" or "editorial" for hero — these render most reliably.
-- Gallery variant "editorial-mosaic" must use exactly 3 images — not 4 or 5.
-- Bento features work best with exactly 4 items in a 2x2 or 7/5 span pattern.
-- Do not choose "floating-cards" for testimonials — use "editorial-quotes" or "spotlight".
-
-Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
+Return only valid JSON matching the WebsiteSchema TypeScript interface. Make sure the returned theme contains the "designDNA" object exactly as described.`;
 
 		const modelsToTry = [
 			{ name: "gemini-flash-latest", timeoutMs: 45000 },
@@ -2760,240 +3039,15 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 		});
 
 		try {
-			const auditWordPressHtml = (html: string, schema: any) => {
-				const issues: string[] = [];
-				const sections = (schema?.sections || []) as Array<any>;
-				const expectedCount = sections.length;
-				const dataSectionCount = (html.match(/data-section=/g) || []).length;
-				if (dataSectionCount < expectedCount) {
-					issues.push(
-						`Missing data-section markers: expected ${expectedCount}, found ${dataSectionCount}`,
-					);
-				}
-				const missingVariants = sections
-					.map((section) => ({
-						type: section.type,
-						variant: section.variant || section.layout || "",
-					}))
-					.filter(
-						(entry) =>
-							entry.variant &&
-							!html.includes(`data-variant="${entry.variant}"`),
-					);
-				if (missingVariants.length) {
-					issues.push(
-						`Missing data-variant markers for: ${missingVariants
-							.map((entry) => `${entry.type}:${entry.variant}`)
-							.join(", ")}`,
-					);
-				}
-				if (!html.includes("<style")) {
-					issues.push("Missing <style> block for production styling");
-				}
-				if (html.length < 10000) {
-					issues.push("HTML output too small for production layout");
-				}
-				const lower = html.toLowerCase();
-				const disallowedPalette = ["#7c3aed", "#0ea5e9", "#3b82f6"];
-				if (disallowedPalette.some((color) => lower.includes(color))) {
-					issues.push("Generic default palette detected in CSS");
-				}
-
-				// Check images have explicit height
-				const imgTags = html.match(/<img[^>]+>/g) || [];
-				const imgsWithoutHeight = imgTags.filter(tag => !tag.includes('height'));
-				if (imgsWithoutHeight.length > 0) {
-					issues.push(`${imgsWithoutHeight.length} image(s) missing explicit height — will collapse in WordPress`);
-				}
-
-				// Check bento grid has inline spans
-				if (html.includes('data-variant="bento"') && !html.includes('grid-column: span')) {
-					issues.push('Bento grid items missing inline grid-column spans — will break in WordPress');
-				}
-
-				return {
-					ok: issues.length === 0,
-					issues,
-					dataSectionCount,
-				};
-			};
-
-			const wordpressHtmlPrompt = `You are converting an approved WebsiteSchema into the FINAL WordPress homepage HTML.
-
-CRITICAL OUTPUT RULES:
-- Return ONLY HTML. No JSON. No markdown explanation. No JavaScript.
-- Wrap everything in exactly one WordPress block: <!-- wp:html --> ... <!-- /wp:html -->
-- One <style> block at the top inside that wrapper, then all HTML markup after it.
-- Render sections in schema order exactly.
-- Use exact business copy and exact media URLs from the schema. Do not invent content.
-
-CRITICAL WORDPRESS COMPATIBILITY (non-negotiable):
-- WordPress themes WILL override your CSS classes. Every layout-critical style MUST be duplicated as inline style="" on the element.
-- NEVER rely solely on CSS classes for: grid-column spans, heights, widths, flex direction, padding, background colors.
-- Every grid item must have its span as an inline style: style="grid-column: span 7"
-- Every section must have: style="padding: 100px 5%; max-width: 1400px; margin: 0 auto;"
-- Every image must have: style="width: 100%; height: [X]px; object-fit: cover; display: block;"
-- The outer wrapper div must have: style="background: [bg]; color: [text]; font-family: [body]; overflow-x: hidden; width: 100%;"
-- Add box-sizing rule: * { box-sizing: border-box !important; }
-- Use !important on all background-color, color, font-family, padding, and margin rules in the <style> block.
-- Hide WordPress chrome: .site-header, .entry-title, .page-title, .breadcrumbs { display: none !important; }
-- Set: .entry-content, .wp-block-post-content { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
-
-SECTION LAYOUT RULES (each variant must look visually distinct):
-
-hero "editorial-split":
-- CSS grid, 2 columns: text left (1fr), image right (1.2fr), min-height: 85vh
-- Image: border-radius 500px 500px 0 0 (arched), height: 75vh, object-fit: cover
-- Both columns must have grid-column span as inline style
-
-hero "editorial":
-- Full width, text centered or left-aligned, image below or beside
-- Headline font-size: clamp(3rem, 5vw, 5rem)
-
-features "bento":
-- CSS grid 12 columns, auto-rows: 280px
-- Item 1: grid-column span 7 (inline style), Item 2: span 5, Item 3: span 5, Item 4: span 7
-- Each bento card: border-radius 24px, border: 1px solid outline color, padding: 40px, display flex, flex-direction column, justify-content flex-end
-- DUPLICATE all grid-column spans as inline styles on every card div
-
-features "editorial-list":
-- Numbered list, each item has large number (opacity 0.15), title, description
-- Full width, generous vertical spacing between items
-
-gallery "editorial-mosaic":
-- CSS grid 12 columns
-- Image 1: grid-column span 8, height: 500px (inline style)
-- Image 2: grid-column span 4, height: 500px (inline style)
-- Image 3: grid-column span 12, height: 380px (inline style)
-- ALL spans AND heights must be inline styles on the img or wrapper div
-- Every image: width 100%, object-fit cover, border-radius 16px
-
-testimonials "editorial-quotes":
-- Large italic blockquote, centered, max-width 800px
-- Quote font: heading font, size 2.2rem, font-style italic
-- Author: uppercase, letter-spacing 0.1em, accent color
-- Background: surface color (slightly off-white)
-
-testimonials "spotlight":
-- One featured quote large on left, smaller quotes stacked on right
-- 2-column grid layout
-
-faq "split-columns":
-- 2-column CSS grid: left has title + intro, right has all Q&A items
-- Each FAQ item has border-bottom, padding-bottom 32px, margin-bottom 32px
-- Question: font-weight 600, accent color. Answer: muted color
-
-cta "side-by-side":
-- Full-width band, background: primary color
-- Flex row, space-between, align-items center, padding 80px
-- Title: white, large. Button: white background, primary color text
-
-contact "split-card":
-- 2-column CSS grid inside a card
-- Left: contact details with label/value pairs
-- Right: background image from gallery or solid accent-tinted panel
-- Right panel needs explicit height: 100%, min-height: 400px as inline style
-
-PALETTE RULES:
-- Derive ALL colors from theme.accentMode — do NOT default to generic purple #7c3aed or blue #3b82f6 or teal #0d9488 unless accentMode is "fresh"
-- accentMode "luxury": --bg: #faf8f5; --primary: #8B6914; --accent: #C4952A; --text: #1a1208; --muted: #6b5c3e
-- accentMode "earthy": --bg: #f9f6f1; --primary: #7a5c3e; --accent: #c17f4a; --text: #2d1f0e; --muted: #8a7260
-- accentMode "fresh": --bg: #f4faf8; --primary: #0d6e5e; --accent: #14a88e; --text: #0a1f1b; --muted: #4a7a72
-- accentMode "neon": --bg: #f8f8ff; --primary: #5b2be0; --accent: #9747ff; --text: #0f0a1e; --muted: #6b6880
-- Define as CSS variables and use them on EVERY color property
-
-TYPOGRAPHY RULES:
-- Load Google Fonts with @import at top of <style> block
-- Use the exact heading/body fonts from schema.theme.fonts
-- Set font-family on ALL headings and body text — do not rely on inheritance
-- Heading sizes: h1 clamp(3rem,5vw,5rem), h2 clamp(2rem,4vw,3.5rem), h3 1.5rem
-
-QUALITY RULES:
-- Minimum HTML output: 10,000 characters
-- Every section must have data-section="{type}" and data-variant="{variant}" attributes
-- No placeholder text, no lorem ipsum, no "Your Business Name Here"
-- No fake badges, no "crafted for premium presentation" text
-- Images must render — always set explicit width AND height as inline styles
-- The contact section must show phone number and address from the schema
-- Do not add a site header or navigation bar
-
-BUSINESS:
-${JSON.stringify({ name: business.name, category: business.category, address: business.address, phone: business.phoneNumber, email: business.email }, null, 2)}
-
-APPROVED SCHEMA:
-${JSON.stringify(finalSchema, null, 2)}
-
-Return only the WordPress HTML block.`;
-
-			persistGenerationDebugFile(
-				debugSession,
-				"05a-wordpress-html-prompt.md",
-				wordpressHtmlPrompt,
-			);
-			const rawWordPressHtml = await callGeminiText(
-				wordpressHtmlPrompt,
-				"wordpress-html",
-			);
-			fs.writeSync(
-				2,
-				`\n--- GEMINI WORDPRESS HTML START ---\n${rawWordPressHtml}\n--- GEMINI WORDPRESS HTML END ---\n`,
-			);
-			persistGenerationDebugFile(
-				debugSession,
-				"05b-wordpress-html-raw.txt",
-				rawWordPressHtml,
-			);
-
-			let extractedWordPressHtml =
-				extractHtmlDocument(rawWordPressHtml) || rawWordPressHtml.trim();
-			const audit = extractedWordPressHtml
-				? auditWordPressHtml(extractedWordPressHtml, finalSchema)
-				: { ok: false, issues: ["Empty HTML response"], dataSectionCount: 0 };
-
-			if (!audit.ok) {
-				logStderr(
-					`[Generate] wordpress-html validation failed traceId=${debugSession.traceId} issues=${JSON.stringify(audit.issues)}`,
-				);
-				persistGenerationDebugFile(
-					debugSession,
-					"05b1-wordpress-html-issues.json",
-					audit,
-				);
-
-				const retryPrompt = `${wordpressHtmlPrompt}
-
-VALIDATION FEEDBACK:
-- ${audit.issues.join("\n- ")}
-
-Revise the HTML to fix all issues. Return only the final HTML.`;
-				persistGenerationDebugFile(
-					debugSession,
-					"05b2-wordpress-html-retry-prompt.md",
-					retryPrompt,
-				);
-				const retryWordPressHtml = await callGeminiText(
-					retryPrompt,
-					"wordpress-html",
-				);
-				fs.writeSync(
-					2,
-					`\n--- GEMINI WORDPRESS HTML RETRY START ---\n${retryWordPressHtml}\n--- GEMINI WORDPRESS HTML RETRY END ---\n`,
-				);
-				persistGenerationDebugFile(
-					debugSession,
-					"05b3-wordpress-html-retry-raw.txt",
-					retryWordPressHtml,
-				);
-				extractedWordPressHtml =
-					extractHtmlDocument(retryWordPressHtml) || retryWordPressHtml.trim();
-			}
-			if (extractedWordPressHtml) {
-				(finalSchema as any)._wordpressHtml = extractedWordPressHtml;
-				(finalSchema as any)._renderSource = "gemini-html";
+			logStderr(`[Generate] Compiling deterministic Premium Component Composition HTML traceId=${debugSession.traceId}`);
+			const premiumHtml = buildPremiumPageContent(finalSchema);
+			if (premiumHtml) {
+				(finalSchema as any)._wordpressHtml = premiumHtml;
+				(finalSchema as any)._renderSource = "component-composition-engine";
 				persistGenerationDebugFile(
 					debugSession,
 					"05c-wordpress-html-final.html",
-					extractedWordPressHtml,
+					premiumHtml,
 				);
 			}
 		} catch (wordpressHtmlError) {

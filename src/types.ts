@@ -62,13 +62,34 @@ export interface BrandDNA {
 	ctaEnergy: "urgent" | "inviting" | "formal" | "casual";
 	spacingDensity: SpacingToken;
 	imageStyle: "cinematic" | "natural" | "bright-clean" | "moody-luxury";
+	themeIntensity?: string;
 	typographyMood: "elegant" | "corporate" | "energetic" | "editorial" | "minimal";
 	iconStyle: "outline" | "filled" | "minimal" | "playful";
+}
+
+export interface DesignDNA {
+	spacingPersonality: "compressed" | "balanced" | "airy" | "luxury-editorial" | "brutalist-dense";
+	compositionAggression: number; // 0 to 100
+	hierarchyIntensity: number;     // 0 to 100
+	motionEnergy: number;           // 0 to 100
+	visualDensity: number;          // 0 to 100
+	asymmetryLevel: number;         // 0 to 100
+	atmosphereIntensity: number;    // 0 to 100
+	typographyDominance: "restrained" | "balanced" | "dominant-serif" | "brutalist-impact" | "cinematic-oversized" | "layered-typography-walls" | "vertical-accents";
+	imageWeight: number;            // 0 to 100
+	luxuryScore: number;            // 0 to 100
+	cinematicScore: number;         // 0 to 100
+	brutalismScore: number;         // 0 to 100
+	editorialScore: number;         // 0 to 100
+	softnessScore: number;          // 0 to 100
+	visualAtmosphere: "industrial-grit" | "luxury-glow" | "soft-editorial-warmth" | "cinematic-darkness" | "energetic-neon" | "architectural-minimalism";
 }
 
 export interface WebsiteTheme {
 	name: string;
 	brandDNA: BrandDNA;
+	designDNA?: DesignDNA;
+	themeMode?: string;
 	palette: {
 		background: string;
 		surface: string;
@@ -108,6 +129,17 @@ export interface WebsiteSEO {
 	keywords: string[];
 }
 
+export interface SectionComposition {
+	sectionType?: string;
+	layoutBehavior?: string;
+	visualDepth?: string;
+	motionStyle?: string;
+	imageTreatment?: string;
+	spacingMode?: string;
+	themeIntensity?: string;
+	hierarchyWeight?: "dominant" | "supporting" | "breathing" | "cinematicPause" | "transitionary";
+}
+
 export interface ImageIntent {
 	type: string;
 	subject: string;
@@ -120,6 +152,9 @@ export interface HeroSection {
 	id: string;
 	type: "hero";
 	layout: HeroLayout;
+	variant?: string;
+	compositionMetadata?: Record<string, any>;
+	composition?: SectionComposition;
 	headline: string;
 	subheadline: string;
 	ctaPrimary: {
@@ -131,7 +166,12 @@ export interface HeroSection {
 		href: string;
 	};
 	badges?: string[];
-	imageIntent: ImageIntent;
+	imageIntent?: ImageIntent;
+	media?: {
+		type: string;
+		src: string;
+		alt: string;
+	};
 	confidence?: number;
 }
 
@@ -139,7 +179,10 @@ export interface FeatureSection {
 	id: string;
 	type: "features";
 	layout: FeaturesLayout;
-	title: string;
+	variant?: string;
+	compositionMetadata?: Record<string, any>;
+	composition?: SectionComposition;
+	title?: string;
 	items: Array<{
 		title: string;
 		description: string;
@@ -152,9 +195,14 @@ export interface GallerySection {
 	id: string;
 	type: "gallery";
 	layout: GalleryLayout;
-	title: string;
+	variant?: string;
+	compositionMetadata?: Record<string, any>;
+	composition?: SectionComposition;
+	title?: string;
 	items: Array<{
-		imageIntent: ImageIntent;
+		src?: string;
+		alt?: string;
+		imageIntent?: ImageIntent;
 	}>;
 	confidence?: number;
 }
@@ -163,7 +211,10 @@ export interface TestimonialSection {
 	id: string;
 	type: "testimonials";
 	layout: TestimonialsLayout;
-	title: string;
+	variant?: string;
+	compositionMetadata?: Record<string, any>;
+	composition?: SectionComposition;
+	title?: string;
 	items: Array<{
 		quote: string;
 		author: string;
@@ -176,7 +227,10 @@ export interface ContactSection {
 	id: string;
 	type: "contact";
 	layout: ContactLayout;
-	title: string;
+	variant?: string;
+	compositionMetadata?: Record<string, any>;
+	composition?: SectionComposition;
+	title?: string;
 	showMap?: boolean;
 	showHours?: boolean;
 	showEmail?: boolean;
@@ -189,10 +243,13 @@ export interface CtaSection {
 	id: string;
 	type: "cta";
 	layout: CtaLayout;
-	title: string;
-	body: string;
-	buttonLabel: string;
-	buttonHref: string;
+	variant?: string;
+	compositionMetadata?: Record<string, any>;
+	composition?: SectionComposition;
+	title?: string;
+	body?: string;
+	buttonLabel?: string;
+	buttonHref?: string;
 	confidence?: number;
 }
 
@@ -200,7 +257,10 @@ export interface FaqSection {
 	id: string;
 	type: "faq";
 	layout: FaqLayout;
-	title: string;
+	variant?: string;
+	compositionMetadata?: Record<string, any>;
+	composition?: SectionComposition;
+	title?: string;
 	items: Array<{
 		question: string;
 		answer: string;

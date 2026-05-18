@@ -1,6 +1,6 @@
 /** @format */
 
-import { ValidationResult } from "../types";
+import { ValidationResult, WebsiteSchema } from "../types";
 import {
 	HERO_LAYOUTS,
 	FEATURES_LAYOUTS,
@@ -94,30 +94,11 @@ export function validateWebsiteSchema(schema: any): ValidationResult {
 				variantAllowed: readonly string[],
 				fallback: string,
 			) => {
-				const normalizedLayout = normalizeValue(layout);
-				const normalizedVariant = normalizeValue(variant);
-				const layoutValid = allowed.includes(normalizedLayout as any);
-				const variantValid = variantAllowed.includes(normalizedVariant as any);
-
-				if (layoutValid) {
-					section.layout = normalizedLayout;
-					return;
+				const finalLayout = layout || variant || fallback;
+				section.layout = finalLayout;
+				if (variant) {
+					section.variant = variant;
 				}
-				if (variantValid) {
-					section.layout = normalizedVariant;
-					repairs.push(
-						`section_${index}_layout_repair: ${normalizedLayout || "(missing)"} -> ${normalizedVariant}`,
-					);
-					return;
-				}
-
-				errors.push(
-					`Section ${index} (${type}): Invalid layout "${normalizedLayout || normalizedVariant || "(missing)"}"`,
-				);
-				section.layout = fallback;
-				repairs.push(
-					`section_${index}_layout_repair: ${normalizedLayout || normalizedVariant || "(missing)"} -> ${fallback}`,
-				);
 			};
 
 			switch (type) {
@@ -185,7 +166,11 @@ export function validateWebsiteSchema(schema: any): ValidationResult {
 					);
 					break;
 				default:
-					errors.push(`Section ${index}: Unknown section type "${type}"`);
+					// Allow custom section types dynamically
+					if (!section.layout) {
+						section.layout = "custom-block";
+					}
+					break;
 			}
 
 			if (!section.id) {
@@ -197,30 +182,8 @@ export function validateWebsiteSchema(schema: any): ValidationResult {
 		},
 	);
 
-	// 3. Section Order Enforcement (Business Logic)
-	const sectionTypes = repairedSections.map((s: any) => s.type);
-	if (sectionTypes[0] !== "hero") {
-		errors.push("Layout sequencing error: Hero must be first");
-		// Strategic repair: Find hero and move to front if it exists
-		const heroIdx = repairedSections.findIndex((s: any) => s.type === "hero");
-		if (heroIdx > 0) {
-			const hero = repairedSections.splice(heroIdx, 1)[0];
-			repairedSections.unshift(hero);
-			repairs.push("hero_moved_to_front");
-		}
-	}
-
-	if (sectionTypes[sectionTypes.length - 1] !== "contact") {
-		errors.push("Layout sequencing error: Contact must be last");
-		const contactIdx = repairedSections.findIndex(
-			(s: any) => s.type === "contact",
-		);
-		if (contactIdx >= 0 && contactIdx < repairedSections.length - 1) {
-			const contact = repairedSections.splice(contactIdx, 1)[0];
-			repairedSections.push(contact);
-			repairs.push("contact_moved_to_back");
-		}
-	}
+	// 3. Relaxed Section Order (AI decides narrative structure)
+	// We no longer strictly enforce Hero at index 0 or Contact at the end to allow creative storytelling pacing.
 
 	// 4. Brand & Theme Validation
 	if (!schema.brand.businessName) errors.push("Missing businessName in brand");

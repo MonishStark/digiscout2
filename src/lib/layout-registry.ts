@@ -44,13 +44,13 @@ export const FAQ_LAYOUTS = ["accordion-clean", "split-columns"] as const;
 
 export const CONTACT_LAYOUTS = ["split-card", "minimal-centered"] as const;
 
-export type HeroLayout = (typeof HERO_LAYOUTS)[number];
-export type FeaturesLayout = (typeof FEATURES_LAYOUTS)[number];
-export type GalleryLayout = (typeof GALLERY_LAYOUTS)[number];
-export type TestimonialsLayout = (typeof TESTIMONIALS_LAYOUTS)[number];
-export type CtaLayout = (typeof CTA_LAYOUTS)[number];
-export type FaqLayout = (typeof FAQ_LAYOUTS)[number];
-export type ContactLayout = (typeof CONTACT_LAYOUTS)[number];
+export type HeroLayout = (typeof HERO_LAYOUTS)[number] | string;
+export type FeaturesLayout = (typeof FEATURES_LAYOUTS)[number] | string;
+export type GalleryLayout = (typeof GALLERY_LAYOUTS)[number] | string;
+export type TestimonialsLayout = (typeof TESTIMONIALS_LAYOUTS)[number] | string;
+export type CtaLayout = (typeof CTA_LAYOUTS)[number] | string;
+export type FaqLayout = (typeof FAQ_LAYOUTS)[number] | string;
+export type ContactLayout = (typeof CONTACT_LAYOUTS)[number] | string;
 
 export const DESIGN_TOKENS = {
 	spacing: ["compact", "balanced", "airy"] as const,

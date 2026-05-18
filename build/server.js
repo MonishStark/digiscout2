@@ -644,270 +644,636 @@ function getSectionValue(section, keys, fallback) {
 function getSectionItems(section) {
   return section?.items || section?.content?.items || [];
 }
-function normalizeVariant(section, fallback) {
-  return (section?.variant || section?.layout || section?.styleVariant || fallback).toString().toLowerCase();
+function curateImagePool(images) {
+  if (!Array.isArray(images) || images.length === 0) return [];
+  return images.map((img) => {
+    const src = img.src || img.url || (typeof img === "string" ? img : "");
+    const alt = img.alt || "Premium visual display";
+    const lowerSrc = src.toLowerCase();
+    let score = 80;
+    let isMaps = false;
+    if (lowerSrc.includes("maps.googleapis") || lowerSrc.includes("googleusercontent.com/p/")) {
+      isMaps = true;
+      score -= 20;
+    }
+    if (lowerSrc.includes("placeholder") || lowerSrc.includes("avatar") || lowerSrc.includes("broken")) {
+      score -= 50;
+    }
+    let storyVal = 60;
+    if (alt && alt.length > 15 && !alt.includes("photo") && !alt.includes("image")) {
+      storyVal += 20;
+    }
+    return {
+      src,
+      alt,
+      qualityScore: Math.max(0, Math.min(100, score)),
+      isMapsImage: isMaps,
+      storytellingValue: Math.max(0, Math.min(100, storyVal))
+    };
+  }).filter((img) => img.src && img.qualityScore > 35);
 }
-function buttonHtml(label, href, style = "") {
-  return `<a class="wp-block-button__link wp-element-button" href="${esc(
-    href || "#contact"
-  )}" style="${style}">${esc(label)}</a>`;
+function selectBestImages(curated, count, minScore = 50) {
+  return curated.filter((img) => img.qualityScore >= minScore).sort((a, b) => b.qualityScore - a.qualityScore).slice(0, count);
 }
-function mediaSrc(section, fallback) {
-  return section?.media?.[0]?.url || section?.media?.src || section?.media?.url || fallback;
+function getCinematicImageHtml(img, treatment, ctx, customStyle = "") {
+  const enhanceType = ctx.visualAtmosphere || "architectural-minimalism";
+  let filterStyle = "";
+  let overlayHtml = "";
+  if (enhanceType === "cinematic-darkness") {
+    filterStyle = "filter: contrast(1.08) brightness(0.85) saturate(0.85) sepia(0.08) !important;";
+    overlayHtml = `<div style="position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle, transparent 35%, rgba(8,9,13,0.65) 100%);pointer-events:none;"></div>`;
+  } else if (enhanceType === "luxury-glow" || enhanceType === "soft-editorial-warmth") {
+    filterStyle = "filter: sepia(0.18) saturate(0.88) contrast(0.98) brightness(1.02) !important;";
+    overlayHtml = `<div style="position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(to bottom, rgba(${hexToRgb(ctx.BG)}, 0.05), rgba(${hexToRgb(ctx.BG)}, 0.2) 100%);pointer-events:none;"></div>`;
+  } else if (enhanceType === "industrial-grit") {
+    filterStyle = "filter: contrast(1.15) brightness(0.92) grayscale(0.2) !important;";
+    overlayHtml = `<div style="position:absolute;top:0;left:0;width:100%;height:100%;background-image:url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.95" numOctaves="2" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)" opacity="0.02"/%3E%3C/svg%3E');opacity:0.6;pointer-events:none;"></div>`;
+  } else if (enhanceType === "energetic-neon") {
+    filterStyle = "filter: contrast(1.1) brightness(0.88) saturate(1.15) !important;";
+    overlayHtml = `<div style="position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(180deg, transparent 40%, rgba(12,13,18,0.7) 100%);pointer-events:none;"></div>`;
+  }
+  const shapeStyle = getImageTreatmentStyles(treatment, ctx);
+  return `
+<div style="position:relative;overflow:hidden;display:inline-block;width:100%;${customStyle} ${shapeStyle.container}">
+  <img src="${esc(img.src)}" alt="${esc(img.alt)}" style="display:block;width:100%;height:100%;object-fit:cover;transition:transform 0.8s var(--ease-expo);${filterStyle} ${shapeStyle.image}" />
+  ${overlayHtml}
+</div>`;
+}
+function getFallbackDNA(category) {
+  const cat = (category || "").toLowerCase();
+  if (cat.includes("salon") || cat.includes("spa") || cat.includes("boutique") || cat.includes("hair")) {
+    return {
+      spacingPersonality: "luxury-editorial",
+      compositionAggression: 35,
+      // High-end design is more restrained, less aggressive
+      hierarchyIntensity: 65,
+      motionEnergy: 30,
+      visualDensity: 35,
+      asymmetryLevel: 45,
+      atmosphereIntensity: 60,
+      typographyDominance: "dominant-serif",
+      imageWeight: 75,
+      luxuryScore: 90,
+      cinematicScore: 20,
+      brutalismScore: 5,
+      editorialScore: 85,
+      softnessScore: 85,
+      visualAtmosphere: "luxury-glow"
+    };
+  }
+  if (cat.includes("law") || cat.includes("advocat") || cat.includes("consult") || cat.includes("firm")) {
+    return {
+      spacingPersonality: "balanced",
+      compositionAggression: 15,
+      hierarchyIntensity: 50,
+      motionEnergy: 25,
+      visualDensity: 40,
+      asymmetryLevel: 10,
+      atmosphereIntensity: 30,
+      typographyDominance: "restrained",
+      imageWeight: 40,
+      luxuryScore: 60,
+      cinematicScore: 10,
+      brutalismScore: 5,
+      editorialScore: 70,
+      softnessScore: 40,
+      visualAtmosphere: "architectural-minimalism"
+    };
+  }
+  if (cat.includes("restaurant") || cat.includes("cafe") || cat.includes("baker") || cat.includes("food")) {
+    return {
+      spacingPersonality: "balanced",
+      compositionAggression: 40,
+      hierarchyIntensity: 60,
+      motionEnergy: 40,
+      visualDensity: 50,
+      asymmetryLevel: 30,
+      atmosphereIntensity: 70,
+      typographyDominance: "dominant-serif",
+      imageWeight: 80,
+      luxuryScore: 70,
+      cinematicScore: 60,
+      brutalismScore: 10,
+      editorialScore: 60,
+      softnessScore: 60,
+      visualAtmosphere: "soft-editorial-warmth"
+    };
+  }
+  if (cat.includes("gym") || cat.includes("fitness") || cat.includes("crossfit")) {
+    return {
+      spacingPersonality: "brutalist-dense",
+      compositionAggression: 65,
+      hierarchyIntensity: 80,
+      motionEnergy: 80,
+      visualDensity: 65,
+      asymmetryLevel: 55,
+      atmosphereIntensity: 75,
+      typographyDominance: "brutalist-impact",
+      imageWeight: 75,
+      luxuryScore: 10,
+      cinematicScore: 70,
+      brutalismScore: 85,
+      editorialScore: 20,
+      softnessScore: 15,
+      visualAtmosphere: "energetic-neon"
+    };
+  }
+  return {
+    spacingPersonality: "balanced",
+    compositionAggression: 35,
+    hierarchyIntensity: 50,
+    motionEnergy: 40,
+    visualDensity: 45,
+    asymmetryLevel: 30,
+    atmosphereIntensity: 50,
+    typographyDominance: "balanced",
+    imageWeight: 50,
+    luxuryScore: 50,
+    cinematicScore: 35,
+    brutalismScore: 20,
+    editorialScore: 50,
+    softnessScore: 50,
+    visualAtmosphere: "architectural-minimalism"
+  };
+}
+function applyRestraintModeration(dna) {
+  const moderated = { ...dna };
+  if (moderated.compositionAggression > 75) {
+    moderated.compositionAggression = 70;
+  }
+  if (moderated.atmosphereIntensity > 80) {
+    moderated.atmosphereIntensity = 75;
+  }
+  if (moderated.hierarchyIntensity > 85) {
+    moderated.hierarchyIntensity = 80;
+  }
+  if (moderated.brutalismScore > 75 && moderated.luxuryScore > 30) {
+    moderated.luxuryScore = 15;
+  }
+  return moderated;
+}
+function runPostLayoutTasteRefinement(sections, dna) {
+  let lastSectionBgWasAlternative = false;
+  return sections.map((sec, idx) => {
+    const comp = { ...sec.composition || {} };
+    if (idx > 0 && comp.spacingMode === "luxury-editorial" && sections[idx - 1]?.composition?.spacingMode === "luxury-editorial") {
+      comp.spacingMode = "airy";
+    }
+    if (idx > 0 && comp.visualDepth === "frosted-glow" && sections[idx - 1]?.composition?.visualDepth === "frosted-glow") {
+      comp.visualDepth = "layered-atmospheric";
+    }
+    if (idx === sections.length - 2) {
+      comp.hierarchyWeight = "breathing";
+      comp.spacingMode = "luxury-editorial";
+    }
+    return { ...sec, composition: comp };
+  });
 }
 function buildPremiumPageContent(schema) {
-  const palette = schema.theme?.palette || {
-    background: "#f8fafc",
-    surface: "#ffffff",
-    primary: "#7c3aed",
-    accent: "#ec4899",
-    text: "#111827",
-    muted: "#6b7280",
-    outline: "#e2e8f0"
-  };
   const theme = schema.theme || {};
-  const sections = schema.sections || [];
-  const P = palette.primary;
-  const BG = palette.background;
-  const SURF = palette.surface;
-  const TEXT = palette.text;
-  const MUTED = palette.muted;
-  const OUTLINE = palette.outline;
-  const ACCENT = palette.accent || palette.primary;
-  const radius = theme.radius || "28px";
-  const typography = theme.typography || {
-    heading: "Cormorant Garamond",
-    body: "Inter"
-  };
-  const businessName = schema.brand?.businessName || "Welcome";
   const category = schema.brand?.category || "Premium Service";
+  let rawDna = theme.designDNA || getFallbackDNA(category);
+  const dna = applyRestraintModeration(rawDna);
+  const allImages = schema._validation?.photos || schema.photos || [];
+  const curatedImages = curateImagePool(allImages);
+  const palette = theme.palette || {
+    background: "#faf8f5",
+    surface: "#ffffff",
+    primary: "#1a1a1a",
+    accent: "#c4952a",
+    text: "#1a1208",
+    muted: "#6b5c3e",
+    outline: "rgba(0,0,0,0.08)"
+  };
+  let P = palette.primary || "#111827";
+  let BG = palette.background || "#faf8f5";
+  let SURF = palette.surface || "#ffffff";
+  let TEXT = palette.text || "#111827";
+  let MUTED = palette.muted || "#6b7280";
+  let OUTLINE = palette.outline || "rgba(0,0,0,0.08)";
+  let ACCENT = palette.accent || P;
+  if (dna.visualAtmosphere === "cinematic-darkness") {
+    BG = "#08090d";
+    SURF = "#111218";
+    TEXT = "#f3f4f6";
+    MUTED = "#9ca3af";
+    OUTLINE = "rgba(255,255,255,0.08)";
+    P = "#ffffff";
+    ACCENT = palette.accent || "#c4952a";
+  } else if (dna.visualAtmosphere === "energetic-neon") {
+    BG = "#0b0c10";
+    SURF = "#14161f";
+    TEXT = "#f9fafb";
+    MUTED = "#9ca3af";
+    OUTLINE = "rgba(255,255,255,0.1)";
+    P = "#c084fc";
+    ACCENT = "#a3e635";
+  } else if (dna.visualAtmosphere === "soft-editorial-warmth") {
+    BG = "#fbf8f3";
+    SURF = "#ffffff";
+    TEXT = "#292524";
+    MUTED = "#78716c";
+    OUTLINE = "rgba(0,0,0,0.05)";
+    P = "#78350f";
+    ACCENT = "#d97706";
+  } else if (dna.visualAtmosphere === "luxury-glow") {
+    BG = "#fafaf9";
+    SURF = "#ffffff";
+    TEXT = "#1c1917";
+    MUTED = "#6c6a67";
+    OUTLINE = "rgba(0,0,0,0.05)";
+    P = "#1c1917";
+    ACCENT = "#b45309";
+  } else if (dna.visualAtmosphere === "architectural-minimalism") {
+    BG = "#ffffff";
+    SURF = "#fafafa";
+    TEXT = "#000000";
+    MUTED = "#666666";
+    OUTLINE = "rgba(0,0,0,0.08)";
+    P = "#000000";
+    ACCENT = "#000000";
+  }
+  const radius = dna.brutalismScore > 60 ? "0px" : dna.luxuryScore > 60 ? "32px" : theme.radius || "20px";
+  let typography = theme.typography || { heading: "Cormorant Garamond", body: "Inter" };
+  if (dna.typographyDominance === "brutalist-impact") {
+    typography = { heading: "Syne", body: "Space Grotesk" };
+  } else if (dna.typographyDominance === "dominant-serif" || dna.typographyDominance === "cinematic-oversized") {
+    typography = { heading: "Cormorant Garamond", body: "Inter" };
+  } else if (dna.typographyDominance === "restrained") {
+    typography = { heading: "Playfair Display", body: "Inter" };
+  }
+  let spaceXs = "8px", spaceSm = "16px", spaceMd = "32px", spaceLg = "64px", spaceXl = "100px", space2xl = "140px";
+  if (dna.spacingPersonality === "airy") {
+    spaceLg = "80px";
+    spaceXl = "115px";
+    space2xl = "180px";
+  } else if (dna.spacingPersonality === "luxury-editorial") {
+    spaceLg = "90px";
+    spaceXl = "135px";
+    space2xl = "210px";
+  } else if (dna.spacingPersonality === "compressed" || dna.spacingPersonality === "brutalist-dense") {
+    spaceLg = "40px";
+    spaceXl = "60px";
+    space2xl = "80px";
+  }
+  let shadowSoft = "0 4px 30px rgba(0,0,0,0.02)";
+  let shadowPremium = "0 20px 80px rgba(0,0,0,0.06)";
+  let shadowIntense = "0 30px 100px rgba(0,0,0,0.12)";
+  if (dna.brutalismScore > 60) {
+    shadowSoft = `4px 4px 0px ${ACCENT}`;
+    shadowPremium = `8px 8px 0px ${P}`;
+    shadowIntense = `12px 12px 0px ${ACCENT}`;
+  } else if (dna.luxuryScore > 60) {
+    shadowSoft = "0 4px 40px rgba(0,0,0,0.015)";
+    shadowPremium = "0 25px 85px rgba(0,0,0,0.04)";
+    shadowIntense = "0 40px 110px rgba(0,0,0,0.07)";
+  }
+  let textHero = "clamp(3rem, 7vw, 5.8rem)";
+  let textSection = "clamp(2rem, 4.8vw, 3.8rem)";
+  if (dna.typographyDominance === "cinematic-oversized" || dna.hierarchyIntensity > 75) {
+    textHero = "clamp(3.8rem, 10vw, 8rem)";
+    textSection = "clamp(2.6rem, 7vw, 5rem)";
+  } else if (dna.typographyDominance === "brutalist-impact") {
+    textHero = "clamp(3.5rem, 9vw, 7.5rem)";
+    textSection = "clamp(2.4rem, 6vw, 4.4rem)";
+  }
+  const businessName = schema.brand?.businessName || "Welcome";
+  const rawSections = schema.sections || [];
+  const sections = runPostLayoutTasteRefinement(rawSections, dna);
   const globalCss = `<!-- wp:html -->
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;700;900&family=Space+Grotesk:wght@300;500;700&family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;500;700;900&family=Plus+Jakarta+Sans:wght@300;500;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;700;900&family=Space+Grotesk:wght@300;500;700;800&family=Cormorant+Garamond:wght@300;400;600;700&family=Outfit:wght@300;500;700;900&family=Plus+Jakarta+Sans:wght@300;500;700;800&family=Syne:wght@400;700;800&family=Cormorant+Infant:ital,wght@1,400;1,600&display=swap');
+
+:root {
+  --bg: ${BG};
+  --surface: ${SURF};
+  --primary: ${P};
+  --accent: ${ACCENT};
+  --text: ${TEXT};
+  --muted: ${MUTED};
+  --outline: ${OUTLINE};
+  
+  /* Dynamic Curation Spacing Scale */
+  --space-xs: ${spaceXs};
+  --space-sm: ${spaceSm};
+  --space-md: ${spaceMd};
+  --space-lg: ${spaceLg};
+  --space-xl: ${spaceXl};
+  --space-2xl: ${space2xl};
+
+  /* Fluid Typography Scale */
+  --text-hero: ${textHero};
+  --text-section: ${textSection};
+  --text-body: clamp(1.02rem, 1.5vw, 1.25rem);
+
+  /* Radius System */
+  --radius-sm: ${dna.brutalismScore > 60 ? "0px" : "6px"};
+  --radius-md: ${dna.brutalismScore > 60 ? "0px" : "14px"};
+  --radius-lg: ${radius};
+  --radius-full: ${dna.brutalismScore > 60 ? "0px" : "9999px"};
+
+  /* Shadow Depth System */
+  --shadow-soft: ${shadowSoft};
+  --shadow-premium: ${shadowPremium};
+  --shadow-intense: ${shadowIntense};
+
+  /* DNA Animation Timings */
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --reveal-duration: ${dna.motionEnergy > 70 ? "0.8s" : "1.2s"};
+  --z-back: -1;
+  --z-base: 1;
+  --z-overlay: 10;
+}
+
 *,*::before,*::after{box-sizing:border-box!important}
-html,body{margin:0!important;padding:0!important;background:${BG}!important;color:${TEXT}!important;font-family:'${typography.body}',sans-serif!important;-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
+html,body{margin:0!important;padding:0!important;background:var(--bg)!important;color:var(--text)!important;font-family:'${typography.body}',sans-serif!important;-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
 .site-header,.site-footer,.elementor-location-header,.elementor-location-footer,#masthead,#colophon,.entry-title,.wp-block-post-title,.page-title,.breadcrumbs,.posted-on,.byline,header.entry-header{display:none!important}
-.site-content,.hentry,.entry-content,.wp-block-post-content,.wp-site-blocks,.is-layout-flow,.elementor,.page,.single{padding:0!important;margin:0!important;max-width:100%!important;width:100%!important;background:${BG}!important}
-.glass{background:rgba(255,255,255,.76)!important;backdrop-filter:blur(20px)!important;border:1px solid rgba(255,255,255,.45)!important;box-shadow:0 18px 48px rgba(15,23,42,.08)!important}
-.text-gradient{background:linear-gradient(135deg,${P},${ACCENT});-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.hover-lift{transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s cubic-bezier(.2,.8,.2,1),border-color .35s ease!important}
-.hover-lift:hover{transform:translateY(-8px)!important;box-shadow:0 28px 64px rgba(15,23,42,.14)!important}
-.animate-up{animation:fadeInUp .8s cubic-bezier(.2,.8,.2,1) forwards}
-.animate-scale{animation:scaleIn .8s cubic-bezier(.2,.8,.2,1) forwards}
-.section-padding{padding:140px 40px}
-.section-shell{max-width:1320px;margin:0 auto}
-.eyebrow{display:inline-flex;align-items:center;gap:10px;padding:8px 16px;border:1px solid ${OUTLINE};border-radius:999px;background:rgba(255,255,255,.72);font-size:.76rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:${P}}
-.section-title{font-family:'${typography.heading}',serif;font-size:clamp(2.6rem,5vw,5rem);line-height:.94;letter-spacing:-.045em;font-weight:800;color:${TEXT};margin:0 0 18px}
-.section-copy{max-width:640px;font-size:1.08rem;line-height:1.75;color:${MUTED};margin:0}
-.wp-block-button__link,.wp-element-button{
-	background:${P}!important;color:#fff!important;border:none!important;
-	border-radius:${theme.buttonStyle === "sharp" ? "10px" : "999px"}!important;
-	padding:18px 36px!important;font-weight:700!important;text-decoration:none!important;
-	display:inline-flex!important;align-items:center;justify-content:center;cursor:pointer!important;
-	box-shadow:0 14px 32px rgba(${hexToRgb(P)},.24)!important;
-	transition:transform .28s ease,box-shadow .28s ease,background .28s ease!important
+.site-content,.hentry,.entry-content,.wp-block-post-content,.wp-site-blocks,.is-layout-flow,.elementor,.page,.single{padding:0!important;margin:0!important;max-width:100%!important;width:100%!important;background:var(--bg)!important}
+
+/* Atmospheric Noise Overlays matching DNA intensity */
+.noise-overlay-bg {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='${dna.atmosphereIntensity > 70 ? "0.02" : "0.012"}'/%3E%3C/svg%3E");
 }
-.wp-block-button__link:hover{transform:translateY(-2px) scale(1.02)!important;box-shadow:0 18px 40px rgba(${hexToRgb(P)},.32)!important}
-.button-ghost{background:transparent!important;color:${TEXT}!important;border:1px solid ${OUTLINE}!important;box-shadow:none!important}
-.shape-orb{position:absolute;border-radius:999px;pointer-events:none;filter:blur(4px)}
-[data-reveal]{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s ease}
-[data-reveal].is-visible{opacity:1;transform:translateY(0)}
-@keyframes fadeInUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
-@keyframes scaleIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
-@media (max-width: 920px){
-	.section-padding{padding:88px 24px}
-	.two-col,.split-grid,.contact-grid,.cta-split,.feature-bento,.gallery-editorial,.gallery-stack,.testimonial-featured,.faq-split{grid-template-columns:1fr!important}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
-@media (prefers-reduced-motion: reduce){
-	[data-reveal]{opacity:1;transform:none;transition:none}
+
+/* Stagger hover states */
+.hover-lift {
+  transition: transform .4s var(--ease-expo), box-shadow .4s var(--ease-expo), border-color .4s ease!important;
 }
-${theme.customCss || ""}
-${sections.map((section) => section.customCss || "").join("\n")}
+.hover-lift:hover {
+  transform: translateY(-5px) scale(1.008)!important;
+  box-shadow: var(--shadow-premium)!important;
+}
+
+/* Scoped Scroll Reveal Styles */
+.scroll-reveal {
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.scroll-reveal.in-view {
+  opacity: 1;
+}
+
+.premium-fade {
+  transition: opacity var(--reveal-duration) var(--ease-expo);
+}
+.cinematic-reveal {
+  transform: translateY(35px) scale(0.99);
+  transition: opacity var(--reveal-duration) var(--ease-expo), transform var(--reveal-duration) var(--ease-expo);
+}
+.cinematic-reveal.in-view {
+  transform: translateY(0) scale(1);
+}
+.stagger-lift {
+  transform: translateY(22px);
+  transition: opacity var(--reveal-duration) var(--ease-expo), transform var(--reveal-duration) var(--ease-expo);
+}
+.stagger-lift.in-view {
+  transform: translateY(0);
+}
+.editorial-slide {
+  transform: translateX(-30px);
+  transition: opacity var(--reveal-duration) var(--ease-expo), transform var(--reveal-duration) var(--ease-expo);
+}
+.editorial-slide.in-view {
+  transform: translateX(0);
+}
+.luxury-glow-reveal {
+  box-shadow: 0 0 0px rgba(0,0,0,0);
+  transition: opacity var(--reveal-duration) var(--ease-expo), box-shadow 1.5s var(--ease-expo);
+}
+.luxury-glow-reveal.in-view {
+  box-shadow: 0 0 40px rgba(${hexToRgb(ACCENT)}, 0.08);
+}
+
+.delay-1 { transition-delay: 0.1s !important; }
+.delay-2 { transition-delay: 0.2s !important; }
+.delay-3 { transition-delay: 0.3s !important; }
+.delay-4 { transition-delay: 0.4s !important; }
+
+.section-shell {
+  max-width: 1280px;
+  margin: 0 auto;
+  position: relative;
+  z-index: var(--z-base);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  font-size: .74rem;
+  font-weight: 800;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-family: '${typography.heading}', serif;
+  font-size: var(--text-section);
+  line-height: 0.96;
+  letter-spacing: ${dna.typographyDominance === "brutalist-impact" ? "-.04em" : "-.03em"};
+  font-weight: 800;
+  color: var(--text);
+  margin: 0 0 16px;
+}
+
+.section-copy {
+  font-size: var(--text-body);
+  line-height: 1.72;
+  color: var(--muted);
+  margin: 0;
+}
+
+.wp-block-button__link, .wp-element-button {
+  background: var(--primary)!important;
+  color: ${dna.cinematicScore > 65 || dna.visualAtmosphere === "cinematic-darkness" ? "#000" : "#fff"}!important;
+  border: ${dna.brutalismScore > 60 ? "2px solid #000" : "none"}!important;
+  border-radius: var(--radius-md)!important;
+  padding: 18px 38px!important;
+  font-weight: 800!important;
+  text-transform: ${dna.brutalismScore > 60 ? "uppercase" : "none"}!important;
+  letter-spacing: ${dna.brutalismScore > 60 ? "0.06em" : "normal"}!important;
+  text-decoration: none!important;
+  display: inline-flex!important;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer!important;
+  box-shadow: var(--shadow-soft)!important;
+  transition: transform .28s var(--ease-expo), box-shadow .28s var(--ease-expo), background .28s ease!important;
+}
+.wp-block-button__link:hover {
+  transform: translateY(-2px) scale(1.015)!important;
+  box-shadow: var(--shadow-premium)!important;
+}
+
+.ambient-glow-glow {
+  position: absolute;
+  width: 450px;
+  height: 450px;
+  border-radius: var(--radius-full);
+  background: radial-gradient(circle, rgba(${hexToRgb(ACCENT)}, ${dna.atmosphereIntensity > 70 ? "0.1" : "0.06"}) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: var(--z-back);
+}
+
+@media (max-width: 960px) {
+  .split-grid, .cta-split, .feature-bento, .gallery-editorial, .gallery-stack, .testimonial-grid, .contact-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
 </style>
 <!-- /wp:html -->
 
 `;
   const revealScript = `<!-- wp:html -->
 <script>
-(() => {
-	const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-	const targets = document.querySelectorAll(
-		'.section-padding .section-shell, .section-padding .glass, .section-padding .hover-lift, .section-padding img, .section-padding .section-title, .section-padding .section-copy, .section-padding .eyebrow'
-	);
-	targets.forEach((el, index) => {
-		el.setAttribute('data-reveal', '');
-		if (reduce) {
-			el.classList.add('is-visible');
-			return;
-		}
-		el.style.transitionDelay = String((index % 6) * 80) + 'ms';
-	});
-	if (reduce || !('IntersectionObserver' in window)) {
-		targets.forEach((el) => el.classList.add('is-visible'));
-		return;
-	}
-	const observer = new IntersectionObserver(
-		(entries, obs) => {
-			entries.forEach((entry) => {
-				if (entry.isIntersecting) {
-					entry.target.classList.add('is-visible');
-					obs.unobserve(entry.target);
-				}
-			});
-		},
-		{ threshold: 0.15, rootMargin: '0px 0px -10% 0px' }
-	);
-	targets.forEach((el) => observer.observe(el));
-})();
+document.addEventListener("DOMContentLoaded", () => {
+  const obs = new IntersectionObserver((es) => {
+    es.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add("in-view");
+        obs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.05 });
+  document.querySelectorAll(".scroll-reveal").forEach(el => obs.observe(el));
+});
 </script>
 <!-- /wp:html -->
 
 `;
   let html = globalCss + revealScript;
   sections.forEach((section, index) => {
+    const comp = section.composition || {};
+    const sectionType = comp.sectionType || (section.type === "hero" ? "cinematicHero" : section.type === "features" ? "asymmetricalFeatures" : section.type === "gallery" ? "immersiveGallery" : section.type === "testimonials" ? "floatingTestimonialWall" : section.type === "cta" ? "layeredCTA" : section.type === "faq" ? "accordionClean" : "premiumContactPanel");
+    const layoutBehavior = comp.layoutBehavior || "asymmetrical";
+    const visualDepth = comp.visualDepth || "layered-atmospheric";
+    const motionStyle = comp.motionStyle || "staggerLift";
+    const imageTreatment = comp.imageTreatment || "floatingDepth";
+    const spacingMode = comp.spacingMode || "balanced";
+    const hierarchyWeight = comp.hierarchyWeight || "supporting";
     const sectionBg = index % 2 === 0 ? BG : SURF;
-    switch (section.type) {
-      case "hero":
-        html += renderHero(
-          section,
-          { businessName, category, typography, P, TEXT, MUTED, BG, SURF, ACCENT, OUTLINE }
-        );
+    const componentContext = {
+      typography,
+      P,
+      BG,
+      SURF,
+      TEXT,
+      MUTED,
+      OUTLINE,
+      ACCENT,
+      radius,
+      palette,
+      dna,
+      spacingMode,
+      layoutBehavior,
+      visualDepth,
+      motionStyle,
+      imageTreatment,
+      sectionBg,
+      businessName,
+      category,
+      hierarchyWeight,
+      brand: schema.brand || {},
+      index,
+      curatedImages
+    };
+    switch (sectionType) {
+      case "cinematicHero":
+      case "editorialHero":
+      case "splitNarrativeHero":
+        html += renderAdaptiveHero(section, componentContext);
         break;
-      case "features":
-      case "services":
-        html += renderFeatures(
-          section,
-          { typography, P, TEXT, MUTED, SURF, OUTLINE, radius, sectionBg }
-        );
+      case "asymmetricalFeatures":
+      case "glassFeatureCards":
+      case "processNarrative":
+        html += renderAdaptiveFeatures(section, componentContext);
         break;
-      case "gallery":
-        html += renderGallery(
-          section,
-          { typography, TEXT, MUTED, sectionBg, radius }
-        );
+      case "immersiveGallery":
+      case "floatingImageStack":
+        html += renderAdaptiveGallery(section, componentContext);
         break;
-      case "testimonials":
-        html += renderTestimonials(
-          section,
-          { typography, P, TEXT, MUTED, sectionBg, SURF, OUTLINE, radius }
-        );
+      case "floatingTestimonialWall":
+        html += renderAdaptiveTestimonials(section, componentContext);
         break;
-      case "faq":
-        html += renderFaq(
-          section,
-          { typography, P, TEXT, MUTED, sectionBg, SURF, OUTLINE, radius }
-        );
+      case "layeredCTA":
+      case "atmosphericBand":
+        html += renderAdaptiveCta(section, componentContext);
         break;
-      case "cta":
-        html += renderCta(
-          section,
-          { typography, P, TEXT, ACCENT, radius }
-        );
+      case "storytellingTimeline":
+      case "transformationShowcase":
+      case "luxuryMetricsStrip":
+        html += renderAdaptiveExtra(section, componentContext);
         break;
-      case "contact":
-        html += renderContact(
-          section,
-          { typography, P, TEXT, MUTED, sectionBg, SURF, OUTLINE, radius, brand: schema.brand || {} }
-        );
+      case "premiumContactPanel":
+      case "accordionClean":
+      default:
+        if (section.type === "faq" || sectionType === "accordionClean") {
+          html += renderAdaptiveFaq(section, componentContext);
+        } else if (section.type === "contact" || sectionType === "premiumContactPanel") {
+          html += renderAdaptiveContact(section, componentContext);
+        } else {
+          html += renderAdaptiveHero(section, componentContext);
+        }
         break;
     }
   });
   html += `<!-- wp:html -->
-<footer style="background:#050816;padding:92px 40px;text-align:center;">
+<footer style="background:#090a0f;padding:var(--space-2xl) 5%;text-align:center;position:relative;" class="noise-overlay-bg">
   <div class="section-shell">
-    <div class="eyebrow" style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14);color:#fff">Digital Presence</div>
-    <h2 style="font-family:'${typography.heading}',serif;color:#fff;font-size:2.2rem;letter-spacing:-.04em;margin:22px 0 12px;">${esc(
+    <div class="eyebrow" style="background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);color:#fff">Digital Experience</div>
+    <h2 style="font-family:'${typography.heading}',serif;color:#fff;font-size:var(--text-section);letter-spacing:-.045em;margin:22px 0 12px;">${esc(
     businessName
   )}</h2>
-    <p style="color:rgba(255,255,255,.48);font-size:.92rem;margin:0;">Crafted for premium presentation and clear conversion.</p>
+    <p style="color:rgba(255,255,255,.45);font-size:var(--text-body);margin:0;">Generative design system crafted with emergent visual orchestration.</p>
   </div>
 </footer>
 <!-- /wp:html -->`;
   return html;
 }
-function renderHero(section, context) {
-  const { businessName, category, typography, P, TEXT, MUTED, BG, SURF, ACCENT, OUTLINE } = context;
-  const img = mediaSrc(
-    section,
-    "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=80"
-  );
-  const title = getSectionValue(section, ["headline", "title"], businessName);
-  const sub = getSectionValue(
-    section,
-    ["subheadline", "body", "description"],
-    ""
-  );
-  const ctaPrimary = section.ctaPrimary || section.primaryCta || {
-    label: "Discover More",
-    href: "#contact"
-  };
-  const ctaSecondary = section.ctaSecondary || section.secondaryCta || null;
-  const variant = normalizeVariant(section, "split");
-  if (variant === "immersive" || variant === "cinematic") {
-    return `<!-- wp:cover {"url":"${esc(
-      img
-    )}","dimRatio":56,"minHeight":100,"minHeightUnit":"vh","align":"full"} -->
-<div class="wp-block-cover alignfull" style="min-height:100vh;position:relative;overflow:hidden;">
-<span aria-hidden="true" class="wp-block-cover__background has-background-dim" style="background:linear-gradient(180deg,rgba(7,10,23,.14),rgba(7,10,23,.68))"></span>
-<img class="wp-block-cover__image-background" alt="${esc(
-      businessName
-    )}" src="${esc(img)}" data-object-fit="cover" />
-<div class="wp-block-cover__inner-container">
-  <div class="section-shell animate-up" style="min-height:100vh;display:grid;align-items:end;padding:48px 24px 72px;">
-    <div style="max-width:780px;">
-      <div class="eyebrow" style="background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.18);color:#fff">${esc(
-      category
-    )}</div>
-      <h1 style="font-family:'${typography.heading}',serif;font-size:clamp(3.8rem,11vw,8rem);line-height:.88;letter-spacing:-.06em;color:#fff;margin:26px 0 18px;">${esc(
-      title
-    )}</h1>
-      <p style="font-size:clamp(1.16rem,2.6vw,1.5rem);line-height:1.6;color:rgba(255,255,255,.84);max-width:620px;margin:0 0 34px;">${esc(
-      sub
-    )}</p>
-      <div style="display:flex;gap:14px;flex-wrap:wrap;">
-        ${buttonHtml(ctaPrimary.label || "Discover More", ctaPrimary.href || "#contact")}
-        ${ctaSecondary ? buttonHtml(
-      ctaSecondary.label || "Explore",
-      ctaSecondary.href || "#services",
-      "background:rgba(255,255,255,.14)!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)!important;box-shadow:none!important"
-    ) : ""}
-      </div>
-    </div>
-  </div>
-</div>
-</div>
-<!-- /wp:cover -->
-
-`;
-  }
-  if (variant === "editorial" || variant === "editorial-split" || variant === "magazine") {
+function renderAdaptiveHero(section, ctx) {
+  const curatedList = selectBestImages(ctx.curatedImages, 2, 45);
+  const title = getSectionValue(section, ["headline", "title"], ctx.businessName);
+  const sub = getSectionValue(section, ["subheadline", "body", "description"], "");
+  const ctaPrimary = section.ctaPrimary || { label: "Get Started", href: "#contact" };
+  const ctaSecondary = section.ctaSecondary || null;
+  const spacing = getSpacingStyles(ctx);
+  const motion = getMotionClasses(ctx.motionStyle);
+  const imgTreatment = ctx.imageTreatment || "floatingDepth";
+  const isLowMedia = ctx.dna.imageWeight < 30 || curatedList.length === 0;
+  if (isLowMedia) {
     return `<!-- wp:html -->
-<section class="section-padding" style="background:${BG};overflow:hidden;">
-  <div class="section-shell split-grid" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(420px,.92fr);gap:44px;align-items:center;">
-    <div class="animate-up">
-      <div class="eyebrow">${esc(category)}</div>
-      <h1 style="font-family:'${typography.heading}',serif;font-size:clamp(3rem,7vw,5.7rem);line-height:.92;letter-spacing:-.05em;color:${TEXT};margin:24px 0 18px;">${esc(
-      title
-    )}</h1>
-      <p style="max-width:520px;font-size:1.14rem;line-height:1.78;color:${MUTED};margin:0 0 34px;">${esc(
-      sub
-    )}</p>
-      <div style="display:flex;gap:14px;flex-wrap:wrap;">
-        ${buttonHtml(ctaPrimary.label || "Discover More", ctaPrimary.href || "#contact")}
-        ${ctaSecondary ? buttonHtml(
-      ctaSecondary.label || "Explore",
-      ctaSecondary.href || "#services",
-      "background:transparent!important;color:" + TEXT + "!important;border:1px solid " + OUTLINE + "!important;box-shadow:none!important"
-    ) : ""}
+<section class="noise-overlay-bg" style="background:var(--bg);position:relative;overflow:hidden;${spacing}">
+  <div class="ambient-glow-glow" style="top:10%;left:10%;"></div>
+  <div class="section-shell ${motion} delay-1" style="max-width:1080px;text-align:left;">
+    <div class="eyebrow">${esc(ctx.category)}</div>
+    <h1 style="font-family:'${ctx.typography.heading}',serif;font-size:var(--text-hero);line-height:0.88;letter-spacing:-.05em;font-weight:900;color:var(--primary);margin:24px 0 28px;">
+      ${esc(title)}
+    </h1>
+    <div style="display:grid;grid-template-columns:1.15fr .85fr;gap:40px;margin-top:var(--space-md);">
+      <div>
+        <p style="font-size:var(--text-body);line-height:1.75;color:var(--text);font-weight:400;margin-bottom:34px;">${esc(sub)}</p>
+        <div style="display:flex;gap:14px;">
+          ${buttonHtml(ctaPrimary.label, ctaPrimary.href)}
+        </div>
       </div>
-    </div>
-    <div class="animate-scale" style="position:relative;">
-      <div class="shape-orb" style="width:220px;height:220px;right:-32px;top:-28px;background:rgba(${hexToRgb(
-      ACCENT
-    )},.12)"></div>
-      <img src="${esc(img)}" alt="${esc(
-      businessName
-    )}" style="width:100%;aspect-ratio:4/4.5;object-fit:cover;border-radius:34px;box-shadow:0 24px 70px rgba(15,23,42,.12);" />
+      <div style="border-left:2px solid var(--outline);padding-left:36px;display:flex;align-items:center;">
+        <span style="font-family:'Cormorant Infant',serif;font-style:italic;font-size:1.85rem;color:var(--muted);line-height:1.44;">
+          \u201CQuiet design projects a confidence that visual noise can never reproduce.\u201D
+        </span>
+      </div>
     </div>
   </div>
 </section>
@@ -915,28 +1281,25 @@ function renderHero(section, context) {
 
 `;
   }
-  if (variant === "centered" || variant === "minimal") {
+  const imgHtml = getCinematicImageHtml(curatedList[0], imgTreatment, ctx, "width:100%;height:520px;");
+  if (ctx.layoutBehavior === "split-grid" || ctx.dna.cinematicScore > 65) {
     return `<!-- wp:html -->
-<section class="section-padding" style="background:${BG};">
-  <div class="section-shell animate-up" style="max-width:1080px;text-align:center;">
-    <div class="eyebrow">${esc(category)}</div>
-    <h1 style="font-family:'${typography.heading}',serif;font-size:clamp(3rem,8vw,6.4rem);line-height:.9;letter-spacing:-.06em;color:${TEXT};margin:24px auto 18px;max-width:860px;">${esc(
-      title
-    )}</h1>
-    <p style="font-size:1.15rem;line-height:1.78;color:${MUTED};max-width:680px;margin:0 auto 34px;">${esc(
-      sub
-    )}</p>
-    <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:42px;">
-      ${buttonHtml(ctaPrimary.label || "Discover More", ctaPrimary.href || "#contact")}
-      ${ctaSecondary ? buttonHtml(
-      ctaSecondary.label || "Explore",
-      ctaSecondary.href || "#services",
-      "background:transparent!important;color:" + TEXT + "!important;border:1px solid " + OUTLINE + "!important;box-shadow:none!important"
-    ) : ""}
+<section class="noise-overlay-bg" style="min-height:90vh;display:flex;align-items:center;background:var(--bg);position:relative;overflow:hidden;${spacing}">
+  <div class="ambient-glow-glow" style="top:-60px;left:-60px;"></div>
+  <div class="section-shell split-grid" style="display:grid;grid-template-columns:1.05fr .95fr;gap:var(--space-xl);align-items:center;width:100%;">
+    <div class="${motion} delay-1">
+      <div class="eyebrow">${esc(ctx.category)}</div>
+      <h1 class="text-gradient" style="font-family:'${ctx.typography.heading}',serif;font-size:var(--text-hero);line-height:0.92;letter-spacing:-.04em;margin:24px 0 20px;font-weight:800;">${esc(title)}</h1>
+      <p style="max-width:580px;font-size:var(--text-body);line-height:1.75;color:var(--muted);margin:0 0 var(--space-md);">${esc(sub)}</p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;">
+        ${buttonHtml(ctaPrimary.label, ctaPrimary.href)}
+        ${ctaSecondary ? buttonHtml(ctaSecondary.label, ctaSecondary.href, "background:transparent!important;color:var(--text)!important;border:1px solid var(--outline)!important;box-shadow:none!important;") : ""}
+      </div>
     </div>
-    <img src="${esc(img)}" alt="${esc(
-      businessName
-    )}" style="width:100%;max-width:1080px;aspect-ratio:16/9;object-fit:cover;border-radius:38px;box-shadow:0 24px 70px rgba(15,23,42,.12);" />
+    <div class="${motion} delay-2" style="position:relative;display:flex;justify-content:center;">
+      <div class="ambient-glow-glow" style="bottom:-50px;right:-50px;width:300px;height:300px;"></div>
+      ${imgHtml}
+    </div>
   </div>
 </section>
 <!-- /wp:html -->
@@ -944,22 +1307,18 @@ function renderHero(section, context) {
 `;
   }
   return `<!-- wp:html -->
-<section class="section-padding" style="background:${BG};overflow:hidden;">
-  <div class="section-shell two-col" style="display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:36px;align-items:stretch;">
-    <div class="glass animate-up" style="padding:clamp(32px,5vw,64px);border-radius:36px;display:flex;flex-direction:column;justify-content:center;">
-      <div class="eyebrow">${esc(category)}</div>
-      <h1 style="font-family:'${typography.heading}',serif;font-size:clamp(2.8rem,7vw,5.8rem);line-height:.92;letter-spacing:-.05em;color:${TEXT};margin:24px 0 18px;">${esc(
-    title
-  )}</h1>
-      <p style="font-size:1.12rem;line-height:1.76;color:${MUTED};margin:0 0 34px;">${esc(
-    sub
-  )}</p>
-      ${buttonHtml(ctaPrimary.label || "Discover More", ctaPrimary.href || "#contact")}
+<section class="noise-overlay-bg" style="background:var(--bg);text-align:center;position:relative;overflow:hidden;${spacing}">
+  <div class="ambient-glow-glow" style="top:25%;left:50%;transform:translate(-50%,-50%);width:550px;height:550px;opacity:0.6;"></div>
+  <div class="section-shell ${motion} delay-1" style="max-width:1020px;">
+    <div class="eyebrow">${esc(ctx.category)}</div>
+    <h1 style="font-family:'${ctx.typography.heading}',serif;font-size:var(--text-hero);line-height:0.96;letter-spacing:-.045em;color:var(--text);margin:24px 0 22px;font-weight:800;">${esc(title)}</h1>
+    <p style="font-size:var(--text-body);line-height:1.72;color:var(--muted);max-width:760px;margin:0 auto var(--space-md);">${esc(sub)}</p>
+    <div style="display:flex;gap:14px;justify-content:center;margin-bottom:var(--space-lg);">
+      ${buttonHtml(ctaPrimary.label, ctaPrimary.href)}
+      ${ctaSecondary ? buttonHtml(ctaSecondary.label, ctaSecondary.href, "background:transparent!important;color:var(--text)!important;border:1px solid var(--outline)!important;box-shadow:none!important;") : ""}
     </div>
-    <div class="animate-scale" style="position:relative;min-height:420px;">
-      <img src="${esc(img)}" alt="${esc(
-    businessName
-  )}" style="width:100%;height:100%;min-height:420px;object-fit:cover;border-radius:36px;" />
+    <div class="${motion} delay-2" style="margin-top:var(--space-sm);position:relative;max-width:920px;margin-left:auto;margin-right:auto;">
+      ${imgHtml}
     </div>
   </div>
 </section>
@@ -967,123 +1326,113 @@ function renderHero(section, context) {
 
 `;
 }
-function renderFeatures(section, context) {
-  const { typography, P, TEXT, MUTED, SURF, OUTLINE, radius, sectionBg } = context;
+function renderAdaptiveFeatures(section, ctx) {
   const items = getSectionItems(section);
-  const title = getSectionValue(section, ["title", "headline"], "Services");
-  const intro = getSectionValue(
-    section,
-    ["subheadline", "description"],
-    ""
-  );
-  const variant = normalizeVariant(section, "bento");
-  const wrap = (inner) => `<!-- wp:html -->
-<section class="section-padding" style="background:${sectionBg};">
+  const title = getSectionValue(section, ["title", "headline"], "Specialties");
+  const intro = getSectionValue(section, ["subheadline", "description"], "");
+  const spacing = getSpacingStyles(ctx);
+  const motion = getMotionClasses(ctx.motionStyle);
+  const depth = getDepthStyles(ctx.visualDepth, ctx);
+  if (ctx.layoutBehavior === "grid-stagger" || ctx.dna.brutalismScore > 60) {
+    return `<!-- wp:html -->
+<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
   <div class="section-shell">
-    <div style="display:flex;justify-content:space-between;align-items:end;gap:28px;flex-wrap:wrap;margin-bottom:66px;">
+    <div style="margin-bottom:var(--space-lg); border-bottom: 1px solid var(--outline); padding-bottom: 24px;">
+      <div class="eyebrow">The Process</div>
+      <h2 class="section-title">${esc(title)}</h2>
+      ${intro ? `<p class="section-copy" style="max-width:640px;">${esc(intro)}</p>` : ""}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:var(--space-md);">
+      ${items.map((item, idx) => `
+        <article class="${motion} ${idx % 2 === 0 ? "delay-1" : "delay-2"}" style="${depth} padding:var(--space-md); border-radius:var(--radius-lg); position:relative;">
+          <div style="font-family:'${ctx.typography.heading}',serif;font-size:2.8rem;color:var(--accent);opacity:0.35;margin-bottom:var(--space-sm); font-weight:800;">${String(idx + 1).padStart(2, "0")}</div>
+          <h3 style="font-family:'${ctx.typography.heading}',serif;font-size:1.72rem;color:var(--text);margin:0 0 12px;letter-spacing:-.03em;font-weight:700;">${esc(item.title || item.name)}</h3>
+          <p style="color:var(--muted);line-height:1.72;font-size:1rem;margin:0;">${esc(item.description || item.body)}</p>
+        </article>
+      `).join("")}
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
+  return `<!-- wp:html -->
+<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
+  <div class="section-shell">
+    <div style="display:flex;justify-content:space-between;align-items:end;gap:var(--space-md);flex-wrap:wrap;margin-bottom:var(--space-lg);">
       <div>
         <div class="eyebrow">Services</div>
         <h2 class="section-title">${esc(title)}</h2>
       </div>
-      ${intro ? `<p class="section-copy">${esc(intro)}</p>` : ""}
+      ${intro ? `<p class="section-copy" style="max-width:580px;">${esc(intro)}</p>` : ""}
     </div>
-    ${inner}
+    <div class="feature-bento" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-md);">
+      ${items.map((item, idx) => {
+    const span = idx === 0 || idx === 3 ? "span 2" : "span 1";
+    const offset = ctx.dna.asymmetryLevel > 50 && idx % 2 === 0 ? "transform: translateY(-10px);" : "";
+    return `
+        <article class="${motion} hover-lift" style="grid-column:${span};${depth} ${offset} padding:40px;border-radius:var(--radius-lg);min-height:280px;display:flex;flex-direction:column;justify-content:space-between;">
+          <div>
+            <div style="font-family:'${ctx.typography.heading}',serif;font-size:1.8rem;color:var(--primary);opacity:0.3;margin-bottom:16px;font-weight:800;">${String(idx + 1).padStart(2, "0")}</div>
+            <h3 style="font-family:'${ctx.typography.heading}',serif;font-size:1.75rem;color:var(--text);margin:0 0 10px;letter-spacing:-.03em;font-weight:800;">${esc(item.title || item.name)}</h3>
+          </div>
+          <p style="color:var(--muted);line-height:1.72;font-size:0.98rem;margin:0;">${esc(item.description || item.body)}</p>
+        </article>
+      `;
+  }).join("")}
+    </div>
   </div>
 </section>
 <!-- /wp:html -->
 
 `;
-  if (variant === "editorial-list" || variant === "alternating-stack" || variant === "list") {
-    return wrap(`<div style="display:grid;gap:18px;">
-      ${items.map(
-      (item, index) => `<article class="hover-lift" style="display:grid;grid-template-columns:84px minmax(0,1fr);gap:22px;padding:28px 0;border-top:1px solid ${OUTLINE};">
-          <div style="font-family:'${typography.heading}',serif;font-size:2rem;color:${P};opacity:.64;">${String(
-        index + 1
-      ).padStart(2, "0")}</div>
-          <div>
-            <h3 style="font-family:'${typography.heading}',serif;font-size:2rem;letter-spacing:-.03em;color:${TEXT};margin:0 0 10px;">${esc(
-        item.title || item.name
-      )}</h3>
-            <p style="color:${MUTED};line-height:1.75;font-size:1.04rem;margin:0;max-width:760px;">${esc(
-        item.description || item.body
-      )}</p>
-          </div>
-        </article>`
-    ).join("")}
-    </div>`);
-  }
-  if (variant === "editorial-cards" || variant === "grid") {
-    return wrap(`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;">
-      ${items.map(
-      (item, index) => `<article class="glass hover-lift" style="padding:34px;border-radius:${radius};">
-          <div style="display:inline-flex;width:52px;height:52px;border-radius:16px;align-items:center;justify-content:center;background:rgba(${hexToRgb(
-        P
-      )},.12);color:${P};font-weight:800;margin-bottom:18px;">${index + 1}</div>
-          <h3 style="font-family:'${typography.heading}',serif;font-size:1.7rem;letter-spacing:-.03em;color:${TEXT};margin:0 0 10px;">${esc(
-        item.title || item.name
-      )}</h3>
-          <p style="color:${MUTED};line-height:1.72;font-size:1rem;margin:0;">${esc(
-        item.description || item.body
-      )}</p>
-        </article>`
-    ).join("")}
-    </div>`);
-  }
-  return wrap(`<div class="feature-bento" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;">
-      ${items.map((item, index) => {
-    const span = index === 0 ? "span 2" : index % 3 === 0 ? "span 2" : "span 1";
-    return `<article class="hover-lift" style="grid-column:${span};background:${SURF};border:1px solid ${OUTLINE};border-radius:${radius};padding:38px;">
-            <div style="font-family:'${typography.heading}',serif;font-size:2.4rem;color:${P};opacity:.42;margin-bottom:16px;">${String(
-      index + 1
-    ).padStart(2, "0")}</div>
-            <h3 style="font-family:'${typography.heading}',serif;font-size:2rem;line-height:.98;letter-spacing:-.035em;color:${TEXT};margin:0 0 12px;">${esc(
-      item.title || item.name
-    )}</h3>
-            <p style="color:${MUTED};line-height:1.72;font-size:1.03rem;margin:0;">${esc(
-      item.description || item.body
-    )}</p>
-          </article>`;
-  }).join("")}
-    </div>`);
 }
-function renderGallery(section, context) {
-  const { typography, TEXT, MUTED, sectionBg, radius } = context;
-  const items = getSectionItems(section).slice(0, 5);
-  const title = getSectionValue(section, ["title", "headline"], "Inside The Experience");
-  const intro = getSectionValue(
-    section,
-    ["subheadline", "description"],
-    "A visual sense of the work, atmosphere, and detail behind the brand."
-  );
-  const variant = normalizeVariant(section, "editorial-mosaic");
-  if (variant === "stacked-collage" || variant === "collage") {
+function renderAdaptiveGallery(section, ctx) {
+  const curatedList = selectBestImages(ctx.curatedImages, 4, 45);
+  const title = getSectionValue(section, ["title", "headline"], "Showcase");
+  const intro = getSectionValue(section, ["subheadline", "description"], "Visual perspectives of our craft and service execution.");
+  const spacing = getSpacingStyles(ctx);
+  const motion = getMotionClasses(ctx.motionStyle);
+  const imgTreatment = ctx.imageTreatment || "floatingDepth";
+  const isLowMedia = ctx.dna.imageWeight < 30 || curatedList.length === 0;
+  if (isLowMedia) {
     return `<!-- wp:html -->
-<section class="section-padding" style="background:${sectionBg};">
+<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
+  <div class="ambient-glow-glow" style="top:20%;right:10%;"></div>
+  <div class="section-shell ${motion} delay-1" style="max-width:1080px;text-align:center;">
+    <div class="eyebrow">Philosophies</div>
+    <h2 class="section-title" style="font-size:clamp(2.4rem,6.5vw,5rem);line-height:0.95;margin-bottom:34px;font-weight:800;">
+      Crafting details with <span class="text-gradient">high-precision</span> local care.
+    </h2>
+    <p style="max-width:680px;margin:0 auto var(--space-lg);font-size:1.2rem;color:var(--muted);line-height:1.72;">
+      ${esc(intro)}
+    </p>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
+  if (ctx.layoutBehavior === "offset-right" || ctx.dna.cinematicScore > 65) {
+    const img1 = getCinematicImageHtml(curatedList[0], imgTreatment, ctx, "width:100%;height:460px;");
+    const img2 = curatedList[1] ? getCinematicImageHtml(curatedList[1], imgTreatment, ctx, "width:100%;height:220px;") : "";
+    const img3 = curatedList[2] ? getCinematicImageHtml(curatedList[2], imgTreatment, ctx, "width:100%;height:220px;") : "";
+    return `<!-- wp:html -->
+<section style="background:var(--bg);${spacing};overflow:hidden;" class="noise-overlay-bg">
   <div class="section-shell">
-    <div style="margin-bottom:56px;">
-      <div class="eyebrow">Gallery</div>
+    <div style="margin-bottom:var(--space-md);max-width:700px;">
+      <div class="eyebrow">Gallery Portfolio</div>
       <h2 class="section-title">${esc(title)}</h2>
       <p class="section-copy">${esc(intro)}</p>
     </div>
-    <div class="gallery-stack" style="display:grid;grid-template-columns:1.2fr .8fr;gap:20px;align-items:start;">
-      <div style="display:grid;gap:20px;">
-        <figure class="hover-lift" style="margin:0;overflow:hidden;border-radius:${radius};"><img src="${esc(
-      items[0]?.src || items[0]?.url || ""
-    )}" alt="${esc(items[0]?.alt || title)}" style="width:100%;aspect-ratio:4/5;object-fit:cover;" /></figure>
-        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;">
-          ${items.slice(1, 3).map(
-      (item) => `<figure class="hover-lift" style="margin:0;overflow:hidden;border-radius:${radius};"><img src="${esc(
-        item?.src || item?.url || ""
-      )}" alt="${esc(item?.alt || title)}" style="width:100%;aspect-ratio:1/1;object-fit:cover;" /></figure>`
-    ).join("")}
-        </div>
+    <div class="gallery-stack" style="display:grid;grid-template-columns:1.15fr .85fr;gap:var(--space-md);align-items:center;">
+      <div class="${motion} delay-1">
+        ${img1}
       </div>
-      <div style="display:grid;gap:20px;">
-        ${items.slice(3, 5).map(
-      (item) => `<figure class="hover-lift" style="margin:0;overflow:hidden;border-radius:${radius};"><img src="${esc(
-        item?.src || item?.url || ""
-      )}" alt="${esc(item?.alt || title)}" style="width:100%;aspect-ratio:${item === items[3] ? "3/4" : "1/1"};object-fit:cover;" /></figure>`
-    ).join("")}
+      <div style="display:grid;grid-template-columns:1fr;gap:20px;" class="${motion} delay-2">
+        ${img2}
+        ${img3}
       </div>
     </div>
   </div>
@@ -1093,23 +1442,25 @@ function renderGallery(section, context) {
 `;
   }
   return `<!-- wp:html -->
-<section class="section-padding" style="background:${sectionBg};">
+<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
   <div class="section-shell">
-    <div style="display:flex;justify-content:space-between;align-items:end;gap:28px;flex-wrap:wrap;margin-bottom:56px;">
+    <div style="display:flex;justify-content:space-between;align-items:end;gap:var(--space-md);flex-wrap:wrap;margin-bottom:var(--space-lg);">
       <div>
-        <div class="eyebrow">Gallery</div>
+        <div class="eyebrow">Works</div>
         <h2 class="section-title">${esc(title)}</h2>
       </div>
-      <p class="section-copy">${esc(intro)}</p>
+      <p class="section-copy" style="max-width:540px;">${esc(intro)}</p>
     </div>
-    <div class="gallery-editorial" style="display:grid;grid-template-columns:1.05fr .95fr .75fr;gap:20px;align-items:start;">
-      ${items.map(
-    (item, index) => `<figure class="hover-lift" style="margin:0;overflow:hidden;border-radius:${radius};grid-column:${index === 0 ? "span 2" : "span 1"};">
-          <img src="${esc(item?.src || item?.url || "")}" alt="${esc(
-      item?.alt || title
-    )}" style="width:100%;aspect-ratio:${index === 0 ? "16/10" : index % 2 === 0 ? "4/5" : "1/1"};object-fit:cover;" />
-        </figure>`
-  ).join("")}
+    <div class="gallery-editorial" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;">
+      ${curatedList.map((item, idx) => {
+    const offset = ctx.dna.asymmetryLevel > 60 && idx % 2 === 0 ? "margin-top: -15px;" : "";
+    const imgH = getCinematicImageHtml(item, imgTreatment, ctx, "width:100%;height:320px;");
+    return `
+        <div class="${motion} ${idx === 0 ? "delay-1" : idx === 1 ? "delay-2" : "delay-3"}" style="${offset} overflow:hidden;">
+          ${imgH}
+        </div>
+      `;
+  }).join("")}
     </div>
   </div>
 </section>
@@ -1117,87 +1468,36 @@ function renderGallery(section, context) {
 
 `;
 }
-function renderTestimonials(section, context) {
-  const { typography, P, TEXT, MUTED, sectionBg, SURF, OUTLINE, radius } = context;
+function renderAdaptiveTestimonials(section, ctx) {
   const items = getSectionItems(section);
-  const title = getSectionValue(section, ["title", "headline"], "What Clients Say");
-  const variant = normalizeVariant(section, "floating-cards");
-  if (variant === "editorial-quotes" || variant === "spotlight") {
-    const lead = items[0];
-    const supporting = items.slice(1);
-    return `<!-- wp:html -->
-<section class="section-padding" style="background:${sectionBg};">
-  <div class="section-shell">
-    <div style="margin-bottom:56px;text-align:center;">
-      <div class="eyebrow">Testimonials</div>
-      <h2 class="section-title">${esc(title)}</h2>
-    </div>
-    <div class="testimonial-featured" style="display:grid;grid-template-columns:1.15fr .85fr;gap:24px;">
-      <article class="hover-lift" style="background:${SURF};border:1px solid ${OUTLINE};border-radius:${radius};padding:42px;">
-        <div style="font-family:'${typography.heading}',serif;font-size:5rem;color:${P};opacity:.16;line-height:.7;">\u201C</div>
-        <p style="font-size:1.36rem;line-height:1.72;color:${TEXT};margin:-14px 0 22px;">${esc(
-      lead?.quote || ""
-    )}</p>
-        <div style="display:flex;align-items:center;gap:14px;">
-          <div style="width:50px;height:50px;border-radius:999px;background:${P};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;">${esc(
-      (lead?.author || "A").charAt(0)
-    )}</div>
-          <div><div style="font-weight:700;color:${TEXT};">${esc(
-      lead?.author || "Client"
-    )}</div><div style="font-size:.82rem;color:${MUTED};text-transform:uppercase;letter-spacing:.16em;">${esc(
-      lead?.role || "Verified Client"
-    )}</div></div>
-        </div>
-      </article>
-      <div style="display:grid;gap:20px;">
-        ${supporting.map(
-      (item) => `<article class="glass hover-lift" style="padding:28px;border-radius:${radius};">
-            <p style="font-size:1.02rem;line-height:1.72;color:${TEXT};margin:0 0 14px;">${esc(
-        item?.quote || ""
-      )}</p>
-            <div style="font-weight:700;color:${TEXT};">${esc(
-        item?.author || "Client"
-      )}</div>
-            <div style="font-size:.78rem;color:${P};text-transform:uppercase;letter-spacing:.16em;">${esc(
-        item?.role || "Verified Client"
-      )}</div>
-          </article>`
-    ).join("")}
-      </div>
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-  }
+  const title = getSectionValue(section, ["title", "headline"], "Endorsements");
+  const spacing = getSpacingStyles(ctx);
+  const motion = getMotionClasses(ctx.motionStyle);
+  const depth = getDepthStyles(ctx.visualDepth, ctx);
   return `<!-- wp:html -->
-<section class="section-padding" style="background:${sectionBg};">
+<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
   <div class="section-shell">
-    <div style="margin-bottom:56px;text-align:center;">
-      <div class="eyebrow">Testimonials</div>
+    <div style="text-align:center;margin-bottom:var(--space-lg);">
+      <div class="eyebrow">Endorsements</div>
       <h2 class="section-title">${esc(title)}</h2>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px;">
-      ${items.map(
-    (item) => `<article class="glass hover-lift" style="padding:34px;border-radius:${radius};position:relative;">
-          <div style="font-family:'${typography.heading}',serif;font-size:4rem;color:${P};opacity:.12;line-height:.7;margin-bottom:10px;">\u201C</div>
-          <p style="font-size:1.06rem;line-height:1.74;color:${TEXT};margin:0 0 18px;">${esc(
-      item?.quote || ""
-    )}</p>
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div style="width:44px;height:44px;border-radius:999px;background:${P};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;">${esc(
-      (item?.author || "A").charAt(0)
-    )}</div>
+    <div class="testimonial-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:var(--space-md);">
+      ${items.map((item, idx) => {
+    const offset = ctx.dna.asymmetryLevel > 50 && idx % 3 === 1 ? "transform: translateY(-10px);" : "";
+    return `
+        <article class="${motion} ${idx % 3 === 0 ? "delay-1" : idx % 3 === 1 ? "delay-2" : "delay-3"} hover-lift" style="${depth} ${offset} padding:36px;border-radius:var(--radius-lg);position:relative;">
+          <div style="font-family:'${ctx.typography.heading}',serif;font-size:3.2rem;color:var(--accent);opacity:0.22;line-height:0.7;margin-bottom:6px;">\u201C</div>
+          <p style="font-size:1.04rem;line-height:1.72;color:var(--text);margin:0 0 22px;font-style:italic;">${esc(item.quote || "")}</p>
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="width:40px;height:40px;border-radius:var(--radius-full);background:var(--primary);color:${ctx.dna.cinematicScore > 65 || ctx.visualAtmosphere === "cinematic-darkness" ? "#000" : "#fff"};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.9rem;">${esc((item.author || "C").charAt(0))}</div>
             <div>
-              <div style="font-weight:700;color:${TEXT};">${esc(item?.author || "Client")}</div>
-              <div style="font-size:.78rem;color:${MUTED};text-transform:uppercase;letter-spacing:.16em;">${esc(
-      item?.role || "Verified Client"
-    )}</div>
+              <div style="font-weight:800;color:var(--text);font-size:0.95rem;">${esc(item.author || "Client")}</div>
+              <div style="font-size:0.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">${esc(item.role || "Verified Customer")}</div>
             </div>
           </div>
-        </article>`
-  ).join("")}
+        </article>
+      `;
+  }).join("")}
     </div>
   </div>
 </section>
@@ -1205,55 +1505,29 @@ function renderTestimonials(section, context) {
 
 `;
 }
-function renderFaq(section, context) {
-  const { typography, P, TEXT, MUTED, sectionBg, SURF, OUTLINE, radius } = context;
+function renderAdaptiveFaq(section, ctx) {
   const items = getSectionItems(section);
-  const title = getSectionValue(section, ["title", "headline"], "Common Questions");
-  const variant = normalizeVariant(section, "cards");
-  if (variant === "split-columns" || variant === "grid") {
-    return `<!-- wp:html -->
-<section class="section-padding" style="background:${sectionBg};">
-  <div class="section-shell">
-    <div style="margin-bottom:56px;text-align:center;">
-      <div class="eyebrow">FAQ</div>
-      <h2 class="section-title">${esc(title)}</h2>
-    </div>
-    <div class="faq-split" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;">
-      ${items.map(
-      (item) => `<article class="hover-lift" style="background:${SURF};border:1px solid ${OUTLINE};border-radius:${radius};padding:28px;">
-          <h4 style="font-family:'${typography.heading}',serif;font-size:1.42rem;letter-spacing:-.02em;color:${TEXT};margin:0 0 10px;">${esc(
-        item?.question || item?.title || ""
-      )}</h4>
-          <p style="font-size:1rem;line-height:1.7;color:${MUTED};margin:0;">${esc(
-        item?.answer || item?.description || ""
-      )}</p>
-        </article>`
-    ).join("")}
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-  }
+  const title = getSectionValue(section, ["title", "headline"], "Support FAQs");
+  const spacing = getSpacingStyles(ctx);
+  const motion = getMotionClasses(ctx.motionStyle);
+  const depth = getDepthStyles(ctx.visualDepth, ctx);
   return `<!-- wp:html -->
-<section class="section-padding" style="background:${sectionBg};">
-  <div class="section-shell" style="max-width:1080px;">
-    <div style="margin-bottom:44px;text-align:center;">
-      <div class="eyebrow">FAQ</div>
+<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
+  <div class="section-shell" style="max-width:900px;">
+    <div style="text-align:center;margin-bottom:var(--space-lg);">
+      <div class="eyebrow">FAQs</div>
       <h2 class="section-title">${esc(title)}</h2>
     </div>
-    <div style="display:grid;gap:14px;">
-      ${items.map(
-    (item) => `<details class="glass hover-lift" style="padding:24px 28px;border-radius:${radius};">
-          <summary style="cursor:pointer;font-weight:700;font-size:1.04rem;color:${TEXT};list-style:none;">${esc(
-      item?.question || item?.title || ""
-    )}</summary>
-          <p style="font-size:1rem;line-height:1.72;color:${MUTED};margin:14px 0 0;">${esc(
-      item?.answer || item?.description || ""
-    )}</p>
-        </details>`
-  ).join("")}
+    <div style="display:grid;gap:16px;">
+      ${items.map((item, idx) => `
+        <details class="${motion} ${idx % 2 === 0 ? "delay-1" : "delay-2"}" style="${depth} padding:22px 28px;border-radius:var(--radius-md);cursor:pointer;">
+          <summary style="font-weight:800;font-size:1.06rem;color:var(--text);outline:none;list-style:none;display:flex;justify-content:space-between;align-items:center;">
+            <span>${esc(item.question || item.title)}</span>
+            <span style="font-size:1.2rem;color:var(--accent);font-weight:800;">+</span>
+          </summary>
+          <p style="margin:14px 0 0;line-height:1.72;color:var(--muted);font-size:0.98rem;cursor:default;">${esc(item.answer || item.description)}</p>
+        </details>
+      `).join("")}
     </div>
   </div>
 </section>
@@ -1261,120 +1535,55 @@ function renderFaq(section, context) {
 
 `;
 }
-function renderCta(section, context) {
-  const { typography, P, TEXT, ACCENT, radius } = context;
-  const title = getSectionValue(section, ["title", "headline"], "Ready To Take The Next Step?");
-  const body = getSectionValue(
-    section,
-    ["body", "description", "subheadline"],
-    "Reach out and start the conversation."
-  );
-  const label = getSectionValue(section, ["buttonLabel"], "Contact Us");
+function renderAdaptiveCta(section, ctx) {
+  const title = getSectionValue(section, ["title", "headline"], "Let's Get Started");
+  const body = getSectionValue(section, ["body", "description"], "Contact us today for a premium custom consulting consultation.");
+  const label = getSectionValue(section, ["buttonLabel"], "Connect Now");
   const href = getSectionValue(section, ["buttonHref"], "#contact");
-  const variant = normalizeVariant(section, "gradient-band");
-  if (variant === "split-card" || variant === "side-by-side") {
-    return `<!-- wp:html -->
-<section class="section-padding" style="background:linear-gradient(135deg,rgba(${hexToRgb(
-      P
-    )},.14),rgba(${hexToRgb(
-      ACCENT
-    )},.18));">
-  <div class="section-shell cta-split" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:30px;align-items:center;background:#fff;border:1px solid rgba(${hexToRgb(
-      P
-    )},.12);border-radius:${radius};padding:42px;">
-    <div>
-      <div class="eyebrow">Call To Action</div>
-      <h2 class="section-title" style="margin-top:18px;">${esc(title)}</h2>
-      <p class="section-copy">${esc(body)}</p>
-    </div>
-    <div>${buttonHtml(label, href)}</div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-  }
+  const spacing = getSpacingStyles(ctx);
+  const motion = getMotionClasses(ctx.motionStyle);
   return `<!-- wp:html -->
-<section class="section-padding" style="background:linear-gradient(135deg,${P},${ACCENT});position:relative;overflow:hidden;">
-  <div class="shape-orb" style="width:220px;height:220px;top:-60px;right:-40px;background:rgba(255,255,255,.12)"></div>
-  <div class="shape-orb" style="width:180px;height:180px;bottom:-40px;left:-50px;background:rgba(255,255,255,.08)"></div>
-  <div class="section-shell animate-up" style="text-align:center;position:relative;z-index:2;max-width:900px;">
-    <div class="eyebrow" style="background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.18);color:#fff">Call To Action</div>
-    <h2 style="font-family:'${typography.heading}',serif;font-size:clamp(2.8rem,6vw,5rem);line-height:.92;letter-spacing:-.05em;color:#fff;margin:24px 0 16px;">${esc(
-    title
-  )}</h2>
-    <p style="font-size:1.18rem;line-height:1.72;color:rgba(255,255,255,.86);max-width:640px;margin:0 auto 32px;">${esc(
-    body
-  )}</p>
-    ${buttonHtml(
-    label,
-    href,
-    `background:#fff!important;color:${P}!important;border-radius:${radius}!important`
-  )}
+<section style="background:linear-gradient(135deg, var(--primary), var(--accent));position:relative;overflow:hidden;${spacing}">
+  <div class="ambient-glow-glow" style="top:-90px;right:-90px;width:350px;height:350px;opacity:0.35;"></div>
+  <div class="section-shell ${motion} delay-1" style="text-align:center;max-width:850px;z-index:2;">
+    <div class="eyebrow" style="background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.18);">Connect</div>
+    <h2 style="font-family:'${ctx.typography.heading}',serif;font-size:var(--text-section);color:#fff;line-height:1.04;letter-spacing:-.04em;margin:22px 0 16px;font-weight:900;">${esc(title)}</h2>
+    <p style="color:rgba(255,255,255,0.8);font-size:1.1rem;line-height:1.72;margin:0 auto var(--space-md);max-width:640px;">${esc(body)}</p>
+    ${buttonHtml(label, href, `background:#fff!important;color:var(--primary)!important;box-shadow:none!important;border-radius:var(--radius-md)!important;`)}
   </div>
 </section>
 <!-- /wp:html -->
 
 `;
 }
-function renderContact(section, context) {
-  const { typography, P, TEXT, MUTED, sectionBg, SURF, OUTLINE, radius, brand } = context;
-  const title = getSectionValue(section, ["title", "headline"], "Visit Or Reach Out");
-  const body = getSectionValue(
-    section,
-    ["body", "description", "subheadline"],
-    "We're ready when you are."
-  );
-  const variant = normalizeVariant(section, "split-card");
-  const contactFacts = [
-    brand.phone ? `<div><div style="font-size:.74rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:${P};margin-bottom:8px;">Phone</div><div style="font-size:1.18rem;color:${TEXT};">${esc(
-      brand.phone
-    )}</div></div>` : "",
-    brand.email && brand.email.includes("@") && !/^none|n\/a$/i.test(brand.email) ? `<div><div style="font-size:.74rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:${P};margin-bottom:8px;">Email</div><div style="font-size:1.18rem;color:${TEXT};">${esc(
-      brand.email
-    )}</div></div>` : "",
-    brand.address ? `<div><div style="font-size:.74rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:${P};margin-bottom:8px;">Address</div><div style="font-size:1.06rem;line-height:1.68;color:${TEXT};">${esc(
-      brand.address
-    )}</div></div>` : ""
+function renderAdaptiveContact(section, ctx) {
+  const title = getSectionValue(section, ["title", "headline"], "Get in Touch");
+  const body = getSectionValue(section, ["body", "description"], "We would love to hear from you. Send us a message.");
+  const spacing = getSpacingStyles(ctx);
+  const motion = getMotionClasses(ctx.motionStyle);
+  const depth = getDepthStyles(ctx.visualDepth, ctx);
+  const brand = ctx.brand;
+  const contactItems = [
+    brand.phone ? `<div style="margin-bottom:20px;"><div style="font-size:0.72rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);margin-bottom:4px;">Phone</div><div style="font-size:1.1rem;color:var(--text);font-weight:600;">${esc(brand.phone)}</div></div>` : "",
+    brand.email && brand.email.includes("@") && !/^none|n\/a$/i.test(brand.email) ? `<div style="margin-bottom:20px;"><div style="font-size:0.72rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);margin-bottom:4px;">Email</div><div style="font-size:1.1rem;color:var(--text);font-weight:600;">${esc(brand.email)}</div></div>` : "",
+    brand.address ? `<div style="margin-bottom:20px;"><div style="font-size:0.72rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);margin-bottom:4px;">Address</div><div style="font-size:1.02rem;line-height:1.6;color:var(--text);font-weight:500;">${esc(brand.address)}</div></div>` : ""
   ].filter(Boolean).join("");
-  if (variant === "minimal-centered" || variant === "centered") {
-    return `<!-- wp:html -->
-<section id="contact" class="section-padding" style="background:${sectionBg};">
-  <div class="section-shell" style="max-width:960px;text-align:center;">
-    <div class="eyebrow">Contact</div>
-    <h2 class="section-title" style="margin-top:18px;">${esc(title)}</h2>
-    <p class="section-copy" style="margin:0 auto 34px;">${esc(body)}</p>
-    <div style="display:grid;gap:18px;justify-items:center;">
-      ${contactFacts}
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-  }
   return `<!-- wp:html -->
-<section id="contact" class="section-padding" style="background:${sectionBg};">
-  <div class="section-shell contact-grid" style="display:grid;grid-template-columns:minmax(0,.9fr) minmax(340px,.8fr);gap:28px;align-items:start;">
-    <div class="animate-up">
-      <div class="eyebrow">Contact</div>
-      <h2 class="section-title" style="margin-top:18px;">${esc(title)}</h2>
-      <p class="section-copy" style="margin-bottom:32px;">${esc(body)}</p>
-      <div style="display:grid;gap:24px;">${contactFacts}</div>
+<section id="contact" style="background:var(--bg);${spacing}" class="noise-overlay-bg">
+  <div class="section-shell contact-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-xl);align-items:center;">
+    <div class="${motion} delay-1">
+      <div class="eyebrow">Reach Out</div>
+      <h2 class="section-title">${esc(title)}</h2>
+      <p class="section-copy" style="margin-bottom:34px;">${esc(body)}</p>
+      <div style="display:grid;">${contactItems}</div>
     </div>
-    <div class="glass animate-scale" style="padding:32px;border-radius:${radius};">
-      <h3 style="font-family:'${typography.heading}',serif;font-size:1.9rem;letter-spacing:-.03em;color:${TEXT};margin:0 0 18px;">Send A Message</h3>
+    <div class="${motion} delay-2 hover-lift" style="${depth} padding:40px;border-radius:var(--radius-lg);">
+      <h3 style="font-family:'${ctx.typography.heading}',serif;font-size:1.8rem;color:var(--text);margin:0 0 20px;font-weight:700;">Submit Inquiry</h3>
       <div style="display:grid;gap:14px;">
-        <div style="height:54px;border-radius:14px;background:rgba(${hexToRgb(
-    P
-  )},.06);border:1px solid ${OUTLINE};"></div>
-        <div style="height:54px;border-radius:14px;background:rgba(${hexToRgb(
-    P
-  )},.06);border:1px solid ${OUTLINE};"></div>
-        <div style="height:148px;border-radius:14px;background:rgba(${hexToRgb(
-    P
-  )},.06);border:1px solid ${OUTLINE};"></div>
-        <div style="margin-top:6px;">${buttonHtml("Send Enquiry", "#")}</div>
+        <div style="height:48px;border-radius:var(--radius-sm);background:rgba(0,0,0,0.015);border:1px solid var(--outline);"></div>
+        <div style="height:48px;border-radius:var(--radius-sm);background:rgba(0,0,0,0.015);border:1px solid var(--outline);"></div>
+        <div style="height:110px;border-radius:var(--radius-sm);background:rgba(0,0,0,0.015);border:1px solid var(--outline);"></div>
+        ${buttonHtml("Send Inquiry", "#")}
       </div>
     </div>
   </div>
@@ -1382,6 +1591,137 @@ function renderContact(section, context) {
 <!-- /wp:html -->
 
 `;
+}
+function renderAdaptiveExtra(section, ctx) {
+  const items = getSectionItems(section);
+  const title = getSectionValue(section, ["title", "headline"], "Performance");
+  const spacing = getSpacingStyles(ctx);
+  const motion = getMotionClasses(ctx.motionStyle);
+  const depth = getDepthStyles(ctx.visualDepth, ctx);
+  if (ctx.layoutBehavior === "side-by-side" || ctx.dna.luxuryScore > 60) {
+    return `<!-- wp:html -->
+<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
+  <div class="section-shell">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:var(--space-md);text-align:center;">
+      ${items.map((item, idx) => `
+        <div class="${motion} ${idx % 3 === 0 ? "delay-1" : idx % 3 === 1 ? "delay-2" : "delay-3"}" style="${depth} padding:36px;border-radius:var(--radius-lg);">
+          <div style="font-family:'${ctx.typography.heading}',serif;font-size:3.5rem;color:var(--accent);font-weight:800;margin-bottom:8px;">${esc(item.title || "100%")}</div>
+          <div style="font-size:0.88rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--text);font-weight:700;">${esc(item.description || item.name || "")}</div>
+        </div>
+      `).join("")}
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
+  return `<!-- wp:html -->
+<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
+  <div class="section-shell" style="max-width:900px;">
+    <div style="text-align:center;margin-bottom:var(--space-lg);">
+      <div class="eyebrow">Milestones</div>
+      <h2 class="section-title">${esc(title)}</h2>
+    </div>
+    <div style="position:relative;padding-left:40px;border-left:1px solid var(--outline);">
+      ${items.map((item, idx) => `
+        <div class="${motion} delay-1" style="position:relative;margin-bottom:var(--space-lg);">
+          <div style="position:absolute;left:-49px;top:4px;width:16px;height:16px;border-radius:var(--radius-full);background:var(--accent);border:3px solid var(--bg);"></div>
+          <h3 style="font-family:'${ctx.typography.heading}',serif;font-size:1.6rem;color:var(--text);margin:0 0 6px;font-weight:700;">${esc(item.title)}</h3>
+          <p style="color:var(--muted);line-height:1.7;font-size:0.98rem;margin:0;">${esc(item.description || item.body)}</p>
+        </div>
+      `).join("")}
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+}
+function getSpacingStyles(ctx) {
+  let bottomPadding = "var(--space-lg)";
+  if (ctx.hierarchyWeight === "breathing") {
+    bottomPadding = "var(--space-2xl)";
+  } else if (ctx.hierarchyWeight === "cinematicPause") {
+    return "padding: var(--space-2xl) 5% var(--space-2xl); gap: var(--space-xl);";
+  }
+  switch (ctx.spacingMode) {
+    case "luxury-editorial":
+      return `padding: var(--space-2xl) 5% ${bottomPadding}; gap: var(--space-xl);`;
+    case "airy":
+      return `padding: var(--space-xl) 5% ${bottomPadding}; gap: var(--space-lg);`;
+    case "compact":
+      return "padding: var(--space-md) 4%; gap: var(--space-sm);";
+    case "balanced":
+    default:
+      return `padding: var(--space-lg) 5% ${bottomPadding}; gap: var(--space-md);`;
+  }
+}
+function getMotionClasses(motionStyle) {
+  switch (motionStyle) {
+    case "cinematicReveal":
+      return "scroll-reveal cinematic-reveal";
+    case "staggerLift":
+      return "scroll-reveal stagger-lift";
+    case "editorialSlide":
+      return "scroll-reveal editorial-slide";
+    case "luxuryGlow":
+      return "scroll-reveal luxury-glow-reveal";
+    case "premiumFade":
+    default:
+      return "scroll-reveal premium-fade";
+  }
+}
+function getDepthStyles(visualDepth, ctx) {
+  const rgbBg = hexToRgb(ctx.BG);
+  const rgbText = hexToRgb(ctx.TEXT);
+  switch (visualDepth) {
+    case "glassmorphic":
+      return `background: rgba(${rgbBg}, 0.74) !important; backdrop-filter: blur(20px) !important; border: 1px solid rgba(${rgbText}, 0.06) !important; box-shadow: var(--shadow-premium) !important;`;
+    case "frosted-glow":
+      return `background: rgba(${rgbBg}, 0.62) !important; backdrop-filter: blur(15px) !important; border: 1px solid rgba(${rgbText}, 0.04) !important; box-shadow: var(--shadow-intense) !important;`;
+    case "dramatic-depth":
+      return `background: ${ctx.SURF} !important; border: 2px solid ${ctx.P} !important; box-shadow: var(--shadow-premium) !important;`;
+    case "flat-minimalist":
+      return `background: transparent !important; border: none !important; box-shadow: none !important; border-bottom: 1px solid ${ctx.OUTLINE} !important;`;
+    case "layered-atmospheric":
+    default:
+      return `background: ${ctx.SURF} !important; border: 1px solid ${ctx.OUTLINE} !important; box-shadow: var(--shadow-soft) !important;`;
+  }
+}
+function getImageTreatmentStyles(treatment, ctx) {
+  let container = "";
+  let image = "";
+  switch (treatment) {
+    case "editorialCrop":
+      container = `border-radius: 200px 200px 0 0 !important; clip-path: ellipse(50% 50% at 50% 50%);`;
+      break;
+    case "layeredGlass":
+      container = `border: 6px solid ${ctx.SURF} !important; box-shadow: var(--shadow-premium), 0 0 0 1px rgba(0,0,0,0.03) !important; transform: rotate(1deg);`;
+      break;
+    case "cinematicBleed":
+      container = `border-radius: 0px !important; width: 100% !important;`;
+      break;
+    case "atmosphericOverlay":
+      container = `box-shadow: var(--shadow-premium) !important; border-radius: var(--radius-md) !important;`;
+      break;
+    case "luxuryFrame":
+      container = `border: 1px solid ${ctx.OUTLINE} !important; padding: var(--space-xs) !important; background: ${ctx.SURF} !important; box-shadow: var(--shadow-soft) !important;`;
+      break;
+    case "brutalistSharp":
+      container = `border: 2px solid var(--primary) !important; border-radius: 0px !important; box-shadow: var(--shadow-premium) !important;`;
+      break;
+    case "floatingDepth":
+    default:
+      container = `box-shadow: var(--shadow-premium) !important; border-radius: var(--radius-md) !important; transform: translateY(-4px);`;
+      break;
+  }
+  return { container, image };
+}
+function buttonHtml(label, href, style = "") {
+  return `<a class="wp-block-button__link wp-element-button hover-lift" href="${esc(
+    href || "#contact"
+  )}" style="${style}">${esc(label)}</a>`;
 }
 var init_premium_site_builder = __esm({
   "src/lib/premium-site-builder.ts"() {
@@ -1459,28 +1799,11 @@ function validateWebsiteSchema(schema) {
       section.type = type;
       const normalizeValue = (value) => (value || "").toString().toLowerCase();
       const validateLayout = (layout, variant, allowed, variantAllowed, fallback) => {
-        const normalizedLayout = normalizeValue(layout);
-        const normalizedVariant = normalizeValue(variant);
-        const layoutValid = allowed.includes(normalizedLayout);
-        const variantValid = variantAllowed.includes(normalizedVariant);
-        if (layoutValid) {
-          section.layout = normalizedLayout;
-          return;
+        const finalLayout = layout || variant || fallback;
+        section.layout = finalLayout;
+        if (variant) {
+          section.variant = variant;
         }
-        if (variantValid) {
-          section.layout = normalizedVariant;
-          repairs.push(
-            `section_${index}_layout_repair: ${normalizedLayout || "(missing)"} -> ${normalizedVariant}`
-          );
-          return;
-        }
-        errors.push(
-          `Section ${index} (${type}): Invalid layout "${normalizedLayout || normalizedVariant || "(missing)"}"`
-        );
-        section.layout = fallback;
-        repairs.push(
-          `section_${index}_layout_repair: ${normalizedLayout || normalizedVariant || "(missing)"} -> ${fallback}`
-        );
       };
       switch (type) {
         case "hero":
@@ -1547,7 +1870,10 @@ function validateWebsiteSchema(schema) {
           );
           break;
         default:
-          errors.push(`Section ${index}: Unknown section type "${type}"`);
+          if (!section.layout) {
+            section.layout = "custom-block";
+          }
+          break;
       }
       if (!section.id) {
         section.id = `${type}-${index}`;
@@ -1556,27 +1882,6 @@ function validateWebsiteSchema(schema) {
       return section;
     }
   );
-  const sectionTypes = repairedSections.map((s) => s.type);
-  if (sectionTypes[0] !== "hero") {
-    errors.push("Layout sequencing error: Hero must be first");
-    const heroIdx = repairedSections.findIndex((s) => s.type === "hero");
-    if (heroIdx > 0) {
-      const hero = repairedSections.splice(heroIdx, 1)[0];
-      repairedSections.unshift(hero);
-      repairs.push("hero_moved_to_front");
-    }
-  }
-  if (sectionTypes[sectionTypes.length - 1] !== "contact") {
-    errors.push("Layout sequencing error: Contact must be last");
-    const contactIdx = repairedSections.findIndex(
-      (s) => s.type === "contact"
-    );
-    if (contactIdx >= 0 && contactIdx < repairedSections.length - 1) {
-      const contact = repairedSections.splice(contactIdx, 1)[0];
-      repairedSections.push(contact);
-      repairs.push("contact_moved_to_back");
-    }
-  }
   if (!schema.brand.businessName) errors.push("Missing businessName in brand");
   if (!schema.theme.brandDNA) errors.push("Missing brandDNA in theme");
   return {
@@ -3005,6 +3310,7 @@ async function pollQueue() {
 }
 
 // server.ts
+init_premium_site_builder();
 fs3.writeSync(
   2,
   `[BOOT] Server process starting at ${(/* @__PURE__ */ new Date()).toISOString()}
@@ -3136,6 +3442,278 @@ async function getSDKGenAI() {
   return new GoogleGenerativeAI(GENAI_KEY);
 }
 var GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_API_KEY;
+async function generateCreativeDirection(business, debugSession) {
+  const modelsToTry = [
+    { name: "gemini-flash-latest", timeoutMs: 45e3 },
+    { name: "gemini-flash-latest", timeoutMs: 45e3 }
+  ];
+  const buildImageBlock = (b) => {
+    const sources = typeof collectBusinessImages === "function" ? collectBusinessImages(b) : b.photos || [];
+    return sources.length ? sources.slice(0, 10).map((u, i) => `${i + 1}. ${u}`).join("\n") : "None";
+  };
+  const buildReviewsBlock = (b) => {
+    if (Array.isArray(b.reviews) && b.reviews.length) {
+      return b.reviews.slice(0, 5).map((r, i) => `${i + 1}. ${r.rating || ""} - ${r.text || r.comment || ""}`).join("\n");
+    }
+    return "None";
+  };
+  const prompt = `You are a premium Senior Staff Brand Director and Art Director.
+Your task is to analyze the local business data below and establish a highly custom, unique, and premium Creative Direction Brief.
+
+This brief will dictate the brand personality, visual identity, storytelling flow, composition style, and spacing pacing for their website. Avoid generic and repetitive templates at all costs.
+
+Business Context:
+- Name: ${business.name}
+- Category: ${business.category || "Local Service"}
+- Address: ${business.address || "N/A"}
+- Phone: ${business.phoneNumber || "N/A"}
+- Email: ${business.email || "N/A"}
+- Neighborhood / Vibe: ${business.neighborhood || business.vibe || "Unknown"}
+- Specialties: ${Array.isArray(business.specialties) ? business.specialties.join(", ") : business.specialties || "General"}
+- Tone: ${business.tone || "professional"}
+- Reviews:
+${buildReviewsBlock(business)}
+- Reference Images:
+${buildImageBlock(business)}
+
+INSTRUCTIONS:
+1. Infer the Business Personality along these six spectrums (score 0 to 100):
+   - luxuryVsApproachable (0 = extremely friendly/budget, 100 = high-end premium luxury)
+   - technicalVsEmotional (0 = emotional/sensory, 100 = precise/clinical/technical)
+   - modernVsHeritage (0 = timeless/heritage/vintage, 100 = bleeding-edge modern)
+   - industrialVsEditorial (0 = raw/structural/industrial, 100 = high-fashion editorial layout)
+   - minimalistVsLayered (0 = high-density sensory layered, 100 = clean ultra-minimalist)
+   - premiumVsEnergetic (0 = high-intensity energetic/playful, 100 = premium/restrained)
+
+2. Determine the Visual Theme Mode. Do NOT restrict to light themes. Choose the mode that fits best:
+   - "light": Warm-white, clean, high visibility. Best for medical, local cleaners, organic day-spas.
+   - "dark": Deep premium black, charcoal, or dark navy. Best for high-end cocktail bars, premium photography, high-end design agencies.
+   - "charcoal": Textured dark grays, industrial, cool silver accents. Best for fitness gyms, specialty coffee, architectural firms.
+   - "textured-neutral": Warm linen, eggshell, textured beige, soft taupe. Best for fine-dining restaurants, boutique hotels, artisan pottery.
+   - "high-contrast": Stark black and white, bold neon accents, raw layout. Best for energetic fitness clubs, boxing gyms, modern tattoo parlors.
+   - "atmospheric-gradient": Ethereal glassmorphism, glowing colorful background gradients. Best for digital brands, modern hair studios, dynamic creative spaces.
+
+3. Establish the Brand Concept and Art Direction Brief:
+   - emotionalTone (e.g. "Warm, slow-paced luxury" or "Raw, high-octane energetic speed")
+   - brandPersonalityDescription
+   - typographyMood (e.g. Serif headings + clean sans-serif body, or stark monospaced typography)
+   - headingFontFamily and bodyFontFamily pairings
+   - spacingRhythm: Choose "airy" (generous negative space, editorial spacing), "balanced" (standard premium spacing), or "compact" (dense, clean, high information density)
+   - layoutPacing (narrative flow pacing and section rhythm description)
+   - compositionPhilosophy (e.g., asymmetrical grids, layered overlapping elements, cinematic full-bleed sections, or centered balanced grids)
+   - mediaTreatment (how photos should be styled: round corners, arched frames, moody luxury shadow overlays)
+   - motionPersonality (interaction transition details)
+   - premiumReferences (specific real-world high-end design inspirations)
+   - atmosphericDirectionDescription
+
+4. Construct a Design Token Engine output specifically fitted for the category's visual design language:
+   - Spacing Scale: Choose responsive vertical intervals using relative sizing (e.g., clamp for section padding, and custom variables for element spacing matching spacing density).
+   - Typography Scale: Responsive header scales using fluid clamp() declarations.
+   - Radius System: Values from soft rounded shapes to sharp geometric cuts.
+   - Shadow System: Advanced layered box-shadow styles utilizing smooth transparency ramps.
+   - Texture System: Choose "grain", "noise", "backdrop-glass", or "none" with a CSS styleString descriptor.
+   - Animation Timing System: Choose premium custom cubic-bezier easing curves.
+   - Layering Depth System: Specify CSS z-index hierarchies.
+   - Gradient System: Inferred ambient background glows and brand highlights.
+
+Return ONLY a valid JSON object matching the following structure (no markdown, no backticks, no other text):
+{
+  "emotionalTone": "...",
+  "brandPersonality": {
+    "luxuryVsApproachable": 50,
+    "technicalVsEmotional": 50,
+    "modernVsHeritage": 50,
+    "industrialVsEditorial": 50,
+    "minimalistVsLayered": 50,
+    "premiumVsEnergetic": 50
+  },
+  "visualIdentity": {
+    "themeMode": "light",
+    "colorPalettePhilosophy": "...",
+    "primaryColorIntent": "...",
+    "accentColorIntent": "...",
+    "backgroundColorIntent": "...",
+    "surfaceColorIntent": "..."
+  },
+  "compositionPhilosophy": {
+    "alignment": "asymmetrical",
+    "layoutCadence": "...",
+    "spacingRhythm": "balanced",
+    "sectionTransitions": "..."
+  },
+  "typographyMood": {
+    "headingFontFamily": "...",
+    "bodyFontFamily": "...",
+    "moodDescriptor": "..."
+  },
+  "mediaTreatment": {
+    "style": "...",
+    "shapes": ["..."]
+  },
+  "motionAndInteractions": {
+    "personality": "subtle",
+    "feel": "..."
+  },
+  "premiumReferences": ["..."],
+  "atmosphericDirectionDescription": "...",
+  "designTokens": {
+    "spacingScale": {
+      "xs": "...",
+      "sm": "...",
+      "md": "...",
+      "lg": "...",
+      "xl": "...",
+      "xxl": "..."
+    },
+    "typographyScale": {
+      "heroHeadline": "clamp(...)",
+      "sectionHeadline": "clamp(...)",
+      "bodyText": "clamp(...)",
+      "headingFont": "...",
+      "bodyFont": "..."
+    },
+    "radiusSystem": {
+      "sm": "...",
+      "md": "...",
+      "lg": "...",
+      "full": "..."
+    },
+    "shadowSystem": {
+      "soft": "...",
+      "premium": "...",
+      "intense": "..."
+    },
+    "textureSystem": {
+      "mode": "grain",
+      "styleString": "..."
+    },
+    "animationTimingSystem": {
+      "easingCurve": "...",
+      "revealDuration": "..."
+    },
+    "layeringDepthSystem": {
+      "zBack": "...",
+      "zBase": "...",
+      "zOverlay": "..."
+    },
+    "colorRamp": {
+      "background": "...",
+      "surface": "...",
+      "primary": "...",
+      "accent": "...",
+      "text": "...",
+      "muted": "...",
+      "outline": "..."
+    },
+    "gradientSystem": {
+      "ambientLighting": "...",
+      "brandGradient": "..."
+    }
+  }
+}`;
+  let responseText = "";
+  let lastError = null;
+  for (const model of modelsToTry) {
+    try {
+      const restUrl = process.env.GEMINI_REST_URL;
+      const key = process.env.GEMINI_API_KEY || process.env.GENAI_KEY || GENAI_KEY;
+      if (restUrl && key) {
+        const modelRestUrl = restUrl.includes("{model}") ? restUrl.replace("{model}", model.name) : restUrl;
+        const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
+        const fetchResponse = await Promise.race([
+          fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                temperature: 0.85,
+                maxOutputTokens: 2048
+              }
+            })
+          }),
+          new Promise(
+            (_, reject) => setTimeout(() => reject(new Error(`Creative Direction timeout after ${model.timeoutMs}ms`)), model.timeoutMs)
+          )
+        ]);
+        if (!fetchResponse.ok) {
+          throw new Error(`REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`);
+        }
+        const data = await fetchResponse.json();
+        responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      } else {
+        const genAI = await getSDKGenAI();
+        if (!genAI) {
+          throw new Error("SDK not available");
+        }
+        const modelInstance = genAI.getGenerativeModel({ model: model.name });
+        const response = await Promise.race([
+          modelInstance.generateContent(prompt),
+          new Promise(
+            (_, reject) => setTimeout(() => reject(new Error(`Timeout after ${model.timeoutMs}ms`)), model.timeoutMs)
+          )
+        ]);
+        const result = await response.response;
+        responseText = result.text().trim();
+      }
+      if (responseText) {
+        break;
+      }
+    } catch (err) {
+      lastError = err;
+      console.error(`[Creative Direction] attempt failed for ${model.name}:`, err);
+    }
+  }
+  if (!responseText) {
+    throw lastError || new Error("Failed to generate creative direction");
+  }
+  try {
+    const cleaned = responseText.replace(/```json\s*/i, "").replace(/```\s*$/i, "").trim();
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error("[Creative Direction] JSON parse failed, returning fallback art brief", e);
+    return {
+      emotionalTone: "Warm, professional, trust-first",
+      brandPersonality: {
+        luxuryVsApproachable: 40,
+        technicalVsEmotional: 30,
+        modernVsHeritage: 50,
+        industrialVsEditorial: 30,
+        minimalistVsLayered: 40,
+        premiumVsEnergetic: 60
+      },
+      visualIdentity: {
+        themeMode: "light",
+        colorPalettePhilosophy: "Earthy modern elegance",
+        primaryColorIntent: "#1e3a8a",
+        accentColorIntent: "#3b82f6",
+        backgroundColorIntent: "#fafafa",
+        surfaceColorIntent: "#ffffff"
+      },
+      compositionPhilosophy: {
+        alignment: "balanced",
+        layoutCadence: "Clear vertical hierarchy, balanced visual weights",
+        spacingRhythm: "balanced",
+        sectionTransitions: "Clean margins with subtle boundaries"
+      },
+      typographyMood: {
+        headingFontFamily: "Outfit",
+        bodyFontFamily: "Inter",
+        moodDescriptor: "Clean and modern professional"
+      },
+      mediaTreatment: {
+        style: "bright-clean",
+        shapes: ["rounded"]
+      },
+      motionAndInteractions: {
+        personality: "subtle",
+        feel: "Fade transitions and quiet slide overlays"
+      },
+      premiumReferences: ["Apple", "Stripe Layouts"],
+      atmosphericDirectionDescription: "Clean, inviting, highly structured page layout"
+    };
+  }
+}
 var CALLHIPPO_API_KEY = process.env.CALLHIPPO_API_KEY;
 var WEBSITE_GENERATION_MODE = process.env.WEBSITE_GENERATION_MODE || "gemini";
 function extractEmails(html) {
@@ -3172,23 +3750,6 @@ function extractJsonObject(text) {
   const lastBrace = trimmed.lastIndexOf("}");
   if (firstBrace >= 0 && lastBrace > firstBrace) {
     return trimmed.slice(firstBrace, lastBrace + 1);
-  }
-  return null;
-}
-function extractHtmlDocument(text) {
-  if (!text) return null;
-  const trimmed = text.trim();
-  const fencedMatch = trimmed.match(/```(?:html)?\s*([\s\S]*?)\s*```/i);
-  if (fencedMatch?.[1]) {
-    const candidate = fencedMatch[1].trim();
-    if (candidate.includes("<")) return candidate;
-  }
-  if (trimmed.includes("<!-- wp:html -->") || trimmed.includes("<section") || trimmed.includes("<style")) {
-    return trimmed;
-  }
-  const firstTag = trimmed.indexOf("<");
-  if (firstTag >= 0) {
-    return trimmed.slice(firstTag);
   }
   return null;
 }
@@ -4779,6 +5340,13 @@ app.post("/api/generate", async (req, res) => {
       );
       return res.json(fallbackSchema);
     }
+    console.error(`[Generate] Generating Creative Direction stage 0...`);
+    const creativeDirection = await generateCreativeDirection(business, debugSession);
+    persistGenerationDebugFile(
+      debugSession,
+      "01a-creative-direction.json",
+      creativeDirection
+    );
     const buildImageBlock = (b) => {
       const sources = collectBusinessImages(b);
       return sources.length ? sources.map(
@@ -4798,104 +5366,98 @@ app.post("/api/generate", async (req, res) => {
     const specialties = Array.isArray(business.specialties) ? business.specialties.join(", ") : business.specialties || "General services";
     const tone = business.tone || "professional";
     const creativeSeed = `${business.id || "lead"}-${Date.now()}`;
-    const prompt = `You are generating a PREMIUM WORDPRESS HOMEPAGE schema for a real local business.
+    const dynamicVariationSeed = crypto2.randomUUID().slice(0, 8);
+    const variationBriefs = [
+      "Enforce an asymmetrical, high-end editorial composition. Avoid grids where every card is equal size; use offset cards or split layouts.",
+      "Enforce a clean, layered minimal aesthetic. Use large typography, generous negative margins, and overlapping media panels.",
+      "Enforce a cinematic, grid-forward dynamic layout. Mix bento cells (span layouts) with full-bleed atmospheric banners.",
+      "Enforce a highly structured, content-rich storytelling split layout. Alternate left-aligned text with large asymmetrical shapes."
+    ];
+    const chosenVariationBrief = variationBriefs[Math.abs(creativeSeed.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)) % variationBriefs.length];
+    const prompt = `You are generating a PREMIUM WORDPRESS HOMEPAGE schema for a real local business based on a custom-designed Creative Direction Brief.
 
-This output is used to create the final WordPress site. Optimize for the WordPress result, not for a generic preview.
+CREATIVE DIRECTION BRIEF:
+${JSON.stringify(creativeDirection, null, 2)}
 
 PRIMARY OBJECTIVE:
-- Make the site feel bespoke, premium, and clearly different from other businesses.
-- Use category-aware composition, specific service copy, and distinct section rhythm.
-- Avoid anything that feels like a safe local-business template.
+- Generate a highly bespoke, custom-themed WebsiteSchema that implements the Creative Direction Brief with extreme visual restraint, elegance, and emotional sophistication.
+- Think like a world-class human art director: favor generous breathing room (whitespace), architectural composition alignment, and calm, confident typography over over-designed layouts and decorative clutter.
+- Break free from templates. Create a unique pacing, visual flow, and section rhythm specifically suited for this business, prioritizing fewer, more high-impact sections over many repetitive ones.
+- Enforce the brand's visual identity (theme mode, color palette, custom gradients, typography pairing) with absolute consistency. Avoid excessive mutations or contrast mismatch.
+- Adopt a visual reference language suited perfectly to the business category:
+  * "Restoration / Construction": Cinematic industrial precision, architectural structural tension, and technical confidence.
+  * "Luxury Salon / Spa": Editorial elegance, airy premium warmth, soft hierarchies, and delicate linen/terracotta atmospheres.
+  * "Restaurant": Sensory intimacy, layered warm tones, and cinematic storytelling spacing.
+  * "Law Firm / Medical": Restrained authority, intelligent whitespace, minimal serif typography confidence, and clean outlines.
+  * "Gym / Fitness": Kinetic energy, high tension composition, but clean, well-spaced, non-chaotic layout blocks.
 
-ABSOLUTE RULES:
-- Light theme only. No black or charcoal backgrounds. No dark hero sections.
-- Return valid JSON only.
-- Do not use generic phrases like "designed to convert", "cutting-edge", "innovative", "best-in-class", or "one-stop shop".
-- Hero must be first. Contact must be last.
-- Sections 2-6 may be reordered for uniqueness.
-- If reference images are provided, use those exact URLs first for hero and gallery media.
-- Do not use unrelated stock imagery when real business photos are available.
-- Avoid the common local-business pattern of: split hero -> 3 cards -> simple gallery -> testimonials -> FAQ -> CTA -> contact unless the seed clearly justifies it.
-- Each site should feel like a different art direction, not a recolor of the same template.
+DYNAMIC SECTIONS & COMPOSITION ORCHESTRATION:
+- Do NOT use a standard, repetitive section structure.
+- You have full creative control over which sections exist, their sequence, and their hierarchy to optimize the brand's narrative.
+- You do NOT write raw HTML. Instead, you are the Creative Director and Orchestrator.
+- For EVERY section in the "sections" array, you MUST generate a highly custom "composition" object instructing our premium rendering engine how to build that section.
 
-SUPPORTED THEME ENUMS:
-- layout: "editorial" | "immersive" | "minimal" | "gallery-forward" | "split-screen"
-- buttonStyle: "pill" | "sharp" | "ghost"
-- surfaceStyle: "glass" | "solid" | "outline"
-- mediaShape: "rounded" | "arched" | "portrait" | "square"
-- density: "airy" | "balanced" | "compact"
-- accentMode: "neon" | "earthy" | "luxury" | "fresh"
+COMPOSITION DICTIONARY OPTIONS (Choose appropriate properties matching business category tone):
+"composition": {
+  "sectionType": Choose from [
+    "cinematicHero", "editorialHero", "splitNarrativeHero", 
+    "asymmetricalFeatures", "glassFeatureCards", "processNarrative", 
+    "immersiveGallery", "floatingImageStack", 
+    "floatingTestimonialWall", 
+    "layeredCTA", 
+    "luxuryMetricsStrip", "storytellingTimeline", "transformationShowcase", 
+    "premiumContactPanel", "accordionClean"
+  ],
+  "layoutBehavior": Choose from [
+    "offset-right", "offset-left", "grid-stagger", "asymmetrical", "side-by-side", "split-grid", "centered-dramatic"
+  ],
+  "visualDepth": Choose from [
+    "layered-atmospheric", "glassmorphic", "frosted-glow", "dramatic-depth", "flat-minimalist"
+  ],
+  "motionStyle": Choose from [
+    "premiumFade", "cinematicReveal", "staggerLift", "softFloat", "atmosphericParallax", "editorialSlide", "luxuryGlow"
+  ],
+  "imageTreatment": Choose from [
+    "layeredGlass", "editorialCrop", "cinematicBleed", "atmosphericOverlay", "luxuryFrame", "brutalistSharp", "floatingDepth"
+  ],
+  "spacingMode": Choose from [
+    "luxury-editorial", "balanced", "compact", "airy"
+  ],
+  "themeIntensity": Choose from [
+    "dramatic", "soft", "balanced", "high-contrast"
+  ],
+  "hierarchyWeight": Choose from [
+    "dominant", "supporting", "breathing", "cinematicPause", "transitionary"
+  ]
+}
 
-SUPPORTED SECTION VARIANTS:
-- hero.variant: "immersive" | "cinematic" | "editorial" | "editorial-split" | "magazine" | "centered" | "minimal" | "split"
-- features.variant: "bento" | "editorial-cards" | "editorial-list" | "alternating-stack" | "grid"
-- gallery.variant: "editorial-mosaic" | "stacked-collage" | "collage"
-- testimonials.variant: "floating-cards" | "editorial-quotes" | "spotlight"
-- faq.variant: "cards" | "split-columns" | "grid"
-- cta.variant: "gradient-band" | "split-card" | "side-by-side"
-- contact.variant: "split-card" | "minimal-centered" | "centered"
+UNIQUENESS ENFORCEMENT BRIEF:
+- Variation Seed: ${dynamicVariationSeed}
+- Layout Fingerprint Direction: ${chosenVariationBrief}
+- Ensure that the order of sections, the typography weights, the padding spacing cadence, and CTA structures actively avoid duplicating typical structures.
 
-REQUIRED SECTIONS:
-- hero
-- features
-- gallery
-- testimonials
-- faq
-- cta
-- contact
-
-SECTION CONTENT RULES:
-- hero:
-  - strong headline
-  - specific subheadline tied to the business
-  - ctaPrimary with action label and href "#contact"
-  - optional ctaSecondary with href "#services" or "#gallery"
-  - media { src, alt }
-- features:
-  - 3 to 5 items
-  - use real service names or believable category-specific offerings
-  - descriptions must be concrete, not hype
-- gallery:
-  - 3 to 5 images
-  - use provided business photos first when available
-  - do not substitute unrelated imagery if business photos already cover the scene, storefront, staff, work, or interior
-  - alt text must be descriptive
-- testimonials:
-  - 2 to 4 realistic quotes
-  - mention specific benefits or experiences
-- faq:
-  - 3 to 5 practical customer questions
-  - clear, grounded answers
-- cta:
-  - title
-  - body
-  - buttonLabel
-  - buttonHref "#contact"
-- contact:
-  - present the supplied business details professionally
-  - do not invent email addresses
-
-UNIQUENESS RULES:
-- Use this seed to make layout and pacing distinct: ${creativeSeed}
-- Do not make every site use the same hero, same feature grid, and same gallery arrangement.
-- Make section order, section variant choices, and tone visibly specific to the business.
-- Match the category:
-  - salon/spa: elegant, airy, editorial
-  - cafe/restaurant: warm, sensory, layered
-  - dental/medical: calm, precise, trust-first
-  - gym/fitness: energetic, bold, high contrast in layout
-  - dry cleaning/laundry: polished, crisp, reassuring
-  - real estate/property: architectural, image-led
-  - professional services: restrained, authoritative
-
-THEME RULES:
-- backgrounds and surfaces must be very light
-- text must be dark and readable
-- accents should feel premium and category-appropriate
-- typography should feel intentional
-- choose a distinct heading/body font pairing for this specific business
-- prefer visibly different composition, spacing rhythm, and section hierarchy from other sites in the same category
-- customCss is optional; include it only if it materially improves the final WordPress site
+THEME DESIGN SYSTEM:
+- Choose the theme mode determined in the Creative Direction Brief: "${creativeDirection.visualIdentity.themeMode}".
+- For "dark" or "charcoal" themes, backgrounds and surfaces should be deep, atmospheric, or textured, and text must be high-contrast light.
+- Derive all palette colors (background, surface, primary, accent, text, muted, outline) directly from the visualIdentity and brand personality intents.
+- Generative Design DNA: You MUST generate a "designDNA" object under "theme". This DNA system drives the adaptive visual rendering and mutation rules:
+  "designDNA": {
+    "spacingPersonality": Choose from ["compressed", "balanced", "airy", "luxury-editorial", "brutalist-dense"],
+    "compositionAggression": Number (0 to 100 representing layout mutation/offset levels),
+    "hierarchyIntensity": Number (0 to 100 representing font size scales & weight variance),
+    "motionEnergy": Number (0 to 100 representing stagger/speed timings),
+    "visualDensity": Number (0 to 100 representing complexity/content density),
+    "asymmetryLevel": Number (0 to 100 representing vertical alignment shifts and margins offsets),
+    "atmosphereIntensity": Number (0 to 100 representing ambient radial glow levels & noise opacity),
+    "typographyDominance": Choose from ["restrained", "balanced", "dominant-serif", "brutalist-impact", "cinematic-oversized", "layered-typography-walls", "vertical-accents"],
+    "imageWeight": Number (0 to 100 representing image coverage vs text layout),
+    "luxuryScore": Number (0 to 100 representing rounded smooth cards, high-end serif styling),
+    "cinematicScore": Number (0 to 100 representing dark themes, immersive split and bleed panels),
+    "brutalismScore": Number (0 to 100 representing blocky outlines, sharp text, raw structural elements),
+    "editorialScore": Number (0 to 100 representing warm neutral tones, spacious asymmetric structures),
+    "softnessScore": Number (0 to 100 representing rounded curves, fluid overlays, low-contrast shadows),
+    "visualAtmosphere": Choose from ["industrial-grit", "luxury-glow", "soft-editorial-warmth", "cinematic-darkness", "energetic-neon", "architectural-minimalism"]
+  }
 
 Business Context:
 - Name: ${business.name}
@@ -4924,16 +5486,7 @@ ${buildReviewsBlock(business)}
 Reference Images:
 ${buildImageBlock(business)}
 
-WORDPRESS RENDERING CONSTRAINTS (critical - this renders inside WordPress):
-- The HTML renderer must use inline styles for ALL layout-critical properties.
-- Choose section variants that render well with CSS grid and flexbox in isolation.
-- Avoid "immersive" or "cinematic" hero variants \u2014 full-bleed backgrounds fail in WordPress.
-- Prefer "editorial-split" or "editorial" for hero \u2014 these render most reliably.
-- Gallery variant "editorial-mosaic" must use exactly 3 images \u2014 not 4 or 5.
-- Bento features work best with exactly 4 items in a 2x2 or 7/5 span pattern.
-- Do not choose "floating-cards" for testimonials \u2014 use "editorial-quotes" or "spotlight".
-
-Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
+Return only valid JSON matching the WebsiteSchema TypeScript interface. Make sure the returned theme contains the "designDNA" object exactly as described.`;
     const modelsToTry = [
       { name: "gemini-flash-latest", timeoutMs: 45e3 },
       { name: "gemini-flash-latest", timeoutMs: 45e3 }
@@ -5096,228 +5649,15 @@ ${rawText}
       errors: validation.errors || []
     });
     try {
-      const auditWordPressHtml = (html, schema) => {
-        const issues = [];
-        const sections = schema?.sections || [];
-        const expectedCount = sections.length;
-        const dataSectionCount = (html.match(/data-section=/g) || []).length;
-        if (dataSectionCount < expectedCount) {
-          issues.push(
-            `Missing data-section markers: expected ${expectedCount}, found ${dataSectionCount}`
-          );
-        }
-        const missingVariants = sections.map((section) => ({
-          type: section.type,
-          variant: section.variant || section.layout || ""
-        })).filter(
-          (entry) => entry.variant && !html.includes(`data-variant="${entry.variant}"`)
-        );
-        if (missingVariants.length) {
-          issues.push(
-            `Missing data-variant markers for: ${missingVariants.map((entry) => `${entry.type}:${entry.variant}`).join(", ")}`
-          );
-        }
-        if (!html.includes("<style")) {
-          issues.push("Missing <style> block for production styling");
-        }
-        if (html.length < 1e4) {
-          issues.push("HTML output too small for production layout");
-        }
-        const lower = html.toLowerCase();
-        const disallowedPalette = ["#7c3aed", "#0ea5e9", "#3b82f6"];
-        if (disallowedPalette.some((color) => lower.includes(color))) {
-          issues.push("Generic default palette detected in CSS");
-        }
-        const imgTags = html.match(/<img[^>]+>/g) || [];
-        const imgsWithoutHeight = imgTags.filter((tag) => !tag.includes("height"));
-        if (imgsWithoutHeight.length > 0) {
-          issues.push(`${imgsWithoutHeight.length} image(s) missing explicit height \u2014 will collapse in WordPress`);
-        }
-        if (html.includes('data-variant="bento"') && !html.includes("grid-column: span")) {
-          issues.push("Bento grid items missing inline grid-column spans \u2014 will break in WordPress");
-        }
-        return {
-          ok: issues.length === 0,
-          issues,
-          dataSectionCount
-        };
-      };
-      const wordpressHtmlPrompt = `You are converting an approved WebsiteSchema into the FINAL WordPress homepage HTML.
-
-CRITICAL OUTPUT RULES:
-- Return ONLY HTML. No JSON. No markdown explanation. No JavaScript.
-- Wrap everything in exactly one WordPress block: <!-- wp:html --> ... <!-- /wp:html -->
-- One <style> block at the top inside that wrapper, then all HTML markup after it.
-- Render sections in schema order exactly.
-- Use exact business copy and exact media URLs from the schema. Do not invent content.
-
-CRITICAL WORDPRESS COMPATIBILITY (non-negotiable):
-- WordPress themes WILL override your CSS classes. Every layout-critical style MUST be duplicated as inline style="" on the element.
-- NEVER rely solely on CSS classes for: grid-column spans, heights, widths, flex direction, padding, background colors.
-- Every grid item must have its span as an inline style: style="grid-column: span 7"
-- Every section must have: style="padding: 100px 5%; max-width: 1400px; margin: 0 auto;"
-- Every image must have: style="width: 100%; height: [X]px; object-fit: cover; display: block;"
-- The outer wrapper div must have: style="background: [bg]; color: [text]; font-family: [body]; overflow-x: hidden; width: 100%;"
-- Add box-sizing rule: * { box-sizing: border-box !important; }
-- Use !important on all background-color, color, font-family, padding, and margin rules in the <style> block.
-- Hide WordPress chrome: .site-header, .entry-title, .page-title, .breadcrumbs { display: none !important; }
-- Set: .entry-content, .wp-block-post-content { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
-
-SECTION LAYOUT RULES (each variant must look visually distinct):
-
-hero "editorial-split":
-- CSS grid, 2 columns: text left (1fr), image right (1.2fr), min-height: 85vh
-- Image: border-radius 500px 500px 0 0 (arched), height: 75vh, object-fit: cover
-- Both columns must have grid-column span as inline style
-
-hero "editorial":
-- Full width, text centered or left-aligned, image below or beside
-- Headline font-size: clamp(3rem, 5vw, 5rem)
-
-features "bento":
-- CSS grid 12 columns, auto-rows: 280px
-- Item 1: grid-column span 7 (inline style), Item 2: span 5, Item 3: span 5, Item 4: span 7
-- Each bento card: border-radius 24px, border: 1px solid outline color, padding: 40px, display flex, flex-direction column, justify-content flex-end
-- DUPLICATE all grid-column spans as inline styles on every card div
-
-features "editorial-list":
-- Numbered list, each item has large number (opacity 0.15), title, description
-- Full width, generous vertical spacing between items
-
-gallery "editorial-mosaic":
-- CSS grid 12 columns
-- Image 1: grid-column span 8, height: 500px (inline style)
-- Image 2: grid-column span 4, height: 500px (inline style)
-- Image 3: grid-column span 12, height: 380px (inline style)
-- ALL spans AND heights must be inline styles on the img or wrapper div
-- Every image: width 100%, object-fit cover, border-radius 16px
-
-testimonials "editorial-quotes":
-- Large italic blockquote, centered, max-width 800px
-- Quote font: heading font, size 2.2rem, font-style italic
-- Author: uppercase, letter-spacing 0.1em, accent color
-- Background: surface color (slightly off-white)
-
-testimonials "spotlight":
-- One featured quote large on left, smaller quotes stacked on right
-- 2-column grid layout
-
-faq "split-columns":
-- 2-column CSS grid: left has title + intro, right has all Q&A items
-- Each FAQ item has border-bottom, padding-bottom 32px, margin-bottom 32px
-- Question: font-weight 600, accent color. Answer: muted color
-
-cta "side-by-side":
-- Full-width band, background: primary color
-- Flex row, space-between, align-items center, padding 80px
-- Title: white, large. Button: white background, primary color text
-
-contact "split-card":
-- 2-column CSS grid inside a card
-- Left: contact details with label/value pairs
-- Right: background image from gallery or solid accent-tinted panel
-- Right panel needs explicit height: 100%, min-height: 400px as inline style
-
-PALETTE RULES:
-- Derive ALL colors from theme.accentMode \u2014 do NOT default to generic purple #7c3aed or blue #3b82f6 or teal #0d9488 unless accentMode is "fresh"
-- accentMode "luxury": --bg: #faf8f5; --primary: #8B6914; --accent: #C4952A; --text: #1a1208; --muted: #6b5c3e
-- accentMode "earthy": --bg: #f9f6f1; --primary: #7a5c3e; --accent: #c17f4a; --text: #2d1f0e; --muted: #8a7260
-- accentMode "fresh": --bg: #f4faf8; --primary: #0d6e5e; --accent: #14a88e; --text: #0a1f1b; --muted: #4a7a72
-- accentMode "neon": --bg: #f8f8ff; --primary: #5b2be0; --accent: #9747ff; --text: #0f0a1e; --muted: #6b6880
-- Define as CSS variables and use them on EVERY color property
-
-TYPOGRAPHY RULES:
-- Load Google Fonts with @import at top of <style> block
-- Use the exact heading/body fonts from schema.theme.fonts
-- Set font-family on ALL headings and body text \u2014 do not rely on inheritance
-- Heading sizes: h1 clamp(3rem,5vw,5rem), h2 clamp(2rem,4vw,3.5rem), h3 1.5rem
-
-QUALITY RULES:
-- Minimum HTML output: 10,000 characters
-- Every section must have data-section="{type}" and data-variant="{variant}" attributes
-- No placeholder text, no lorem ipsum, no "Your Business Name Here"
-- No fake badges, no "crafted for premium presentation" text
-- Images must render \u2014 always set explicit width AND height as inline styles
-- The contact section must show phone number and address from the schema
-- Do not add a site header or navigation bar
-
-BUSINESS:
-${JSON.stringify({ name: business.name, category: business.category, address: business.address, phone: business.phoneNumber, email: business.email }, null, 2)}
-
-APPROVED SCHEMA:
-${JSON.stringify(finalSchema, null, 2)}
-
-Return only the WordPress HTML block.`;
-      persistGenerationDebugFile(
-        debugSession,
-        "05a-wordpress-html-prompt.md",
-        wordpressHtmlPrompt
-      );
-      const rawWordPressHtml = await callGeminiText(
-        wordpressHtmlPrompt,
-        "wordpress-html"
-      );
-      fs3.writeSync(
-        2,
-        `
---- GEMINI WORDPRESS HTML START ---
-${rawWordPressHtml}
---- GEMINI WORDPRESS HTML END ---
-`
-      );
-      persistGenerationDebugFile(
-        debugSession,
-        "05b-wordpress-html-raw.txt",
-        rawWordPressHtml
-      );
-      let extractedWordPressHtml = extractHtmlDocument(rawWordPressHtml) || rawWordPressHtml.trim();
-      const audit = extractedWordPressHtml ? auditWordPressHtml(extractedWordPressHtml, finalSchema) : { ok: false, issues: ["Empty HTML response"], dataSectionCount: 0 };
-      if (!audit.ok) {
-        logStderr(
-          `[Generate] wordpress-html validation failed traceId=${debugSession.traceId} issues=${JSON.stringify(audit.issues)}`
-        );
-        persistGenerationDebugFile(
-          debugSession,
-          "05b1-wordpress-html-issues.json",
-          audit
-        );
-        const retryPrompt = `${wordpressHtmlPrompt}
-
-VALIDATION FEEDBACK:
-- ${audit.issues.join("\n- ")}
-
-Revise the HTML to fix all issues. Return only the final HTML.`;
-        persistGenerationDebugFile(
-          debugSession,
-          "05b2-wordpress-html-retry-prompt.md",
-          retryPrompt
-        );
-        const retryWordPressHtml = await callGeminiText(
-          retryPrompt,
-          "wordpress-html"
-        );
-        fs3.writeSync(
-          2,
-          `
---- GEMINI WORDPRESS HTML RETRY START ---
-${retryWordPressHtml}
---- GEMINI WORDPRESS HTML RETRY END ---
-`
-        );
-        persistGenerationDebugFile(
-          debugSession,
-          "05b3-wordpress-html-retry-raw.txt",
-          retryWordPressHtml
-        );
-        extractedWordPressHtml = extractHtmlDocument(retryWordPressHtml) || retryWordPressHtml.trim();
-      }
-      if (extractedWordPressHtml) {
-        finalSchema._wordpressHtml = extractedWordPressHtml;
-        finalSchema._renderSource = "gemini-html";
+      logStderr(`[Generate] Compiling deterministic Premium Component Composition HTML traceId=${debugSession.traceId}`);
+      const premiumHtml = buildPremiumPageContent(finalSchema);
+      if (premiumHtml) {
+        finalSchema._wordpressHtml = premiumHtml;
+        finalSchema._renderSource = "component-composition-engine";
         persistGenerationDebugFile(
           debugSession,
           "05c-wordpress-html-final.html",
-          extractedWordPressHtml
+          premiumHtml
         );
       }
     } catch (wordpressHtmlError) {
