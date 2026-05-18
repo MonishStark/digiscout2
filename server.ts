@@ -340,6 +340,28 @@ function extractJsonObject(text: string): string | null {
 	return null;
 }
 
+function extractHtmlDocument(text: string): string | null {
+	if (!text) return null;
+	const trimmed = text.trim();
+
+	const fencedMatch = trimmed.match(/```(?:html)?\s*([\s\S]*?)\s*```/i);
+	if (fencedMatch?.[1]) {
+		const candidate = fencedMatch[1].trim();
+		if (candidate.includes("<")) return candidate;
+	}
+
+	if (trimmed.includes("<!-- wp:html -->") || trimmed.includes("<section") || trimmed.includes("<style")) {
+		return trimmed;
+	}
+
+	const firstTag = trimmed.indexOf("<");
+	if (firstTag >= 0) {
+		return trimmed.slice(firstTag);
+	}
+
+	return null;
+}
+
 function parseLeadQualificationOutput(
 	rawText: string,
 ): LeadQualification | null {
