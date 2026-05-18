@@ -5037,8 +5037,12 @@ app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
     if (!rows || rows.length === 0) {
       return res.status(404).json({ error: "Job not found" });
     }
+    const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscout.online";
+    const liveUrl = rows[0].subdomain_url || (rows[0].subdomain ? `http://${rows[0].subdomain}.${rootDomain}` : null);
+    const adminUrl = rows[0].wp_admin_url || (rows[0].subdomain ? `http://${rows[0].subdomain}.${rootDomain}/wp-admin` : null);
+    const effectiveStatus = rows[0].status === "completed" || liveUrl || adminUrl ? "completed" : rows[0].status;
     let rawPassword = null;
-    if (rows[0].status === "completed" && rows[0].wp_admin_pass_encrypted) {
+    if (effectiveStatus === "completed" && rows[0].wp_admin_pass_encrypted) {
       try {
         const [ivHex, encryptedHex] = rows[0].wp_admin_pass_encrypted.split(":");
         const key = process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
@@ -5050,10 +5054,6 @@ app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
         console.error("Decryption failed:", e);
       }
     }
-    const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscout.online";
-    const liveUrl = rows[0].subdomain_url || (rows[0].subdomain ? `http://${rows[0].subdomain}.${rootDomain}` : null);
-    const adminUrl = rows[0].wp_admin_url || (rows[0].subdomain ? `http://${rows[0].subdomain}.${rootDomain}/wp-admin` : null);
-    const effectiveStatus = rows[0].status === "completed" || liveUrl || adminUrl ? "completed" : rows[0].status;
     return res.json({
       success: true,
       status: effectiveStatus,
