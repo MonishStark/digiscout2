@@ -2446,12 +2446,16 @@ async function executeStateMachine(job) {
         `UPDATE provisioning_jobs SET gutenberg_trace = ?, status = 'deploying_content' WHERE id = ?`,
         [homepageBlocks, job.id]
       );
-      await injectWebsiteContent(
+      const contentMeta = await injectWebsiteContent(
         fullDocRoot,
         schema,
         homepageBlocks,
         wpAdminUser,
         (log) => appendLog(job.id, log)
+      );
+      await appendLog(
+        job.id,
+        `CONTENT_APPLIED source=${contentMeta.renderSource} length=${contentMeta.length} sha1=${contentMeta.sha1}`
       );
       await appendLog(job.id, "Content injected successfully on remote server");
     } else {
@@ -2637,6 +2641,7 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, adminUser,
       }
     }
     await logCallback("Premium WordPress site injection complete \u2713");
+    return { renderSource, length: content.length, sha1: contentHash };
   } catch (error) {
     await logCallback(
       `CRITICAL ERROR during content injection: ${error.message}`

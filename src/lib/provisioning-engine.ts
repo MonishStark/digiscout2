@@ -441,12 +441,16 @@ async function executeStateMachine(job: any) {
 				[homepageBlocks, job.id],
 			);
 
-			await injectWebsiteContent(
+			const contentMeta = await injectWebsiteContent(
 				fullDocRoot,
 				schema,
 				homepageBlocks,
 				wpAdminUser,
 				(log) => appendLog(job.id, log),
+			);
+			await appendLog(
+				job.id,
+				`CONTENT_APPLIED source=${contentMeta.renderSource} length=${contentMeta.length} sha1=${contentMeta.sha1}`,
 			);
 			await appendLog(job.id, "Content injected successfully on remote server");
 		} else {
@@ -699,6 +703,7 @@ async function injectWebsiteContent(
 		}
 
 		await logCallback("Premium WordPress site injection complete ✓");
+		return { renderSource, length: content.length, sha1: contentHash };
 	} catch (error: any) {
 		await logCallback(
 			`CRITICAL ERROR during content injection: ${error.message}`,
