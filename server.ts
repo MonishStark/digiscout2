@@ -963,7 +963,10 @@ function ensureNonTemplateCopy(
 				categoryNorm.includes("spa") ||
 				categoryNorm.includes("wellness")
 			) {
-				return pickBySeed(["editorial", "centered", "split"], seed + 3);
+				return pickBySeed(
+					["editorial-split", "magazine", "centered", "minimal", "split"],
+					seed + 3,
+				);
 			}
 			if (
 				categoryNorm.includes("gym") ||
@@ -995,6 +998,16 @@ function ensureNonTemplateCopy(
 					seed + 13,
 				);
 			}
+			if (
+				categoryNorm.includes("salon") ||
+				categoryNorm.includes("spa") ||
+				categoryNorm.includes("wellness")
+			) {
+				return pickBySeed(
+					["alternating-stack", "bento", "editorial-cards", "editorial-list"],
+					seed + 15,
+				);
+			}
 			return pickBySeed(
 				["bento", "editorial-cards", "editorial-list"],
 				seed + 17,
@@ -1002,6 +1015,16 @@ function ensureNonTemplateCopy(
 		}
 
 		if (sectionType === "gallery") {
+			if (
+				categoryNorm.includes("salon") ||
+				categoryNorm.includes("spa") ||
+				categoryNorm.includes("wellness")
+			) {
+				return pickBySeed(
+					["stacked-collage", "editorial-mosaic", "collage"],
+					seed + 19,
+				);
+			}
 			return pickBySeed(
 				["editorial-mosaic", "stacked-collage"],
 				seed + 19,
@@ -1016,15 +1039,15 @@ function ensureNonTemplateCopy(
 		}
 
 		if (sectionType === "faq") {
-			return pickBySeed(["cards", "split-columns"], seed + 29);
+			return pickBySeed(["cards", "split-columns", "grid"], seed + 29);
 		}
 
 		if (sectionType === "cta") {
-			return pickBySeed(["gradient-band", "split-card"], seed + 31);
+			return pickBySeed(["gradient-band", "split-card", "side-by-side"], seed + 31);
 		}
 
 		if (sectionType === "contact") {
-			return pickBySeed(["split-card", "minimal-centered"], seed + 37);
+			return pickBySeed(["split-card", "minimal-centered", "centered"], seed + 37);
 		}
 
 		return "default";
@@ -2012,15 +2035,26 @@ function createFallbackWebsiteSchema(business: any): WebsiteSchema {
 		["earthy", "luxury", "fresh", "neon"] as const,
 		copySeed + 31,
 	);
+	const categoryNorm = (business.category || "").toLowerCase();
 	const heroVariant =
-		layoutVariant === "minimal"
-			? "centered"
-			: layoutVariant === "immersive"
-				? "immersive"
-				: layoutVariant === "split-screen"
-					? "split"
-					: "split";
-	const featureLayout = layoutVariant === "minimal" ? "list" : "cards";
+		categoryNorm.includes("salon") || categoryNorm.includes("spa")
+			? pickBySeed(
+					["magazine", "editorial-split", "centered", "minimal", "split"],
+					copySeed + 5,
+				)
+			: layoutVariant === "minimal"
+				? "centered"
+				: layoutVariant === "immersive"
+					? "immersive"
+					: layoutVariant === "split-screen"
+						? "split"
+						: "split";
+	const featureLayout =
+		categoryNorm.includes("salon") || categoryNorm.includes("spa")
+			? pickBySeed(["bento", "alternating-stack", "editorial-cards"], copySeed + 9)
+			: layoutVariant === "minimal"
+				? "list"
+				: "cards";
 	const heroImage =
 		imagePool[0] ||
 		"https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=80";
@@ -2308,6 +2342,8 @@ ABSOLUTE RULES:
 - Sections 2-6 may be reordered for uniqueness.
 - If reference images are provided, use those exact URLs first for hero and gallery media.
 - Do not use unrelated stock imagery when real business photos are available.
+- Avoid the common local-business pattern of: split hero -> 3 cards -> simple gallery -> testimonials -> FAQ -> CTA -> contact unless the seed clearly justifies it.
+- Each site should feel like a different art direction, not a recolor of the same template.
 
 SUPPORTED THEME ENUMS:
 - layout: "editorial" | "immersive" | "minimal" | "gallery-forward" | "split-screen"
@@ -2384,6 +2420,8 @@ THEME RULES:
 - text must be dark and readable
 - accents should feel premium and category-appropriate
 - typography should feel intentional
+- choose a distinct heading/body font pairing for this specific business
+- prefer visibly different composition, spacing rhythm, and section hierarchy from other sites in the same category
 - customCss is optional; include it only if it materially improves the final WordPress site
 
 Business Context:
@@ -2416,8 +2454,8 @@ ${buildImageBlock(business)}
 Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 
 		const modelsToTry = [
-			{ name: "gemini-1.5-pro", timeoutMs: 65000 },
-			{ name: "gemini-1.5-flash", timeoutMs: 35000 },
+			{ name: "gemini-flash-latest", timeoutMs: 45000 },
+			{ name: "gemini-flash-latest", timeoutMs: 45000 },
 		] as const;
 
 		console.error(`[Gemini] Starting generation for ${business.name} with model ${modelsToTry[0].name}`);
@@ -2431,10 +2469,9 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 			try {
 				const restUrl = process.env.GEMINI_REST_URL;
 				if (restUrl && GENAI_KEY) {
-					const modelRestUrl = restUrl.replace(
-						/\/models\/[^/:?]+(?=:generateContent)/,
-						`/models/${model.name}`,
-					);
+					const modelRestUrl = restUrl.includes("{model}")
+						? restUrl.replace("{model}", model.name)
+						: restUrl;
 					console.error(`[Gemini] Attempting direct REST call to ${modelRestUrl}...`);
 
 					const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${GENAI_KEY}`;
