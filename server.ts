@@ -2751,6 +2751,51 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 		});
 
 		try {
+			const auditWordPressHtml = (html: string, schema: any) => {
+				const issues: string[] = [];
+				const sections = (schema?.sections || []) as Array<any>;
+				const expectedCount = sections.length;
+				const dataSectionCount = (html.match(/data-section=/g) || []).length;
+				if (dataSectionCount < expectedCount) {
+					issues.push(
+						`Missing data-section markers: expected ${expectedCount}, found ${dataSectionCount}`,
+					);
+				}
+				const missingVariants = sections
+					.map((section) => ({
+						type: section.type,
+						variant: section.variant || section.layout || "",
+					}))
+					.filter(
+						(entry) =>
+							entry.variant &&
+							!html.includes(`data-variant="${entry.variant}"`),
+					);
+				if (missingVariants.length) {
+					issues.push(
+						`Missing data-variant markers for: ${missingVariants
+							.map((entry) => `${entry.type}:${entry.variant}`)
+							.join(", ")}`,
+					);
+				}
+				if (!html.includes("<style")) {
+					issues.push("Missing <style> block for production styling");
+				}
+				if (html.length < 6000) {
+					issues.push("HTML output too small for production layout");
+				}
+				const lower = html.toLowerCase();
+				const disallowedPalette = ["#7c3aed", "#0ea5e9", "#3b82f6"];
+				if (disallowedPalette.some((color) => lower.includes(color))) {
+					issues.push("Generic default palette detected in CSS");
+				}
+				return {
+					ok: issues.length === 0,
+					issues,
+					dataSectionCount,
+				};
+			};
+
 			const wordpressHtmlPrompt = `You are turning an approved website schema into the FINAL WordPress homepage HTML.
 
 Return ONLY homepage HTML suitable for WordPress post_content.
@@ -2827,8 +2872,49 @@ Return only the final HTML for the homepage body content.`;
 				rawWordPressHtml,
 			);
 
-			const extractedWordPressHtml =
+			let extractedWordPressHtml =
 				extractHtmlDocument(rawWordPressHtml) || rawWordPressHtml.trim();
+			const audit = extractedWordPressHtml
+				? auditWordPressHtml(extractedWordPressHtml, finalSchema)
+				: { ok: false, issues: ["Empty HTML response"], dataSectionCount: 0 };
+
+			if (!audit.ok) {
+				logStderr(
+					`[Generate] wordpress-html validation failed traceId=${debugSession.traceId} issues=${JSON.stringify(audit.issues)}`,
+				);
+				persistGenerationDebugFile(
+					debugSession,
+					"05b1-wordpress-html-issues.json",
+					audit,
+				);
+
+				const retryPrompt = `${wordpressHtmlPrompt}
+
+VALIDATION FEEDBACK:
+- ${audit.issues.join("\n- ")}
+
+Revise the HTML to fix all issues. Return only the final HTML.`;
+				persistGenerationDebugFile(
+					debugSession,
+					"05b2-wordpress-html-retry-prompt.md",
+					retryPrompt,
+				);
+				const retryWordPressHtml = await callGeminiText(
+					retryPrompt,
+					"wordpress-html",
+				);
+				fs.writeSync(
+					2,
+					`\n--- GEMINI WORDPRESS HTML RETRY START ---\n${retryWordPressHtml}\n--- GEMINI WORDPRESS HTML RETRY END ---\n`,
+				);
+				persistGenerationDebugFile(
+					debugSession,
+					"05b3-wordpress-html-retry-raw.txt",
+					retryWordPressHtml,
+				);
+				extractedWordPressHtml =
+					extractHtmlDocument(retryWordPressHtml) || retryWordPressHtml.trim();
+			}
 			if (extractedWordPressHtml) {
 				(finalSchema as any)._wordpressHtml = extractedWordPressHtml;
 				(finalSchema as any)._renderSource = "gemini-html";
