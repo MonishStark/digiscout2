@@ -14,8 +14,8 @@ import crypto from "crypto";
 import http from "http";
 import cors from "cors";
 import express, { Request, Response } from "express";
+import fs from "fs";
 import path from "path";
-import { generateWithFallback } from "./services/openrouter";
 // Dynamic import for GoogleGenerativeAI to prevent startup failure if package missing
 let GoogleGenerativeAI: any = null;
 
@@ -254,9 +254,7 @@ async function getSDKGenAI() {
 const GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_API_KEY;
 
 const CALLHIPPO_API_KEY = process.env.CALLHIPPO_API_KEY;
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const WEBSITE_GENERATION_MODE =
-	process.env.WEBSITE_GENERATION_MODE || "openrouter";
+const WEBSITE_GENERATION_MODE = process.env.WEBSITE_GENERATION_MODE || "gemini";
 
 interface DeployRequest {
 	websiteContent: string;
@@ -2390,12 +2388,12 @@ app.post("/api/generate", async (req: Request, res: Response) => {
 			return res.json(fallbackSchema);
 		}
 
-		// Normal OpenRouter flow
-		if (!OPENROUTER_API_KEY) {
+		// Normal Gemini flow
+		if (!GENAI_KEY && !process.env.GEMINI_REST_URL) {
 			debugSession.fallbackReason = "missing-config";
 			appendGenerationDebugError(
 				debugSession,
-				"fallback_triggered: no OpenRouter API configuration found",
+				"fallback_triggered: no Gemini API configuration found",
 			);
 			res.setHeader("x-debug-generation-fallback", "true");
 			const fallbackSchema = createFallbackWebsiteSchema(business);
@@ -2540,15 +2538,6 @@ THEME RULES:
 - prefer visibly different composition, spacing rhythm, and section hierarchy from other sites in the same category
 - customCss is optional; include it only if it materially improves the final WordPress site
 
-DESIGN DIRECTION REQUIREMENTS:
-- Favor asymmetrical layouts and editorial composition.
-- Use layered imagery and premium typography.
-- Establish a modern spacing rhythm with deliberate negative space.
-- If category is salon/spa, push a luxury salon aesthetic with refined hierarchy.
-- Avoid generic SaaS layouts and repetitive card grids.
-- Prefer cinematic hero composition when it suits the business.
-- Ensure the structure remains mobile-first and responsive.
-
 Business Context:
 - Name: ${business.name}
 - Category: ${business.category || "Local Service"}
@@ -2578,50 +2567,138 @@ ${buildImageBlock(business)}
 
 Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 
-		const schemaModels = [
-			"deepseek/deepseek-v3.2",
-			"qwen/qwen3-coder-480b-a35b:free",
-			"deepseek/deepseek-v4-flash:free",
-			"openai/gpt-oss-120b:free",
-		];
-		const htmlModels = [
-			"qwen/qwen3-coder-480b-a35b:free",
-			"deepseek/deepseek-v3.2",
-			"deepseek/deepseek-v4-flash:free",
-			"openai/gpt-oss-120b:free",
-		];
+		const modelsToTry = [
+			{ name: "gemini-flash-latest", timeoutMs: 45000 },
+			{ name: "gemini-flash-latest", timeoutMs: 45000 },
+		] as const;
+
+		const callGeminiText = async (
+			promptText: string,
+			stageLabel: "schema" | "wordpress-html",
+		): Promise<string> => {
+			let stageRawText = "";
+			let stageLastError: unknown = null;
+
+			for (const model of modelsToTry) {
+				try {
+					const restUrl = process.env.GEMINI_REST_URL;
+					if (restUrl && GENAI_KEY) {
+						const modelRestUrl = restUrl.includes("{model}")
+							? restUrl.replace("{model}", model.name)
+							: restUrl;
+						console.error(
+							`[Gemini] Attempting ${stageLabel} direct REST call to ${modelRestUrl}...`,
+						);
+
+						const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${GENAI_KEY}`;
+
+						const fetchResponse = await Promise.race([
+							fetch(url, {
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({
+									contents: [{ parts: [{ text: promptText }] }],
+									generationConfig: {
+										temperature: stageLabel === "schema" ? 0.9 : 0.75,
+										maxOutputTokens: stageLabel === "schema" ? 8192 : 12288,
+									},
+								}),
+							}),
+							new Promise<Response>((_, reject) =>
+								setTimeout(
+									() =>
+										reject(
+											new Error(`REST timeout after ${model.timeoutMs}ms`),
+										),
+									model.timeoutMs,
+								),
+							),
+						]);
+
+						if (!fetchResponse.ok) {
+							throw new Error(
+								`REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`,
+							);
+						}
+
+						const data = (await fetchResponse.json()) as any;
+						stageRawText =
+							data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+					} else {
+						console.error(
+							`[Gemini] Attempting ${stageLabel} SDK call for ${model.name}...`,
+						);
+						const genAI = await getSDKGenAI();
+						if (!genAI) {
+							throw new Error("Gemini SDK not available.");
+						}
+						const response = (await Promise.race([
+							genAI
+								.getGenerativeModel({ model: model.name })
+								.generateContent(promptText),
+							new Promise((_, reject) =>
+								setTimeout(
+									() =>
+										reject(
+											new Error(
+												`${model.name} request timed out after ${model.timeoutMs}ms`,
+											),
+										),
+									model.timeoutMs,
+								),
+							),
+						])) as any;
+
+						const result = await response.response;
+						stageRawText = result.text().trim();
+					}
+
+					if (stageRawText) {
+						console.error(
+							`[Gemini] ${model.name} ${stageLabel} success! Response length: ${stageRawText.length}`,
+						);
+						return stageRawText;
+					}
+
+					console.error(
+						`[Gemini] ${model.name} returned empty ${stageLabel} text.`,
+					);
+				} catch (error) {
+					stageLastError = error;
+					console.error(
+						`[Gemini] ${model.name} ${stageLabel} failed:`,
+						error instanceof Error ? error.message : error,
+					);
+					fs.writeSync(
+						2,
+						`[Gemini] ${stageLabel.toUpperCase()} ERROR DETAIL: ${JSON.stringify(error)}\n`,
+					);
+				}
+			}
+
+			throw (
+				stageLastError || new Error(`All Gemini ${stageLabel} attempts failed`)
+			);
+		};
+
 		console.error(
-			`[OpenRouter] Starting generation for ${business.name} with model ${schemaModels[0]}`,
+			`[Gemini] Starting generation for ${business.name} with model ${modelsToTry[0].name}`,
 		);
 		fs.writeSync(
 			2,
-			`\n--- OPENROUTER SCHEMA PROMPT START ---\n${prompt}\n--- OPENROUTER SCHEMA PROMPT END ---\n`,
+			`\n--- GEMINI PROMPT START ---\n${prompt}\n--- GEMINI PROMPT END ---\n`,
 		);
 		persistGenerationDebugFile(debugSession, "02-generation-prompt.md", prompt);
-		const schemaResult = await generateWithFallback({
-			prompt,
-			models: schemaModels,
-			temperature: 0.9,
-			maxTokens: 8192,
-			minLength: 200,
-		});
-		const rawText = schemaResult.content;
-		logStderr(
-			`[OpenRouter] schema success model=${schemaResult.model} durationMs=${schemaResult.requestMs} outputLength=${rawText.length} fallbackUsed=${schemaResult.fallbackUsed} attempts=${schemaResult.attempts.join(",")}`,
-		);
-		if (schemaResult.usage) {
-			logStderr(
-				`[OpenRouter] schema usage prompt=${schemaResult.usage.prompt_tokens || 0} completion=${schemaResult.usage.completion_tokens || 0} total=${schemaResult.usage.total_tokens || 0}`,
-			);
-		}
+
+		const rawText = await callGeminiText(prompt, "schema");
 		fs.writeSync(
 			2,
-			`\n--- OPENROUTER SCHEMA RESPONSE START ---\n${rawText}\n--- OPENROUTER SCHEMA RESPONSE END ---\n`,
+			`\n--- GEMINI RESPONSE START ---\n${rawText}\n--- GEMINI RESPONSE END ---\n`,
 		);
 
 		persistGenerationDebugFile(
 			debugSession,
-			"03-openrouter-raw-response.txt",
+			"03-gemini-raw-response.txt",
 			rawText,
 		);
 
@@ -2633,7 +2710,7 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 
 		if (!parsedSchema) {
 			console.warn(
-				"[Generate] OpenRouter output could not be parsed as WebsiteSchema, using fallback schema.",
+				"[Generate] Gemini output could not be parsed as WebsiteSchema, using fallback schema.",
 			);
 			debugSession.fallbackReason = "parse-failure";
 			appendGenerationDebugError(
@@ -2721,15 +2798,12 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface.`;
 
 			const wordpressHtmlPrompt = `You are turning an approved website schema into the FINAL WordPress homepage HTML.
 
-			Return ONLY homepage HTML suitable for WordPress post_content.
-			Do not return JSON.
-			Do not explain anything.
-			Do not wrap the response in markdown unless it is a plain \`\`\`html fenced block.
-			Do not output JavaScript.
-			No <script> tags.
-			No React/Vue/JS frameworks.
-			No external JS dependencies.
-			Wrap the entire response in a single WordPress HTML block:
+Return ONLY homepage HTML suitable for WordPress post_content.
+Do not return JSON.
+Do not explain anything.
+Do not wrap the response in markdown unless it is a plain \`\`\`html fenced block.
+Do not output JavaScript.
+Wrap the entire response in a single WordPress HTML block:
 <!-- wp:html -->
 [your style block and homepage markup]
 <!-- /wp:html -->
@@ -2755,20 +2829,10 @@ Theme palette rules:
 - accentMode "earthy": warm off-whites, clay, olive, muted rust accents.
 - accentMode "fresh": crisp white, deep teal or sea green accents, clean neutrals.
 - accentMode "neon": pale base, electric accent with controlled saturation.
-			Define CSS variables that reflect the chosen palette and use them consistently.
-			Light theme only.
-			Use inline CSS or one lightweight <style> block only.
-			Keep markup valid for WP Custom HTML blocks.
-			Avoid malformed comments, excessive nesting, and unsupported CSS features.
-			No site header chrome, no WordPress admin text, no fake badges like "crafted for premium presentation".
-			No generic placeholder copy.
-
-			Design direction requirements:
-			- Asymmetrical, editorial composition with layered imagery.
-			- Premium typography with intentional hierarchy and spacing rhythm.
-			- Avoid repetitive card grids and generic SaaS layouts.
-			- Cinematic hero section with layered text and media.
-			- Mobile-first responsive CSS with clean semantic HTML.
+Define CSS variables that reflect the chosen palette and use them consistently.
+Light theme only.
+No site header chrome, no WordPress admin text, no fake badges like "crafted for premium presentation".
+No generic placeholder copy.
 
 BUSINESS:
 ${JSON.stringify(
@@ -2794,25 +2858,13 @@ Return only the final HTML for the homepage body content.`;
 				"05a-wordpress-html-prompt.md",
 				wordpressHtmlPrompt,
 			);
-			const htmlResult = await generateWithFallback({
-				prompt: wordpressHtmlPrompt,
-				models: htmlModels,
-				temperature: 0.7,
-				maxTokens: 12000,
-				minLength: 800,
-			});
-			const rawWordPressHtml = htmlResult.content;
-			logStderr(
-				`[OpenRouter] html success model=${htmlResult.model} durationMs=${htmlResult.requestMs} outputLength=${rawWordPressHtml.length} fallbackUsed=${htmlResult.fallbackUsed} attempts=${htmlResult.attempts.join(",")}`,
+			const rawWordPressHtml = await callGeminiText(
+				wordpressHtmlPrompt,
+				"wordpress-html",
 			);
-			if (htmlResult.usage) {
-				logStderr(
-					`[OpenRouter] html usage prompt=${htmlResult.usage.prompt_tokens || 0} completion=${htmlResult.usage.completion_tokens || 0} total=${htmlResult.usage.total_tokens || 0}`,
-				);
-			}
 			fs.writeSync(
 				2,
-				`\n--- OPENROUTER WORDPRESS HTML START ---\n${rawWordPressHtml}\n--- OPENROUTER WORDPRESS HTML END ---\n`,
+				`\n--- GEMINI WORDPRESS HTML START ---\n${rawWordPressHtml}\n--- GEMINI WORDPRESS HTML END ---\n`,
 			);
 			persistGenerationDebugFile(
 				debugSession,
@@ -2847,17 +2899,13 @@ Revise the HTML to fix all issues. Return only the final HTML.`;
 					"05b2-wordpress-html-retry-prompt.md",
 					retryPrompt,
 				);
-				const retryResult = await generateWithFallback({
-					prompt: retryPrompt,
-					models: htmlModels,
-					temperature: 0.7,
-					maxTokens: 12000,
-					minLength: 800,
-				});
-				const retryWordPressHtml = retryResult.content;
+				const retryWordPressHtml = await callGeminiText(
+					retryPrompt,
+					"wordpress-html",
+				);
 				fs.writeSync(
 					2,
-					`\n--- OPENROUTER WORDPRESS HTML RETRY START ---\n${retryWordPressHtml}\n--- OPENROUTER WORDPRESS HTML RETRY END ---\n`,
+					`\n--- GEMINI WORDPRESS HTML RETRY START ---\n${retryWordPressHtml}\n--- GEMINI WORDPRESS HTML RETRY END ---\n`,
 				);
 				persistGenerationDebugFile(
 					debugSession,
@@ -2869,28 +2917,7 @@ Revise the HTML to fix all issues. Return only the final HTML.`;
 			}
 			if (extractedWordPressHtml) {
 				(finalSchema as any)._wordpressHtml = extractedWordPressHtml;
-				(finalSchema as any)._renderSource = "openrouter-html";
-				(finalSchema as any)._renderModel = htmlResult.model;
-				(finalSchema as any)._renderFallbackUsed = htmlResult.fallbackUsed;
-				(finalSchema as any)._renderMeta = {
-					renderModel: htmlResult.model,
-					renderSource: "openrouter-html",
-					fallbackUsed: htmlResult.fallbackUsed,
-					schema: {
-						model: schemaResult.model,
-						fallbackUsed: schemaResult.fallbackUsed,
-						requestMs: schemaResult.requestMs,
-						usage: schemaResult.usage || null,
-						attempts: schemaResult.attempts,
-					},
-					html: {
-						model: htmlResult.model,
-						fallbackUsed: htmlResult.fallbackUsed,
-						requestMs: htmlResult.requestMs,
-						usage: htmlResult.usage || null,
-						attempts: htmlResult.attempts,
-					},
-				};
+				(finalSchema as any)._renderSource = "gemini-html";
 				persistGenerationDebugFile(
 					debugSession,
 					"05c-wordpress-html-final.html",
@@ -2926,10 +2953,7 @@ Revise the HTML to fix all issues. Return only the final HTML.`;
 						? "Valid schema generated"
 						: "Schema repaired during validation",
 					JSON.stringify({
-						model: schemaResult.model,
-						renderModel: (finalSchema as any)._renderModel || null,
-						renderSource: (finalSchema as any)._renderSource || "unknown",
-						fallbackUsed: Boolean((finalSchema as any)._renderFallbackUsed),
+						model: modelsToTry[0].name,
 						isValid: validation.isValid,
 						repairs: validation.repairs,
 						errors: validation.errors,
