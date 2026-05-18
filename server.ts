@@ -2670,7 +2670,11 @@ Do not return JSON.
 Do not explain anything.
 Do not wrap the response in markdown unless it is a plain \`\`\`html fenced block.
 Do not output JavaScript.
-Use one initial <style> block if needed, then the homepage markup.
+Wrap the entire response in a single WordPress HTML block:
+<!-- wp:html -->
+[your style block and homepage markup]
+<!-- /wp:html -->
+Use one initial <style> block if needed, then the homepage markup inside that block.
 Render the sections in the schema order exactly as provided.
 Use the exact business copy and exact media URLs from the schema.
 Do not collapse the page into a common in-house template.

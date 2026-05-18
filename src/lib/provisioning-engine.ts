@@ -340,7 +340,7 @@ async function executeStateMachine(job: any) {
 				[homepageBlocks, job.id],
 			);
 
-			await injectWebsiteContent(fullDocRoot, schema, homepageBlocks, (log) => appendLog(job.id, log));
+			await injectWebsiteContent(fullDocRoot, schema, homepageBlocks, wpAdminUser, (log) => appendLog(job.id, log));
 			await appendLog(job.id, "Content injected successfully on remote server");
 		} else {
 			await appendLog(job.id, "WARNING: No website schema found to inject.");
@@ -415,10 +415,20 @@ function esc(str: string) {
 		.replace(/"/g, "&quot;");
 }
 
+function ensureWordPressHtmlBlock(html: string) {
+	const trimmed = (html || "").trim();
+	if (!trimmed) return "";
+	if (trimmed.includes("<!-- wp:html -->")) {
+		return trimmed;
+	}
+	return `<!-- wp:html -->\n${trimmed}\n<!-- /wp:html -->`;
+}
+
 async function injectWebsiteContent(
 	docRoot: string,
 	schema: any,
 	_homepageBlocks: string,
+	adminUser: string,
 	logCallback: (log: string) => void,
 ) {
 	try {
@@ -432,7 +442,7 @@ async function injectWebsiteContent(
 		let content = "";
 		if (typeof schema?._wordpressHtml === "string" && schema._wordpressHtml.trim()) {
 			await logCallback("Using Gemini-generated WordPress homepage HTML...");
-			content = schema._wordpressHtml.trim();
+			content = ensureWordPressHtmlBlock(schema._wordpressHtml);
 		} else {
 			await logCallback("Gemini HTML unavailable. Building homepage with local premium-site-builder...");
 			const { buildPremiumPageContent } = await import("./premium-site-builder");
@@ -453,7 +463,7 @@ async function injectWebsiteContent(
 
 		await logCallback("Creating Home page in WordPress...");
 		const homePageIdOut = await runWpCommand(
-			`post create --post_type=page --post_title="Home" --post_content="$(cat '${tmpFile}')" --post_status=publish --format=ids`,
+			`post create --post_type=page --post_title="Home" --post_content="$(cat '${tmpFile}')" --post_status=publish --format=ids --user="${adminUser}"`,
 			docRoot, logCallback,
 		);
 		const homePageId = homePageIdOut.stdout.replace(/[^0-9]/g, "").trim();

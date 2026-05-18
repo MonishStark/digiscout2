@@ -2347,7 +2347,7 @@ async function executeStateMachine(job) {
         `UPDATE provisioning_jobs SET gutenberg_trace = ?, status = 'deploying_content' WHERE id = ?`,
         [homepageBlocks, job.id]
       );
-      await injectWebsiteContent(fullDocRoot, schema, homepageBlocks, (log) => appendLog(job.id, log));
+      await injectWebsiteContent(fullDocRoot, schema, homepageBlocks, wpAdminUser, (log) => appendLog(job.id, log));
       await appendLog(job.id, "Content injected successfully on remote server");
     } else {
       await appendLog(job.id, "WARNING: No website schema found to inject.");
@@ -2390,7 +2390,17 @@ async function executeStateMachine(job) {
 function esc2(str) {
   return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
-async function injectWebsiteContent(docRoot, schema, _homepageBlocks, logCallback) {
+function ensureWordPressHtmlBlock(html) {
+  const trimmed = (html || "").trim();
+  if (!trimmed) return "";
+  if (trimmed.includes("<!-- wp:html -->")) {
+    return trimmed;
+  }
+  return `<!-- wp:html -->
+${trimmed}
+<!-- /wp:html -->`;
+}
+async function injectWebsiteContent(docRoot, schema, _homepageBlocks, adminUser, logCallback) {
   try {
     await logCallback("Cleaning up default WordPress content...");
     try {
@@ -2401,7 +2411,7 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, logCallbac
     let content = "";
     if (typeof schema?._wordpressHtml === "string" && schema._wordpressHtml.trim()) {
       await logCallback("Using Gemini-generated WordPress homepage HTML...");
-      content = schema._wordpressHtml.trim();
+      content = ensureWordPressHtmlBlock(schema._wordpressHtml);
     } else {
       await logCallback("Gemini HTML unavailable. Building homepage with local premium-site-builder...");
       const { buildPremiumPageContent: buildPremiumPageContent2 } = await Promise.resolve().then(() => (init_premium_site_builder(), premium_site_builder_exports));
@@ -2416,7 +2426,7 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, logCallbac
     );
     await logCallback("Creating Home page in WordPress...");
     const homePageIdOut = await runWpCommand(
-      `post create --post_type=page --post_title="Home" --post_content="$(cat '${tmpFile}')" --post_status=publish --format=ids`,
+      `post create --post_type=page --post_title="Home" --post_content="$(cat '${tmpFile}')" --post_status=publish --format=ids --user="${adminUser}"`,
       docRoot,
       logCallback
     );
@@ -4594,7 +4604,11 @@ Do not return JSON.
 Do not explain anything.
 Do not wrap the response in markdown unless it is a plain \`\`\`html fenced block.
 Do not output JavaScript.
-Use one initial <style> block if needed, then the homepage markup.
+Wrap the entire response in a single WordPress HTML block:
+<!-- wp:html -->
+[your style block and homepage markup]
+<!-- /wp:html -->
+Use one initial <style> block if needed, then the homepage markup inside that block.
 Render the sections in the schema order exactly as provided.
 Use the exact business copy and exact media URLs from the schema.
 Do not collapse the page into a common in-house template.
