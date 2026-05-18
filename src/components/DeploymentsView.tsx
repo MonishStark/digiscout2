@@ -112,16 +112,32 @@ export default function DeploymentsView({
 			const debugFallbackUsed = generationResult.debugFallbackUsed;
 			
 			console.log("[Generate] Schema generated for lead:", schema.meta?.siteId);
-			const combinedCode = renderWebsiteArtifact({
-				schema,
-				html: "",
-				css: "",
-				js: "",
-			});
+			let combinedCode = "";
+			try {
+				combinedCode = renderWebsiteArtifact({
+					schema,
+					html: "",
+					css: "",
+					js: "",
+				});
+			} catch (renderError) {
+				console.warn(
+					"[Generate] Preview renderer failed. Continuing with WordPress-only flow:",
+					renderError,
+				);
+				if (debugTraceId) {
+					await writeGenerationDebugFile(
+						debugTraceId,
+						"10-errors.log",
+						`[${new Date().toISOString()}] preview_render_error: ${String(renderError)}`,
+						true,
+					);
+				}
+			}
 			const wordpressBlocks = schemaToGutenbergBlocks(schema);
 			const provisioningPlan = buildWordPressProvisioningPlan(schema, business);
 
-			if (debugTraceId) {
+			if (debugTraceId && combinedCode) {
 				const debugSummary = await fetchGenerationDebugSummary(debugTraceId);
 				const wordpressDebugHtml = renderWordPressDebugHtml({
 					schema,
@@ -183,6 +199,16 @@ export default function DeploymentsView({
 						true,
 					),
 				]).catch(err => console.warn("Failed to write debug files:", err));
+			} else if (debugTraceId) {
+				const wordpressDebugHtml = renderWordPressDebugHtml({
+					schema,
+					wordpressBlocks,
+					provisioningPlan,
+				});
+				await Promise.all([
+					writeGenerationDebugFile(debugTraceId, "06-renderer-input.json", schema),
+					writeGenerationDebugFile(debugTraceId, "08-wordpress-blocks.html", wordpressDebugHtml),
+				]).catch(err => console.warn("Failed to write WordPress-only debug files:", err));
 			}
 
 			// Update frontend state immediately to show generating progress

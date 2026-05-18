@@ -762,11 +762,25 @@ function parseWebsiteSchemaOutput(
 				palette: {
 					...fallback.theme.palette,
 					...((root.theme as any)?.palette || {}),
+					...((root.theme as any)?.colors || {}),
 				},
 				typography: {
 					...fallback.theme.typography,
 					...((root.theme as any)?.typography || {}),
+					heading:
+						(root.theme as any)?.typography?.heading ||
+						(root.theme as any)?.typography?.headingFont ||
+						fallback.theme.typography.heading,
+					body:
+						(root.theme as any)?.typography?.body ||
+						(root.theme as any)?.typography?.bodyFont ||
+						fallback.theme.typography.body,
 				},
+				customCss:
+					(root.theme as any)?.customCss ||
+					(root as any)?.customCss ||
+					(fallback.theme as any)?.customCss ||
+					"",
 			},
 			brand: {
 				...fallback.brand,

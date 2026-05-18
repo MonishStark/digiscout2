@@ -3052,12 +3052,16 @@ function parseWebsiteSchemaOutput(rawText, business, debugSession) {
         ...root.theme || {},
         palette: {
           ...fallback.theme.palette,
-          ...root.theme?.palette || {}
+          ...root.theme?.palette || {},
+          ...root.theme?.colors || {}
         },
         typography: {
           ...fallback.theme.typography,
-          ...root.theme?.typography || {}
-        }
+          ...root.theme?.typography || {},
+          heading: root.theme?.typography?.heading || root.theme?.typography?.headingFont || fallback.theme.typography.heading,
+          body: root.theme?.typography?.body || root.theme?.typography?.bodyFont || fallback.theme.typography.body
+        },
+        customCss: root.theme?.customCss || root?.customCss || fallback.theme?.customCss || ""
       },
       brand: {
         ...fallback.brand,

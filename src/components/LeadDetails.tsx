@@ -174,16 +174,32 @@ export default function LeadDetails({
 			const debugTraceId = generationResult.debugTraceId;
 			const debugFallbackUsed = generationResult.debugFallbackUsed;
 			console.log("[Generate] Schema generated:", schema.meta?.siteId);
-			const combinedCode = renderWebsiteArtifact({
-				schema,
-				html: "",
-				css: "",
-				js: "",
-			});
+			let combinedCode = "";
+			try {
+				combinedCode = renderWebsiteArtifact({
+					schema,
+					html: "",
+					css: "",
+					js: "",
+				});
+			} catch (renderError) {
+				console.warn(
+					"[Generate] Preview renderer failed. Continuing with WordPress-only flow:",
+					renderError,
+				);
+				if (debugTraceId) {
+					await writeGenerationDebugFile(
+						debugTraceId,
+						"10-errors.log",
+						`[${new Date().toISOString()}] preview_render_error: ${String(renderError)}`,
+						true,
+					);
+				}
+			}
 			const wordpressBlocks = schemaToGutenbergBlocks(schema);
 			const provisioningPlan = buildWordPressProvisioningPlan(schema, business);
 
-			if (debugTraceId) {
+			if (debugTraceId && combinedCode) {
 				const debugSummary = await fetchGenerationDebugSummary(debugTraceId);
 				const wordpressDebugHtml = renderWordPressDebugHtml({
 					schema,
@@ -197,11 +213,7 @@ export default function LeadDetails({
 						"06-renderer-input.json",
 						schema,
 					),
-					writeGenerationDebugFile(
-						debugTraceId,
-						"07-rendered-html.html",
-						combinedCode,
-					),
+					writeGenerationDebugFile(debugTraceId, "07-rendered-html.html", combinedCode),
 					writeGenerationDebugFile(
 						debugTraceId,
 						"renderer_variant.log",
@@ -244,6 +256,16 @@ export default function LeadDetails({
 						].join("\n"),
 						true,
 					),
+				]);
+			} else if (debugTraceId) {
+				const wordpressDebugHtml = renderWordPressDebugHtml({
+					schema,
+					wordpressBlocks,
+					provisioningPlan,
+				});
+				await Promise.all([
+					writeGenerationDebugFile(debugTraceId, "06-renderer-input.json", schema),
+					writeGenerationDebugFile(debugTraceId, "08-wordpress-blocks.html", wordpressDebugHtml),
 				]);
 			}
 
