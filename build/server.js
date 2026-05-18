@@ -2907,6 +2907,13 @@ function parseWebsiteSchemaOutput(rawText, business, debugSession) {
           section.type = section.kind;
           repaired.push("kind->type");
         }
+        if (!section.type) {
+          const inferredType = inferSectionType(section.id) || inferSectionType(section.section) || inferSectionType(section.name) || inferSectionType(section.variant);
+          if (inferredType) {
+            section.type = inferredType;
+            repaired.push("id/name->type");
+          }
+        }
         if (section.content && typeof section.content === "object") {
           for (const [key, value] of Object.entries(section.content)) {
             if (section[key] === void 0) {
@@ -3036,6 +3043,23 @@ function parseWebsiteSchemaOutput(rawText, business, debugSession) {
     }
     const root = typeof parsed.schema === "object" && parsed.schema ? parsed.schema : parsed;
     const nestedSections = Array.isArray(root.sections) && root.sections || Array.isArray(parsed?.website?.sections) && parsed.website.sections || Array.isArray(parsed?.site?.sections) && parsed.site.sections || null;
+    const inferSectionType = (value) => {
+      if (typeof value !== "string") return null;
+      const normalized = value.trim().toLowerCase();
+      if (!normalized) return null;
+      if (normalized.startsWith("hero")) return "hero";
+      if (normalized.startsWith("feature") || normalized.startsWith("service"))
+        return "features";
+      if (normalized.startsWith("gallery")) return "gallery";
+      if (normalized.startsWith("testimonial") || normalized.startsWith("review"))
+        return "testimonials";
+      if (normalized.startsWith("faq") || normalized.startsWith("question"))
+        return "faq";
+      if (normalized.startsWith("cta") || normalized.startsWith("call-to-action"))
+        return "cta";
+      if (normalized.startsWith("contact")) return "contact";
+      return null;
+    };
     const fallback = createFallbackWebsiteSchema(business);
     const normalizationResult = nestedSections && nestedSections.length > 0 ? normalizeSectionShape(nestedSections) : {
       sections: null,
@@ -3053,19 +3077,25 @@ function parseWebsiteSchemaOutput(rawText, business, debugSession) {
         palette: {
           ...fallback.theme.palette,
           ...root.theme?.palette || {},
-          ...root.theme?.colors || {}
+          ...root.theme?.colors || {},
+          primary: root.theme?.palette?.primary || root.theme?.colors?.primary || root.theme?.primaryColor || fallback.theme.palette.primary,
+          surface: root.theme?.palette?.surface || root.theme?.colors?.surface || root.theme?.secondaryColor || fallback.theme.palette.surface,
+          background: root.theme?.palette?.background || root.theme?.colors?.background || root.theme?.secondaryColor || fallback.theme.palette.background,
+          accent: root.theme?.palette?.accent || root.theme?.colors?.accent || root.theme?.accentColor || root.theme?.primaryColor || fallback.theme.palette.accent
         },
         typography: {
           ...fallback.theme.typography,
           ...root.theme?.typography || {},
-          heading: root.theme?.typography?.heading || root.theme?.typography?.headingFont || fallback.theme.typography.heading,
-          body: root.theme?.typography?.body || root.theme?.typography?.bodyFont || fallback.theme.typography.body
+          heading: root.theme?.typography?.heading || root.theme?.typography?.headingFont || root.theme?.fontHeading || fallback.theme.typography.heading,
+          body: root.theme?.typography?.body || root.theme?.typography?.bodyFont || root.theme?.fontBody || fallback.theme.typography.body
         },
         customCss: root.theme?.customCss || root?.customCss || fallback.theme?.customCss || ""
       },
       brand: {
         ...fallback.brand,
-        ...root.brand || {}
+        ...root.brand || {},
+        businessName: root.brand?.businessName || root?.businessName || fallback.brand.businessName,
+        category: root.brand?.category || root?.category || fallback.brand.category
       },
       seo: {
         ...fallback.seo,

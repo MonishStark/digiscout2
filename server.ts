@@ -559,6 +559,23 @@ function parseWebsiteSchemaOutput(
 			(Array.isArray((parsed as any)?.site?.sections) &&
 				(parsed as any).site.sections) ||
 			null;
+		const inferSectionType = (value: unknown): string | null => {
+			if (typeof value !== "string") return null;
+			const normalized = value.trim().toLowerCase();
+			if (!normalized) return null;
+			if (normalized.startsWith("hero")) return "hero";
+			if (normalized.startsWith("feature") || normalized.startsWith("service"))
+				return "features";
+			if (normalized.startsWith("gallery")) return "gallery";
+			if (normalized.startsWith("testimonial") || normalized.startsWith("review"))
+				return "testimonials";
+			if (normalized.startsWith("faq") || normalized.startsWith("question"))
+				return "faq";
+			if (normalized.startsWith("cta") || normalized.startsWith("call-to-action"))
+				return "cta";
+			if (normalized.startsWith("contact")) return "contact";
+			return null;
+		};
 
 		function normalizeSectionShape(rawSections: any[] | null) {
 			if (!Array.isArray(rawSections)) {
@@ -583,6 +600,17 @@ function parseWebsiteSchemaOutput(
 				if (!section.type && section.kind) {
 					section.type = section.kind;
 					repaired.push("kind->type");
+				}
+				if (!section.type) {
+					const inferredType =
+						inferSectionType(section.id) ||
+						inferSectionType(section.section) ||
+						inferSectionType(section.name) ||
+						inferSectionType(section.variant);
+					if (inferredType) {
+						section.type = inferredType;
+						repaired.push("id/name->type");
+					}
 				}
 
 				if (section.content && typeof section.content === "object") {
@@ -751,7 +779,7 @@ function parseWebsiteSchemaOutput(
 						warnings: [] as string[],
 					};
 
-		const merged: WebsiteSchema = {
+			const merged: WebsiteSchema = {
 			meta: {
 				...fallback.meta,
 				...(root.meta || {}),
@@ -763,6 +791,27 @@ function parseWebsiteSchemaOutput(
 					...fallback.theme.palette,
 					...((root.theme as any)?.palette || {}),
 					...((root.theme as any)?.colors || {}),
+					primary:
+						(root.theme as any)?.palette?.primary ||
+						(root.theme as any)?.colors?.primary ||
+						(root.theme as any)?.primaryColor ||
+						fallback.theme.palette.primary,
+					surface:
+						(root.theme as any)?.palette?.surface ||
+						(root.theme as any)?.colors?.surface ||
+						(root.theme as any)?.secondaryColor ||
+						fallback.theme.palette.surface,
+					background:
+						(root.theme as any)?.palette?.background ||
+						(root.theme as any)?.colors?.background ||
+						(root.theme as any)?.secondaryColor ||
+						fallback.theme.palette.background,
+					accent:
+						(root.theme as any)?.palette?.accent ||
+						(root.theme as any)?.colors?.accent ||
+						(root.theme as any)?.accentColor ||
+						(root.theme as any)?.primaryColor ||
+						fallback.theme.palette.accent,
 				},
 				typography: {
 					...fallback.theme.typography,
@@ -770,10 +819,12 @@ function parseWebsiteSchemaOutput(
 					heading:
 						(root.theme as any)?.typography?.heading ||
 						(root.theme as any)?.typography?.headingFont ||
+						(root.theme as any)?.fontHeading ||
 						fallback.theme.typography.heading,
 					body:
 						(root.theme as any)?.typography?.body ||
 						(root.theme as any)?.typography?.bodyFont ||
+						(root.theme as any)?.fontBody ||
 						fallback.theme.typography.body,
 				},
 				customCss:
@@ -785,6 +836,14 @@ function parseWebsiteSchemaOutput(
 			brand: {
 				...fallback.brand,
 				...(root.brand || {}),
+				businessName:
+					(root.brand as any)?.businessName ||
+					(root as any)?.businessName ||
+					fallback.brand.businessName,
+				category:
+					(root.brand as any)?.category ||
+					(root as any)?.category ||
+					fallback.brand.category,
 			},
 			seo: {
 				...fallback.seo,
