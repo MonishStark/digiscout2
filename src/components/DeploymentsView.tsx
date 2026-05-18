@@ -559,9 +559,14 @@ export default function DeploymentsView({
 	React.useEffect(() => {
 		const activeProjects = projects.filter(
 			(p) =>
-				p.provisioningStatus &&
-				!["completed", "failed", "ready", "dry-run", "lead"].includes(
-					p.provisioningStatus,
+				(p.provisioningStatus &&
+					!["completed", "failed", "ready", "dry-run", "lead"].includes(
+						p.provisioningStatus,
+					)) ||
+				(
+					p.provisioningStatus === "completed" &&
+					!!p.wordpressSiteUrl &&
+					(!p.wordpressPassword || !p.wordpressOwnerUsername)
 				),
 		);
 
