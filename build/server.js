@@ -2224,7 +2224,7 @@ async function generateWithFallback(promptOrContents, config = {}, options) {
   if (googleCloudApiKey) {
     const apiEndpoint = process.env.VERTEX_API_ENDPOINT || "aiplatform.googleapis.com";
     const modelId = "gemini-3.1-pro-preview";
-    const generateContentApi = "generateContent";
+    const generateContentApi = "streamGenerateContent";
     const vertexUrl = `https://${apiEndpoint}/v1/publishers/google/models/${modelId}:${generateContentApi}?key=${googleCloudApiKey}`;
     try {
       options.logStderr(`[AI] Primary Vertex Attempt (${apiEndpoint})...`);
@@ -2419,28 +2419,14 @@ Return ONLY a valid JSON object matching this structure:
     options.logStderr(
       "[Gemini Generation] Stage 0: Generating Creative Direction..."
     );
-    if (options.debugSession) {
-      options.persistGenerationDebugFile(
-        options.debugSession,
-        "01b-stage0-prompt.md",
-        stage0Prompt
-      );
-    }
     const stage0Text = await generateWithFallback(
       stage0Prompt,
       { temperature: 0.2, responseMimeType: "application/json" },
-      { ...options, contextLabel: "stage0-creative-direction" }
+      options
     );
     options.logStderr(
-      `[Gemini Generation] Stage 0 raw length=${stage0Text.length}`
+      `[Gemini Generation] Stage 0 Output (Creative Direction): ${stage0Text}`
     );
-    if (options.debugSession) {
-      options.persistGenerationDebugFile(
-        options.debugSession,
-        "01c-stage0-raw.txt",
-        stage0Text
-      );
-    }
     const creativeDirection = JSON.parse(stage0Text.trim());
     if (options.debugSession) {
       options.persistGenerationDebugFile(
@@ -2453,15 +2439,12 @@ Return ONLY a valid JSON object matching this structure:
     const neighborhood = business.neighborhood || business.vibe || "Unknown";
     const specialties = Array.isArray(business.specialties) ? business.specialties.join(", ") : business.specialties || "General services";
     const tone = business.tone || "professional";
-    const stage1Prompt = `You are generating a PREMIUM WORDPRESS HOMEPAGE schema for a real local business based on the custom-designed Creative Direction Brief.
-
-CREATIVE DIRECTION BRIEF:
+    const stage1Prompt = `You are a premium Senior Front-end Architect.
+Generate a structured website schema matching the exact design decisions in the Creative Direction Brief.
+Your design decisions must respect:
 ${JSON.stringify(creativeDirection, null, 2)}
 
-PRIMARY OBJECTIVE:
-- Generate a highly bespoke, custom-themed WebsiteSchema that implements the Creative Direction Brief with extreme visual restraint, elegance, and emotional sophistication.
-- FORCE LIGHT THEME: You MUST generate "light" or "textured-neutral" themes only. Under NO circumstances should any section backgrounds, cards, or hero wrappers be dark, charcoal, deep gray, or pitch black. All surfaces must be bright (warm eggshell, soft cream, linen, or white).
-- GOOGLE MAPS IMAGES MANDATE: You MUST use the provided Google Maps photos from the "Reference Images" list directly for all image, media, or background URL properties in your sections. Do NOT invent external stock links or placeholder names. Simply copy the exact Google Maps URL strings from the list directly into your schema!
+Modern layout rules (MUST ENFORCE):
 - Avoid excessive, empty whitespace that causes the site to feel "underdeveloped" or generic startup-like. Maintain tight, high-impact padding variables to ensure a cohesive, robust visual experience.
 - Break free from templates. Create a unique pacing, visual flow, and section rhythm specifically suited for this business, prioritizing fewer, more high-impact sections over many repetitive ones.
 - Enforce the brand's visual identity (theme mode, color palette, custom gradients, typography pairing) with absolute consistency. Avoid excessive mutations or contrast mismatch.
@@ -2516,7 +2499,7 @@ COMPOSITION DICTIONARY OPTIONS (Choose appropriate properties matching business 
 THEME DESIGN SYSTEM:
 - Choose the theme mode determined in the Creative Direction Brief: "${creativeDirection.visualIdentity.themeMode}".
 - Derive all palette colors (background, surface, primary, accent, text, muted, outline) directly from the visualIdentity and brand personality intents.
-- Generative Design DNA: You MUST generate a "designDNA" object under "theme". This DNA system drives the adaptive visual rendering and mutation rules:
+- Generative Design DNA: You MUST generate a "designDNA" object under "theme" this DNA system drives the adaptive visual rendering and mutation rules:
   "designDNA": {
     "spacingPersonality": Choose from ["compressed", "balanced", "airy", "luxury-editorial", "brutalist-dense"],
     "compositionAggression": Number (0 to 100 representing layout mutation/offset levels),
@@ -2579,7 +2562,7 @@ Return only valid JSON matching the WebsiteSchema interface. Include the "design
       { ...options, contextLabel: "stage1-schema" }
     );
     options.logStderr(
-      `[Gemini Generation] Stage 1 raw length=${schemaText.length}`
+      `[Gemini Generation] Stage 1 Output (Raw Schema): ${schemaText}`
     );
     if (options.debugSession) {
       options.persistGenerationDebugFile(
@@ -2594,7 +2577,22 @@ Return only valid JSON matching the WebsiteSchema interface. Include the "design
       if (cleanedJson.startsWith("```")) {
         cleanedJson = cleanedJson.replace(/^```[a-zA-Z]*\n/, "").replace(/\n```$/, "");
       }
-      parsedSchema = JSON.parse(cleanedJson.trim());
+      if (options.parseWebsiteSchemaOutput) {
+        const result = options.parseWebsiteSchemaOutput(
+          cleanedJson,
+          business,
+          options.debugSession
+        );
+        if (!result) {
+          throw new Error("parseWebsiteSchemaOutput returned null/failed");
+        }
+        parsedSchema = result;
+      } else {
+        parsedSchema = JSON.parse(cleanedJson.trim());
+      }
+      options.logStderr(
+        `[Gemini Generation] Stage 1 Parsed & Normalized Schema: ${JSON.stringify(parsedSchema, null, 2)}`
+      );
     } catch (parseError) {
       throw new Error(
         `Failed to parse Stage 1 generated schema JSON: ${parseError instanceof Error ? parseError.message : String(parseError)}`
@@ -2634,7 +2632,7 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
     }
     const stage2Contents = [
       { role: "user", parts: [{ text: stage1Prompt }] },
-      { role: "model", parts: [{ text: schemaText }] },
+      { role: "model", parts: [{ text: JSON.stringify(parsedSchema, null, 2) }] },
       { role: "user", parts: [{ text: stage2Prompt }] }
     ];
     const htmlText = await generateWithFallback(
@@ -2643,7 +2641,7 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
       { ...options, contextLabel: "stage2-wordpress-html" }
     );
     options.logStderr(
-      `[Gemini Generation] Stage 2 raw length=${htmlText.length}`
+      `[Gemini Generation] Stage 2 Output (Raw HTML): ${htmlText}`
     );
     if (options.debugSession) {
       options.persistGenerationDebugFile(
@@ -2656,6 +2654,9 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
     if (cleanedHtml.startsWith("```")) {
       cleanedHtml = cleanedHtml.replace(/^```[a-zA-Z]*\n/, "").replace(/\n```$/, "");
     }
+    options.logStderr(
+      `[Gemini Generation] Stage 2 Cleaned HTML: ${cleanedHtml}`
+    );
     if (!cleanedHtml) {
       throw new Error("Generated WordPress HTML was empty");
     }
@@ -4024,6 +4025,11 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, adminUser,
     const contentHash = crypto.createHash("sha1").update(content).digest("hex");
     await logCallback(
       `Content source=${renderSource} length=${content.length} sha1=${contentHash}`
+    );
+    await logCallback(
+      `[Provisioning] WordPress Homepage HTML Content:
+${content}
+`
     );
     const traceId = schema?.meta?.traceId || schema?._validation?.traceId;
     if (traceId) {
@@ -6416,14 +6422,80 @@ function ensureSchemaMetadata(schema, business, traceId) {
     safeSchema.meta.traceId = traceId;
   }
   if (!safeSchema.brand) {
-    safeSchema.brand = {
-      businessName: business?.name || "Business",
-      category: business?.category || "Local Business",
-      address: business?.address || "",
-      phone: business?.phoneNumber || "",
-      email: business?.email || "",
-      websiteUri: business?.websiteUri || "",
-      logo: business?.logo || ""
+    safeSchema.brand = {};
+  }
+  safeSchema.brand.businessName = safeSchema.brand.businessName || business?.name || "Business";
+  safeSchema.brand.category = safeSchema.brand.category || business?.category || "Local Business";
+  safeSchema.brand.address = safeSchema.brand.address || business?.address || "";
+  safeSchema.brand.phone = safeSchema.brand.phone || business?.phoneNumber || "";
+  safeSchema.brand.email = safeSchema.brand.email || business?.email || "";
+  safeSchema.brand.websiteUri = safeSchema.brand.websiteUri || business?.websiteUri || "";
+  safeSchema.brand.logo = safeSchema.brand.logo || business?.logo || "";
+  if (!safeSchema.seo) {
+    safeSchema.seo = {};
+  }
+  safeSchema.seo.title = safeSchema.seo.title || business?.name || "Website Preview";
+  safeSchema.seo.description = safeSchema.seo.description || business?.description || `Bespoke web presentation for ${business?.name || "our client"}.`;
+  safeSchema.seo.keywords = safeSchema.seo.keywords || [business?.name || "Business", business?.category || "Local Business"];
+  if (!safeSchema.theme) {
+    safeSchema.theme = {
+      name: "default",
+      style: "modern",
+      radius: "8px",
+      layout: "balanced",
+      buttonStyle: "rounded",
+      surfaceStyle: "solid",
+      mediaShape: "rounded",
+      density: "balanced",
+      accentMode: "fresh",
+      palette: {
+        primary: "#2563eb",
+        surface: "#ffffff",
+        background: "#f8fafc",
+        accent: "#f59e0b",
+        text: "#0f172a",
+        muted: "#64748b",
+        outline: "#e2e8f0"
+      },
+      typography: {
+        heading: "Inter",
+        body: "Inter"
+      },
+      brandDNA: {
+        spacingPersonality: "balanced",
+        compositionAggression: 50,
+        hierarchyIntensity: 50,
+        motionEnergy: 50,
+        visualDensity: 50,
+        asymmetryLevel: 50,
+        atmosphereIntensity: 50,
+        typographyDominance: "balanced",
+        imageWeight: 50,
+        luxuryScore: 50,
+        cinematicScore: 50,
+        brutalismScore: 50,
+        editorialScore: 50,
+        softnessScore: 50,
+        visualAtmosphere: "soft-editorial-warmth"
+      }
+    };
+  } else {
+    safeSchema.theme.brandDNA = safeSchema.theme.brandDNA || {
+      spacingPersonality: "balanced",
+      compositionAggression: 50,
+      hierarchyIntensity: 50,
+      motionEnergy: 50,
+      visualDensity: 50,
+      asymmetryLevel: 50,
+      atmosphereIntensity: 50,
+      typographyDominance: "balanced",
+      imageWeight: 50,
+      luxuryScore: 50,
+      cinematicScore: 50,
+      brutalismScore: 50,
+      editorialScore: 50,
+      softnessScore: 50,
+      visualAtmosphere: "soft-editorial-warmth"
     };
   }
   if (!safeSchema._validation) {
@@ -6852,7 +6924,8 @@ ${rawWordPressHtml}
         logStderr: (msg) => logStderr(msg),
         persistGenerationDebugFile: (session, name, content) => persistGenerationDebugFile(session, name, content),
         appendGenerationDebugError: (session, err) => appendGenerationDebugError(session, err),
-        throttleGemini: () => throttleGemini()
+        throttleGemini: () => throttleGemini(),
+        parseWebsiteSchemaOutput: (rawText, b, session) => parseWebsiteSchemaOutput(rawText, b, session)
       });
       const { validateWebsiteSchema: validateWebsiteSchema2 } = await Promise.resolve().then(() => (init_website_schema_validator(), website_schema_validator_exports));
       const normalizedSchema = ensureSchemaMetadata(

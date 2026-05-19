@@ -172,7 +172,7 @@ export async function generateWithFallback(
 		const apiEndpoint =
 			process.env.VERTEX_API_ENDPOINT || "aiplatform.googleapis.com";
 		const modelId = "gemini-3.1-pro-preview";
-		const generateContentApi = "generateContent";
+		const generateContentApi = "streamGenerateContent";
 		const vertexUrl = `https://${apiEndpoint}/v1/publishers/google/models/${modelId}:${generateContentApi}?key=${googleCloudApiKey}`;
 		try {
 			options.logStderr(`[AI] Primary Vertex Attempt (${apiEndpoint})...`);
@@ -337,6 +337,11 @@ export async function generateWebsiteContent(
 		) => void;
 		appendGenerationDebugError: (session: any, errorMsg: string) => void;
 		throttleGemini: () => Promise<void>;
+		parseWebsiteSchemaOutput?: (
+			rawText: string,
+			business: any,
+			debugSession?: any,
+		) => WebsiteSchema | null;
 	},
 ): Promise<WebsiteSchema> {
 	if (typeof window !== "undefined") {
@@ -408,28 +413,14 @@ Return ONLY a valid JSON object matching this structure:
 		options.logStderr(
 			"[Gemini Generation] Stage 0: Generating Creative Direction...",
 		);
-		if (options.debugSession) {
-			options.persistGenerationDebugFile(
-				options.debugSession,
-				"01b-stage0-prompt.md",
-				stage0Prompt,
-			);
-		}
 		const stage0Text = await generateWithFallback(
 			stage0Prompt,
 			{ temperature: 0.2, responseMimeType: "application/json" },
-			{ ...options, contextLabel: "stage0-creative-direction" },
+			options,
 		);
 		options.logStderr(
-			`[Gemini Generation] Stage 0 raw length=${stage0Text.length}`,
+			`[Gemini Generation] Stage 0 Output (Creative Direction): ${stage0Text}`,
 		);
-		if (options.debugSession) {
-			options.persistGenerationDebugFile(
-				options.debugSession,
-				"01c-stage0-raw.txt",
-				stage0Text,
-			);
-		}
 		const creativeDirection = JSON.parse(stage0Text.trim());
 		if (options.debugSession) {
 			options.persistGenerationDebugFile(
@@ -448,15 +439,12 @@ Return ONLY a valid JSON object matching this structure:
 			: business.specialties || "General services";
 		const tone = business.tone || "professional";
 
-		const stage1Prompt = `You are generating a PREMIUM WORDPRESS HOMEPAGE schema for a real local business based on the custom-designed Creative Direction Brief.
-
-CREATIVE DIRECTION BRIEF:
+		const stage1Prompt = `You are a premium Senior Front-end Architect.
+Generate a structured website schema matching the exact design decisions in the Creative Direction Brief.
+Your design decisions must respect:
 ${JSON.stringify(creativeDirection, null, 2)}
 
-PRIMARY OBJECTIVE:
-- Generate a highly bespoke, custom-themed WebsiteSchema that implements the Creative Direction Brief with extreme visual restraint, elegance, and emotional sophistication.
-- FORCE LIGHT THEME: You MUST generate "light" or "textured-neutral" themes only. Under NO circumstances should any section backgrounds, cards, or hero wrappers be dark, charcoal, deep gray, or pitch black. All surfaces must be bright (warm eggshell, soft cream, linen, or white).
-- GOOGLE MAPS IMAGES MANDATE: You MUST use the provided Google Maps photos from the "Reference Images" list directly for all image, media, or background URL properties in your sections. Do NOT invent external stock links or placeholder names. Simply copy the exact Google Maps URL strings from the list directly into your schema!
+Modern layout rules (MUST ENFORCE):
 - Avoid excessive, empty whitespace that causes the site to feel "underdeveloped" or generic startup-like. Maintain tight, high-impact padding variables to ensure a cohesive, robust visual experience.
 - Break free from templates. Create a unique pacing, visual flow, and section rhythm specifically suited for this business, prioritizing fewer, more high-impact sections over many repetitive ones.
 - Enforce the brand's visual identity (theme mode, color palette, custom gradients, typography pairing) with absolute consistency. Avoid excessive mutations or contrast mismatch.
@@ -511,7 +499,7 @@ COMPOSITION DICTIONARY OPTIONS (Choose appropriate properties matching business 
 THEME DESIGN SYSTEM:
 - Choose the theme mode determined in the Creative Direction Brief: "${creativeDirection.visualIdentity.themeMode}".
 - Derive all palette colors (background, surface, primary, accent, text, muted, outline) directly from the visualIdentity and brand personality intents.
-- Generative Design DNA: You MUST generate a "designDNA" object under "theme". This DNA system drives the adaptive visual rendering and mutation rules:
+- Generative Design DNA: You MUST generate a "designDNA" object under "theme" this DNA system drives the adaptive visual rendering and mutation rules:
   "designDNA": {
     "spacingPersonality": Choose from ["compressed", "balanced", "airy", "luxury-editorial", "brutalist-dense"],
     "compositionAggression": Number (0 to 100 representing layout mutation/offset levels),
@@ -576,7 +564,7 @@ Return only valid JSON matching the WebsiteSchema interface. Include the "design
 			{ ...options, contextLabel: "stage1-schema" },
 		);
 		options.logStderr(
-			`[Gemini Generation] Stage 1 raw length=${schemaText.length}`,
+			`[Gemini Generation] Stage 1 Output (Raw Schema): ${schemaText}`,
 		);
 		if (options.debugSession) {
 			options.persistGenerationDebugFile(
@@ -595,7 +583,22 @@ Return only valid JSON matching the WebsiteSchema interface. Include the "design
 					.replace(/^```[a-zA-Z]*\n/, "")
 					.replace(/\n```$/, "");
 			}
-			parsedSchema = JSON.parse(cleanedJson.trim()) as WebsiteSchema;
+			if (options.parseWebsiteSchemaOutput) {
+				const result = options.parseWebsiteSchemaOutput(
+					cleanedJson,
+					business,
+					options.debugSession,
+				);
+				if (!result) {
+					throw new Error("parseWebsiteSchemaOutput returned null/failed");
+				}
+				parsedSchema = result;
+			} else {
+				parsedSchema = JSON.parse(cleanedJson.trim()) as WebsiteSchema;
+			}
+			options.logStderr(
+				`[Gemini Generation] Stage 1 Parsed & Normalized Schema: ${JSON.stringify(parsedSchema, null, 2)}`,
+			);
 		} catch (parseError) {
 			throw new Error(
 				`Failed to parse Stage 1 generated schema JSON: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
@@ -639,7 +642,7 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
 
 		const stage2Contents = [
 			{ role: "user", parts: [{ text: stage1Prompt }] },
-			{ role: "model", parts: [{ text: schemaText }] },
+			{ role: "model", parts: [{ text: JSON.stringify(parsedSchema, null, 2) }] },
 			{ role: "user", parts: [{ text: stage2Prompt }] },
 		];
 
@@ -649,7 +652,7 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
 			{ ...options, contextLabel: "stage2-wordpress-html" },
 		);
 		options.logStderr(
-			`[Gemini Generation] Stage 2 raw length=${htmlText.length}`,
+			`[Gemini Generation] Stage 2 Output (Raw HTML): ${htmlText}`,
 		);
 		if (options.debugSession) {
 			options.persistGenerationDebugFile(
@@ -665,6 +668,9 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
 				.replace(/^```[a-zA-Z]*\n/, "")
 				.replace(/\n```$/, "");
 		}
+		options.logStderr(
+			`[Gemini Generation] Stage 2 Cleaned HTML: ${cleanedHtml}`,
+		);
 
 		if (!cleanedHtml) {
 			throw new Error("Generated WordPress HTML was empty");

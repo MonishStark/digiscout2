@@ -602,6 +602,9 @@ async function injectWebsiteContent(
 		await logCallback(
 			`Content source=${renderSource} length=${content.length} sha1=${contentHash}`,
 		);
+		await logCallback(
+			`[Provisioning] WordPress Homepage HTML Content:\n${content}\n`,
+		);
 		const traceId = schema?.meta?.traceId || schema?._validation?.traceId;
 		if (traceId) {
 			try {

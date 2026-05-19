@@ -1,4 +1,4 @@
-﻿/** @format */
+/** @format */
 
 import "./src/lib/env";
 import fs from "fs";
@@ -2773,14 +2773,82 @@ function ensureSchemaMetadata(
 		safeSchema.meta.traceId = traceId;
 	}
 	if (!safeSchema.brand) {
-		safeSchema.brand = {
-			businessName: business?.name || "Business",
-			category: business?.category || "Local Business",
-			address: business?.address || "",
-			phone: business?.phoneNumber || "",
-			email: business?.email || "",
-			websiteUri: business?.websiteUri || "",
-			logo: business?.logo || "",
+		safeSchema.brand = {};
+	}
+	safeSchema.brand.businessName = safeSchema.brand.businessName || business?.name || "Business";
+	safeSchema.brand.category = safeSchema.brand.category || business?.category || "Local Business";
+	safeSchema.brand.address = safeSchema.brand.address || business?.address || "";
+	safeSchema.brand.phone = safeSchema.brand.phone || business?.phoneNumber || "";
+	safeSchema.brand.email = safeSchema.brand.email || business?.email || "";
+	safeSchema.brand.websiteUri = safeSchema.brand.websiteUri || business?.websiteUri || "";
+	safeSchema.brand.logo = safeSchema.brand.logo || business?.logo || "";
+
+	if (!safeSchema.seo) {
+		safeSchema.seo = {};
+	}
+	safeSchema.seo.title = safeSchema.seo.title || business?.name || "Website Preview";
+	safeSchema.seo.description = safeSchema.seo.description || business?.description || `Bespoke web presentation for ${business?.name || "our client"}.`;
+	safeSchema.seo.keywords = safeSchema.seo.keywords || [business?.name || "Business", business?.category || "Local Business"];
+
+	if (!safeSchema.theme) {
+		safeSchema.theme = {
+			name: "default",
+			style: "modern",
+			radius: "8px",
+			layout: "balanced",
+			buttonStyle: "rounded",
+			surfaceStyle: "solid",
+			mediaShape: "rounded",
+			density: "balanced",
+			accentMode: "fresh",
+			palette: {
+				primary: "#2563eb",
+				surface: "#ffffff",
+				background: "#f8fafc",
+				accent: "#f59e0b",
+				text: "#0f172a",
+				muted: "#64748b",
+				outline: "#e2e8f0"
+			},
+			typography: {
+				heading: "Inter",
+				body: "Inter"
+			},
+			brandDNA: {
+				spacingPersonality: "balanced",
+				compositionAggression: 50,
+				hierarchyIntensity: 50,
+				motionEnergy: 50,
+				visualDensity: 50,
+				asymmetryLevel: 50,
+				atmosphereIntensity: 50,
+				typographyDominance: "balanced",
+				imageWeight: 50,
+				luxuryScore: 50,
+				cinematicScore: 50,
+				brutalismScore: 50,
+				editorialScore: 50,
+				softnessScore: 50,
+				visualAtmosphere: "soft-editorial-warmth"
+			}
+		};
+	} else {
+		safeSchema.theme.brandDNA = safeSchema.theme.brandDNA || {
+			spacingPersonality: "balanced",
+			compositionAggression: 50,
+			hierarchyIntensity: 50,
+			motionEnergy: 50,
+			visualDensity: 50,
+			asymmetryLevel: 50,
+			atmosphereIntensity: 50,
+			typographyDominance: "balanced",
+			imageWeight: 50,
+			luxuryScore: 50,
+			cinematicScore: 50,
+			brutalismScore: 50,
+			editorialScore: 50,
+			softnessScore: 50,
+			visualAtmosphere: "soft-editorial-warmth"
 		};
 	}
 	if (!safeSchema._validation) {
@@ -3270,6 +3338,8 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
 				appendGenerationDebugError: (session: any, err: string) =>
 					appendGenerationDebugError(session, err),
 				throttleGemini: () => throttleGemini(),
+				parseWebsiteSchemaOutput: (rawText: string, b: any, session: any) =>
+					parseWebsiteSchemaOutput(rawText, b, session),
 			});
 
 			const { validateWebsiteSchema } =
