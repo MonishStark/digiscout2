@@ -587,12 +587,13 @@ function buildWordPressSitePages(schema) {
   return pages;
 }
 function buildWordPressProvisioningPlan(schema, business, options) {
-  const siteSlug = slugify(schema.meta?.slug || business.name || "client-site");
+  const schemaMeta = schema.meta || {};
+  const siteSlug = slugify(schemaMeta.slug || business.name || "client-site");
   const emailSlug = slugify(
     business.name || schema.brand.businessName || "client"
   );
   const ownerEmail = options?.ownerEmail || business.email || `${emailSlug}@example-client.test`;
-  const ownerUsername = options?.ownerUsername || slugify(`${emailSlug}-${schema.meta.businessId}`);
+  const ownerUsername = options?.ownerUsername || slugify(`${emailSlug}-${schemaMeta.businessId || business.id || "lead"}`);
   return {
     siteTitle: schema.brand.businessName || business.name || schema.seo.title || "Client Site",
     siteSlug,
@@ -2155,225 +2156,7 @@ async function generateWebsite(business) {
     if (err.status === 422) {
       throw err;
     }
-    console.warn("Backend generate failed, returning dry-run schema:", err);
-    const now = Date.now();
-    const category = (business.category || "").toLowerCase();
-    const isHospitality = category.includes("restaurant") || category.includes("cafe") || category.includes("bakery");
-    const isWellness = category.includes("salon") || category.includes("spa") || category.includes("wellness");
-    const isFitness = category.includes("gym") || category.includes("fitness") || category.includes("training");
-    const isProfessional = category.includes("law") || category.includes("finance") || category.includes("consult") || category.includes("agency");
-    const theme = isHospitality ? {
-      name: "Warm Editorial",
-      style: "editorial hospitality",
-      radius: "24px",
-      layout: "editorial",
-      buttonStyle: "pill",
-      surfaceStyle: "glass",
-      mediaShape: "arched",
-      density: "airy",
-      accentMode: "earthy",
-      palette: {
-        background: "#120f0b",
-        surface: "rgba(32, 24, 18, 0.82)",
-        primary: "#d97706",
-        accent: "#f59e0b",
-        text: "#fff8ee",
-        muted: "#d6c6b8",
-        outline: "rgba(255, 237, 213, 0.14)"
-      },
-      typography: { heading: "Fraunces", body: "Inter" }
-    } : isWellness ? {
-      name: "Soft Luxe",
-      style: "luxury wellness",
-      radius: "30px",
-      layout: "split-screen",
-      buttonStyle: "pill",
-      surfaceStyle: "glass",
-      mediaShape: "portrait",
-      density: "balanced",
-      accentMode: "luxury",
-      palette: {
-        background: "#0b0a10",
-        surface: "rgba(22, 18, 32, 0.86)",
-        primary: "#c084fc",
-        accent: "#f5d0fe",
-        text: "#f8f5ff",
-        muted: "#cabcd6",
-        outline: "rgba(233, 213, 255, 0.14)"
-      },
-      typography: { heading: "Cormorant Garamond", body: "Inter" }
-    } : isFitness ? {
-      name: "Electric Performance",
-      style: "high-energy conversion",
-      radius: "18px",
-      layout: "immersive",
-      buttonStyle: "sharp",
-      surfaceStyle: "solid",
-      mediaShape: "square",
-      density: "compact",
-      accentMode: "neon",
-      palette: {
-        background: "#07090f",
-        surface: "#0f172a",
-        primary: "#22c55e",
-        accent: "#38bdf8",
-        text: "#f8fafc",
-        muted: "#94a3b8",
-        outline: "rgba(148, 163, 184, 0.18)"
-      },
-      typography: { heading: "Space Grotesk", body: "Inter" }
-    } : isProfessional ? {
-      name: "Modern Authority",
-      style: "editorial professional",
-      radius: "18px",
-      layout: "minimal",
-      buttonStyle: "sharp",
-      surfaceStyle: "outline",
-      mediaShape: "rounded",
-      density: "balanced",
-      accentMode: "fresh",
-      palette: {
-        background: "#f7f7f5",
-        surface: "#ffffff",
-        primary: "#0f766e",
-        accent: "#2563eb",
-        text: "#111827",
-        muted: "#6b7280",
-        outline: "rgba(17, 24, 39, 0.10)"
-      },
-      typography: { heading: "IBM Plex Sans", body: "Inter" }
-    } : {
-      name: "Noir Luxe",
-      style: "premium glass editorial",
-      radius: "28px",
-      layout: "editorial",
-      buttonStyle: "pill",
-      surfaceStyle: "glass",
-      mediaShape: "rounded",
-      density: "balanced",
-      accentMode: "neon",
-      palette: {
-        background: "#07070a",
-        surface: "#111114",
-        primary: "#7c3aed",
-        accent: "#10b981",
-        text: "#f4f4f5",
-        muted: "#a1a1aa",
-        outline: "rgba(255,255,255,0.10)"
-      },
-      typography: { heading: "Inter", body: "Inter" }
-    };
-    const schema = {
-      meta: {
-        siteId: `dry-${business.id}-${now}`,
-        businessId: business.id,
-        slug: (business.name || "site").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
-        version: 1,
-        target: "static"
-      },
-      theme: {
-        ...theme
-      },
-      brand: {
-        businessName: business.name || "Demo Business",
-        category: business.category || "Local Business",
-        address: business.address || "",
-        phone: business.phoneNumber || "",
-        email: business.email || "",
-        websiteUri: business.websiteUri || "",
-        logo: business.logo
-      },
-      seo: {
-        title: `${business.name || "Demo Business"} \u2014 Preview`,
-        description: `Preview site for ${business.name || "Demo Business"}`,
-        keywords: [business.category || "local", "preview"]
-      },
-      sections: [
-        {
-          id: "hero-1",
-          type: "hero",
-          variant: theme.layout === "minimal" ? "centered" : theme.layout === "immersive" ? "immersive" : "split",
-          headline: `${business.name || "Your Business"}`,
-          subheadline: isFitness ? `High-performance ${business.category || "services"} designed to feel fast, bold, and conversion-focused.` : `Premium ${business.category || "services"} designed to convert.`,
-          ctaPrimary: { label: "Book Now", href: "#contact" },
-          badges: [theme.name, "New Prototype"],
-          media: {
-            type: "image",
-            src: business.photos?.[0] || "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=80",
-            alt: business.name || "Hero",
-            logo: business.logo
-          }
-        },
-        {
-          id: "features-1",
-          type: "features",
-          layout: theme.layout === "minimal" ? "list" : "cards",
-          items: [
-            {
-              title: theme.layout === "minimal" ? "Core Value" : "Signature Service",
-              description: isWellness ? "Soft, polished, and reassuring messaging that feels aligned with a premium service experience." : isFitness ? "Strong positioning with a clear transformation promise and high-energy visual hierarchy." : "A brief description of your key offering."
-            },
-            {
-              title: "Operational Excellence",
-              description: "Streamlined processes, clear pricing, and a trusted team to deliver consistent quality."
-            },
-            {
-              title: "Customer Experience",
-              description: "A focus on convenience, clear booking, and reliable follow-up to keep customers coming back."
-            }
-          ]
-        },
-        {
-          id: "gallery-1",
-          type: "gallery",
-          items: [
-            {
-              src: business.photos?.[1] || business.photos?.[0] || "https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1200&q=80",
-              alt: "Photo 1"
-            },
-            {
-              src: business.photos?.[2] || business.photos?.[1] || "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80",
-              alt: "Photo 2"
-            },
-            {
-              src: business.photos?.[0] || "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80",
-              alt: "Photo 3"
-            }
-          ]
-        },
-        {
-          id: "testimonials-1",
-          type: "testimonials",
-          items: [
-            {
-              author: "Alex M.",
-              quote: "Booking was seamless \u2014 highly recommend."
-            },
-            { author: "Jordan K.", quote: "Friendly staff and great results." }
-          ]
-        },
-        {
-          id: "faq-1",
-          type: "faq",
-          items: [
-            {
-              question: "How do I book?",
-              answer: "Use the booking link or call us during business hours."
-            },
-            {
-              question: "What are your hours?",
-              answer: "Open daily with extended weekend hours."
-            }
-          ]
-        },
-        { id: "contact-1", type: "contact", showEmail: true, showPhone: true }
-      ]
-    };
-    return {
-      schema,
-      debugTraceId: void 0,
-      debugFallbackUsed: true
-    };
+    throw err;
   }
 }
 async function generateOutreachEmail(business, websiteUrl) {
@@ -2385,7 +2168,9 @@ We created a prototype website at ${websiteUrl}.`;
 }
 async function fetchLeadAIChatHistory(leadId) {
   try {
-    const resp = await fetch(`${API_URL}/api/business-ai-chat/${encodeURIComponent(leadId)}`);
+    const resp = await fetch(
+      `${API_URL}/api/business-ai-chat/${encodeURIComponent(leadId)}`
+    );
     if (!resp.ok) {
       throw new Error("Failed to fetch chat history");
     }
@@ -2405,7 +2190,9 @@ async function askBusinessAIChatStream(leadId, businessContext, messages, onChun
   });
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
-    throw new Error(`Chat request failed: ${resp.status} ${resp.statusText} ${text}`);
+    throw new Error(
+      `Chat request failed: ${resp.status} ${resp.statusText} ${text}`
+    );
   }
   const reader = resp.body?.getReader();
   if (!reader) {
@@ -2425,7 +2212,6 @@ async function generateWithFallback(promptOrContents, config = {}, options) {
   const googleCloudApiKey = process.env.GOOGLE_CLOUD_API_KEY;
   const geminiApiKey = process.env.GEMINI_API_KEY;
   const geminiRestUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
-  const projectId = process.env.VERTEX_PROJECT_ID || "digiscout";
   const contents = typeof promptOrContents === "string" ? [{ role: "user", parts: [{ text: promptOrContents }] }] : promptOrContents;
   if (googleCloudApiKey) {
     const apiEndpoint = process.env.VERTEX_API_ENDPOINT || "aiplatform.googleapis.com";
@@ -2449,9 +2235,7 @@ async function generateWithFallback(promptOrContents, config = {}, options) {
           { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "OFF" },
           { category: "HARM_CATEGORY_HARASSMENT", threshold: "OFF" }
         ],
-        tools: [
-          { googleSearch: {} }
-        ]
+        tools: [{ googleSearch: {} }]
       };
       if (config.responseMimeType) {
         payload.generationConfig.responseMimeType = config.responseMimeType;
@@ -2477,18 +2261,26 @@ async function generateWithFallback(promptOrContents, config = {}, options) {
           return text;
         }
         throw new Error("Vertex response contents parts were empty");
-      } else {
-        const errText = await res.text().catch(() => "");
-        throw new Error(`Vertex REST failed with status ${res.status}: ${errText}`);
       }
+      const errText = await res.text().catch(() => "");
+      throw new Error(
+        `Vertex REST failed with status ${res.status}: ${errText}`
+      );
     } catch (err) {
-      options.logStderr(`[AI] Vertex Failed, Switching to Gemini Flash... Error: ${err.message || err}`);
+      options.logStderr(
+        `[AI] Vertex Failed, Switching to Gemini Flash... Error: ${err.message || err}`
+      );
       if (options.debugSession && options.appendGenerationDebugError) {
-        options.appendGenerationDebugError(options.debugSession, `vertex_failed: ${err.message || err}`);
+        options.appendGenerationDebugError(
+          options.debugSession,
+          `vertex_failed: ${err.message || err}`
+        );
       }
     }
   } else {
-    options.logStderr(`[AI] GOOGLE_CLOUD_API_KEY not found. Skipping Vertex, trying Public Gemini...`);
+    options.logStderr(
+      `[AI] GOOGLE_CLOUD_API_KEY not found. Skipping Vertex, trying Public Gemini...`
+    );
   }
   if (geminiApiKey) {
     const fallbackUrl = `${geminiRestUrl}${geminiRestUrl.includes("?") ? "&" : "?"}key=${geminiApiKey}`;
@@ -2517,14 +2309,20 @@ async function generateWithFallback(promptOrContents, config = {}, options) {
           return text;
         }
         throw new Error("Public Gemini response contents parts were empty");
-      } else {
-        const errText = await res.text().catch(() => "");
-        throw new Error(`Public Gemini REST failed with status ${res.status}: ${errText}`);
       }
+      const errText = await res.text().catch(() => "");
+      throw new Error(
+        `Public Gemini REST failed with status ${res.status}: ${errText}`
+      );
     } catch (err) {
-      options.logStderr(`[AI] Public Gemini Failed. Error: ${err.message || err}`);
+      options.logStderr(
+        `[AI] Public Gemini Failed. Error: ${err.message || err}`
+      );
       if (options.debugSession && options.appendGenerationDebugError) {
-        options.appendGenerationDebugError(options.debugSession, `public_gemini_failed: ${err.message || err}`);
+        options.appendGenerationDebugError(
+          options.debugSession,
+          `public_gemini_failed: ${err.message || err}`
+        );
       }
     }
   } else {
@@ -2535,7 +2333,9 @@ async function generateWithFallback(promptOrContents, config = {}, options) {
 }
 async function generateWebsiteContent(business, options) {
   if (typeof window !== "undefined") {
-    throw new Error("generateWebsiteContent can only be run on the server-side");
+    throw new Error(
+      "generateWebsiteContent can only be run on the server-side"
+    );
   }
   try {
     const buildImageBlock = (b) => {
@@ -2544,7 +2344,9 @@ async function generateWebsiteContent(business, options) {
     };
     const buildReviewsBlock = (b) => {
       if (Array.isArray(b.reviews) && b.reviews.length) {
-        return b.reviews.slice(0, 5).map((r, i) => `${i + 1}. ${r.rating || ""} - ${r.text || r.comment || ""}`).join("\n");
+        return b.reviews.slice(0, 5).map(
+          (r, i) => `${i + 1}. ${r.rating || ""} - ${r.text || r.comment || ""}`
+        ).join("\n");
       }
       return "None";
     };
@@ -2582,11 +2384,38 @@ Return ONLY a valid JSON object matching this structure:
     "gradientSystem": { "ambientLighting": "...", "brandGradient": "..." }
   }
 }`;
-    options.logStderr("[Gemini Generation] Stage 0: Generating Creative Direction...");
-    const stage0Text = await generateWithFallback(stage0Prompt, { temperature: 0.2, responseMimeType: "application/json" }, options);
+    options.logStderr(
+      "[Gemini Generation] Stage 0: Generating Creative Direction..."
+    );
+    if (options.debugSession) {
+      options.persistGenerationDebugFile(
+        options.debugSession,
+        "01b-stage0-prompt.md",
+        stage0Prompt
+      );
+    }
+    const stage0Text = await generateWithFallback(
+      stage0Prompt,
+      { temperature: 0.2, responseMimeType: "application/json" },
+      options
+    );
+    options.logStderr(
+      `[Gemini Generation] Stage 0 raw length=${stage0Text.length}`
+    );
+    if (options.debugSession) {
+      options.persistGenerationDebugFile(
+        options.debugSession,
+        "01c-stage0-raw.txt",
+        stage0Text
+      );
+    }
     const creativeDirection = JSON.parse(stage0Text.trim());
     if (options.debugSession) {
-      options.persistGenerationDebugFile(options.debugSession, "01a-creative-direction.json", creativeDirection);
+      options.persistGenerationDebugFile(
+        options.debugSession,
+        "01a-creative-direction.json",
+        creativeDirection
+      );
     }
     const qualificationNotes = business.notes || business.qualificationNotes || "None";
     const neighborhood = business.neighborhood || business.vibe || "Unknown";
@@ -2702,10 +2531,30 @@ Reference Images:
 ${buildImageBlock(business)}
 
 Return only valid JSON matching the WebsiteSchema interface. Include the "designDNA" object under "theme" exactly as specified. Do not enclose in markdown code fences.`;
-    options.logStderr("[Gemini Generation] Stage 1: Generating Layout Schema...");
-    const schemaText = await generateWithFallback(stage1Prompt, { temperature: 0.9, responseMimeType: "application/json" }, options);
+    options.logStderr(
+      "[Gemini Generation] Stage 1: Generating Layout Schema..."
+    );
     if (options.debugSession) {
-      options.persistGenerationDebugFile(options.debugSession, "03-gemini-raw-response.txt", schemaText);
+      options.persistGenerationDebugFile(
+        options.debugSession,
+        "02-stage1-prompt.md",
+        stage1Prompt
+      );
+    }
+    const schemaText = await generateWithFallback(
+      stage1Prompt,
+      { temperature: 0.9, responseMimeType: "application/json" },
+      options
+    );
+    options.logStderr(
+      `[Gemini Generation] Stage 1 raw length=${schemaText.length}`
+    );
+    if (options.debugSession) {
+      options.persistGenerationDebugFile(
+        options.debugSession,
+        "03-gemini-raw-response.txt",
+        schemaText
+      );
     }
     let parsedSchema;
     try {
@@ -2715,9 +2564,13 @@ Return only valid JSON matching the WebsiteSchema interface. Include the "design
       }
       parsedSchema = JSON.parse(cleanedJson.trim());
     } catch (parseError) {
-      throw new Error(`Failed to parse Stage 1 generated schema JSON: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
+      throw new Error(
+        `Failed to parse Stage 1 generated schema JSON: ${parseError instanceof Error ? parseError.message : String(parseError)}`
+      );
     }
-    options.logStderr("[Gemini Generation] Stage 2: Generating WordPress HTML...");
+    options.logStderr(
+      "[Gemini Generation] Stage 2: Generating WordPress HTML..."
+    );
     const stage2Prompt = `You are turning the approved website schema you just generated into the FINAL WordPress homepage HTML.
 
 Return ONLY homepage HTML suitable for WordPress post_content.
@@ -2740,14 +2593,32 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
 - TYPOGRAPHY HIERARCHY: Make h1 massive and tight: font-size: clamp(3.5rem, 8vw, 6rem); line-height: 1.05; tracking: -0.02em; Make paragraph text readable: font-size: 1.125rem; line-height: 1.6; color: rgba(0,0,0,0.7);
 - IMAGES: Never use raw sharp corners. All images must have border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); unless they are explicitly arched.
 - BENTO GRID REFINEMENT: Ensure gap spacing is modern. display: grid; gap: 24px;.`;
+    if (options.debugSession) {
+      options.persistGenerationDebugFile(
+        options.debugSession,
+        "05a-wordpress-html-prompt.md",
+        stage2Prompt
+      );
+    }
     const stage2Contents = [
       { role: "user", parts: [{ text: stage1Prompt }] },
       { role: "model", parts: [{ text: schemaText }] },
       { role: "user", parts: [{ text: stage2Prompt }] }
     ];
-    const htmlText = await generateWithFallback(stage2Contents, { temperature: 0.75 }, options);
+    const htmlText = await generateWithFallback(
+      stage2Contents,
+      { temperature: 0.75 },
+      options
+    );
+    options.logStderr(
+      `[Gemini Generation] Stage 2 raw length=${htmlText.length}`
+    );
     if (options.debugSession) {
-      options.persistGenerationDebugFile(options.debugSession, "05b-wordpress-html-raw.txt", htmlText);
+      options.persistGenerationDebugFile(
+        options.debugSession,
+        "05b-wordpress-html-raw.txt",
+        htmlText
+      );
     }
     let cleanedHtml = htmlText.trim();
     if (cleanedHtml.startsWith("```")) {
@@ -2756,14 +2627,28 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
     if (!cleanedHtml) {
       throw new Error("Generated WordPress HTML was empty");
     }
+    if (options.debugSession) {
+      options.persistGenerationDebugFile(
+        options.debugSession,
+        "05c-wordpress-html-final.html",
+        cleanedHtml
+      );
+    }
     parsedSchema._wordpressHtml = cleanedHtml;
     parsedSchema._renderSource = "gemini-html";
-    options.logStderr("[Gemini Generation] Primary website generation succeeded!");
+    options.logStderr(
+      "[Gemini Generation] Primary website generation succeeded!"
+    );
     return parsedSchema;
   } catch (error) {
-    options.logStderr(`[Gemini Generation] Generation pipeline failed. Error: ${error instanceof Error ? error.message : String(error)}`);
+    options.logStderr(
+      `[Gemini Generation] Generation pipeline failed. Error: ${error instanceof Error ? error.message : String(error)}`
+    );
     if (options.debugSession) {
-      options.appendGenerationDebugError(options.debugSession, `generation_failed: ${error instanceof Error ? error.message : String(error)}`);
+      options.appendGenerationDebugError(
+        options.debugSession,
+        `generation_failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
     throw error;
   }
@@ -3032,7 +2917,7 @@ import crypto2 from "crypto";
 import cors from "cors";
 import express from "express";
 import fs3 from "fs";
-import path2, { dirname } from "path";
+import path3, { dirname } from "path";
 import { fileURLToPath as fileURLToPath2 } from "url";
 
 // src/lib/callhippo-service.ts
@@ -3352,6 +3237,7 @@ async function initializeDatabase() {
 // src/lib/provisioning-engine.ts
 import crypto from "crypto";
 import fs2 from "fs";
+import path2 from "path";
 
 // src/lib/cpanel-uapi.ts
 import { exec } from "child_process";
@@ -3687,6 +3573,7 @@ async function runRemoteShellCommand(command, logCallback) {
 
 // src/lib/provisioning-engine.ts
 var MAX_RETRIES = 3;
+var DEBUG_ROOT_DIR = path2.join(process.cwd(), ".debug-generation");
 var MAX_SUBDOMAIN_LENGTH = 45;
 var SUBDOMAIN_SEMANTIC_VARIANTS = [
   "-shop",
@@ -4086,7 +3973,9 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, adminUser,
     const requireOpenRouterHtml = (process.env.REQUIRE_OPENROUTER_HTML || "").toLowerCase() === "true";
     const renderSource = schema?._renderSource || (schema?._wordpressHtml ? "openrouter-html" : "local-builder");
     if (typeof schema?._wordpressHtml === "string" && schema._wordpressHtml.trim()) {
-      await logCallback("Using OpenRouter-generated WordPress homepage HTML...");
+      await logCallback(
+        "Using OpenRouter-generated WordPress homepage HTML..."
+      );
       content = ensureWordPressHtmlBlock(schema._wordpressHtml);
     } else {
       if (requireOpenRouterHtml) {
@@ -4104,6 +3993,36 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, adminUser,
     await logCallback(
       `Content source=${renderSource} length=${content.length} sha1=${contentHash}`
     );
+    const traceId = schema?.meta?.traceId || schema?._validation?.traceId;
+    if (traceId) {
+      try {
+        const traceDir = path2.join(DEBUG_ROOT_DIR, traceId);
+        fs2.mkdirSync(traceDir, { recursive: true });
+        fs2.writeFileSync(
+          path2.join(traceDir, "11-wp-injected.html"),
+          content,
+          "utf8"
+        );
+        fs2.writeFileSync(
+          path2.join(traceDir, "11-wp-injected-meta.json"),
+          JSON.stringify(
+            {
+              renderSource,
+              length: content.length,
+              sha1: contentHash,
+              injectedAt: (/* @__PURE__ */ new Date()).toISOString()
+            },
+            null,
+            2
+          ),
+          "utf8"
+        );
+      } catch (e) {
+        await logCallback(
+          `Warning: failed to write debug injection artifacts: ${e instanceof Error ? e.message : String(e)}`
+        );
+      }
+    }
     const tmpFile = `/tmp/ds_home_${Date.now()}.html`;
     await logCallback(`Writing to remote temp file: ${tmpFile}`);
     const base64Content = Buffer.from(content).toString("base64");
@@ -4405,7 +4324,9 @@ async function throttleGemini() {
   const elapsed = now - lastGeminiCallTime;
   if (elapsed < 1e4) {
     const waitTime = 1e4 - elapsed;
-    logStderr(`[Gemini Throttle] Queue waiting ${waitTime}ms to maintain 10s gap...`);
+    logStderr(
+      `[Gemini Throttle] Queue waiting ${waitTime}ms to maintain 10s gap...`
+    );
     await new Promise((resolve) => setTimeout(resolve, waitTime));
   }
   lastGeminiCallTime = Date.now();
@@ -4420,7 +4341,7 @@ app.use(express.json({ limit: "50mb" }));
 app.get("/", (req, res) => {
   res.send("DigitalScout API Running");
 });
-var DEBUG_ROOT_DIR = path2.join(process.cwd(), ".debug-generation");
+var DEBUG_ROOT_DIR2 = path3.join(process.cwd(), ".debug-generation");
 var generationDebugSessions = /* @__PURE__ */ new Map();
 function slugifyDebugSegment(value) {
   return (value || "generation").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -4435,11 +4356,11 @@ function createGenerationTraceId(business) {
 function createGenerationDebugSession(business) {
   const traceId = createGenerationTraceId(business);
   let folderName = traceId;
-  let folderPath = path2.join(DEBUG_ROOT_DIR, folderName);
+  let folderPath = path3.join(DEBUG_ROOT_DIR2, folderName);
   let suffix = 2;
   while (fs3.existsSync(folderPath)) {
     folderName = `${traceId}-${suffix}`;
-    folderPath = path2.join(DEBUG_ROOT_DIR, folderName);
+    folderPath = path3.join(DEBUG_ROOT_DIR2, folderName);
     suffix += 1;
   }
   fs3.mkdirSync(folderPath, { recursive: true });
@@ -4469,7 +4390,7 @@ function formatDebugPayload(content) {
 }
 function persistGenerationDebugFile(session, fileName, content, append = false) {
   fs3.mkdirSync(session.folderPath, { recursive: true });
-  const targetPath = path2.join(session.folderPath, fileName);
+  const targetPath = path3.join(session.folderPath, fileName);
   const payload = formatDebugPayload(content);
   if (append && fs3.existsSync(targetPath)) {
     fs3.appendFileSync(targetPath, `${payload}
@@ -4515,13 +4436,18 @@ function buildBusinessDebugInput(business) {
 function getLatestApiKeyFromDisk(keyName = "GEMINI_API_KEY") {
   const key = process.env.GOOGLE_CLOUD_API_KEY || process.env.GEMINI_API_KEY;
   if (!key) {
-    throw new Error(`Missing Gemini API Key. Please provide GOOGLE_CLOUD_API_KEY or GEMINI_API_KEY in your environment.`);
+    throw new Error(
+      `Missing Gemini API Key. Please provide GOOGLE_CLOUD_API_KEY or GEMINI_API_KEY in your environment.`
+    );
   }
   return key;
 }
 async function getSDKGenAI() {
   const key = getLatestApiKeyFromDisk();
-  console.log(`[AI Chat] getSDKGenAI runtime lookup key:`, key ? `${key.substring(0, 10)}...` : "NOT FOUND");
+  console.log(
+    `[AI Chat] getSDKGenAI runtime lookup key:`,
+    key ? `${key.substring(0, 10)}...` : "NOT FOUND"
+  );
   if (!key) return null;
   if (!GoogleGenerativeAI) {
     try {
@@ -4546,7 +4472,9 @@ async function generateCreativeDirection(business, debugSession) {
   };
   const buildReviewsBlock = (b) => {
     if (Array.isArray(b.reviews) && b.reviews.length) {
-      return b.reviews.slice(0, 5).map((r, i) => `${i + 1}. ${r.rating || ""} - ${r.text || r.comment || ""}`).join("\n");
+      return b.reviews.slice(0, 5).map(
+        (r, i) => `${i + 1}. ${r.rating || ""} - ${r.text || r.comment || ""}`
+      ).join("\n");
     }
     return "None";
   };
@@ -4752,11 +4680,20 @@ Return ONLY a valid JSON object matching the following structure (no markdown, n
           })
         }),
         new Promise(
-          (_, reject) => setTimeout(() => reject(new Error(`Creative Direction timeout after ${model.timeoutMs}ms`)), model.timeoutMs)
+          (_, reject) => setTimeout(
+            () => reject(
+              new Error(
+                `Creative Direction timeout after ${model.timeoutMs}ms`
+              )
+            ),
+            model.timeoutMs
+          )
         )
       ]);
       if (!fetchResponse.ok) {
-        throw new Error(`REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`);
+        throw new Error(
+          `REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`
+        );
       }
       const data = await fetchResponse.json();
       responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
@@ -4765,7 +4702,10 @@ Return ONLY a valid JSON object matching the following structure (no markdown, n
       }
     } catch (err) {
       lastError = err;
-      console.error(`[Creative Direction] attempt failed for ${model.name}:`, err);
+      console.error(
+        `[Creative Direction] attempt failed for ${model.name}:`,
+        err
+      );
     }
   }
   if (!responseText) {
@@ -4775,7 +4715,10 @@ Return ONLY a valid JSON object matching the following structure (no markdown, n
     const cleaned = responseText.replace(/```json\s*/i, "").replace(/```\s*$/i, "").trim();
     return JSON.parse(cleaned);
   } catch (e) {
-    console.error("[Creative Direction] JSON parse failed, returning fallback art brief", e);
+    console.error(
+      "[Creative Direction] JSON parse failed, returning fallback art brief",
+      e
+    );
     return {
       emotionalTone: "Warm, professional, trust-first",
       brandPersonality: {
@@ -6413,6 +6356,58 @@ function createFallbackWebsiteSchema(business) {
   };
   return ensureNonTemplateCopy(schema, business);
 }
+function ensureSchemaMetadata(schema, business, traceId) {
+  const now = Date.now();
+  const safeSchema = schema || {};
+  if (!safeSchema.schemaVersion) {
+    safeSchema.schemaVersion = "1.0";
+  }
+  if (!safeSchema.meta) {
+    safeSchema.meta = {};
+  }
+  if (!safeSchema.meta.businessId) {
+    safeSchema.meta.businessId = business?.id || business?.placeId || `biz-${now}`;
+  }
+  if (!safeSchema.meta.siteId) {
+    safeSchema.meta.siteId = `site-${safeSchema.meta.businessId}-${now}`;
+  }
+  if (!safeSchema.meta.slug) {
+    safeSchema.meta.slug = (business?.name || "site").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  }
+  if (!safeSchema.meta.version) {
+    safeSchema.meta.version = 1;
+  }
+  if (!safeSchema.meta.target) {
+    safeSchema.meta.target = "wordpress";
+  }
+  if (traceId) {
+    safeSchema.meta.traceId = traceId;
+  }
+  if (!safeSchema.brand) {
+    safeSchema.brand = {
+      businessName: business?.name || "Business",
+      category: business?.category || "Local Business",
+      address: business?.address || "",
+      phone: business?.phoneNumber || "",
+      email: business?.email || "",
+      websiteUri: business?.websiteUri || "",
+      logo: business?.logo || ""
+    };
+  }
+  if (!safeSchema._validation) {
+    safeSchema._validation = {
+      repairs: [],
+      validatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      traceId,
+      photos: business?.photos || [],
+      imageSuggestions: business?.imageSuggestions || [],
+      logo: business?.logo || ""
+    };
+  } else if (traceId) {
+    safeSchema._validation.traceId = traceId;
+  }
+  return safeSchema;
+}
 app.post("/api/generate", async (req, res) => {
   try {
     const business = req.body;
@@ -6439,14 +6434,9 @@ app.post("/api/generate", async (req, res) => {
         debugSession,
         "fallback_triggered: template mode"
       );
-      res.setHeader("x-debug-generation-fallback", "true");
-      const fallbackSchema = createFallbackWebsiteSchema(business);
-      persistGenerationDebugFile(
-        debugSession,
-        "05-normalized-schema.json",
-        fallbackSchema
-      );
-      return res.json(fallbackSchema);
+      return res.status(422).json({
+        error: "Website creation failed: template mode is enabled."
+      });
     }
     if (!GENAI_KEY && !process.env.GEMINI_REST_URL) {
       debugSession.fallbackReason = "missing-config";
@@ -6454,19 +6444,19 @@ app.post("/api/generate", async (req, res) => {
         debugSession,
         "fallback_triggered: no Gemini API configuration found"
       );
-      res.setHeader("x-debug-generation-fallback", "true");
-      const fallbackSchema = createFallbackWebsiteSchema(business);
-      persistGenerationDebugFile(
-        debugSession,
-        "05-normalized-schema.json",
-        fallbackSchema
-      );
-      return res.json(fallbackSchema);
+      return res.status(422).json({
+        error: "Website creation failed: AI configuration missing."
+      });
     }
     const restFallback = async () => {
       res.setHeader("x-debug-generation-fallback", "true");
-      console.error(`[Generate] [REST Fallback] Generating Creative Direction stage 0...`);
-      const creativeDirection = await generateCreativeDirection(business, debugSession);
+      console.error(
+        `[Generate] [REST Fallback] Generating Creative Direction stage 0...`
+      );
+      const creativeDirection = await generateCreativeDirection(
+        business,
+        debugSession
+      );
       persistGenerationDebugFile(
         debugSession,
         "01a-creative-direction.json",
@@ -6498,7 +6488,9 @@ app.post("/api/generate", async (req, res) => {
         "Enforce a cinematic, grid-forward dynamic layout. Mix bento cells (span layouts) with full-bleed atmospheric banners.",
         "Enforce a highly structured, content-rich storytelling split layout. Alternate left-aligned text with large asymmetrical shapes."
       ];
-      const chosenVariationBrief = variationBriefs[Math.abs(creativeSeed.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)) % variationBriefs.length];
+      const chosenVariationBrief = variationBriefs[Math.abs(
+        creativeSeed.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)
+      ) % variationBriefs.length];
       const prompt = `You are generating a PREMIUM WORDPRESS HOMEPAGE schema for a real local business based on a custom-designed Creative Direction Brief.
 
 CREATIVE DIRECTION BRIEF:
@@ -6697,7 +6689,11 @@ ${prompt}
 --- GEMINI PROMPT END ---
 `
       );
-      persistGenerationDebugFile(debugSession, "02-generation-prompt.md", prompt);
+      persistGenerationDebugFile(
+        debugSession,
+        "02-generation-prompt.md",
+        prompt
+      );
       const rawText = await callGeminiText(prompt, "schema");
       fs3.writeSync(
         2,
@@ -6719,20 +6715,14 @@ ${rawText}
       );
       if (!parsedSchema) {
         console.warn(
-          "[Generate] Gemini output could not be parsed as WebsiteSchema, using fallback schema."
+          "[Generate] Gemini output could not be parsed as WebsiteSchema."
         );
         debugSession.fallbackReason = "parse-failure";
         appendGenerationDebugError(
           debugSession,
           "fallback_triggered: parse failure"
         );
-        const fallbackSchema = createFallbackWebsiteSchema(business);
-        persistGenerationDebugFile(
-          debugSession,
-          "05-normalized-schema.json",
-          fallbackSchema
-        );
-        return fallbackSchema;
+        throw new Error("AI_GENERATION_FAILED");
       }
       try {
         const wordpressHtmlPrompt = `You are turning an approved website schema into the FINAL WordPress homepage HTML.
@@ -6757,25 +6747,45 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
 - TYPOGRAPHY HIERARCHY: Make h1 massive and tight: font-size: clamp(3.5rem, 8vw, 6rem); line-height: 1.05; tracking: -0.02em; Make paragraph text readable: font-size: 1.125rem; line-height: 1.6; color: rgba(0,0,0,0.7);
 - IMAGES: Never use raw sharp corners. All images must have border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); unless they are explicitly arched.
 - BENTO GRID REFINEMENT: Ensure gap spacing is modern. display: grid; gap: 24px;.`;
-        persistGenerationDebugFile(debugSession, "05a-wordpress-html-prompt.md", wordpressHtmlPrompt);
-        const rawWordPressHtml = await callGeminiText(wordpressHtmlPrompt, "wordpress-html");
-        fs3.writeSync(2, `
+        persistGenerationDebugFile(
+          debugSession,
+          "05a-wordpress-html-prompt.md",
+          wordpressHtmlPrompt
+        );
+        const rawWordPressHtml = await callGeminiText(
+          wordpressHtmlPrompt,
+          "wordpress-html"
+        );
+        fs3.writeSync(
+          2,
+          `
 --- GEMINI WORDPRESS HTML START ---
 ${rawWordPressHtml}
 --- GEMINI WORDPRESS HTML END ---
-`);
-        persistGenerationDebugFile(debugSession, "05b-wordpress-html-raw.txt", rawWordPressHtml);
+`
+        );
+        persistGenerationDebugFile(
+          debugSession,
+          "05b-wordpress-html-raw.txt",
+          rawWordPressHtml
+        );
         const extractedWordPressHtml = extractHtmlDocument(rawWordPressHtml) || rawWordPressHtml.trim();
         if (extractedWordPressHtml) {
           parsedSchema._wordpressHtml = extractedWordPressHtml;
           parsedSchema._renderSource = "gemini-html";
-          persistGenerationDebugFile(debugSession, "05c-wordpress-html-final.html", extractedWordPressHtml);
+          persistGenerationDebugFile(
+            debugSession,
+            "05c-wordpress-html-final.html",
+            extractedWordPressHtml
+          );
         } else {
           throw new Error("Extracted HTML was empty");
         }
       } catch (wordpressHtmlError) {
         try {
-          logStderr(`[Generate] AI WordPress HTML failed. Falling back to local builder traceId=${debugSession.traceId}. Error: ${wordpressHtmlError instanceof Error ? wordpressHtmlError.message : String(wordpressHtmlError)}`);
+          logStderr(
+            `[Generate] AI WordPress HTML failed. Falling back to local builder traceId=${debugSession.traceId}. Error: ${wordpressHtmlError instanceof Error ? wordpressHtmlError.message : String(wordpressHtmlError)}`
+          );
           const premiumHtml = buildPremiumPageContent(parsedSchema);
           if (premiumHtml) {
             parsedSchema._wordpressHtml = premiumHtml;
@@ -6813,22 +6823,57 @@ ${rawWordPressHtml}
         throttleGemini: () => throttleGemini()
       });
       const { validateWebsiteSchema: validateWebsiteSchema2 } = await Promise.resolve().then(() => (init_website_schema_validator(), website_schema_validator_exports));
-      validation = validateWebsiteSchema2(generatedSchema);
-      finalSchema = validation.repairedSchema || generatedSchema;
+      const normalizedSchema = ensureSchemaMetadata(
+        generatedSchema,
+        business,
+        debugSession.traceId
+      );
+      validation = validateWebsiteSchema2(normalizedSchema);
+      if (!validation.isValid && !validation.repairedSchema) {
+        appendGenerationDebugError(
+          debugSession,
+          `validation_failed: ${validation.errors?.join(" | ") || "unknown"}`
+        );
+        return res.status(422).json({
+          error: "Website creation failed: AI output validation failed."
+        });
+      }
+      finalSchema = validation.repairedSchema || normalizedSchema;
     } catch (error) {
       if (error instanceof Error && (error.message === "AI_GENERATION_FAILED" || error.message === "AI_CRITICAL_FAILURE")) {
         logStderr(`[Generate] AI Generation pipeline failed completely.`);
-        return res.status(422).json({ error: "AI Content Generation Service Currently Unavailable." });
+        return res.status(422).json({
+          error: "AI Content Generation Service Currently Unavailable."
+        });
       }
       throw error;
     }
+    finalSchema = ensureSchemaMetadata(
+      finalSchema,
+      business,
+      debugSession.traceId
+    );
+    if (finalSchema._wordpressHtml) {
+      persistGenerationDebugFile(
+        debugSession,
+        "05c-wordpress-html-final.html",
+        finalSchema._wordpressHtml
+      );
+    }
+    persistGenerationDebugFile(
+      debugSession,
+      "05-normalized-schema.json",
+      finalSchema
+    );
     debugSession.sectionTypes = finalSchema.sections.map(
       (section) => section.type
+    );
+    logStderr(
+      `[Generate] complete traceId=${debugSession.traceId} sections=${debugSession.sectionTypes.length} renderSource=${finalSchema._renderSource || "unknown"} wpHtml=${finalSchema._wordpressHtml ? `yes(${finalSchema._wordpressHtml.length})` : "no"}`
     );
     res.setHeader("x-debug-generation-fallback", "false");
     return res.json(finalSchema);
   } catch (error) {
-    const fallbackSchema = createFallbackWebsiteSchema(req.body);
     const debugSession = req.body && req.body.name ? Array.from(generationDebugSessions.values()).find(
       (session) => session.businessName === req.body.name
     ) : void 0;
@@ -6837,16 +6882,13 @@ ${rawWordPressHtml}
         debugSession,
         `route_error: ${error instanceof Error ? error.message : String(error)}`
       );
-      persistGenerationDebugFile(
-        debugSession,
-        "05-normalized-schema.json",
-        fallbackSchema
-      );
       res.setHeader("x-debug-generation-id", debugSession.traceId);
-      res.setHeader("x-debug-generation-fallback", "true");
+      res.setHeader("x-debug-generation-fallback", "false");
     }
-    console.warn("/api/generate falling back to local schema:", error);
-    return res.json(fallbackSchema);
+    console.warn("/api/generate failed:", error);
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : "Website creation failed."
+    });
   }
 });
 app.post(
@@ -7240,8 +7282,8 @@ app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
 app.get("/api/generate/replay/:traceId", async (req, res) => {
   const { traceId } = req.params;
   try {
-    const inputPath = path2.join(
-      DEBUG_ROOT_DIR,
+    const inputPath = path3.join(
+      DEBUG_ROOT_DIR2,
       traceId,
       "06-renderer-input.json"
     );
@@ -7392,22 +7434,25 @@ app.post(
     }
   }
 );
-app.get("/api/business-ai-chat/:leadId", async (req, res) => {
-  try {
-    const { leadId } = req.params;
-    if (!leadId) {
-      return res.status(400).json({ error: "Missing leadId" });
+app.get(
+  "/api/business-ai-chat/:leadId",
+  async (req, res) => {
+    try {
+      const { leadId } = req.params;
+      if (!leadId) {
+        return res.status(400).json({ error: "Missing leadId" });
+      }
+      const [messages] = await pool.query(
+        "SELECT role, content, created_at FROM lead_ai_messages WHERE lead_id = ? ORDER BY id ASC",
+        [leadId]
+      );
+      return res.json({ messages: messages || [] });
+    } catch (error) {
+      console.error("[AI Chat] Failed to fetch chat history:", error);
+      return res.status(500).json({ error: "Failed to fetch chat history" });
     }
-    const [messages] = await pool.query(
-      "SELECT role, content, created_at FROM lead_ai_messages WHERE lead_id = ? ORDER BY id ASC",
-      [leadId]
-    );
-    return res.json({ messages: messages || [] });
-  } catch (error) {
-    console.error("[AI Chat] Failed to fetch chat history:", error);
-    return res.status(500).json({ error: "Failed to fetch chat history" });
   }
-});
+);
 app.post("/api/business-ai-chat", async (req, res) => {
   try {
     const { leadId, businessContext, messages, conversationId } = req.body;
@@ -7434,7 +7479,10 @@ app.post("/api/business-ai-chat", async (req, res) => {
         parts: [{ text: m.content }]
       }));
     } catch (dbError) {
-      console.warn("[AI Chat] Database offline. Using stateless array fallback:", dbError);
+      console.warn(
+        "[AI Chat] Database offline. Using stateless array fallback:",
+        dbError
+      );
       chatContents = messages.map((m) => ({
         role: m.role === "user" ? "user" : "model",
         parts: [{ text: m.content }]
@@ -7458,7 +7506,9 @@ app.post("/api/business-ai-chat", async (req, res) => {
     const businessAddress = businessContext.address || "N/A";
     const rating = businessContext.rating || "N/A";
     const reviewCount = businessContext.reviewCount || 0;
-    const reviewsText = Array.isArray(businessContext.reviews) && businessContext.reviews.length ? businessContext.reviews.map((r, i) => `${i + 1}. [Rating: ${r.rating || "N/A"}] "${r.text || r.comment || ""}"`).join("\n") : "No reviews or rating insights available.";
+    const reviewsText = Array.isArray(businessContext.reviews) && businessContext.reviews.length ? businessContext.reviews.map(
+      (r, i) => `${i + 1}. [Rating: ${r.rating || "N/A"}] "${r.text || r.comment || ""}"`
+    ).join("\n") : "No reviews or rating insights available.";
     let websiteText = "";
     if (businessContext.websiteSchema) {
       const ws = businessContext.websiteSchema;
@@ -7490,14 +7540,16 @@ Rules for your responses:
     res.writeHead(200, {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "no-cache",
-      "Connection": "keep-alive"
+      Connection: "keep-alive"
     });
     let fullResponseText = "";
     let fallbackUsed = false;
     const genAI = await getSDKGenAI();
     if (genAI) {
       try {
-        console.log("[AI Chat] Attempting SDK generation with gemini-3.1-pro-preview...");
+        console.log(
+          "[AI Chat] Attempting SDK generation with gemini-3.1-pro-preview..."
+        );
         await throttleGemini();
         const result = await genAI.models.generateContent({
           model: "gemini-3.1-pro-preview",
@@ -7509,7 +7561,10 @@ Rules for your responses:
         });
         fullResponseText = result.text || "";
       } catch (sdkError) {
-        console.warn("[AI Chat] SDK generation failed, falling back to REST:", sdkError);
+        console.warn(
+          "[AI Chat] SDK generation failed, falling back to REST:",
+          sdkError
+        );
         fallbackUsed = true;
       }
     } else {
@@ -7517,7 +7572,9 @@ Rules for your responses:
       fallbackUsed = true;
     }
     if (fallbackUsed || !fullResponseText) {
-      console.log("[AI Chat] Attempting REST generation with gemini-flash-latest...");
+      console.log(
+        "[AI Chat] Attempting REST generation with gemini-flash-latest..."
+      );
       const modelRestUrl = restUrl.includes("{model}") ? restUrl.replace("{model}", "gemini-flash-latest") : restUrl;
       const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
       const requestBody = {
@@ -7535,7 +7592,9 @@ Rules for your responses:
       });
       if (!fetchResponse.ok) {
         const errorText = await fetchResponse.text().catch(() => "");
-        throw new Error(`Gemini REST API returned status ${fetchResponse.status}: ${errorText}`);
+        throw new Error(
+          `Gemini REST API returned status ${fetchResponse.status}: ${errorText}`
+        );
       }
       const responseJson = await fetchResponse.json();
       fullResponseText = responseJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
@@ -7548,7 +7607,10 @@ Rules for your responses:
           [leadId, conversationId || leadId, "model", fullResponseText]
         );
       } catch (dbError) {
-        console.warn("[AI Chat] Failed to save AI response text to database:", dbError);
+        console.warn(
+          "[AI Chat] Failed to save AI response text to database:",
+          dbError
+        );
       }
     }
     res.end();
@@ -7560,9 +7622,11 @@ Rules for your responses:
       });
     } else {
       const errMessage = error instanceof Error ? error.message : String(error);
-      res.write(`
+      res.write(
+        `
 
-*Error: Connection to Gemini failed. Details: ${errMessage}*`);
+*Error: Connection to Gemini failed. Details: ${errMessage}*`
+      );
       res.end();
     }
   }

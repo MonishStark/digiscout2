@@ -215,7 +215,7 @@ function renderFeaturesSection(schema: WebsiteSchema) {
 		return `<!-- wp:group {"layout":{"type":"constrained"}} -->\n<div class="wp-block-group">\n  ${renderHeading(voice.featuresTitle, 2)}\n  <!-- wp:columns {"align":"wide"} -->\n<div class="wp-block-columns alignwide">\n${features.items
 			.map(
 				(item) =>
-					`<!-- wp:column -->\n<div class="wp-block-column" style="padding: 24px; border: 1px solid #eee; border-radius: 8px; margin-bottom: 24px;">\n${renderHeading(item.title, 3)}\n${renderParagraph(item.description)}\n</div>\n<!-- /wp:column -->`
+					`<!-- wp:column -->\n<div class="wp-block-column" style="padding: 24px; border: 1px solid #eee; border-radius: 8px; margin-bottom: 24px;">\n${renderHeading(item.title, 3)}\n${renderParagraph(item.description)}\n</div>\n<!-- /wp:column -->`,
 			)
 			.join("\n")}\n</div>\n<!-- /wp:columns -->\n</div>\n<!-- /wp:group -->`;
 	}
@@ -876,14 +876,16 @@ export function buildWordPressProvisioningPlan(
 		baseTheme?: string;
 	},
 ): WordPressProvisioningPlan {
-	const siteSlug = slugify(schema.meta?.slug || business.name || "client-site");
+	const schemaMeta = schema.meta || ({} as WebsiteSchema["meta"]);
+	const siteSlug = slugify(schemaMeta.slug || business.name || "client-site");
 	const emailSlug = slugify(
 		business.name || schema.brand.businessName || "client",
 	);
 	const ownerEmail =
 		options?.ownerEmail || business.email || `${emailSlug}@example-client.test`;
 	const ownerUsername =
-		options?.ownerUsername || slugify(`${emailSlug}-${schema.meta.businessId}`);
+		options?.ownerUsername ||
+		slugify(`${emailSlug}-${schemaMeta.businessId || business.id || "lead"}`);
 
 	return {
 		siteTitle:

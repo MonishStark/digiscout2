@@ -2,6 +2,7 @@
 
 import crypto from "crypto";
 import fs from "fs";
+import path from "path";
 import { pool } from "./db";
 import {
 	addSubdomain,
@@ -25,6 +26,7 @@ import {
 // NOTE: No local `fs` import — all filesystem operations are remote via SSH.
 
 const MAX_RETRIES = 3;
+const DEBUG_ROOT_DIR = path.join(process.cwd(), ".debug-generation");
 
 // ---------------------------------------------------------------------------
 // Subdomain Generation
@@ -579,7 +581,9 @@ async function injectWebsiteContent(
 			typeof schema?._wordpressHtml === "string" &&
 			schema._wordpressHtml.trim()
 		) {
-			await logCallback("Using OpenRouter-generated WordPress homepage HTML...");
+			await logCallback(
+				"Using OpenRouter-generated WordPress homepage HTML...",
+			);
 			content = ensureWordPressHtmlBlock(schema._wordpressHtml);
 		} else {
 			if (requireOpenRouterHtml) {
@@ -598,6 +602,36 @@ async function injectWebsiteContent(
 		await logCallback(
 			`Content source=${renderSource} length=${content.length} sha1=${contentHash}`,
 		);
+		const traceId = schema?.meta?.traceId || schema?._validation?.traceId;
+		if (traceId) {
+			try {
+				const traceDir = path.join(DEBUG_ROOT_DIR, traceId);
+				fs.mkdirSync(traceDir, { recursive: true });
+				fs.writeFileSync(
+					path.join(traceDir, "11-wp-injected.html"),
+					content,
+					"utf8",
+				);
+				fs.writeFileSync(
+					path.join(traceDir, "11-wp-injected-meta.json"),
+					JSON.stringify(
+						{
+							renderSource,
+							length: content.length,
+							sha1: contentHash,
+							injectedAt: new Date().toISOString(),
+						},
+						null,
+						2,
+					),
+					"utf8",
+				);
+			} catch (e) {
+				await logCallback(
+					`Warning: failed to write debug injection artifacts: ${e instanceof Error ? e.message : String(e)}`,
+				);
+			}
+		}
 
 		// Write content to temp file on remote server (avoids shell escaping limits)
 		const tmpFile = `/tmp/ds_home_${Date.now()}.html`;

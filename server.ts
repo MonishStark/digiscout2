@@ -1,4 +1,4 @@
-/** @format */
+﻿/** @format */
 
 import "./src/lib/env";
 import fs from "fs";
@@ -55,7 +55,7 @@ let geminiQueueChain = Promise.resolve();
 async function throttleGemini() {
 	const currentQueue = geminiQueueChain;
 	let resolveLock: () => void;
-	const lockPromise = new Promise<void>(resolve => {
+	const lockPromise = new Promise<void>((resolve) => {
 		resolveLock = resolve;
 	});
 	geminiQueueChain = lockPromise;
@@ -65,8 +65,10 @@ async function throttleGemini() {
 	const elapsed = now - lastGeminiCallTime;
 	if (elapsed < 10000) {
 		const waitTime = 10000 - elapsed;
-		logStderr(`[Gemini Throttle] Queue waiting ${waitTime}ms to maintain 10s gap...`);
-		await new Promise(resolve => setTimeout(resolve, waitTime));
+		logStderr(
+			`[Gemini Throttle] Queue waiting ${waitTime}ms to maintain 10s gap...`,
+		);
+		await new Promise((resolve) => setTimeout(resolve, waitTime));
 	}
 	lastGeminiCallTime = Date.now();
 	resolveLock!();
@@ -270,15 +272,19 @@ async function readRequestBody(req: Request): Promise<Buffer> {
 function getLatestApiKeyFromDisk(keyName = "GEMINI_API_KEY"): string {
 	const key = process.env.GOOGLE_CLOUD_API_KEY || process.env.GEMINI_API_KEY;
 	if (!key) {
-		throw new Error(`Missing Gemini API Key. Please provide GOOGLE_CLOUD_API_KEY or GEMINI_API_KEY in your environment.`);
+		throw new Error(
+			`Missing Gemini API Key. Please provide GOOGLE_CLOUD_API_KEY or GEMINI_API_KEY in your environment.`,
+		);
 	}
 	return key;
 }
 
-
 async function getSDKGenAI() {
 	const key = getLatestApiKeyFromDisk();
-	console.log(`[AI Chat] getSDKGenAI runtime lookup key:`, key ? `${key.substring(0, 10)}...` : "NOT FOUND");
+	console.log(
+		`[AI Chat] getSDKGenAI runtime lookup key:`,
+		key ? `${key.substring(0, 10)}...` : "NOT FOUND",
+	);
 	if (!key) return null;
 	if (!GoogleGenerativeAI) {
 		try {
@@ -294,20 +300,37 @@ async function getSDKGenAI() {
 
 const GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
 
-async function generateCreativeDirection(business: any, debugSession: any): Promise<any> {
+async function generateCreativeDirection(
+	business: any,
+	debugSession: any,
+): Promise<any> {
 	const modelsToTry = [
 		{ name: "gemini-flash-latest", timeoutMs: 45000 },
 		{ name: "gemini-flash-latest", timeoutMs: 45000 },
 	] as const;
 
 	const buildImageBlock = (b: any) => {
-		const sources = typeof collectBusinessImages === "function" ? collectBusinessImages(b) : (b.photos || []);
-		return sources.length ? sources.slice(0, 10).map((u: string, i: number) => `${i + 1}. ${u}`).join("\n") : "None";
+		const sources =
+			typeof collectBusinessImages === "function"
+				? collectBusinessImages(b)
+				: b.photos || [];
+		return sources.length
+			? sources
+					.slice(0, 10)
+					.map((u: string, i: number) => `${i + 1}. ${u}`)
+					.join("\n")
+			: "None";
 	};
 
 	const buildReviewsBlock = (b: any) => {
 		if (Array.isArray(b.reviews) && b.reviews.length) {
-			return b.reviews.slice(0, 5).map((r: any, i: number) => `${i + 1}. ${r.rating || ""} - ${r.text || r.comment || ""}`).join("\n");
+			return b.reviews
+				.slice(0, 5)
+				.map(
+					(r: any, i: number) =>
+						`${i + 1}. ${r.rating || ""} - ${r.text || r.comment || ""}`,
+				)
+				.join("\n");
 		}
 		return "None";
 	};
@@ -495,8 +518,14 @@ Return ONLY a valid JSON object matching the following structure (no markdown, n
 
 	for (const model of modelsToTry) {
 		try {
-			const restUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
-			const key = getLatestApiKeyFromDisk() || process.env.GEMINI_API_KEY || process.env.GENAI_KEY || GENAI_KEY;
+			const restUrl =
+				process.env.GEMINI_REST_URL ||
+				"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
+			const key =
+				getLatestApiKeyFromDisk() ||
+				process.env.GEMINI_API_KEY ||
+				process.env.GENAI_KEY ||
+				GENAI_KEY;
 			if (!key) {
 				throw new Error("Gemini API key is not configured.");
 			}
@@ -518,14 +547,24 @@ Return ONLY a valid JSON object matching the following structure (no markdown, n
 					}),
 				}),
 				new Promise<Response>((_, reject) =>
-					setTimeout(() => reject(new Error(`Creative Direction timeout after ${model.timeoutMs}ms`)), model.timeoutMs)
+					setTimeout(
+						() =>
+							reject(
+								new Error(
+									`Creative Direction timeout after ${model.timeoutMs}ms`,
+								),
+							),
+						model.timeoutMs,
+					),
 				),
 			]);
 
 			if (!fetchResponse.ok) {
-				throw new Error(`REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`);
+				throw new Error(
+					`REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`,
+				);
 			}
-			const data = await fetchResponse.json() as any;
+			const data = (await fetchResponse.json()) as any;
 			responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
 			if (responseText) {
@@ -533,7 +572,10 @@ Return ONLY a valid JSON object matching the following structure (no markdown, n
 			}
 		} catch (err) {
 			lastError = err;
-			console.error(`[Creative Direction] attempt failed for ${model.name}:`, err);
+			console.error(
+				`[Creative Direction] attempt failed for ${model.name}:`,
+				err,
+			);
 		}
 	}
 
@@ -542,10 +584,16 @@ Return ONLY a valid JSON object matching the following structure (no markdown, n
 	}
 
 	try {
-		const cleaned = responseText.replace(/```json\s*/i, "").replace(/```\s*$/i, "").trim();
+		const cleaned = responseText
+			.replace(/```json\s*/i, "")
+			.replace(/```\s*$/i, "")
+			.trim();
 		return JSON.parse(cleaned);
 	} catch (e) {
-		console.error("[Creative Direction] JSON parse failed, returning fallback art brief", e);
+		console.error(
+			"[Creative Direction] JSON parse failed, returning fallback art brief",
+			e,
+		);
 		return {
 			emotionalTone: "Warm, professional, trust-first",
 			brandPersonality: {
@@ -554,7 +602,7 @@ Return ONLY a valid JSON object matching the following structure (no markdown, n
 				modernVsHeritage: 50,
 				industrialVsEditorial: 30,
 				minimalistVsLayered: 40,
-				premiumVsEnergetic: 60
+				premiumVsEnergetic: 60,
 			},
 			visualIdentity: {
 				themeMode: "light",
@@ -562,35 +610,37 @@ Return ONLY a valid JSON object matching the following structure (no markdown, n
 				primaryColorIntent: "#1e3a8a",
 				accentColorIntent: "#3b82f6",
 				backgroundColorIntent: "#fafafa",
-				surfaceColorIntent: "#ffffff"
+				surfaceColorIntent: "#ffffff",
 			},
 			compositionPhilosophy: {
 				alignment: "balanced",
 				layoutCadence: "Clear vertical hierarchy, balanced visual weights",
 				spacingRhythm: "balanced",
-				sectionTransitions: "Clean margins with subtle boundaries"
+				sectionTransitions: "Clean margins with subtle boundaries",
 			},
 			typographyMood: {
 				headingFontFamily: "Outfit",
 				bodyFontFamily: "Inter",
-				moodDescriptor: "Clean and modern professional"
+				moodDescriptor: "Clean and modern professional",
 			},
 			mediaTreatment: {
 				style: "bright-clean",
-				shapes: ["rounded"]
+				shapes: ["rounded"],
 			},
 			motionAndInteractions: {
 				personality: "subtle",
-				feel: "Fade transitions and quiet slide overlays"
+				feel: "Fade transitions and quiet slide overlays",
 			},
 			premiumReferences: ["Apple", "Stripe Layouts"],
-			atmosphericDirectionDescription: "Clean, inviting, highly structured page layout"
+			atmosphericDirectionDescription:
+				"Clean, inviting, highly structured page layout",
 		};
 	}
 }
 
 const CALLHIPPO_API_KEY = process.env.CALLHIPPO_API_KEY;
-const NETLIFY_TOKEN = process.env.VITE_NETLIFY_TOKEN || process.env.NETLIFY_TOKEN;
+const NETLIFY_TOKEN =
+	process.env.VITE_NETLIFY_TOKEN || process.env.NETLIFY_TOKEN;
 const WEBSITE_GENERATION_MODE = process.env.WEBSITE_GENERATION_MODE || "gemini";
 
 interface DeployRequest {
@@ -2687,6 +2737,67 @@ function createFallbackWebsiteSchema(business: any): WebsiteSchema {
 	return ensureNonTemplateCopy(schema, business);
 }
 
+function ensureSchemaMetadata(
+	schema: any,
+	business: any,
+	traceId?: string,
+): WebsiteSchema {
+	const now = Date.now();
+	const safeSchema = schema || {};
+	if (!safeSchema.schemaVersion) {
+		safeSchema.schemaVersion = "1.0";
+	}
+	if (!safeSchema.meta) {
+		safeSchema.meta = {};
+	}
+	if (!safeSchema.meta.businessId) {
+		safeSchema.meta.businessId =
+			business?.id || business?.placeId || `biz-${now}`;
+	}
+	if (!safeSchema.meta.siteId) {
+		safeSchema.meta.siteId = `site-${safeSchema.meta.businessId}-${now}`;
+	}
+	if (!safeSchema.meta.slug) {
+		safeSchema.meta.slug = (business?.name || "site")
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, "-")
+			.replace(/(^-|-$)/g, "");
+	}
+	if (!safeSchema.meta.version) {
+		safeSchema.meta.version = 1;
+	}
+	if (!safeSchema.meta.target) {
+		safeSchema.meta.target = "wordpress";
+	}
+	if (traceId) {
+		safeSchema.meta.traceId = traceId;
+	}
+	if (!safeSchema.brand) {
+		safeSchema.brand = {
+			businessName: business?.name || "Business",
+			category: business?.category || "Local Business",
+			address: business?.address || "",
+			phone: business?.phoneNumber || "",
+			email: business?.email || "",
+			websiteUri: business?.websiteUri || "",
+			logo: business?.logo || "",
+		};
+	}
+	if (!safeSchema._validation) {
+		safeSchema._validation = {
+			repairs: [],
+			validatedAt: new Date().toISOString(),
+			traceId,
+			photos: business?.photos || [],
+			imageSuggestions: business?.imageSuggestions || [],
+			logo: business?.logo || "",
+		};
+	} else if (traceId) {
+		safeSchema._validation.traceId = traceId;
+	}
+	return safeSchema as WebsiteSchema;
+}
+
 app.post("/api/generate", async (req: Request, res: Response) => {
 	try {
 		const business = req.body;
@@ -2716,14 +2827,9 @@ app.post("/api/generate", async (req: Request, res: Response) => {
 				debugSession,
 				"fallback_triggered: template mode",
 			);
-			res.setHeader("x-debug-generation-fallback", "true");
-			const fallbackSchema = createFallbackWebsiteSchema(business);
-			persistGenerationDebugFile(
-				debugSession,
-				"05-normalized-schema.json",
-				fallbackSchema,
-			);
-			return res.json(fallbackSchema);
+			return res.status(422).json({
+				error: "Website creation failed: template mode is enabled.",
+			});
 		}
 
 		// Normal Gemini flow
@@ -2733,21 +2839,21 @@ app.post("/api/generate", async (req: Request, res: Response) => {
 				debugSession,
 				"fallback_triggered: no Gemini API configuration found",
 			);
-			res.setHeader("x-debug-generation-fallback", "true");
-			const fallbackSchema = createFallbackWebsiteSchema(business);
-			persistGenerationDebugFile(
-				debugSession,
-				"05-normalized-schema.json",
-				fallbackSchema,
-			);
-			return res.json(fallbackSchema);
+			return res.status(422).json({
+				error: "Website creation failed: AI configuration missing.",
+			});
 		}
 
 		// Stage 0: Creative Direction Generation Brief
 		const restFallback = async (): Promise<any> => {
 			res.setHeader("x-debug-generation-fallback", "true");
-			console.error(`[Generate] [REST Fallback] Generating Creative Direction stage 0...`);
-			const creativeDirection = await generateCreativeDirection(business, debugSession);
+			console.error(
+				`[Generate] [REST Fallback] Generating Creative Direction stage 0...`,
+			);
+			const creativeDirection = await generateCreativeDirection(
+				business,
+				debugSession,
+			);
 			persistGenerationDebugFile(
 				debugSession,
 				"01a-creative-direction.json",
@@ -2794,7 +2900,14 @@ app.post("/api/generate", async (req: Request, res: Response) => {
 				"Enforce a cinematic, grid-forward dynamic layout. Mix bento cells (span layouts) with full-bleed atmospheric banners.",
 				"Enforce a highly structured, content-rich storytelling split layout. Alternate left-aligned text with large asymmetrical shapes.",
 			];
-			const chosenVariationBrief = variationBriefs[Math.abs(creativeSeed.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)) % variationBriefs.length];
+			const chosenVariationBrief =
+				variationBriefs[
+					Math.abs(
+						creativeSeed
+							.split("")
+							.reduce((acc, char) => acc + char.charCodeAt(0), 0),
+					) % variationBriefs.length
+				];
 
 			const prompt = `You are generating a PREMIUM WORDPRESS HOMEPAGE schema for a real local business based on a custom-designed Creative Direction Brief.
 
@@ -2925,8 +3038,14 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. Make sur
 
 				for (const model of modelsToTry) {
 					try {
-						const restUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
-						const key = getLatestApiKeyFromDisk() || process.env.GEMINI_API_KEY || process.env.GENAI_KEY || GENAI_KEY;
+						const restUrl =
+							process.env.GEMINI_REST_URL ||
+							"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
+						const key =
+							getLatestApiKeyFromDisk() ||
+							process.env.GEMINI_API_KEY ||
+							process.env.GENAI_KEY ||
+							GENAI_KEY;
 						if (!key) {
 							throw new Error("Gemini API key is not configured.");
 						}
@@ -2996,7 +3115,8 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. Make sur
 				}
 
 				throw (
-					stageLastError || new Error(`All Gemini ${stageLabel} attempts failed`)
+					stageLastError ||
+					new Error(`All Gemini ${stageLabel} attempts failed`)
 				);
 			};
 
@@ -3007,7 +3127,11 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. Make sur
 				2,
 				`\n--- GEMINI PROMPT START ---\n${prompt}\n--- GEMINI PROMPT END ---\n`,
 			);
-			persistGenerationDebugFile(debugSession, "02-generation-prompt.md", prompt);
+			persistGenerationDebugFile(
+				debugSession,
+				"02-generation-prompt.md",
+				prompt,
+			);
 
 			const rawText = await callGeminiText(prompt, "schema");
 			fs.writeSync(
@@ -3029,20 +3153,14 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. Make sur
 
 			if (!parsedSchema) {
 				console.warn(
-					"[Generate] Gemini output could not be parsed as WebsiteSchema, using fallback schema.",
+					"[Generate] Gemini output could not be parsed as WebsiteSchema.",
 				);
 				debugSession.fallbackReason = "parse-failure";
 				appendGenerationDebugError(
 					debugSession,
 					"fallback_triggered: parse failure",
 				);
-				const fallbackSchema = createFallbackWebsiteSchema(business);
-				persistGenerationDebugFile(
-					debugSession,
-					"05-normalized-schema.json",
-					fallbackSchema,
-				);
-				return fallbackSchema;
+				throw new Error("AI_GENERATION_FAILED");
 			}
 
 			// Stage 2: WordPress HTML
@@ -3070,26 +3188,48 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
 - IMAGES: Never use raw sharp corners. All images must have border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); unless they are explicitly arched.
 - BENTO GRID REFINEMENT: Ensure gap spacing is modern. display: grid; gap: 24px;.`;
 
-				persistGenerationDebugFile(debugSession, "05a-wordpress-html-prompt.md", wordpressHtmlPrompt);
-				const rawWordPressHtml = await callGeminiText(wordpressHtmlPrompt, "wordpress-html");
-				fs.writeSync(2, `\n--- GEMINI WORDPRESS HTML START ---\n${rawWordPressHtml}\n--- GEMINI WORDPRESS HTML END ---\n`);
-				persistGenerationDebugFile(debugSession, "05b-wordpress-html-raw.txt", rawWordPressHtml);
+				persistGenerationDebugFile(
+					debugSession,
+					"05a-wordpress-html-prompt.md",
+					wordpressHtmlPrompt,
+				);
+				const rawWordPressHtml = await callGeminiText(
+					wordpressHtmlPrompt,
+					"wordpress-html",
+				);
+				fs.writeSync(
+					2,
+					`\n--- GEMINI WORDPRESS HTML START ---\n${rawWordPressHtml}\n--- GEMINI WORDPRESS HTML END ---\n`,
+				);
+				persistGenerationDebugFile(
+					debugSession,
+					"05b-wordpress-html-raw.txt",
+					rawWordPressHtml,
+				);
 
-				const extractedWordPressHtml = extractHtmlDocument(rawWordPressHtml) || rawWordPressHtml.trim();
+				const extractedWordPressHtml =
+					extractHtmlDocument(rawWordPressHtml) || rawWordPressHtml.trim();
 				if (extractedWordPressHtml) {
 					(parsedSchema as any)._wordpressHtml = extractedWordPressHtml;
 					(parsedSchema as any)._renderSource = "gemini-html";
-					persistGenerationDebugFile(debugSession, "05c-wordpress-html-final.html", extractedWordPressHtml);
+					persistGenerationDebugFile(
+						debugSession,
+						"05c-wordpress-html-final.html",
+						extractedWordPressHtml,
+					);
 				} else {
 					throw new Error("Extracted HTML was empty");
 				}
 			} catch (wordpressHtmlError) {
 				try {
-					logStderr(`[Generate] AI WordPress HTML failed. Falling back to local builder traceId=${debugSession.traceId}. Error: ${wordpressHtmlError instanceof Error ? wordpressHtmlError.message : String(wordpressHtmlError)}`);
+					logStderr(
+						`[Generate] AI WordPress HTML failed. Falling back to local builder traceId=${debugSession.traceId}. Error: ${wordpressHtmlError instanceof Error ? wordpressHtmlError.message : String(wordpressHtmlError)}`,
+					);
 					const premiumHtml = buildPremiumPageContent(parsedSchema);
 					if (premiumHtml) {
 						(parsedSchema as any)._wordpressHtml = premiumHtml;
-						(parsedSchema as any)._renderSource = "component-composition-engine";
+						(parsedSchema as any)._renderSource =
+							"component-composition-engine";
 						persistGenerationDebugFile(
 							debugSession,
 							"05c-wordpress-html-final.html",
@@ -3117,35 +3257,81 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
 
 		try {
 			const { generateWebsiteContent } = await import("./src/lib/gemini");
-			
+
 			const generatedSchema = await generateWebsiteContent(business, {
 				fallback: restFallback,
 				debugSession,
 				logStderr: (msg: string) => logStderr(msg),
-				persistGenerationDebugFile: (session: any, name: string, content: any) => persistGenerationDebugFile(session, name, content),
-				appendGenerationDebugError: (session: any, err: string) => appendGenerationDebugError(session, err),
+				persistGenerationDebugFile: (
+					session: any,
+					name: string,
+					content: any,
+				) => persistGenerationDebugFile(session, name, content),
+				appendGenerationDebugError: (session: any, err: string) =>
+					appendGenerationDebugError(session, err),
 				throttleGemini: () => throttleGemini(),
 			});
 
-			const { validateWebsiteSchema } = await import("./src/lib/website-schema-validator");
-			validation = validateWebsiteSchema(generatedSchema);
-			finalSchema = validation.repairedSchema || generatedSchema;
+			const { validateWebsiteSchema } =
+				await import("./src/lib/website-schema-validator");
+			const normalizedSchema = ensureSchemaMetadata(
+				generatedSchema,
+				business,
+				debugSession.traceId,
+			);
+			validation = validateWebsiteSchema(normalizedSchema);
+			if (!validation.isValid && !validation.repairedSchema) {
+				appendGenerationDebugError(
+					debugSession,
+					`validation_failed: ${validation.errors?.join(" | ") || "unknown"}`,
+				);
+				return res.status(422).json({
+					error: "Website creation failed: AI output validation failed.",
+				});
+			}
+			finalSchema = validation.repairedSchema || normalizedSchema;
 		} catch (error) {
-			if (error instanceof Error && (error.message === "AI_GENERATION_FAILED" || error.message === "AI_CRITICAL_FAILURE")) {
+			if (
+				error instanceof Error &&
+				(error.message === "AI_GENERATION_FAILED" ||
+					error.message === "AI_CRITICAL_FAILURE")
+			) {
 				logStderr(`[Generate] AI Generation pipeline failed completely.`);
-				return res.status(422).json({ error: 'AI Content Generation Service Currently Unavailable.' });
+				return res.status(422).json({
+					error: "AI Content Generation Service Currently Unavailable.",
+				});
 			}
 			throw error;
 		}
 
+		finalSchema = ensureSchemaMetadata(
+			finalSchema,
+			business,
+			debugSession.traceId,
+		);
+		if ((finalSchema as any)._wordpressHtml) {
+			persistGenerationDebugFile(
+				debugSession,
+				"05c-wordpress-html-final.html",
+				(finalSchema as any)._wordpressHtml,
+			);
+		}
+		persistGenerationDebugFile(
+			debugSession,
+			"05-normalized-schema.json",
+			finalSchema,
+		);
+
 		debugSession.sectionTypes = finalSchema.sections.map(
 			(section) => section.type,
+		);
+		logStderr(
+			`[Generate] complete traceId=${debugSession.traceId} sections=${debugSession.sectionTypes.length} renderSource=${(finalSchema as any)._renderSource || "unknown"} wpHtml=${(finalSchema as any)._wordpressHtml ? `yes(${(finalSchema as any)._wordpressHtml.length})` : "no"}`,
 		);
 
 		res.setHeader("x-debug-generation-fallback", "false");
 		return res.json(finalSchema);
 	} catch (error) {
-		const fallbackSchema = createFallbackWebsiteSchema(req.body);
 		const debugSession =
 			req.body && req.body.name
 				? Array.from(generationDebugSessions.values()).find(
@@ -3157,16 +3343,14 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
 				debugSession,
 				`route_error: ${error instanceof Error ? error.message : String(error)}`,
 			);
-			persistGenerationDebugFile(
-				debugSession,
-				"05-normalized-schema.json",
-				fallbackSchema,
-			);
 			res.setHeader("x-debug-generation-id", debugSession.traceId);
-			res.setHeader("x-debug-generation-fallback", "true");
+			res.setHeader("x-debug-generation-fallback", "false");
 		}
-		console.warn("/api/generate falling back to local schema:", error);
-		return res.json(fallbackSchema);
+		console.warn("/api/generate failed:", error);
+		return res.status(500).json({
+			error:
+				error instanceof Error ? error.message : "Website creation failed.",
+		});
 	}
 });
 
@@ -3850,22 +4034,25 @@ app.post(
 	},
 );
 
-app.get("/api/business-ai-chat/:leadId", async (req: Request, res: Response) => {
-	try {
-		const { leadId } = req.params;
-		if (!leadId) {
-			return res.status(400).json({ error: "Missing leadId" });
+app.get(
+	"/api/business-ai-chat/:leadId",
+	async (req: Request, res: Response) => {
+		try {
+			const { leadId } = req.params;
+			if (!leadId) {
+				return res.status(400).json({ error: "Missing leadId" });
+			}
+			const [messages]: any = await pool.query(
+				"SELECT role, content, created_at FROM lead_ai_messages WHERE lead_id = ? ORDER BY id ASC",
+				[leadId],
+			);
+			return res.json({ messages: messages || [] });
+		} catch (error) {
+			console.error("[AI Chat] Failed to fetch chat history:", error);
+			return res.status(500).json({ error: "Failed to fetch chat history" });
 		}
-		const [messages]: any = await pool.query(
-			"SELECT role, content, created_at FROM lead_ai_messages WHERE lead_id = ? ORDER BY id ASC",
-			[leadId]
-		);
-		return res.json({ messages: messages || [] });
-	} catch (error) {
-		console.error("[AI Chat] Failed to fetch chat history:", error);
-		return res.status(500).json({ error: "Failed to fetch chat history" });
-	}
-});
+	},
+);
 
 app.post("/api/business-ai-chat", async (req: Request, res: Response) => {
 	try {
@@ -3884,41 +4071,51 @@ app.post("/api/business-ai-chat", async (req: Request, res: Response) => {
 			if (latestMessage && latestMessage.role === "user") {
 				await pool.query(
 					"INSERT INTO lead_ai_messages (lead_id, conversation_id, role, content) VALUES (?, ?, ?, ?)",
-					[leadId, conversationId || leadId, "user", latestMessage.content]
+					[leadId, conversationId || leadId, "user", latestMessage.content],
 				);
 			}
 
 			// 2. Fetch full history for local conversational memory
 			const [dbHistory]: any = await pool.query(
 				"SELECT role, content FROM lead_ai_messages WHERE lead_id = ? ORDER BY id ASC",
-				[leadId]
+				[leadId],
 			);
 
 			chatContents = dbHistory.map((m: any) => ({
 				role: m.role === "user" ? "user" : "model",
-				parts: [{ text: m.content }]
+				parts: [{ text: m.content }],
 			}));
 		} catch (dbError) {
-			console.warn("[AI Chat] Database offline. Using stateless array fallback:", dbError);
+			console.warn(
+				"[AI Chat] Database offline. Using stateless array fallback:",
+				dbError,
+			);
 			chatContents = messages.map((m: any) => ({
 				role: m.role === "user" ? "user" : "model",
-				parts: [{ text: m.content }]
+				parts: [{ text: m.content }],
 			}));
 		}
 
 		if (chatContents.length === 0) {
 			chatContents.push({
 				role: "user",
-				parts: [{ text: latestMessage?.content || "Hello" }]
+				parts: [{ text: latestMessage?.content || "Hello" }],
 			});
 		}
 
 		// 3. Resolve REST API Url and Key
-		const restUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
-		const key = getLatestApiKeyFromDisk() || process.env.GEMINI_API_KEY || process.env.GENAI_KEY || GENAI_KEY;
+		const restUrl =
+			process.env.GEMINI_REST_URL ||
+			"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
+		const key =
+			getLatestApiKeyFromDisk() ||
+			process.env.GEMINI_API_KEY ||
+			process.env.GENAI_KEY ||
+			GENAI_KEY;
 		if (!key) {
 			return res.status(500).json({
-				error: "Gemini API key is not configured on the server. Please check your .env.production.",
+				error:
+					"Gemini API key is not configured on the server. Please check your .env.production.",
 			});
 		}
 
@@ -3929,9 +4126,15 @@ app.post("/api/business-ai-chat", async (req: Request, res: Response) => {
 		const rating = businessContext.rating || "N/A";
 		const reviewCount = businessContext.reviewCount || 0;
 
-		const reviewsText = Array.isArray(businessContext.reviews) && businessContext.reviews.length
-			? businessContext.reviews.map((r: any, i: number) => `${i + 1}. [Rating: ${r.rating || "N/A"}] "${r.text || r.comment || ""}"`).join("\n")
-			: "No reviews or rating insights available.";
+		const reviewsText =
+			Array.isArray(businessContext.reviews) && businessContext.reviews.length
+				? businessContext.reviews
+						.map(
+							(r: any, i: number) =>
+								`${i + 1}. [Rating: ${r.rating || "N/A"}] "${r.text || r.comment || ""}"`,
+						)
+						.join("\n")
+				: "No reviews or rating insights available.";
 
 		let websiteText = "";
 		if (businessContext.websiteSchema) {
@@ -3967,7 +4170,7 @@ Rules for your responses:
 		res.writeHead(200, {
 			"Content-Type": "text/plain; charset=utf-8",
 			"Cache-Control": "no-cache",
-			"Connection": "keep-alive",
+			Connection: "keep-alive",
 		});
 
 		// 7. Generate content from Gemini (try SDK first, fallback to REST API)
@@ -3977,7 +4180,9 @@ Rules for your responses:
 		const genAI = await getSDKGenAI();
 		if (genAI) {
 			try {
-				console.log("[AI Chat] Attempting SDK generation with gemini-3.1-pro-preview...");
+				console.log(
+					"[AI Chat] Attempting SDK generation with gemini-3.1-pro-preview...",
+				);
 				await throttleGemini();
 				const result = await genAI.models.generateContent({
 					model: "gemini-3.1-pro-preview",
@@ -3985,12 +4190,15 @@ Rules for your responses:
 					config: {
 						systemInstruction: systemPrompt,
 						tools: [{ googleSearch: {} }] as any,
-					}
+					},
 				});
 
 				fullResponseText = result.text || "";
 			} catch (sdkError) {
-				console.warn("[AI Chat] SDK generation failed, falling back to REST:", sdkError);
+				console.warn(
+					"[AI Chat] SDK generation failed, falling back to REST:",
+					sdkError,
+				);
 				fallbackUsed = true;
 			}
 		} else {
@@ -3999,7 +4207,9 @@ Rules for your responses:
 		}
 
 		if (fallbackUsed || !fullResponseText) {
-			console.log("[AI Chat] Attempting REST generation with gemini-flash-latest...");
+			console.log(
+				"[AI Chat] Attempting REST generation with gemini-flash-latest...",
+			);
 			const modelRestUrl = restUrl.includes("{model}")
 				? restUrl.replace("{model}", "gemini-flash-latest")
 				: restUrl;
@@ -4008,9 +4218,9 @@ Rules for your responses:
 			const requestBody = {
 				contents: chatContents,
 				systemInstruction: {
-					parts: [{ text: systemPrompt }]
+					parts: [{ text: systemPrompt }],
 				},
-				tools: [{ googleSearch: {} }]
+				tools: [{ googleSearch: {} }],
 			};
 
 			await throttleGemini();
@@ -4022,11 +4232,14 @@ Rules for your responses:
 
 			if (!fetchResponse.ok) {
 				const errorText = await fetchResponse.text().catch(() => "");
-				throw new Error(`Gemini REST API returned status ${fetchResponse.status}: ${errorText}`);
+				throw new Error(
+					`Gemini REST API returned status ${fetchResponse.status}: ${errorText}`,
+				);
 			}
 
-			const responseJson = await fetchResponse.json() as any;
-			fullResponseText = responseJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
+			const responseJson = (await fetchResponse.json()) as any;
+			fullResponseText =
+				responseJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
 		}
 
 		res.write(fullResponseText);
@@ -4036,10 +4249,13 @@ Rules for your responses:
 			try {
 				await pool.query(
 					"INSERT INTO lead_ai_messages (lead_id, conversation_id, role, content) VALUES (?, ?, ?, ?)",
-					[leadId, conversationId || leadId, "model", fullResponseText]
+					[leadId, conversationId || leadId, "model", fullResponseText],
 				);
 			} catch (dbError) {
-				console.warn("[AI Chat] Failed to save AI response text to database:", dbError);
+				console.warn(
+					"[AI Chat] Failed to save AI response text to database:",
+					dbError,
+				);
 			}
 		}
 
@@ -4048,11 +4264,16 @@ Rules for your responses:
 		console.error("[AI Chat] Error during chat session:", error);
 		if (!res.headersSent) {
 			return res.status(500).json({
-				error: error instanceof Error ? error.message : "Chat session generation failed",
+				error:
+					error instanceof Error
+						? error.message
+						: "Chat session generation failed",
 			});
 		} else {
 			const errMessage = error instanceof Error ? error.message : String(error);
-			res.write(`\n\n*Error: Connection to Gemini failed. Details: ${errMessage}*`);
+			res.write(
+				`\n\n*Error: Connection to Gemini failed. Details: ${errMessage}*`,
+			);
 			res.end();
 		}
 	}
@@ -4194,4 +4415,3 @@ app.listen(PORT, async () => {
 });
 
 export default app;
-
