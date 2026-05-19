@@ -53,6 +53,14 @@ export default function LeadDetails({
 	const [isChatStreaming, setIsChatStreaming] = useState(false);
 	const [abortController, setAbortController] = useState<AbortController | null>(null);
 
+	const chatContainerRef = React.useRef<HTMLDivElement>(null);
+
+	React.useEffect(() => {
+		if (chatContainerRef.current) {
+			chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+		}
+	}, [chatMessages, isChatOpen]);
+
 	const quickActions = [
 		{ label: "🔍 Analyze Competitors", prompt: "Who are our main competitors locally, and what are their visual/branding weaknesses?" },
 		{ label: "🌐 Website Upgrades", prompt: "What exact website structure, typography mood, and pages would convert customers best for this lead?" },
@@ -539,7 +547,7 @@ export default function LeadDetails({
 						</div>
 
 						{/* Messages scrollable area */}
-						<div className='flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50 relative'>
+						<div ref={chatContainerRef} className='flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50 relative'>
 							{isChatLoading ? (
 								<div className='flex flex-col items-center justify-center h-full space-y-2'>
 									<Loader2 className='w-8 h-8 animate-spin text-violet-600' />
@@ -576,8 +584,6 @@ export default function LeadDetails({
 								))
 							)}
 							
-							{/* Auto-scroll anchor */}
-							<div ref={(el) => el?.scrollIntoView({ behavior: "smooth" })} />
 						</div>
 
 						{/* Quick Action Chips */}
