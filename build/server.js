@@ -2332,8 +2332,8 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 var cwd = process.cwd();
 var __filename = fileURLToPath(import.meta.url);
-var __dirname = path.dirname(__filename);
-var bundleRoot = path.resolve(__dirname, "../");
+var __dirname2 = path.dirname(__filename);
+var bundleRoot = path.resolve(__dirname2, "../");
 var searchPaths = [cwd, bundleRoot];
 var envFiles = [".env.production", ".env.local", ".env"];
 console.error(`[Env] Searching in: ${searchPaths.join(", ")}`);
@@ -3829,8 +3829,32 @@ function buildBusinessDebugInput(business) {
     }
   };
 }
+function getLatestApiKeyFromDisk() {
+  try {
+    const searchPaths2 = [process.cwd(), __dirname, path2.join(process.cwd(), "..")];
+    const files = [".env.production", ".env.local", ".env"];
+    for (const dir of searchPaths2) {
+      for (const f of files) {
+        const fullPath = path2.join(dir, f);
+        if (fs3.existsSync(fullPath)) {
+          const content = fs3.readFileSync(fullPath, "utf8");
+          const match = content.match(/GEMINI_API_KEY\s*=\s*([^\r\n]+)/);
+          if (match && match[1]) {
+            const resolvedKey = match[1].trim().replace(/['"]/g, "");
+            if (resolvedKey) {
+              return resolvedKey;
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[AI Chat] Failed to read environment key from disk:", err);
+  }
+  return null;
+}
 async function getSDKGenAI() {
-  const key = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
+  const key = getLatestApiKeyFromDisk() || process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
   console.log(`[AI Chat] getSDKGenAI runtime lookup key:`, key ? `${key.substring(0, 10)}...` : "NOT FOUND");
   if (!key) return null;
   if (!GoogleGenerativeAI) {
@@ -6746,7 +6770,7 @@ app.post("/api/business-ai-chat", async (req, res) => {
       });
     }
     const restUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
-    const key = process.env.GEMINI_API_KEY || process.env.GENAI_KEY || GENAI_KEY;
+    const key = getLatestApiKeyFromDisk() || process.env.GEMINI_API_KEY || process.env.GENAI_KEY || GENAI_KEY;
     if (!key) {
       return res.status(500).json({
         error: "Gemini API key is not configured on the server. Please check your .env.production."

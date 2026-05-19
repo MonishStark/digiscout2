@@ -126,6 +126,10 @@
 	body,
 	html {
 		@apply bg-[#f5f7fb] text-slate-900 font-sans;
+		height: 100% !important;
+		overflow: hidden !important;
+		margin: 0 !important;
+		padding: 0 !important;
 	}
 	.light-theme {
 		color-scheme: light;
