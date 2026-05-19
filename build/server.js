@@ -2122,7 +2122,8 @@ __export(gemini_exports, {
   fetchLeadAIChatHistory: () => fetchLeadAIChatHistory,
   generateOutreachEmail: () => generateOutreachEmail,
   generateWebsite: () => generateWebsite,
-  generateWebsiteContent: () => generateWebsiteContent
+  generateWebsiteContent: () => generateWebsiteContent,
+  generateWithFallback: () => generateWithFallback
 });
 async function generateWebsite(business) {
   try {
@@ -2420,39 +2421,112 @@ async function askBusinessAIChatStream(leadId, businessContext, messages, onChun
     onChunk(chunk);
   }
 }
+async function generateWithFallback(promptOrContents, config = {}, options) {
+  const googleCloudApiKey = process.env.GOOGLE_CLOUD_API_KEY;
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  const geminiRestUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
+  const projectId = process.env.VERTEX_PROJECT_ID || "digiscout";
+  const contents = typeof promptOrContents === "string" ? [{ role: "user", parts: [{ text: promptOrContents }] }] : promptOrContents;
+  if (googleCloudApiKey) {
+    const vertexUrl = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/gemini-3.1-pro-preview:generateContent?key=${googleCloudApiKey}`;
+    try {
+      options.logStderr(`[AI] Primary Vertex Attempt (projectId: ${projectId})...`);
+      await options.throttleGemini();
+      const payload = {
+        contents,
+        generationConfig: {
+          temperature: config.temperature ?? 1,
+          thinkingConfig: {
+            thinkingLevel: "HIGH"
+          }
+        },
+        safetySettings: [
+          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "OFF" },
+          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "OFF" },
+          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "OFF" },
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "OFF" }
+        ],
+        tools: [
+          { googleSearch: {} }
+        ]
+      };
+      if (config.responseMimeType) {
+        payload.generationConfig.responseMimeType = config.responseMimeType;
+      }
+      const res = await fetch(vertexUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          options.logStderr(`[AI] Vertex Success!`);
+          return text;
+        }
+        throw new Error("Vertex response contents parts were empty");
+      } else {
+        const errText = await res.text().catch(() => "");
+        throw new Error(`Vertex REST failed with status ${res.status}: ${errText}`);
+      }
+    } catch (err) {
+      options.logStderr(`[AI] Vertex Failed, Switching to Gemini Flash... Error: ${err.message || err}`);
+      if (options.debugSession && options.appendGenerationDebugError) {
+        options.appendGenerationDebugError(options.debugSession, `vertex_failed: ${err.message || err}`);
+      }
+    }
+  } else {
+    options.logStderr(`[AI] GOOGLE_CLOUD_API_KEY not found. Skipping Vertex, trying Public Gemini...`);
+  }
+  if (geminiApiKey) {
+    const fallbackUrl = `${geminiRestUrl}${geminiRestUrl.includes("?") ? "&" : "?"}key=${geminiApiKey}`;
+    try {
+      options.logStderr(`[AI] Fallback Public Gemini Attempt...`);
+      await options.throttleGemini();
+      const payload = {
+        contents,
+        generationConfig: {
+          temperature: config.temperature ?? 1
+        }
+      };
+      if (config.responseMimeType) {
+        payload.generationConfig.responseMimeType = config.responseMimeType;
+      }
+      const res = await fetch(fallbackUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          options.logStderr(`[AI] Public Gemini Success!`);
+          return text;
+        }
+        throw new Error("Public Gemini response contents parts were empty");
+      } else {
+        const errText = await res.text().catch(() => "");
+        throw new Error(`Public Gemini REST failed with status ${res.status}: ${errText}`);
+      }
+    } catch (err) {
+      options.logStderr(`[AI] Public Gemini Failed. Error: ${err.message || err}`);
+      if (options.debugSession && options.appendGenerationDebugError) {
+        options.appendGenerationDebugError(options.debugSession, `public_gemini_failed: ${err.message || err}`);
+      }
+    }
+  } else {
+    options.logStderr(`[AI] GEMINI_API_KEY not found.`);
+  }
+  options.logStderr(`[AI] Both attempts failed. Triggering UI Alert.`);
+  throw new Error("AI_CRITICAL_FAILURE");
+}
 async function generateWebsiteContent(business, options) {
   if (typeof window !== "undefined") {
     throw new Error("generateWebsiteContent can only be run on the server-side");
   }
-  const apiKey = process.env.GOOGLE_CLOUD_API_KEY || process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    options.logStderr("[Gemini Generation] No primary API key found. Running website generation via REST Fallback (gemini-flash-latest) immediately...");
-    return await options.fallback();
-  }
   try {
-    options.logStderr("[Gemini Generation] Running website generation via SDK (gemini-3.1-pro-preview)...");
-    const { GoogleGenAI, HarmCategory, HarmBlockThreshold } = await import("@google/genai");
-    const ai = new GoogleGenAI({ apiKey });
-    const model = "gemini-3.1-pro-preview";
-    const safetySettings = [
-      {
-        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
-      }
-    ];
-    options.logStderr("[Gemini SDK] Generating Stage 0 Creative Direction...");
     const buildImageBlock = (b) => {
       const sources = b.photos || [];
       return sources.length ? sources.slice(0, 10).map((u, i) => `${i + 1}. ${u}`).join("\n") : "None";
@@ -2497,32 +2571,12 @@ Return ONLY a valid JSON object matching this structure:
     "gradientSystem": { "ambientLighting": "...", "brandGradient": "..." }
   }
 }`;
-    await options.throttleGemini();
-    const stage0Response = await ai.models.generateContent({
-      model,
-      contents: stage0Prompt,
-      config: {
-        thinkingConfig: { thinkingLevel: "HIGH" },
-        safetySettings,
-        responseMimeType: "application/json"
-      }
-    });
-    const stage0Text = stage0Response.text;
-    if (!stage0Text) {
-      throw new Error("Empty response from Stage 0 SDK generation");
-    }
+    options.logStderr("[Gemini Generation] Stage 0: Generating Creative Direction...");
+    const stage0Text = await generateWithFallback(stage0Prompt, { temperature: 0.2, responseMimeType: "application/json" }, options);
     const creativeDirection = JSON.parse(stage0Text.trim());
     if (options.debugSession) {
       options.persistGenerationDebugFile(options.debugSession, "01a-creative-direction.json", creativeDirection);
     }
-    options.logStderr("[Gemini SDK] Starting Stage 1 Layout Generation...");
-    const chat = ai.chats.create({
-      model,
-      config: {
-        thinkingConfig: { thinkingLevel: "HIGH" },
-        safetySettings
-      }
-    });
     const qualificationNotes = business.notes || business.qualificationNotes || "None";
     const neighborhood = business.neighborhood || business.vibe || "Unknown";
     const specialties = Array.isArray(business.specialties) ? business.specialties.join(", ") : business.specialties || "General services";
@@ -2637,12 +2691,8 @@ Reference Images:
 ${buildImageBlock(business)}
 
 Return only valid JSON matching the WebsiteSchema interface. Include the "designDNA" object under "theme" exactly as specified. Do not enclose in markdown code fences.`;
-    await options.throttleGemini();
-    const schemaStream = await chat.sendMessageStream({ message: stage1Prompt });
-    let schemaText = "";
-    for await (const chunk of schemaStream) {
-      schemaText += chunk.text;
-    }
+    options.logStderr("[Gemini Generation] Stage 1: Generating Layout Schema...");
+    const schemaText = await generateWithFallback(stage1Prompt, { temperature: 0.9, responseMimeType: "application/json" }, options);
     if (options.debugSession) {
       options.persistGenerationDebugFile(options.debugSession, "03-gemini-raw-response.txt", schemaText);
     }
@@ -2656,7 +2706,7 @@ Return only valid JSON matching the WebsiteSchema interface. Include the "design
     } catch (parseError) {
       throw new Error(`Failed to parse Stage 1 generated schema JSON: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
     }
-    options.logStderr("[Gemini SDK] Starting Stage 2 WordPress HTML Generation...");
+    options.logStderr("[Gemini Generation] Stage 2: Generating WordPress HTML...");
     const stage2Prompt = `You are turning the approved website schema you just generated into the FINAL WordPress homepage HTML.
 
 Return ONLY homepage HTML suitable for WordPress post_content.
@@ -2679,12 +2729,12 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
 - TYPOGRAPHY HIERARCHY: Make h1 massive and tight: font-size: clamp(3.5rem, 8vw, 6rem); line-height: 1.05; tracking: -0.02em; Make paragraph text readable: font-size: 1.125rem; line-height: 1.6; color: rgba(0,0,0,0.7);
 - IMAGES: Never use raw sharp corners. All images must have border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); unless they are explicitly arched.
 - BENTO GRID REFINEMENT: Ensure gap spacing is modern. display: grid; gap: 24px;.`;
-    await options.throttleGemini();
-    const htmlStream = await chat.sendMessageStream({ message: stage2Prompt });
-    let htmlText = "";
-    for await (const chunk of htmlStream) {
-      htmlText += chunk.text;
-    }
+    const stage2Contents = [
+      { role: "user", parts: [{ text: stage1Prompt }] },
+      { role: "model", parts: [{ text: schemaText }] },
+      { role: "user", parts: [{ text: stage2Prompt }] }
+    ];
+    const htmlText = await generateWithFallback(stage2Contents, { temperature: 0.75 }, options);
     if (options.debugSession) {
       options.persistGenerationDebugFile(options.debugSession, "05b-wordpress-html-raw.txt", htmlText);
     }
@@ -2697,22 +2747,14 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
     }
     parsedSchema._wordpressHtml = cleanedHtml;
     parsedSchema._renderSource = "gemini-html";
-    options.logStderr("[Gemini Generation] Primary SDK website generation succeeded!");
+    options.logStderr("[Gemini Generation] Primary website generation succeeded!");
     return parsedSchema;
-  } catch (sdkError) {
-    options.logStderr(`[Gemini Generation] SDK generation failed. Switching to REST Fallback (gemini-flash-latest)... Error: ${sdkError instanceof Error ? sdkError.message : String(sdkError)}`);
+  } catch (error) {
+    options.logStderr(`[Gemini Generation] Generation pipeline failed. Error: ${error instanceof Error ? error.message : String(error)}`);
     if (options.debugSession) {
-      options.appendGenerationDebugError(options.debugSession, `sdk_generation_failed: ${sdkError instanceof Error ? sdkError.message : String(sdkError)}`);
+      options.appendGenerationDebugError(options.debugSession, `generation_failed: ${error instanceof Error ? error.message : String(error)}`);
     }
-    try {
-      return await options.fallback();
-    } catch (fallbackError) {
-      options.logStderr(`[Gemini Generation] Fallback REST generation also failed! Error: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`);
-      if (options.debugSession) {
-        options.appendGenerationDebugError(options.debugSession, `fallback_generation_failed: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`);
-      }
-      throw new Error("AI_GENERATION_FAILED");
-    }
+    throw error;
   }
 }
 var API_URL;
@@ -4331,7 +4373,7 @@ fs3.writeSync(2, `[BOOT] DB_USER: ${process.env.DB_USER || "NOT SET"}
 `);
 var __filename2 = fileURLToPath2(import.meta.url);
 var __dirname2 = dirname(__filename2);
-var GoogleGenAIInstance = null;
+var GoogleGenerativeAI = null;
 var app = express();
 var PORT = process.env.PORT || 5001;
 var logStderr = (message) => {
@@ -4470,16 +4512,16 @@ async function getSDKGenAI() {
   const key = getLatestApiKeyFromDisk();
   console.log(`[AI Chat] getSDKGenAI runtime lookup key:`, key ? `${key.substring(0, 10)}...` : "NOT FOUND");
   if (!key) return null;
-  if (!GoogleGenAIInstance) {
+  if (!GoogleGenerativeAI) {
     try {
-      const { GoogleGenAI } = await import("@google/genai");
-      GoogleGenAIInstance = new GoogleGenAI({ apiKey: key });
+      const mod = await import("@google/generative-ai");
+      GoogleGenerativeAI = mod.GoogleGenerativeAI;
     } catch (e) {
-      console.error("[Gemini] SDK package @google/genai not found.");
+      console.error("[Gemini] SDK package @google/generative-ai not found.");
       return null;
     }
   }
-  return GoogleGenAIInstance;
+  return new GoogleGenerativeAI(key);
 }
 var GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
 async function generateCreativeDirection(business, debugSession) {
@@ -4933,16 +4975,19 @@ Return only valid JSON in this exact shape:
   for (const configVariant of configsToTry) {
     try {
       await throttleGemini();
-      const response = await genAI.models.generateContent({
-        model: "gemini-3.1-pro-preview",
-        contents: prompt,
-        config: {
-          tools: configVariant.tools,
-          temperature: 0.1
-        }
+      const modelInstance = genAI.getGenerativeModel({
+        model: "gemini-1.5-pro",
+        tools: configVariant.tools,
+        toolConfig: configVariant.toolConfig
       });
-      const text = response.text || "";
-      const parsed = parseLeadQualificationOutput(text.trim());
+      const result = await modelInstance.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1 }
+      });
+      const response = await result.response;
+      const parsed = parseLeadQualificationOutput(
+        (response.text() || "").trim()
+      );
       if (parsed) {
         return parsed;
       }
@@ -6760,9 +6805,9 @@ ${rawWordPressHtml}
       validation = validateWebsiteSchema2(generatedSchema);
       finalSchema = validation.repairedSchema || generatedSchema;
     } catch (error) {
-      if (error instanceof Error && error.message === "AI_GENERATION_FAILED") {
+      if (error instanceof Error && (error.message === "AI_GENERATION_FAILED" || error.message === "AI_CRITICAL_FAILURE")) {
         logStderr(`[Generate] AI Generation pipeline failed completely.`);
-        return res.status(422).json({ error: "AI generation failed. Please try again." });
+        return res.status(422).json({ error: "AI Content Generation Service Currently Unavailable." });
       }
       throw error;
     }

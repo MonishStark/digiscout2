@@ -23,6 +23,7 @@ const __dirname = dirname(__filename);
 
 // Dynamic import for GoogleGenAI to prevent startup failure if package missing
 let GoogleGenAIInstance: any = null;
+let GoogleGenerativeAI: any = null;
 
 import {
 	deleteProvisionedWordPressMultisiteSite,
@@ -279,16 +280,16 @@ async function getSDKGenAI() {
 	const key = getLatestApiKeyFromDisk();
 	console.log(`[AI Chat] getSDKGenAI runtime lookup key:`, key ? `${key.substring(0, 10)}...` : "NOT FOUND");
 	if (!key) return null;
-	if (!GoogleGenAIInstance) {
+	if (!GoogleGenerativeAI) {
 		try {
-			const { GoogleGenAI } = await import("@google/genai");
-			GoogleGenAIInstance = new GoogleGenAI({ apiKey: key });
+			const mod = await import("@google/generative-ai");
+			GoogleGenerativeAI = mod.GoogleGenerativeAI;
 		} catch (e) {
-			console.error("[Gemini] SDK package @google/genai not found.");
+			console.error("[Gemini] SDK package @google/generative-ai not found.");
 			return null;
 		}
 	}
-	return GoogleGenAIInstance;
+	return new GoogleGenerativeAI(key);
 }
 
 const GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
@@ -847,17 +848,21 @@ Return only valid JSON in this exact shape:
 	for (const configVariant of configsToTry) {
 		try {
 			await throttleGemini();
-			const response = await genAI.models.generateContent({
-				model: "gemini-3.1-pro-preview",
-				contents: prompt,
-				config: {
-					tools: configVariant.tools as any,
-					temperature: 0.1,
-				}
+			const modelInstance = genAI.getGenerativeModel({
+				model: "gemini-1.5-pro",
+				tools: configVariant.tools as any,
+				toolConfig: configVariant.toolConfig as any,
+			} as any);
+
+			const result = await modelInstance.generateContent({
+				contents: [{ role: "user", parts: [{ text: prompt }] }],
+				generationConfig: { temperature: 0.1 },
 			});
 
-			const text = response.text || "";
-			const parsed = parseLeadQualificationOutput(text.trim());
+			const response = await result.response;
+			const parsed = parseLeadQualificationOutput(
+				(response.text() || "").trim(),
+			);
 			if (parsed) {
 				return parsed;
 			}
@@ -3126,9 +3131,9 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
 			validation = validateWebsiteSchema(generatedSchema);
 			finalSchema = validation.repairedSchema || generatedSchema;
 		} catch (error) {
-			if (error instanceof Error && error.message === "AI_GENERATION_FAILED") {
+			if (error instanceof Error && (error.message === "AI_GENERATION_FAILED" || error.message === "AI_CRITICAL_FAILURE")) {
 				logStderr(`[Generate] AI Generation pipeline failed completely.`);
-				return res.status(422).json({ error: 'AI generation failed. Please try again.' });
+				return res.status(422).json({ error: 'AI Content Generation Service Currently Unavailable.' });
 			}
 			throw error;
 		}
