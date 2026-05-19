@@ -778,6 +778,63 @@ function getFallbackDNA(category) {
       visualAtmosphere: "energetic-neon"
     };
   }
+  if (cat.includes("supermarket") || cat.includes("grocery") || cat.includes("market") || cat.includes("food") || cat.includes("bakery")) {
+    return {
+      spacingPersonality: "compressed",
+      compositionAggression: 45,
+      hierarchyIntensity: 55,
+      motionEnergy: 50,
+      visualDensity: 80,
+      asymmetryLevel: 35,
+      atmosphereIntensity: 65,
+      typographyDominance: "balanced",
+      imageWeight: 85,
+      luxuryScore: 50,
+      cinematicScore: 10,
+      brutalismScore: 5,
+      editorialScore: 60,
+      softnessScore: 80,
+      visualAtmosphere: "soft-editorial-warmth"
+    };
+  }
+  if (cat.includes("restoration") || cat.includes("damage") || cat.includes("cleanup")) {
+    return {
+      spacingPersonality: "brutalist-dense",
+      compositionAggression: 60,
+      hierarchyIntensity: 75,
+      motionEnergy: 40,
+      visualDensity: 60,
+      asymmetryLevel: 40,
+      atmosphereIntensity: 70,
+      typographyDominance: "brutalist-impact",
+      imageWeight: 65,
+      luxuryScore: 10,
+      cinematicScore: 90,
+      brutalismScore: 70,
+      editorialScore: 20,
+      softnessScore: 10,
+      visualAtmosphere: "cinematic-darkness"
+    };
+  }
+  if (cat.includes("roofing") || cat.includes("roof")) {
+    return {
+      spacingPersonality: "compressed",
+      compositionAggression: 50,
+      hierarchyIntensity: 70,
+      motionEnergy: 70,
+      visualDensity: 65,
+      asymmetryLevel: 45,
+      atmosphereIntensity: 55,
+      typographyDominance: "brutalist-impact",
+      imageWeight: 70,
+      luxuryScore: 15,
+      cinematicScore: 50,
+      brutalismScore: 60,
+      editorialScore: 30,
+      softnessScore: 15,
+      visualAtmosphere: "industrial-grit"
+    };
+  }
   return {
     spacingPersonality: "balanced",
     compositionAggression: 35,
@@ -852,7 +909,32 @@ function buildPremiumPageContent(schema) {
   let MUTED = palette.muted || "#6b7280";
   let OUTLINE = palette.outline || "rgba(0,0,0,0.08)";
   let ACCENT = palette.accent || P;
-  if (dna.visualAtmosphere === "cinematic-darkness") {
+  const catNorm = category.toLowerCase();
+  if (catNorm.includes("supermarket") || catNorm.includes("grocery") || catNorm.includes("market") || catNorm.includes("food") || catNorm.includes("bakery")) {
+    BG = "#fcfaf7";
+    SURF = "#ffffff";
+    TEXT = "#2e1f0e";
+    MUTED = "#826b52";
+    OUTLINE = "rgba(130,107,82,0.08)";
+    P = "#c85a17";
+    ACCENT = "#4a6b42";
+  } else if (catNorm.includes("restoration") || catNorm.includes("damage") || catNorm.includes("cleanup")) {
+    BG = "#0c0d10";
+    SURF = "#15171e";
+    TEXT = "#f1f3f7";
+    MUTED = "#9ca3af";
+    OUTLINE = "rgba(255,255,255,0.08)";
+    P = "#e2b63f";
+    ACCENT = "#5c6f84";
+  } else if (catNorm.includes("roofing") || catNorm.includes("roof")) {
+    BG = "#0f1115";
+    SURF = "#171a21";
+    TEXT = "#ffffff";
+    MUTED = "#94a3b8";
+    OUTLINE = "rgba(255,255,255,0.08)";
+    P = "#f97316";
+    ACCENT = "#e2e8f0";
+  } else if (dna.visualAtmosphere === "cinematic-darkness") {
     BG = "#08090d";
     SURF = "#111218";
     TEXT = "#f3f4f6";
@@ -895,26 +977,32 @@ function buildPremiumPageContent(schema) {
   }
   const radius = dna.brutalismScore > 60 ? "0px" : dna.luxuryScore > 60 ? "32px" : theme.radius || "20px";
   let typography = theme.typography || { heading: "Cormorant Garamond", body: "Inter" };
-  if (dna.typographyDominance === "brutalist-impact") {
+  if (catNorm.includes("supermarket") || catNorm.includes("grocery") || catNorm.includes("market") || catNorm.includes("food") || catNorm.includes("bakery")) {
+    typography = { heading: "Plus Jakarta Sans", body: "Inter" };
+  } else if (catNorm.includes("restoration") || catNorm.includes("damage") || catNorm.includes("cleanup")) {
+    typography = { heading: "Outfit", body: "Space Grotesk" };
+  } else if (catNorm.includes("roofing") || catNorm.includes("roof")) {
+    typography = { heading: "Syne", body: "Inter" };
+  } else if (dna.typographyDominance === "brutalist-impact") {
     typography = { heading: "Syne", body: "Space Grotesk" };
   } else if (dna.typographyDominance === "dominant-serif" || dna.typographyDominance === "cinematic-oversized") {
     typography = { heading: "Cormorant Garamond", body: "Inter" };
   } else if (dna.typographyDominance === "restrained") {
     typography = { heading: "Playfair Display", body: "Inter" };
   }
-  let spaceXs = "8px", spaceSm = "16px", spaceMd = "32px", spaceLg = "64px", spaceXl = "100px", space2xl = "140px";
+  let spaceXs = "6px", spaceSm = "12px", spaceMd = "24px", spaceLg = "48px", spaceXl = "72px", space2xl = "96px";
   if (dna.spacingPersonality === "airy") {
-    spaceLg = "80px";
-    spaceXl = "115px";
-    space2xl = "180px";
+    spaceLg = "64px";
+    spaceXl = "96px";
+    space2xl = "128px";
   } else if (dna.spacingPersonality === "luxury-editorial") {
-    spaceLg = "90px";
-    spaceXl = "135px";
-    space2xl = "210px";
+    spaceLg = "72px";
+    spaceXl = "108px";
+    space2xl = "144px";
   } else if (dna.spacingPersonality === "compressed" || dna.spacingPersonality === "brutalist-dense") {
-    spaceLg = "40px";
-    spaceXl = "60px";
-    space2xl = "80px";
+    spaceLg = "36px";
+    spaceXl = "48px";
+    space2xl = "64px";
   }
   let shadowSoft = "0 4px 30px rgba(0,0,0,0.02)";
   let shadowPremium = "0 20px 80px rgba(0,0,0,0.06)";
@@ -1252,6 +1340,109 @@ function renderAdaptiveHero(section, ctx) {
   const spacing = getSpacingStyles(ctx);
   const motion = getMotionClasses(ctx.motionStyle);
   const imgTreatment = ctx.imageTreatment || "floatingDepth";
+  const catNorm = (ctx.category || "").toLowerCase();
+  const isSupermarket = catNorm.includes("supermarket") || catNorm.includes("grocery") || catNorm.includes("market") || catNorm.includes("food") || catNorm.includes("bakery");
+  const isRestoration = catNorm.includes("restoration") || catNorm.includes("damage") || catNorm.includes("cleanup");
+  const isRoofing = catNorm.includes("roofing") || catNorm.includes("roof");
+  if (isSupermarket && curatedList.length >= 2) {
+    return `<!-- wp:html -->
+<section class="noise-overlay-bg" style="background:var(--bg);position:relative;overflow:hidden;${spacing}">
+  <div class="ambient-glow-glow" style="top:-5%;left:10%;width:400px;height:400px;opacity:0.85;"></div>
+  <div class="section-shell split-grid" style="display:grid;grid-template-columns:1.1fr 0.9fr;gap:var(--space-xl);align-items:center;width:100%;">
+    <div class="${motion} delay-1">
+      <div class="eyebrow" style="background:rgba(200,90,23,0.06);color:var(--primary);border-color:rgba(200,90,23,0.15);">${esc(ctx.category)}</div>
+      <h1 style="font-family:'${ctx.typography.heading}',serif;font-size:var(--text-hero);line-height:0.92;letter-spacing:-.04em;font-weight:900;color:var(--text);margin:18px 0 16px;">
+        ${esc(title)}
+      </h1>
+      <p style="max-width:580px;font-size:var(--text-body);line-height:1.68;color:var(--muted);margin:0 0 var(--space-md);">${esc(sub)}</p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;">
+        ${buttonHtml(ctaPrimary.label, ctaPrimary.href, "background:var(--primary)!important;color:#fff!important;border-radius:30px!important;")}
+        ${ctaSecondary ? buttonHtml(ctaSecondary.label, ctaSecondary.href, "background:transparent!important;color:var(--text)!important;border:1px solid var(--outline)!important;box-shadow:none!important;border-radius:30px!important;") : ""}
+      </div>
+    </div>
+    <div class="${motion} delay-2" style="position:relative;display:flex;justify-content:center;height:480px;">
+      <div class="ambient-glow-glow" style="bottom:-50px;right:-50px;width:300px;height:300px;background:radial-gradient(circle, rgba(74,107,66,0.12) 0%, transparent 70%);"></div>
+      <div style="position:absolute;top:0;left:0;width:72%;height:380px;border-radius:24px;overflow:hidden;box-shadow:0 30px 60px rgba(46,31,14,0.15);transform:rotate(-2deg);border:6px solid #fff;">
+        <img src="${esc(curatedList[0].src)}" alt="${esc(curatedList[0].alt)}" style="width:100%;height:100%;object-fit:cover;filter:brightness(1.02) contrast(1.02);" />
+      </div>
+      <div style="position:absolute;bottom:0;right:0;width:58%;height:280px;border-radius:24px;overflow:hidden;box-shadow:0 35px 70px rgba(46,31,14,0.22);transform:rotate(2deg);border:6px solid #fff;outline:2px solid var(--accent);">
+        <img src="${esc(curatedList[1].src)}" alt="${esc(curatedList[1].alt)}" style="width:100%;height:100%;object-fit:cover;" />
+      </div>
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
+  if (isRestoration) {
+    return `<!-- wp:html -->
+<section class="noise-overlay-bg" style="min-height:92vh;display:flex;align-items:center;background:var(--bg);position:relative;overflow:hidden;${spacing}">
+  <div style="position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(to right, rgba(12,13,16,0.95) 45%, rgba(12,13,16,0.7) 100%), url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)" opacity="0.04"/%3E%3C/svg%3E');pointer-events:none;z-index:var(--z-base);"></div>
+  <div class="section-shell split-grid" style="display:grid;grid-template-columns:1.15fr .85fr;gap:var(--space-xl);align-items:center;width:100%;position:relative;z-index:2;">
+    <div class="${motion} delay-1">
+      <div style="display:inline-flex;align-items:center;gap:12px;background:rgba(226,182,63,0.1);border:1px solid rgba(226,182,63,0.3);padding:6px 14px;border-radius:4px;color:var(--primary);font-size:0.75rem;font-weight:900;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:22px;">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--primary);animation:pulse 1.8s infinite;"></span>
+        24/7 Emergency Dispatch Active
+      </div>
+      <h1 style="font-family:'${ctx.typography.heading}',sans-serif;font-size:var(--text-hero);line-height:0.88;letter-spacing:-.045em;font-weight:900;color:var(--text);margin:0 0 16px;text-transform:uppercase;">
+        ${esc(title)}
+      </h1>
+      <p style="max-width:580px;font-size:var(--text-body);line-height:1.7;color:var(--muted);margin:0 0 var(--space-md);">${esc(sub)}</p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:var(--space-sm);">
+        ${buttonHtml(ctaPrimary.label, ctaPrimary.href, "background:var(--primary)!important;color:#000!important;border-radius:4px!important;box-shadow:0 0 20px rgba(226,182,63,0.35)!important;text-transform:uppercase!important;letter-spacing:0.06em!important;")}
+        ${ctaSecondary ? buttonHtml(ctaSecondary.label, ctaSecondary.href, "background:transparent!important;color:#fff!important;border:2px solid var(--outline)!important;box-shadow:none!important;border-radius:4px!important;text-transform:uppercase!important;letter-spacing:0.06em!important;") : ""}
+      </div>
+    </div>
+    <div class="${motion} delay-2" style="position:relative;display:flex;justify-content:center;height:480px;">
+      ${curatedList[0] ? `
+      <div style="position:relative;width:100%;height:100%;border-radius:8px;overflow:hidden;border:2px solid var(--outline);box-shadow:var(--shadow-intense);">
+        <img src="${esc(curatedList[0].src)}" alt="${esc(curatedList[0].alt)}" style="width:100%;height:100%;object-fit:cover;filter:contrast(1.15) brightness(0.7) grayscale(0.15);" />
+        <div style="position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle, transparent 40%, rgba(12,13,16,0.85) 100%);pointer-events:none;"></div>
+        <div style="position:absolute;bottom:24px;left:24px;background:rgba(21,23,30,0.85);backdrop-filter:blur(10px);border:1px solid var(--outline);padding:18px 24px;border-radius:6px;max-width:calc(100% - 48px);">
+          <div style="font-size:0.7rem;font-weight:900;text-transform:uppercase;color:var(--primary);letter-spacing:0.12em;margin-bottom:4px;">Average Response Time</div>
+          <div style="font-size:1.8rem;font-weight:900;color:#fff;line-height:1.1;">Under 30 Mins</div>
+        </div>
+      </div>` : ""}
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
+  if (isRoofing) {
+    return `<!-- wp:html -->
+<section class="noise-overlay-bg" style="min-height:92vh;display:flex;align-items:center;background:var(--bg);position:relative;overflow:hidden;${spacing};clip-path:polygon(0 0, 100% 0, 100% 96%, 0% 100%);">
+  <div class="ambient-glow-glow" style="top:-80px;right:-80px;width:400px;height:400px;background:radial-gradient(circle, rgba(249,115,22,0.15) 0%, transparent 70%);"></div>
+  <div class="section-shell split-grid" style="display:grid;grid-template-columns:1.05fr .95fr;gap:var(--space-xl);align-items:center;width:100%;">
+    <div class="${motion} delay-1">
+      <div class="eyebrow" style="background:rgba(249,115,22,0.08);color:var(--primary);border-color:rgba(249,115,22,0.2);border-radius:4px;font-weight:900;">${esc(ctx.category)}</div>
+      <h1 style="font-family:'${ctx.typography.heading}',sans-serif;font-size:var(--text-hero);line-height:0.9;letter-spacing:-.04em;font-weight:900;color:var(--text);margin:18px 0 16px;text-transform:uppercase;">
+        ${esc(title)}
+      </h1>
+      <p style="max-width:580px;font-size:var(--text-body);line-height:1.68;color:var(--muted);margin:0 0 var(--space-md);">${esc(sub)}</p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:var(--space-sm);">
+        ${buttonHtml(ctaPrimary.label, ctaPrimary.href, "background:var(--primary)!important;color:#fff!important;border-radius:2px!important;border:none!important;box-shadow:0 8px 24px rgba(249,115,22,0.35)!important;text-transform:uppercase!important;letter-spacing:0.08em!important;")}
+        ${ctaSecondary ? buttonHtml(ctaSecondary.label, ctaSecondary.href, "background:transparent!important;color:#fff!important;border:2px solid var(--outline)!important;box-shadow:none!important;border-radius:2px!important;text-transform:uppercase!important;letter-spacing:0.08em!important;") : ""}
+      </div>
+    </div>
+    <div class="${motion} delay-2" style="position:relative;display:flex;justify-content:center;height:480px;">
+      ${curatedList[0] ? `
+      <div style="position:relative;width:100%;height:100%;overflow:hidden;border:2px solid var(--outline);box-shadow:var(--shadow-intense);clip-path:polygon(0 8%, 100% 0, 100% 92%, 0 100%);">
+        <img src="${esc(curatedList[0].src)}" alt="${esc(curatedList[0].alt)}" style="width:100%;height:100%;object-fit:cover;" />
+        <div style="position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(to top, rgba(15,17,21,0.7) 0%, transparent 60%);"></div>
+        <div style="position:absolute;top:20px;right:20px;background:var(--primary);color:#fff;font-weight:900;text-transform:uppercase;font-size:0.75rem;padding:8px 16px;border-radius:2px;letter-spacing:0.1em;box-shadow:var(--shadow-soft);">
+          Certified Lifetime Material Warranty
+        </div>
+      </div>` : ""}
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
   const isLowMedia = ctx.dna.imageWeight < 30 || curatedList.length === 0;
   if (isLowMedia) {
     return `<!-- wp:html -->
@@ -1333,6 +1524,93 @@ function renderAdaptiveFeatures(section, ctx) {
   const spacing = getSpacingStyles(ctx);
   const motion = getMotionClasses(ctx.motionStyle);
   const depth = getDepthStyles(ctx.visualDepth, ctx);
+  const catNorm = (ctx.category || "").toLowerCase();
+  const isSupermarket = catNorm.includes("supermarket") || catNorm.includes("grocery") || catNorm.includes("market") || catNorm.includes("food") || catNorm.includes("bakery");
+  const isRestoration = catNorm.includes("restoration") || catNorm.includes("damage") || catNorm.includes("cleanup");
+  const isRoofing = catNorm.includes("roofing") || catNorm.includes("roof");
+  if (isSupermarket) {
+    return `<!-- wp:html -->
+<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
+  <div class="section-shell">
+    <div style="display:flex;justify-content:space-between;align-items:end;gap:var(--space-md);flex-wrap:wrap;margin-bottom:var(--space-lg);border-bottom: 2px solid var(--outline);padding-bottom: 20px;">
+      <div>
+        <div class="eyebrow" style="background:rgba(74,107,66,0.06);color:var(--accent);border-color:rgba(74,107,66,0.12);">${esc(ctx.category)} Departments</div>
+        <h2 class="section-title" style="font-family:'${ctx.typography.heading}',serif;font-weight:900;color:var(--text);margin-top:8px;">${esc(title)}</h2>
+      </div>
+      ${intro ? `<p class="section-copy" style="max-width:540px;color:var(--muted);">${esc(intro)}</p>` : ""}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--space-md);">
+      ${items.map((item, idx) => `
+        <article class="${motion} hover-lift" style="background:var(--surface);border:1px solid var(--outline);padding:30px;border-radius:24px;box-shadow:var(--shadow-soft);display:flex;flex-direction:column;justify-content:space-between;min-height:220px;">
+          <div>
+            <div style="width:48px;height:48px;border-radius:50%;background:rgba(200,90,23,0.08);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1rem;margin-bottom:20px;">
+              ${String(idx + 1).padStart(2, "0")}
+            </div>
+            <h3 style="font-family:'${ctx.typography.heading}',serif;font-size:1.5rem;color:var(--text);margin:0 0 10px;font-weight:800;letter-spacing:-.02em;">${esc(item.title || item.name)}</h3>
+            <p style="color:var(--muted);line-height:1.6;font-size:0.95rem;margin:0;">${esc(item.description || item.body)}</p>
+          </div>
+        </article>
+      `).join("")}
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
+  if (isRestoration) {
+    return `<!-- wp:html -->
+<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
+  <div class="section-shell">
+    <div style="margin-bottom:var(--space-lg); border-bottom: 2px solid var(--outline); padding-bottom: 24px;">
+      <div class="eyebrow" style="background:rgba(226,182,63,0.08);color:var(--primary);border-color:rgba(226,182,63,0.2);">Action Protocol</div>
+      <h2 class="section-title" style="font-family:'${ctx.typography.heading}',sans-serif;font-weight:900;text-transform:uppercase;color:#fff;margin-top:8px;">${esc(title)}</h2>
+      ${intro ? `<p class="section-copy" style="max-width:640px;color:var(--muted);">${esc(intro)}</p>` : ""}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--space-md);position:relative;">
+      ${items.map((item, idx) => `
+        <article class="${motion} ${idx % 2 === 0 ? "delay-1" : "delay-2"}" style="background:var(--surface);border:1px solid var(--outline);padding:30px;border-radius:4px;position:relative;box-shadow:var(--shadow-intense);">
+          <div style="font-family:'${ctx.typography.heading}',sans-serif;font-size:2.8rem;color:var(--primary);opacity:0.8;margin-bottom:12px;font-weight:900;letter-spacing:-.05em;">STEP ${String(idx + 1).padStart(2, "0")}</div>
+          <h3 style="font-family:'${ctx.typography.heading}',sans-serif;font-size:1.4rem;color:#fff;margin:0 0 12px;font-weight:800;text-transform:uppercase;letter-spacing:-.03em;border-bottom:2px solid var(--outline);padding-bottom:10px;">${esc(item.title || item.name)}</h3>
+          <p style="color:var(--muted);line-height:1.68;font-size:0.95rem;margin:0;">${esc(item.description || item.body)}</p>
+        </article>
+      `).join("")}
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
+  if (isRoofing) {
+    return `<!-- wp:html -->
+<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
+  <div class="section-shell">
+    <div style="display:flex;justify-content:space-between;align-items:end;gap:var(--space-md);flex-wrap:wrap;margin-bottom:var(--space-lg);">
+      <div>
+        <div class="eyebrow" style="background:rgba(249,115,22,0.08);color:var(--primary);border-color:rgba(249,115,22,0.2);border-radius:2px;">Contractor Strength</div>
+        <h2 class="section-title" style="font-family:'${ctx.typography.heading}',sans-serif;font-weight:900;text-transform:uppercase;margin-top:8px;">${esc(title)}</h2>
+      </div>
+      ${intro ? `<p class="section-copy" style="max-width:580px;color:var(--muted);">${esc(intro)}</p>` : ""}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--space-md);">
+      ${items.map((item, idx) => `
+        <article class="${motion} hover-lift" style="background:var(--surface);border:2px solid var(--outline);padding:34px;border-radius:2px;min-height:240px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:var(--shadow-premium);position:relative;overflow:hidden;">
+          <div style="position:absolute;top:0;left:0;width:4px;height:100%;background:var(--primary);"></div>
+          <div>
+            <div style="font-family:'${ctx.typography.heading}',sans-serif;font-size:1.8rem;color:var(--primary);opacity:0.4;margin-bottom:14px;font-weight:900;">${String(idx + 1).padStart(2, "0")}</div>
+            <h3 style="font-family:'${ctx.typography.heading}',sans-serif;font-size:1.5rem;color:#fff;margin:0 0 10px;text-transform:uppercase;font-weight:900;letter-spacing:-.03em;">${esc(item.title || item.name)}</h3>
+          </div>
+          <p style="color:var(--muted);line-height:1.68;font-size:0.95rem;margin:0;">${esc(item.description || item.body)}</p>
+        </article>
+      `).join("")}
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
   if (ctx.layoutBehavior === "grid-stagger" || ctx.dna.brutalismScore > 60) {
     return `<!-- wp:html -->
 <section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
@@ -1395,6 +1673,10 @@ function renderAdaptiveGallery(section, ctx) {
   const spacing = getSpacingStyles(ctx);
   const motion = getMotionClasses(ctx.motionStyle);
   const imgTreatment = ctx.imageTreatment || "floatingDepth";
+  const catNorm = (ctx.category || "").toLowerCase();
+  const isSupermarket = catNorm.includes("supermarket") || catNorm.includes("grocery") || catNorm.includes("market") || catNorm.includes("food") || catNorm.includes("bakery");
+  const isRestoration = catNorm.includes("restoration") || catNorm.includes("damage") || catNorm.includes("cleanup");
+  const isRoofing = catNorm.includes("roofing") || catNorm.includes("roof");
   const isLowMedia = ctx.dna.imageWeight < 30 || curatedList.length === 0;
   if (isLowMedia) {
     return `<!-- wp:html -->
@@ -1408,6 +1690,111 @@ function renderAdaptiveGallery(section, ctx) {
     <p style="max-width:680px;margin:0 auto var(--space-lg);font-size:1.2rem;color:var(--muted);line-height:1.72;">
       ${esc(intro)}
     </p>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
+  if (isSupermarket) {
+    return `<!-- wp:html -->
+<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
+  <div class="section-shell">
+    <div style="display:flex;justify-content:space-between;align-items:end;gap:var(--space-md);flex-wrap:wrap;margin-bottom:var(--space-lg);">
+      <div>
+        <div class="eyebrow" style="background:rgba(74,107,66,0.06);color:var(--accent);border-color:rgba(74,107,66,0.12);">Sensory Display</div>
+        <h2 class="section-title" style="font-family:'${ctx.typography.heading}',serif;font-weight:900;color:var(--text);margin-top:8px;">${esc(title)}</h2>
+      </div>
+      <p class="section-copy" style="max-width:540px;color:var(--muted);">${esc(intro)}</p>
+    </div>
+    <div class="gallery-editorial" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;">
+      ${curatedList.map((item, idx) => {
+      const rotation = idx % 2 === 0 ? "transform: rotate(-1deg);" : "transform: rotate(1deg);";
+      return `
+        <div class="${motion} delay-${idx + 1}" style="${rotation} overflow:hidden;background:#fff;padding:12px;border-radius:24px;box-shadow:0 20px 45px rgba(46,31,14,0.08);border:1px solid var(--outline);">
+          <img src="${esc(item.src)}" alt="${esc(item.alt)}" style="width:100%;height:280px;object-fit:cover;border-radius:18px;margin-bottom:12px;" />
+          <div style="font-size:0.85rem;color:var(--muted);text-align:center;font-weight:500;">${esc(item.alt || "Fresh Harvest Display")}</div>
+        </div>
+      `;
+    }).join("")}
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
+  if (isRestoration && curatedList.length >= 2) {
+    const beforeImg = curatedList[0];
+    const afterImg = curatedList[1];
+    const beforeImg2 = curatedList[2] || beforeImg;
+    const afterImg2 = curatedList[3] || afterImg;
+    return `<!-- wp:html -->
+<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
+  <div class="section-shell">
+    <div style="margin-bottom:var(--space-lg); border-bottom: 2px solid var(--outline); padding-bottom: 24px;">
+      <div class="eyebrow" style="background:rgba(226,182,63,0.08);color:var(--primary);border-color:rgba(226,182,63,0.2);">Visual Evidence</div>
+      <h2 class="section-title" style="font-family:'${ctx.typography.heading}',sans-serif;font-weight:900;text-transform:uppercase;color:#fff;margin-top:8px;">${esc(title)}</h2>
+      <p class="section-copy" style="color:var(--muted);">${esc(intro)}</p>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md);align-items:stretch;">
+      <div class="${motion} delay-1" style="background:var(--surface);border:1px solid var(--outline);padding:24px;border-radius:4px;box-shadow:var(--shadow-intense);">
+        <div style="font-family:'${ctx.typography.heading}',sans-serif;font-weight:800;color:#fff;font-size:1.2rem;text-transform:uppercase;margin-bottom:16px;letter-spacing:0.04em;">Mitigation & Clean Stage</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;height:260px;">
+          <div style="position:relative;overflow:hidden;border-radius:2px;border:1px solid var(--outline);">
+            <img src="${esc(beforeImg.src)}" alt="Before mitigation" style="width:100%;height:100%;object-fit:cover;filter:grayscale(0.6) brightness(0.6);" />
+            <span style="position:absolute;bottom:10px;left:10px;background:rgba(220,38,38,0.85);color:#fff;font-size:0.65rem;font-weight:900;padding:4px 8px;text-transform:uppercase;letter-spacing:0.1em;border-radius:2px;">RAW DAMAGE</span>
+          </div>
+          <div style="position:relative;overflow:hidden;border-radius:2px;border:1px solid var(--outline);">
+            <img src="${esc(afterImg.src)}" alt="After mitigation" style="width:100%;height:100%;object-fit:cover;" />
+            <span style="position:absolute;bottom:10px;left:10px;background:rgba(22,163,74,0.85);color:#fff;font-size:0.65rem;font-weight:900;padding:4px 8px;text-transform:uppercase;letter-spacing:0.1em;border-radius:2px;">MITIGATED</span>
+          </div>
+        </div>
+      </div>
+      <div class="${motion} delay-2" style="background:var(--surface);border:1px solid var(--outline);padding:24px;border-radius:4px;box-shadow:var(--shadow-intense);">
+        <div style="font-family:'${ctx.typography.heading}',sans-serif;font-weight:800;color:#fff;font-size:1.2rem;text-transform:uppercase;margin-bottom:16px;letter-spacing:0.04em;">Full Structural Rebuilding</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;height:260px;">
+          <div style="position:relative;overflow:hidden;border-radius:2px;border:1px solid var(--outline);">
+            <img src="${esc(beforeImg2.src)}" alt="Before rebuild" style="width:100%;height:100%;object-fit:cover;filter:grayscale(0.6) brightness(0.6);" />
+            <span style="position:absolute;bottom:10px;left:10px;background:rgba(220,38,38,0.85);color:#fff;font-size:0.65rem;font-weight:900;padding:4px 8px;text-transform:uppercase;letter-spacing:0.1em;border-radius:2px;">UNSAFE STRUCTURAL</span>
+          </div>
+          <div style="position:relative;overflow:hidden;border-radius:2px;border:1px solid var(--outline);">
+            <img src="${esc(afterImg2.src)}" alt="After rebuild" style="width:100%;height:100%;object-fit:cover;" />
+            <span style="position:absolute;bottom:10px;left:10px;background:rgba(22,163,74,0.85);color:#fff;font-size:0.65rem;font-weight:900;padding:4px 8px;text-transform:uppercase;letter-spacing:0.1em;border-radius:2px;">RESTORED BRAND</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+`;
+  }
+  if (isRoofing) {
+    return `<!-- wp:html -->
+<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
+  <div class="section-shell">
+    <div style="display:flex;justify-content:space-between;align-items:end;gap:var(--space-md);flex-wrap:wrap;margin-bottom:var(--space-lg);">
+      <div>
+        <div class="eyebrow" style="background:rgba(249,115,22,0.08);color:var(--primary);border-color:rgba(249,115,22,0.2);border-radius:2px;">Project Showcase</div>
+        <h2 class="section-title" style="font-family:'${ctx.typography.heading}',sans-serif;font-weight:900;text-transform:uppercase;margin-top:8px;">${esc(title)}</h2>
+      </div>
+      <p class="section-copy" style="max-width:540px;color:var(--muted);">${esc(intro)}</p>
+    </div>
+    <div class="gallery-editorial" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">
+      ${curatedList.map((item, idx) => {
+      return `
+        <div class="${motion} delay-${idx + 1}" style="overflow:hidden;border:2px solid var(--outline);box-shadow:var(--shadow-premium);border-radius:2px;position:relative;height:340px;clip-path:polygon(0 4%, 100% 0, 100% 96%, 0 100%);">
+          <img src="${esc(item.src)}" alt="${esc(item.alt)}" style="width:100%;height:100%;object-fit:cover;transition:transform 0.4s ease;" class="hover-lift" />
+          <div style="position:absolute;bottom:0;left:0;width:100%;background:linear-gradient(to top, rgba(15,17,21,0.9) 0%, transparent 100%);padding:20px;text-align:left;">
+            <div style="font-size:0.68rem;font-weight:900;color:var(--primary);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:4px;">Project ${String(idx + 1).padStart(2, "0")}</div>
+            <div style="font-size:0.95rem;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.04em;">${esc(item.alt || "Completed Roof Construction")}</div>
+          </div>
+        </div>
+      `;
+    }).join("")}
+    </div>
   </div>
 </section>
 <!-- /wp:html -->
@@ -3485,6 +3872,30 @@ INSTRUCTIONS:
    - minimalistVsLayered (0 = high-density sensory layered, 100 = clean ultra-minimalist)
    - premiumVsEnergetic (0 = high-intensity energetic/playful, 100 = premium/restrained)
 
+CATEGORY-SPECIFIC DESIGN MANDATES (Enforce specifically if the business matches these industries):
+- Supermarkets / Groceries / Bakeries:
+  * luxuryVsApproachable: 30 to 50 (warm, welcoming, community-first marketplace).
+  * technicalVsEmotional: 10 to 30 (highly sensory, abundance-focused, fresh food imagery).
+  * minimalistVsLayered: 20 to 45 (layered product showcases, textured natural grids, denser sensory layout).
+  * themeMode: "textured-neutral" or "light" (warm eggshell, linen, soft cream).
+  * headingFontFamily / bodyFontFamily: Soft approachable typography (e.g. Plus Jakarta Sans / Inter).
+  * spacingRhythm: "compact" or "balanced" (tighter margin-top/bottom scales to reduce excess whitespace).
+- Damage Restoration / Cleanup / Emergency Contractors:
+  * luxuryVsApproachable: 50 to 65 (authoritative, trustworthy, highly-professional).
+  * technicalVsEmotional: 80 to 95 (technical precision, dramatic safety confidence).
+  * minimalistVsLayered: 60 to 80 (structural layouts, dark atmospheric contrast).
+  * themeMode: "charcoal" or "dark" (deep iron-slate, cold metal, dark backgrounds).
+  * headingFontFamily / bodyFontFamily: Strong uppercase impact (e.g. Outfit / Space Grotesk).
+  * spacingRhythm: "balanced" or "compact" (rugged precision).
+- Roofing Companies / Roofers / Structural Contractors:
+  * luxuryVsApproachable: 35 to 50 (bold contractor, powerful, action-focused).
+  * technicalVsEmotional: 65 to 80 (precise durable roofing engineering).
+  * minimalistVsLayered: 50 to 70 (high-energy bold highlights).
+  * themeMode: "charcoal" or "dark" (slate roof color theme with bright safety-orange alerts).
+  * headingFontFamily / bodyFontFamily: Heavy geometric headings (e.g. Syne / Inter).
+  * spacingRhythm: "compact" (highly energetic, high readability, compact text columns).
+
+
 2. Determine the Visual Theme Mode. Do NOT restrict to light themes. Choose the mode that fits best:
    - "light": Warm-white, clean, high visibility. Best for medical, local cleaners, organic day-spas.
    - "dark": Deep premium black, charcoal, or dark navy. Best for high-end cocktail bars, premium photography, high-end design agencies.
@@ -5381,15 +5792,13 @@ ${JSON.stringify(creativeDirection, null, 2)}
 
 PRIMARY OBJECTIVE:
 - Generate a highly bespoke, custom-themed WebsiteSchema that implements the Creative Direction Brief with extreme visual restraint, elegance, and emotional sophistication.
-- Think like a world-class human art director: favor generous breathing room (whitespace), architectural composition alignment, and calm, confident typography over over-designed layouts and decorative clutter.
+- Avoid excessive, empty whitespace that causes the site to feel "underdeveloped" or generic startup-like. Maintain tight, high-impact padding variables to ensure a cohesive, robust visual experience.
 - Break free from templates. Create a unique pacing, visual flow, and section rhythm specifically suited for this business, prioritizing fewer, more high-impact sections over many repetitive ones.
 - Enforce the brand's visual identity (theme mode, color palette, custom gradients, typography pairing) with absolute consistency. Avoid excessive mutations or contrast mismatch.
 - Adopt a visual reference language suited perfectly to the business category:
-  * "Restoration / Construction": Cinematic industrial precision, architectural structural tension, and technical confidence.
-  * "Luxury Salon / Spa": Editorial elegance, airy premium warmth, soft hierarchies, and delicate linen/terracotta atmospheres.
-  * "Restaurant": Sensory intimacy, layered warm tones, and cinematic storytelling spacing.
-  * "Law Firm / Medical": Restrained authority, intelligent whitespace, minimal serif typography confidence, and clean outlines.
-  * "Gym / Fitness": Kinetic energy, high tension composition, but clean, well-spaced, non-chaotic layout blocks.
+  * "Supermarkets / Groceries": Sensory, abundant, rich, culturally-layered, and fresh-produce oriented. Use soft warm colors, magazine-style layouts, overlapping collages, dense marketplace section showcases, and warm approachable fonts.
+  * "Restoration / Construction / Emergency": Cinematic, rugged, technical, industrial, and highly authoritative. Use dark atmospheric steel/charcoal scales, bold contrast outlines, dramatic before/after comparing blocks, and technical timelines.
+  * "Roofing / Structural Contractor": Rugged, powerful, action-focused, energetic, and extremely durable. Use angular layouts, diagonal transitions, safety orange highlights, weather-proof metrics strips, and bold trust badges.
 
 DYNAMIC SECTIONS & COMPOSITION ORCHESTRATION:
 - Do NOT use a standard, repetitive section structure.
@@ -5409,7 +5818,7 @@ COMPOSITION DICTIONARY OPTIONS (Choose appropriate properties matching business 
     "premiumContactPanel", "accordionClean"
   ],
   "layoutBehavior": Choose from [
-    "offset-right", "offset-left", "grid-stagger", "asymmetrical", "side-by-side", "split-grid", "centered-dramatic"
+    "offset-right", "offset-left", "grid-stagger", "asymmetrical", "side-by-side", "split-grid", "centered-dramatic", "horizontal-carousel", "diagonal-split"
   ],
   "visualDepth": Choose from [
     "layered-atmospheric", "glassmorphic", "frosted-glow", "dramatic-depth", "flat-minimalist"
@@ -5418,7 +5827,7 @@ COMPOSITION DICTIONARY OPTIONS (Choose appropriate properties matching business 
     "premiumFade", "cinematicReveal", "staggerLift", "softFloat", "atmosphericParallax", "editorialSlide", "luxuryGlow"
   ],
   "imageTreatment": Choose from [
-    "layeredGlass", "editorialCrop", "cinematicBleed", "atmosphericOverlay", "luxuryFrame", "brutalistSharp", "floatingDepth"
+    "layeredGlass", "editorialCrop", "cinematicBleed", "atmosphericOverlay", "luxuryFrame", "brutalistSharp", "floatingDepth", "diagonalWedge"
   ],
   "spacingMode": Choose from [
     "luxury-editorial", "balanced", "compact", "airy"

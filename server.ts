@@ -300,6 +300,30 @@ INSTRUCTIONS:
    - minimalistVsLayered (0 = high-density sensory layered, 100 = clean ultra-minimalist)
    - premiumVsEnergetic (0 = high-intensity energetic/playful, 100 = premium/restrained)
 
+CATEGORY-SPECIFIC DESIGN MANDATES (Enforce specifically if the business matches these industries):
+- Supermarkets / Groceries / Bakeries:
+  * luxuryVsApproachable: 30 to 50 (warm, welcoming, community-first marketplace).
+  * technicalVsEmotional: 10 to 30 (highly sensory, abundance-focused, fresh food imagery).
+  * minimalistVsLayered: 20 to 45 (layered product showcases, textured natural grids, denser sensory layout).
+  * themeMode: "textured-neutral" or "light" (warm eggshell, linen, soft cream).
+  * headingFontFamily / bodyFontFamily: Soft approachable typography (e.g. Plus Jakarta Sans / Inter).
+  * spacingRhythm: "compact" or "balanced" (tighter margin-top/bottom scales to reduce excess whitespace).
+- Damage Restoration / Cleanup / Emergency Contractors:
+  * luxuryVsApproachable: 50 to 65 (authoritative, trustworthy, highly-professional).
+  * technicalVsEmotional: 80 to 95 (technical precision, dramatic safety confidence).
+  * minimalistVsLayered: 60 to 80 (structural layouts, dark atmospheric contrast).
+  * themeMode: "charcoal" or "dark" (deep iron-slate, cold metal, dark backgrounds).
+  * headingFontFamily / bodyFontFamily: Strong uppercase impact (e.g. Outfit / Space Grotesk).
+  * spacingRhythm: "balanced" or "compact" (rugged precision).
+- Roofing Companies / Roofers / Structural Contractors:
+  * luxuryVsApproachable: 35 to 50 (bold contractor, powerful, action-focused).
+  * technicalVsEmotional: 65 to 80 (precise durable roofing engineering).
+  * minimalistVsLayered: 50 to 70 (high-energy bold highlights).
+  * themeMode: "charcoal" or "dark" (slate roof color theme with bright safety-orange alerts).
+  * headingFontFamily / bodyFontFamily: Heavy geometric headings (e.g. Syne / Inter).
+  * spacingRhythm: "compact" (highly energetic, high readability, compact text columns).
+
+
 2. Determine the Visual Theme Mode. Do NOT restrict to light themes. Choose the mode that fits best:
    - "light": Warm-white, clean, high visibility. Best for medical, local cleaners, organic day-spas.
    - "dark": Deep premium black, charcoal, or dark navy. Best for high-end cocktail bars, premium photography, high-end design agencies.
@@ -2748,15 +2772,13 @@ ${JSON.stringify(creativeDirection, null, 2)}
 
 PRIMARY OBJECTIVE:
 - Generate a highly bespoke, custom-themed WebsiteSchema that implements the Creative Direction Brief with extreme visual restraint, elegance, and emotional sophistication.
-- Think like a world-class human art director: favor generous breathing room (whitespace), architectural composition alignment, and calm, confident typography over over-designed layouts and decorative clutter.
+- Avoid excessive, empty whitespace that causes the site to feel "underdeveloped" or generic startup-like. Maintain tight, high-impact padding variables to ensure a cohesive, robust visual experience.
 - Break free from templates. Create a unique pacing, visual flow, and section rhythm specifically suited for this business, prioritizing fewer, more high-impact sections over many repetitive ones.
 - Enforce the brand's visual identity (theme mode, color palette, custom gradients, typography pairing) with absolute consistency. Avoid excessive mutations or contrast mismatch.
 - Adopt a visual reference language suited perfectly to the business category:
-  * "Restoration / Construction": Cinematic industrial precision, architectural structural tension, and technical confidence.
-  * "Luxury Salon / Spa": Editorial elegance, airy premium warmth, soft hierarchies, and delicate linen/terracotta atmospheres.
-  * "Restaurant": Sensory intimacy, layered warm tones, and cinematic storytelling spacing.
-  * "Law Firm / Medical": Restrained authority, intelligent whitespace, minimal serif typography confidence, and clean outlines.
-  * "Gym / Fitness": Kinetic energy, high tension composition, but clean, well-spaced, non-chaotic layout blocks.
+  * "Supermarkets / Groceries": Sensory, abundant, rich, culturally-layered, and fresh-produce oriented. Use soft warm colors, magazine-style layouts, overlapping collages, dense marketplace section showcases, and warm approachable fonts.
+  * "Restoration / Construction / Emergency": Cinematic, rugged, technical, industrial, and highly authoritative. Use dark atmospheric steel/charcoal scales, bold contrast outlines, dramatic before/after comparing blocks, and technical timelines.
+  * "Roofing / Structural Contractor": Rugged, powerful, action-focused, energetic, and extremely durable. Use angular layouts, diagonal transitions, safety orange highlights, weather-proof metrics strips, and bold trust badges.
 
 DYNAMIC SECTIONS & COMPOSITION ORCHESTRATION:
 - Do NOT use a standard, repetitive section structure.
@@ -2776,7 +2798,7 @@ COMPOSITION DICTIONARY OPTIONS (Choose appropriate properties matching business 
     "premiumContactPanel", "accordionClean"
   ],
   "layoutBehavior": Choose from [
-    "offset-right", "offset-left", "grid-stagger", "asymmetrical", "side-by-side", "split-grid", "centered-dramatic"
+    "offset-right", "offset-left", "grid-stagger", "asymmetrical", "side-by-side", "split-grid", "centered-dramatic", "horizontal-carousel", "diagonal-split"
   ],
   "visualDepth": Choose from [
     "layered-atmospheric", "glassmorphic", "frosted-glow", "dramatic-depth", "flat-minimalist"
@@ -2785,7 +2807,7 @@ COMPOSITION DICTIONARY OPTIONS (Choose appropriate properties matching business 
     "premiumFade", "cinematicReveal", "staggerLift", "softFloat", "atmosphericParallax", "editorialSlide", "luxuryGlow"
   ],
   "imageTreatment": Choose from [
-    "layeredGlass", "editorialCrop", "cinematicBleed", "atmosphericOverlay", "luxuryFrame", "brutalistSharp", "floatingDepth"
+    "layeredGlass", "editorialCrop", "cinematicBleed", "atmosphericOverlay", "luxuryFrame", "brutalistSharp", "floatingDepth", "diagonalWedge"
   ],
   "spacingMode": Choose from [
     "luxury-editorial", "balanced", "compact", "airy"
