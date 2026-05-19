@@ -2428,9 +2428,12 @@ async function generateWithFallback(promptOrContents, config = {}, options) {
   const projectId = process.env.VERTEX_PROJECT_ID || "digiscout";
   const contents = typeof promptOrContents === "string" ? [{ role: "user", parts: [{ text: promptOrContents }] }] : promptOrContents;
   if (googleCloudApiKey) {
-    const vertexUrl = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/gemini-3.1-pro-preview:generateContent?key=${googleCloudApiKey}`;
+    const apiEndpoint = process.env.VERTEX_API_ENDPOINT || "aiplatform.googleapis.com";
+    const modelId = "gemini-3.1-pro-preview";
+    const generateContentApi = "generateContent";
+    const vertexUrl = `https://${apiEndpoint}/v1/publishers/google/models/${modelId}:${generateContentApi}?key=${googleCloudApiKey}`;
     try {
-      options.logStderr(`[AI] Primary Vertex Attempt (projectId: ${projectId})...`);
+      options.logStderr(`[AI] Primary Vertex Attempt (${apiEndpoint})...`);
       await options.throttleGemini();
       const payload = {
         contents,
@@ -2460,7 +2463,15 @@ async function generateWithFallback(promptOrContents, config = {}, options) {
       });
       if (res.ok) {
         const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        let text = "";
+        if (Array.isArray(data)) {
+          for (const chunk of data) {
+            const chunkText = chunk.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (chunkText) text += chunkText;
+          }
+        } else {
+          text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        }
         if (text) {
           options.logStderr(`[AI] Vertex Success!`);
           return text;
