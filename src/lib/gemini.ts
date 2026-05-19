@@ -360,7 +360,9 @@ export async function askBusinessAIChatStream(
 
 	const reader = resp.body?.getReader();
 	if (!reader) {
-		throw new Error("Response body is not readable");
+		const text = await resp.text().catch(() => "");
+		onChunk(text);
+		return;
 	}
 
 	const decoder = new TextDecoder("utf-8");

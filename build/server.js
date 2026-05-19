@@ -6786,20 +6786,15 @@ Rules for your responses:
     });
     res.writeHead(200, {
       "Content-Type": "text/plain; charset=utf-8",
-      "Transfer-Encoding": "chunked",
       "Cache-Control": "no-cache",
       "Connection": "keep-alive"
     });
-    const resultStream = await modelInstance.generateContentStream({
+    const result = await modelInstance.generateContent({
       contents: chatContents,
       systemInstruction: systemPrompt
     });
-    let fullResponseText = "";
-    for await (const chunk of resultStream.stream) {
-      const chunkText = chunk.text();
-      fullResponseText += chunkText;
-      res.write(chunkText);
-    }
+    const fullResponseText = result.response.text() || "";
+    res.write(fullResponseText);
     if (fullResponseText.trim()) {
       try {
         await pool.query(

@@ -3948,26 +3948,21 @@ Rules for your responses:
 			tools: [{ googleSearch: {} }] as any,
 		});
 
-		// 6. Set headers for standard HTTP chunked text streaming
+		// 6. Set headers for standard HTTP text response
 		res.writeHead(200, {
 			"Content-Type": "text/plain; charset=utf-8",
-			"Transfer-Encoding": "chunked",
 			"Cache-Control": "no-cache",
 			"Connection": "keep-alive",
 		});
 
-		// 7. Stream content from Gemini
-		const resultStream = await modelInstance.generateContentStream({
+		// 7. Generate content from Gemini (non-streaming standard POST call as requested)
+		const result = await modelInstance.generateContent({
 			contents: chatContents,
 			systemInstruction: systemPrompt,
 		});
 
-		let fullResponseText = "";
-		for await (const chunk of resultStream.stream) {
-			const chunkText = chunk.text();
-			fullResponseText += chunkText;
-			res.write(chunkText);
-		}
+		const fullResponseText = result.response.text() || "";
+		res.write(fullResponseText);
 
 		// 8. Store response in the database for continuity
 		if (fullResponseText.trim()) {
