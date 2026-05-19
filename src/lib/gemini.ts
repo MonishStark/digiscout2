@@ -413,11 +413,27 @@ Return ONLY a valid JSON object matching this structure:
 		options.logStderr(
 			"[Gemini Generation] Stage 0: Generating Creative Direction...",
 		);
+		// Persist full creative brief prompt
+		if (options.debugSession && options.persistGenerationDebugFile) {
+			options.persistGenerationDebugFile(
+				options.debugSession,
+				"01a-creative-direction-prompt.md",
+				stage0Prompt,
+			);
+		}
 		const stage0Text = await generateWithFallback(
 			stage0Prompt,
 			{ temperature: 0.2, responseMimeType: "application/json" },
 			options,
 		);
+		// Persist raw creative brief response
+		if (options.debugSession && options.persistGenerationDebugFile) {
+			options.persistGenerationDebugFile(
+				options.debugSession,
+				"01b-creative-direction-raw.json",
+				stage0Text,
+			);
+		}
 		options.logStderr(
 			`[Gemini Generation] Stage 0 Output (Creative Direction): ${stage0Text}`,
 		);
@@ -425,7 +441,7 @@ Return ONLY a valid JSON object matching this structure:
 		if (options.debugSession) {
 			options.persistGenerationDebugFile(
 				options.debugSession,
-				"01a-creative-direction.json",
+				"01c-creative-direction-parsed.json",
 				creativeDirection,
 			);
 		}
@@ -642,7 +658,10 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
 
 		const stage2Contents = [
 			{ role: "user", parts: [{ text: stage1Prompt }] },
-			{ role: "model", parts: [{ text: JSON.stringify(parsedSchema, null, 2) }] },
+			{
+				role: "model",
+				parts: [{ text: JSON.stringify(parsedSchema, null, 2) }],
+			},
 			{ role: "user", parts: [{ text: stage2Prompt }] },
 		];
 
@@ -743,7 +762,10 @@ export async function generateWebsiteContent(
 			logStderr: options.logStderr,
 			persistGenerationDebugFile: options.persistGenerationDebugFile,
 			appendGenerationDebugError: options.appendGenerationDebugError,
-			llmJson: async (promptOrContents: string | any[], contextLabel: string) => {
+			llmJson: async (
+				promptOrContents: string | any[],
+				contextLabel: string,
+			) => {
 				return generateWithFallback(
 					promptOrContents,
 					{ temperature: 0.65, responseMimeType: "application/json" },

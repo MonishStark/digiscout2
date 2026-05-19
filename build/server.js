@@ -2121,6 +2121,42 @@ var visual_intelligence_pipeline_exports = {};
 __export(visual_intelligence_pipeline_exports, {
   generateWebsiteWithVisualIntelligence: () => generateWebsiteWithVisualIntelligence
 });
+function traceLog(options, stage, label, payload, append = false) {
+  const traceId = options.debugSession?.traceId || "no-trace";
+  const header = `[${traceId}][${stage}] ${label}`;
+  try {
+    options.logStderr(
+      `${header} ${typeof payload === "string" ? payload : JSON.stringify(payload)}`
+    );
+  } catch (e) {
+    try {
+      console.warn(header, payload);
+    } catch {
+    }
+  }
+  try {
+    if (options.debugSession && options.persistGenerationDebugFile) {
+      const safeName = `${stage.toLowerCase().replace(/[^a-z0-9]+/g, "_")}-${label.replace(/[^a-z0-9.-]+/gi, "_")}`.slice(
+        0,
+        160
+      );
+      options.persistGenerationDebugFile(
+        options.debugSession,
+        `${safeName}.log`,
+        payload,
+        append
+      );
+    }
+  } catch (e) {
+    try {
+      options.appendGenerationDebugError?.(
+        options.debugSession,
+        `trace_write_failed: ${String(e)}`
+      );
+    } catch {
+    }
+  }
+}
 function hashSeed(value) {
   const input = value || "seed";
   let hash = 2166136261;
@@ -2249,8 +2285,22 @@ Demographic: ${intel.customerDemographic}
 Tone: ${intel.emotionalTone}
 Avoid generic or safe design language.`;
   try {
+    traceLog(options, "CREATIVE_BRIEF", "brand_strategy_prompt", prompt);
     const raw = await options.llmJson(prompt, "brand-strategy-agent");
-    return JSON.parse(raw);
+    traceLog(options, "CREATIVE_BRIEF", "brand_strategy_raw_response", raw);
+    try {
+      const parsed = JSON.parse(raw);
+      traceLog(options, "CREATIVE_BRIEF", "brand_strategy_parsed", parsed);
+      return parsed;
+    } catch (parseErr) {
+      traceLog(
+        options,
+        "CREATIVE_BRIEF",
+        "brand_strategy_parse_error",
+        String(parseErr)
+      );
+      throw parseErr;
+    }
   } catch {
     return {
       typographyPhilosophy: "Oversized heading contrast with compact body rhythm.",
@@ -2271,8 +2321,17 @@ Business: ${business.name}
 Category: ${business.category}
 Strategy: ${JSON.stringify(strategy)}.`;
   try {
+    traceLog(options, "MOODBOARD", "moodboard_prompt", prompt);
     const raw = await options.llmJson(prompt, "visual-moodboard-agent");
-    return JSON.parse(raw);
+    traceLog(options, "MOODBOARD", "moodboard_raw_response", raw);
+    try {
+      const parsed = JSON.parse(raw);
+      traceLog(options, "MOODBOARD", "moodboard_parsed", parsed);
+      return parsed;
+    } catch (parseErr) {
+      traceLog(options, "MOODBOARD", "moodboard_parse_error", String(parseErr));
+      throw parseErr;
+    }
   } catch {
     return {
       references: ["Awwwards editorial", "Framer premium"],
@@ -2287,7 +2346,11 @@ Strategy: ${JSON.stringify(strategy)}.`;
   }
 }
 function buildCompositionPlan(business, intel, seed) {
-  const heroMode = pick(seed, ["immersive", "editorial-split", "systems"]);
+  const heroMode = pick(seed, [
+    "immersive",
+    "editorial-split",
+    "systems"
+  ]);
   const baseSections = [
     "hero",
     "features",
@@ -2371,9 +2434,18 @@ function createSchemaFromPlan(business, plan, strategy, moodboard, tokens) {
         composition,
         title: "What Makes This Different",
         items: [
-          { title: "High-Signal Positioning", description: "Offer framing built for fast local decision-making." },
-          { title: "Proof-Led Narrative", description: "Trust signals and testimonials integrated into the primary story arc." },
-          { title: "Conversion Architecture", description: "CTA hierarchy and friction reduction engineered by section." }
+          {
+            title: "High-Signal Positioning",
+            description: "Offer framing built for fast local decision-making."
+          },
+          {
+            title: "Proof-Led Narrative",
+            description: "Trust signals and testimonials integrated into the primary story arc."
+          },
+          {
+            title: "Conversion Architecture",
+            description: "CTA hierarchy and friction reduction engineered by section."
+          }
         ]
       };
     }
@@ -2401,8 +2473,16 @@ function createSchemaFromPlan(business, plan, strategy, moodboard, tokens) {
         composition,
         title: "Client Outcomes",
         items: [
-          { quote: "The new site feels like a premium agency build and converts far better.", author: "Local Client", role: "Owner" },
-          { quote: "Clear messaging, stronger trust, and a much sharper visual presence.", author: "Repeat Customer", role: "Operations" }
+          {
+            quote: "The new site feels like a premium agency build and converts far better.",
+            author: "Local Client",
+            role: "Owner"
+          },
+          {
+            quote: "Clear messaging, stronger trust, and a much sharper visual presence.",
+            author: "Repeat Customer",
+            role: "Operations"
+          }
         ]
       };
     }
@@ -2415,8 +2495,14 @@ function createSchemaFromPlan(business, plan, strategy, moodboard, tokens) {
         composition,
         title: "Questions",
         items: [
-          { question: "How fast can we launch?", answer: "Most local projects can go live in days with approved content." },
-          { question: "Can we update content after launch?", answer: "Yes, editing workflows are designed for non-technical teams." }
+          {
+            question: "How fast can we launch?",
+            answer: "Most local projects can go live in days with approved content."
+          },
+          {
+            question: "Can we update content after launch?",
+            answer: "Yes, editing workflows are designed for non-technical teams."
+          }
         ]
       };
     }
@@ -2508,7 +2594,9 @@ function createSchemaFromPlan(business, plan, strategy, moodboard, tokens) {
     seo: {
       title: `${business.name} | ${business.category}`,
       description: `${business.name} in ${business.address || "your area"} with a premium, conversion-focused digital experience.`,
-      keywords: [business.name, business.category, "premium", "local"].filter(Boolean)
+      keywords: [business.name, business.category, "premium", "local"].filter(
+        Boolean
+      )
     },
     sections,
     _validation: {
@@ -2571,19 +2659,27 @@ function renderPremiumHtml(schema, tokens, plan) {
     }
     if (section.type === "features") {
       const f = section;
-      return `<section class="${cls}" id="services"><div class="grid"><header><h2>${f.title || "Services"}</h2></header><div class="stagger-grid">${(f.items || []).map((item, i) => `<article class="feature-card span-${i % 3 + 1}"><h3>${item.title}</h3><p>${item.description}</p></article>`).join("")}</div></div></section>`;
+      return `<section class="${cls}" id="services"><div class="grid"><header><h2>${f.title || "Services"}</h2></header><div class="stagger-grid">${(f.items || []).map(
+        (item, i) => `<article class="feature-card span-${i % 3 + 1}"><h3>${item.title}</h3><p>${item.description}</p></article>`
+      ).join("")}</div></div></section>`;
     }
     if (section.type === "gallery") {
       const g = section;
-      return `<section class="${cls}" id="gallery"><div class="grid"><header><h2>${g.title || "Gallery"}</h2></header><div class="editorial-gallery">${(g.items || []).map((item, i) => `<figure class="shot shot-${i % 5 + 1}"><img src="${item.src || ""}" alt="${item.alt || ""}"/></figure>`).join("")}</div></div></section>`;
+      return `<section class="${cls}" id="gallery"><div class="grid"><header><h2>${g.title || "Gallery"}</h2></header><div class="editorial-gallery">${(g.items || []).map(
+        (item, i) => `<figure class="shot shot-${i % 5 + 1}"><img src="${item.src || ""}" alt="${item.alt || ""}"/></figure>`
+      ).join("")}</div></div></section>`;
     }
     if (section.type === "testimonials") {
       const t = section;
-      return `<section class="${cls}" id="testimonials"><div class="grid split"><header><h2>${t.title || "Testimonials"}</h2></header><div class="quotes">${(t.items || []).map((item) => `<blockquote><p>"${item.quote}"</p><cite>${item.author}${item.role ? `, ${item.role}` : ""}</cite></blockquote>`).join("")}</div></div></section>`;
+      return `<section class="${cls}" id="testimonials"><div class="grid split"><header><h2>${t.title || "Testimonials"}</h2></header><div class="quotes">${(t.items || []).map(
+        (item) => `<blockquote><p>"${item.quote}"</p><cite>${item.author}${item.role ? `, ${item.role}` : ""}</cite></blockquote>`
+      ).join("")}</div></div></section>`;
     }
     if (section.type === "faq") {
       const f = section;
-      return `<section class="${cls}" id="faq"><div class="grid"><header><h2>${f.title || "FAQ"}</h2></header><div class="faq-list">${(f.items || []).map((item) => `<details><summary>${item.question}</summary><p>${item.answer}</p></details>`).join("")}</div></div></section>`;
+      return `<section class="${cls}" id="faq"><div class="grid"><header><h2>${f.title || "FAQ"}</h2></header><div class="faq-list">${(f.items || []).map(
+        (item) => `<details><summary>${item.question}</summary><p>${item.answer}</p></details>`
+      ).join("")}</div></div></section>`;
     }
     if (section.type === "cta") {
       const c = section;
@@ -2651,43 +2747,15 @@ async function maybeCaptureScreenshotBase64(html) {
     );
     const playwright = await dynamicImport("playwright");
     const browser = await playwright.chromium.launch({ headless: true });
-    const page = await browser.newPage({ viewport: { width: 1440, height: 2200 } });
+    const page = await browser.newPage({
+      viewport: { width: 1440, height: 2200 }
+    });
     await page.setContent(html, { waitUntil: "networkidle" });
     const png = await page.screenshot({ fullPage: true, type: "png" });
     await browser.close();
     return Buffer.from(png).toString("base64");
   } catch {
     return null;
-  }
-}
-async function runCritique(schema, html, options, iteration) {
-  const screenshot = await maybeCaptureScreenshotBase64(html);
-  const prompt = `You are a Visual Quality Critic. Return strict JSON with scores 0-100 for whitespaceBalance, hierarchyStrength, compositionUniqueness, imageRhythm, ctaProminence, premiumFeel and arrays issues, refinementActions. Iteration=${iteration}.`;
-  try {
-    const contents = screenshot ? [
-      {
-        role: "user",
-        parts: [
-          { text: `${prompt}
-Business=${schema.brand.businessName}, category=${schema.brand.category}.` },
-          { inline_data: { mime_type: "image/png", data: screenshot } }
-        ]
-      }
-    ] : `${prompt}
-No screenshot available; critique from schema + HTML length=${html.length}.`;
-    const raw = await options.llmJson(contents, "visual-critique-loop");
-    return JSON.parse(raw);
-  } catch {
-    return {
-      whitespaceBalance: 68,
-      hierarchyStrength: 70,
-      compositionUniqueness: 66,
-      imageRhythm: 64,
-      ctaProminence: 73,
-      premiumFeel: 69,
-      issues: ["Gallery rhythm could be stronger", "CTA could be more dominant"],
-      refinementActions: ["increase_heading_contrast", "tighten_feature_spacing", "boost_cta_surface"]
-    };
   }
 }
 function applyCritiqueRefinements(tokens, critique) {
@@ -2704,7 +2772,18 @@ function applyCritiqueRefinements(tokens, critique) {
 }
 async function generateWebsiteWithVisualIntelligence(business, options) {
   const seed = hashSeed(`${business.id}-${business.name}-${business.category}`);
-  options.logStderr(`[VisualPipeline] Start seed=${seed} business=${business.name}`);
+  options.logStderr(
+    `[VisualPipeline] Start seed=${seed} business=${business.name}`
+  );
+  traceLog(options, "BUSINESS_INPUT", "business_full_payload", business);
+  traceLog(
+    options,
+    "BUSINESS_INPUT",
+    "business_category",
+    business.category || null
+  );
+  traceLog(options, "BUSINESS_INPUT", "business_photos", business.photos || []);
+  traceLog(options, "BUSINESS_INPUT", "business_logo", business.logo || null);
   const intelligence = buildBusinessIntelligence(business);
   const strategy = await buildBrandStrategy(business, intelligence, options);
   const moodboard = await buildVisualMoodboard(business, strategy, options);
@@ -2717,13 +2796,159 @@ async function generateWebsiteWithVisualIntelligence(business, options) {
     moodboard,
     tokens
   );
+  traceLog(options, "SCHEMA_GENERATION", "schema_generated", schema);
+  try {
+    const sectionsMeta = schema.sections.map((s) => ({
+      sectionType: s.type,
+      layoutBehavior: s.composition?.sectionType || s.layout || null,
+      visualDepth: s.composition?.visualDepth || null,
+      motionStyle: s.composition?.motionStyle || null,
+      spacingMode: s.composition?.spacingMode || null,
+      hierarchyWeight: s.composition?.hierarchyWeight || null,
+      imageTreatment: s.composition?.imageTreatment || null
+    }));
+    traceLog(options, "SCHEMA_GENERATION", "sections_meta", sectionsMeta);
+  } catch (e) {
+    traceLog(options, "SCHEMA_GENERATION", "sections_meta_error", String(e));
+  }
   let html = renderPremiumHtml(schema, tokens, compositionPlan);
   let lastCritique = null;
+  traceLog(options, "HTML_GENERATION", "html_generated_initial", html);
+  try {
+    const classNames = Array.from(
+      new Set(
+        Array.from(html.matchAll(/class=\"([^\"]+)\"/g)).flatMap(
+          (m) => (m[1] || "").split(/\s+/)
+        )
+      )
+    ).filter(Boolean);
+    const spacingValues = Array.from(
+      new Set(
+        Array.from(
+          html.matchAll(/clamp\([^\)]+\)|\b\d+(?:px|rem|em|vw|vh)\b/g)
+        ).map((m) => m[0])
+      )
+    );
+    const radiusValues = Array.from(
+      new Set(
+        Array.from(html.matchAll(/border-radius:\s*([^;\}]+)/g)).map(
+          (m) => m[1]
+        )
+      )
+    );
+    const shadowValues = Array.from(
+      new Set(
+        Array.from(html.matchAll(/box-shadow:\s*([^;\}]+)/g)).map((m) => m[1])
+      )
+    );
+    const gradients = Array.from(
+      new Set(
+        Array.from(
+          html.matchAll(/linear-gradient\([^\)]+\)|radial-gradient\([^\)]+\)/g)
+        ).map((m) => m[0])
+      )
+    );
+    const repeatedStructures = classNames.filter((cn) => html.split(cn).length > 3).slice(0, 50);
+    const heroPatterns = classNames.filter((cn) => /hero/i.test(cn));
+    const ctaPatterns = classNames.filter((cn) => /cta|btn|action/i.test(cn));
+    traceLog(options, "HTML_GENERATION", "html_analysis", {
+      classNames,
+      spacingValues,
+      radiusValues,
+      shadowValues,
+      gradients,
+      repeatedStructures,
+      heroPatterns,
+      ctaPatterns
+    });
+  } catch (e) {
+    traceLog(options, "HTML_GENERATION", "html_analysis_error", String(e));
+  }
+  const tokensBeforeCritique = JSON.parse(JSON.stringify(tokens));
   for (let i = 1; i <= 2; i++) {
-    const critique = await runCritique(schema, html, options, i);
-    lastCritique = critique;
-    applyCritiqueRefinements(tokens, critique);
+    traceLog(options, "CRITIQUE_LOOP", `iteration_${i}_pre`, {
+      htmlLength: html.length,
+      tokens: tokensBeforeCritique
+    });
+    try {
+      const screenshot = await maybeCaptureScreenshotBase64(html);
+      if (screenshot)
+        traceLog(options, "CRITIQUE_LOOP", `screenshot_iter_${i}`, screenshot);
+      const prompt = `You are a Visual Quality Critic. Return strict JSON with scores 0-100 for whitespaceBalance, hierarchyStrength, compositionUniqueness, imageRhythm, ctaProminence, premiumFeel and arrays issues, refinementActions. Iteration=${i}. Business=${schema.brand.businessName}, category=${schema.brand.category}.`;
+      traceLog(options, "CRITIQUE_LOOP", `critique_prompt_iter_${i}`, prompt);
+      const raw = await options.llmJson(prompt, `visual-critique-iter-${i}`);
+      traceLog(options, "CRITIQUE_LOOP", `critique_raw_iter_${i}`, raw);
+      let parsedCritique = null;
+      try {
+        parsedCritique = JSON.parse(raw);
+        traceLog(
+          options,
+          "CRITIQUE_LOOP",
+          `critique_parsed_iter_${i}`,
+          parsedCritique
+        );
+      } catch (e) {
+        traceLog(
+          options,
+          "CRITIQUE_LOOP",
+          `critique_parse_error_iter_${i}`,
+          String(e)
+        );
+      }
+      if (parsedCritique) {
+        lastCritique = parsedCritique;
+        const before = JSON.parse(JSON.stringify(tokens));
+        applyCritiqueRefinements(tokens, parsedCritique);
+        const after = JSON.parse(JSON.stringify(tokens));
+        traceLog(options, "CRITIQUE_LOOP", `tokens_before_after_iter_${i}`, {
+          before,
+          after
+        });
+      }
+    } catch (e) {
+      traceLog(
+        options,
+        "CRITIQUE_LOOP",
+        `critique_exception_iter_${i}`,
+        String(e)
+      );
+    }
     html = renderPremiumHtml(schema, tokens, compositionPlan);
+    traceLog(options, "CRITIQUE_LOOP", `html_after_iter_${i}`, html);
+  }
+  try {
+    const finalHtml = html;
+    const tokenTrace = { before: tokensBeforeCritique, after: tokens };
+    for (const key of Object.keys(tokens)) {
+      tokenTrace.after[key] = tokens[key];
+      try {
+        const asString = JSON.stringify(tokens[key]);
+        tokenTrace.after[key + "_usedInHtml"] = finalHtml.includes(asString) || finalHtml.includes(String(tokens[key]));
+      } catch (e) {
+        tokenTrace.after[key + "_usedInHtml"] = false;
+      }
+    }
+    traceLog(options, "DESIGN_TOKEN_TRACE", "token_trace_summary", tokenTrace);
+  } catch (e) {
+    traceLog(options, "DESIGN_TOKEN_TRACE", "error", String(e));
+  }
+  try {
+    const repeats = {};
+    const heroCount = schema.sections.filter((s) => s.type === "hero").length;
+    repeats.repeated_hero_count = heroCount;
+    const ctaCount = schema.sections.filter((s) => s.type === "cta").length;
+    repeats.repeated_cta_count = ctaCount;
+    const layoutCounts = {};
+    schema.sections.forEach((s) => {
+      const layout = (s.layout || s.variant || "standard").toString();
+      layoutCounts[layout] = (layoutCounts[layout] || 0) + 1;
+    });
+    repeats.layoutCounts = layoutCounts;
+    repeats.spacingPatterns = tokens.spacing;
+    repeats.typography = tokens.typography;
+    traceLog(options, "REPETITION_DETECTION", "repetition_report", repeats);
+  } catch (e) {
+    traceLog(options, "REPETITION_DETECTION", "error", String(e));
   }
   schema._wordpressHtml = html;
   schema._renderSource = "visual-intelligence-pipeline";
@@ -2736,15 +2961,45 @@ async function generateWebsiteWithVisualIntelligence(business, options) {
     tokens
   };
   if (options.debugSession) {
-    options.persistGenerationDebugFile(options.debugSession, "00-business-intelligence.json", intelligence);
-    options.persistGenerationDebugFile(options.debugSession, "00-brand-strategy.json", strategy);
-    options.persistGenerationDebugFile(options.debugSession, "00-visual-moodboard.json", moodboard);
-    options.persistGenerationDebugFile(options.debugSession, "00-layout-composition-plan.json", compositionPlan);
-    options.persistGenerationDebugFile(options.debugSession, "00-visual-tokens.json", tokens);
-    options.persistGenerationDebugFile(options.debugSession, "00-critique-loop.json", lastCritique || {});
-    options.persistGenerationDebugFile(options.debugSession, "05c-wordpress-html-final.html", html);
+    options.persistGenerationDebugFile(
+      options.debugSession,
+      "00-business-intelligence.json",
+      intelligence
+    );
+    options.persistGenerationDebugFile(
+      options.debugSession,
+      "00-brand-strategy.json",
+      strategy
+    );
+    options.persistGenerationDebugFile(
+      options.debugSession,
+      "00-visual-moodboard.json",
+      moodboard
+    );
+    options.persistGenerationDebugFile(
+      options.debugSession,
+      "00-layout-composition-plan.json",
+      compositionPlan
+    );
+    options.persistGenerationDebugFile(
+      options.debugSession,
+      "00-visual-tokens.json",
+      tokens
+    );
+    options.persistGenerationDebugFile(
+      options.debugSession,
+      "00-critique-loop.json",
+      lastCritique || {}
+    );
+    options.persistGenerationDebugFile(
+      options.debugSession,
+      "05c-wordpress-html-final.html",
+      html
+    );
   }
-  options.logStderr(`[VisualPipeline] Completed with renderSource=visual-intelligence-pipeline`);
+  options.logStderr(
+    `[VisualPipeline] Completed with renderSource=visual-intelligence-pipeline`
+  );
   return schema;
 }
 var init_visual_intelligence_pipeline = __esm({
@@ -3056,11 +3311,25 @@ Return ONLY a valid JSON object matching this structure:
     options.logStderr(
       "[Gemini Generation] Stage 0: Generating Creative Direction..."
     );
+    if (options.debugSession && options.persistGenerationDebugFile) {
+      options.persistGenerationDebugFile(
+        options.debugSession,
+        "01a-creative-direction-prompt.md",
+        stage0Prompt
+      );
+    }
     const stage0Text = await generateWithFallback(
       stage0Prompt,
       { temperature: 0.2, responseMimeType: "application/json" },
       options
     );
+    if (options.debugSession && options.persistGenerationDebugFile) {
+      options.persistGenerationDebugFile(
+        options.debugSession,
+        "01b-creative-direction-raw.json",
+        stage0Text
+      );
+    }
     options.logStderr(
       `[Gemini Generation] Stage 0 Output (Creative Direction): ${stage0Text}`
     );
@@ -3068,7 +3337,7 @@ Return ONLY a valid JSON object matching this structure:
     if (options.debugSession) {
       options.persistGenerationDebugFile(
         options.debugSession,
-        "01a-creative-direction.json",
+        "01c-creative-direction-parsed.json",
         creativeDirection
       );
     }
@@ -3269,7 +3538,10 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
     }
     const stage2Contents = [
       { role: "user", parts: [{ text: stage1Prompt }] },
-      { role: "model", parts: [{ text: JSON.stringify(parsedSchema, null, 2) }] },
+      {
+        role: "model",
+        parts: [{ text: JSON.stringify(parsedSchema, null, 2) }]
+      },
       { role: "user", parts: [{ text: stage2Prompt }] }
     ];
     const htmlText = await generateWithFallback(
@@ -4517,17 +4789,17 @@ async function executeStateMachine(job) {
       (log) => appendLog(job.id, log)
     );
     const rawAdminPass = job._tempAdminPass || decrypt(wpAdminPass);
-    const siteUrl = `http://${subdomain}.${rootDomain}`;
+    const siteUrl2 = `http://${subdomain}.${rootDomain}`;
     await installWordPress(
       fullDocRoot,
-      siteUrl,
+      siteUrl2,
       `${job.business_name || "Generated Site"} \u2014 ${job.project_id}`,
       wpAdminUser,
       rawAdminPass,
       "admin@digitalscout.online",
       (log) => appendLog(job.id, log)
     );
-    await appendLog(job.id, `WordPress installed at ${siteUrl}`);
+    await appendLog(job.id, `WordPress installed at ${siteUrl2}`);
     job.status = "configuring_wordpress";
   }
   if (job.status === "configuring_wordpress") {
@@ -4834,6 +5106,48 @@ ${content}
       }
     }
     await logCallback("Premium WordPress site injection complete \u2713");
+    try {
+      if (siteUrl) {
+        await logCallback(
+          `Fetching final rendered site at ${siteUrl} for debug capture...`
+        );
+        const resp = await fetch(siteUrl);
+        const finalDom = await resp.text().catch(() => "");
+        const traceId2 = schema?.meta?.traceId || schema?._validation?.traceId;
+        if (traceId2 && finalDom) {
+          const traceDir = path2.join(DEBUG_ROOT_DIR, traceId2);
+          fs2.mkdirSync(traceDir, { recursive: true });
+          fs2.writeFileSync(
+            path2.join(traceDir, "12-wp-final-dom.html"),
+            finalDom,
+            "utf8"
+          );
+          const stripped = finalDom.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/\sstyle="[^"]*"/gi, "");
+          fs2.writeFileSync(
+            path2.join(traceDir, "12-wp-final-dom-stripped.html"),
+            stripped,
+            "utf8"
+          );
+          const wpMutations = {
+            contains_elementor: /elementor/i.test(finalDom),
+            contains_wp_blocks: /wp-block/i.test(finalDom),
+            theme_injection_detected: /theme|header|footer|site-title/i.test(
+              finalDom
+            ),
+            length: finalDom.length
+          };
+          fs2.writeFileSync(
+            path2.join(traceDir, "12-wp-final-mutations.json"),
+            JSON.stringify(wpMutations, null, 2),
+            "utf8"
+          );
+        }
+      }
+    } catch (e) {
+      await logCallback(
+        `Warning: failed to fetch/persist final WP DOM: ${e instanceof Error ? e.message : String(e)}`
+      );
+    }
     return { renderSource, length: content.length, sha1: contentHash };
   } catch (error) {
     await logCallback(

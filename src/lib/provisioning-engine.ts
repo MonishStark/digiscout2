@@ -747,6 +747,52 @@ async function injectWebsiteContent(
 		}
 
 		await logCallback("Premium WordPress site injection complete ✓");
+		// Attempt to fetch final rendered DOM for forensic trace (if siteUrl is available)
+		try {
+			if (siteUrl) {
+				await logCallback(
+					`Fetching final rendered site at ${siteUrl} for debug capture...`,
+				);
+				const resp = await fetch(siteUrl);
+				const finalDom = await resp.text().catch(() => "");
+				const traceId = schema?.meta?.traceId || schema?._validation?.traceId;
+				if (traceId && finalDom) {
+					const traceDir = path.join(DEBUG_ROOT_DIR, traceId);
+					fs.mkdirSync(traceDir, { recursive: true });
+					fs.writeFileSync(
+						path.join(traceDir, "12-wp-final-dom.html"),
+						finalDom,
+						"utf8",
+					);
+					// create a stripped version without scripts/styles for quick inspection
+					const stripped = finalDom
+						.replace(/<script[\s\S]*?<\/script>/gi, "")
+						.replace(/\sstyle="[^"]*"/gi, "");
+					fs.writeFileSync(
+						path.join(traceDir, "12-wp-final-dom-stripped.html"),
+						stripped,
+						"utf8",
+					);
+					const wpMutations = {
+						contains_elementor: /elementor/i.test(finalDom),
+						contains_wp_blocks: /wp-block/i.test(finalDom),
+						theme_injection_detected: /theme|header|footer|site-title/i.test(
+							finalDom,
+						),
+						length: finalDom.length,
+					};
+					fs.writeFileSync(
+						path.join(traceDir, "12-wp-final-mutations.json"),
+						JSON.stringify(wpMutations, null, 2),
+						"utf8",
+					);
+				}
+			}
+		} catch (e) {
+			await logCallback(
+				`Warning: failed to fetch/persist final WP DOM: ${e instanceof Error ? e.message : String(e)}`,
+			);
+		}
 		return { renderSource, length: content.length, sha1: contentHash };
 	} catch (error: any) {
 		await logCallback(
