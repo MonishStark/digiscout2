@@ -12,6 +12,7 @@ import {
 	WebsiteSchema,
 	WebsiteSection,
 } from "../types";
+import { renderCompositionExperience } from "./composition-renderer";
 
 const escapeHtml = (value: string) =>
 	(value || "")
@@ -1748,7 +1749,9 @@ export function renderWebsiteArtifact(artifact: WebsiteArtifact): string {
 		sections: artifact.schema.sections || [],
 	};
 
-	const htmlBody = renderPageBody(normalizedSchema);
+	const composition = renderCompositionExperience(normalizedSchema);
+	const htmlBody = composition.html;
+	const htmlCss = artifact.css || composition.css || buildCss(normalizedSchema);
 
 	return `<!DOCTYPE html>
 <html lang="en">
@@ -1757,7 +1760,7 @@ export function renderWebsiteArtifact(artifact: WebsiteArtifact): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="${escapeHtml(normalizedSchema.seo.description)}" />
   <title>${escapeHtml(normalizedSchema.seo.title)}</title>
-  <style>${artifact.css || buildCss(normalizedSchema)}</style>
+  <style>${htmlCss}</style>
 </head>
 <body class="${getThemeClassName(normalizedSchema.theme)}">
   <main class="site-shell">

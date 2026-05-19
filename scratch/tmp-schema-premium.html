@@ -1,0 +1,340 @@
+<!-- wp:html -->
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;700;900&family=Space+Grotesk:wght@300;500;700;800&family=Cormorant+Garamond:wght@300;400;600;700&family=Outfit:wght@300;500;700;900&family=Plus+Jakarta+Sans:wght@300;500;700;800&family=Syne:wght@400;700;800&family=Cormorant+Infant:ital,wght@1,400;1,600&display=swap');
+
+:root {
+  --bg: #ffffff;
+  --surface: #fafafa;
+  --primary: #000000;
+  --accent: #000000;
+  --text: #000000;
+  --muted: #666666;
+  --outline: rgba(0,0,0,0.08);
+  
+  /* Dynamic Curation Spacing Scale */
+  --space-xs: 6px;
+  --space-sm: 12px;
+  --space-md: 24px;
+  --space-lg: 48px;
+  --space-xl: 72px;
+  --space-2xl: 96px;
+
+  /* Fluid Typography Scale */
+  --text-hero: clamp(3rem, 7vw, 5.8rem);
+  --text-section: clamp(2rem, 4.8vw, 3.8rem);
+  --text-body: clamp(1.02rem, 1.5vw, 1.25rem);
+
+  /* Radius System */
+  --radius-sm: 6px;
+  --radius-md: 14px;
+  --radius-lg: large;
+  --radius-full: 9999px;
+
+  /* Shadow Depth System */
+  --shadow-soft: 0 4px 30px rgba(0,0,0,0.02);
+  --shadow-premium: 0 20px 80px rgba(0,0,0,0.06);
+  --shadow-intense: 0 30px 100px rgba(0,0,0,0.12);
+
+  /* DNA Animation Timings */
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --reveal-duration: 1.2s;
+  --z-back: -1;
+  --z-base: 1;
+  --z-overlay: 10;
+}
+
+*,*::before,*::after{box-sizing:border-box!important}
+html,body{margin:0!important;padding:0!important;background:var(--bg)!important;color:var(--text)!important;font-family:'Inter',sans-serif!important;-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
+.site-header,.site-footer,.elementor-location-header,.elementor-location-footer,#masthead,#colophon,.entry-title,.wp-block-post-title,.page-title,.breadcrumbs,.posted-on,.byline,header.entry-header{display:none!important}
+.site-content,.hentry,.entry-content,.wp-block-post-content,.wp-site-blocks,.is-layout-flow,.elementor,.page,.single{padding:0!important;margin:0!important;max-width:100%!important;width:100%!important;background:var(--bg)!important}
+
+/* Atmospheric Noise Overlays matching DNA intensity */
+.noise-overlay-bg {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.012'/%3E%3C/svg%3E");
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Stagger hover states */
+.hover-lift {
+  transition: transform .4s var(--ease-expo), box-shadow .4s var(--ease-expo), border-color .4s ease!important;
+}
+.hover-lift:hover {
+  transform: translateY(-5px) scale(1.008)!important;
+  box-shadow: var(--shadow-premium)!important;
+}
+
+/* Scoped Scroll Reveal Styles */
+.scroll-reveal {
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.scroll-reveal.in-view {
+  opacity: 1;
+}
+
+.premium-fade {
+  transition: opacity var(--reveal-duration) var(--ease-expo);
+}
+.cinematic-reveal {
+  transform: translateY(35px) scale(0.99);
+  transition: opacity var(--reveal-duration) var(--ease-expo), transform var(--reveal-duration) var(--ease-expo);
+}
+.cinematic-reveal.in-view {
+  transform: translateY(0) scale(1);
+}
+.stagger-lift {
+  transform: translateY(22px);
+  transition: opacity var(--reveal-duration) var(--ease-expo), transform var(--reveal-duration) var(--ease-expo);
+}
+.stagger-lift.in-view {
+  transform: translateY(0);
+}
+.editorial-slide {
+  transform: translateX(-30px);
+  transition: opacity var(--reveal-duration) var(--ease-expo), transform var(--reveal-duration) var(--ease-expo);
+}
+.editorial-slide.in-view {
+  transform: translateX(0);
+}
+.luxury-glow-reveal {
+  box-shadow: 0 0 0px rgba(0,0,0,0);
+  transition: opacity var(--reveal-duration) var(--ease-expo), box-shadow 1.5s var(--ease-expo);
+}
+.luxury-glow-reveal.in-view {
+  box-shadow: 0 0 40px rgba(0,0,0, 0.08);
+}
+
+.delay-1 { transition-delay: 0.1s !important; }
+.delay-2 { transition-delay: 0.2s !important; }
+.delay-3 { transition-delay: 0.3s !important; }
+.delay-4 { transition-delay: 0.4s !important; }
+
+.section-shell {
+  max-width: 1280px;
+  margin: 0 auto;
+  position: relative;
+  z-index: var(--z-base);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  font-size: .74rem;
+  font-weight: 800;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-family: 'IBM Plex Sans', serif;
+  font-size: var(--text-section);
+  line-height: 0.96;
+  letter-spacing: -.03em;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0 0 16px;
+}
+
+.section-copy {
+  font-size: var(--text-body);
+  line-height: 1.72;
+  color: var(--muted);
+  margin: 0;
+}
+
+.wp-block-button__link, .wp-element-button {
+  background: var(--primary)!important;
+  color: #fff!important;
+  border: none!important;
+  border-radius: var(--radius-md)!important;
+  padding: 18px 38px!important;
+  font-weight: 800!important;
+  text-transform: none!important;
+  letter-spacing: normal!important;
+  text-decoration: none!important;
+  display: inline-flex!important;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer!important;
+  box-shadow: var(--shadow-soft)!important;
+  transition: transform .28s var(--ease-expo), box-shadow .28s var(--ease-expo), background .28s ease!important;
+}
+.wp-block-button__link:hover {
+  transform: translateY(-2px) scale(1.015)!important;
+  box-shadow: var(--shadow-premium)!important;
+}
+
+.ambient-glow-glow {
+  position: absolute;
+  width: 450px;
+  height: 450px;
+  border-radius: var(--radius-full);
+  background: radial-gradient(circle, rgba(0,0,0, 0.06) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: var(--z-back);
+}
+
+@media (max-width: 960px) {
+  .split-grid, .cta-split, .feature-bento, .gallery-editorial, .gallery-stack, .testimonial-grid, .contact-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+</style>
+<!-- /wp:html -->
+
+<!-- wp:html -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const obs = new IntersectionObserver((es) => {
+    es.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add("in-view");
+        obs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.05 });
+  document.querySelectorAll(".scroll-reveal").forEach(el => obs.observe(el));
+});
+</script>
+<!-- /wp:html -->
+
+<!-- wp:html -->
+<section class="noise-overlay-bg" style="background:var(--bg);position:relative;overflow:hidden;padding: var(--space-lg) 5% var(--space-lg); gap: var(--space-md);">
+  <div class="ambient-glow-glow" style="top:10%;left:10%;"></div>
+  <div class="section-shell scroll-reveal stagger-lift delay-1" style="max-width:1080px;text-align:left;">
+    <div class="eyebrow">dry cleaner</div>
+    <h1 style="font-family:'IBM Plex Sans',serif;font-size:var(--text-hero);line-height:0.88;letter-spacing:-.05em;font-weight:900;color:var(--primary);margin:24px 0 28px;">
+      Impeccable Garment Care.
+    </h1>
+    <div style="display:grid;grid-template-columns:1.15fr .85fr;gap:40px;margin-top:var(--space-md);">
+      <div>
+        <p style="font-size:var(--text-body);line-height:1.75;color:var(--text);font-weight:400;margin-bottom:34px;">One Hour Cleaners brings editorial-grade storytelling to dry cleaner through polished visuals and concise trust signals.</p>
+        <div style="display:flex;gap:14px;">
+          <a class="wp-block-button__link wp-element-button hover-lift" href="#contact" style="">Get Started</a>
+        </div>
+      </div>
+      <div style="border-left:2px solid var(--outline);padding-left:36px;display:flex;align-items:center;">
+        <span style="font-family:'Cormorant Infant',serif;font-style:italic;font-size:1.85rem;color:var(--muted);line-height:1.44;">
+          “Quiet design projects a confidence that visual noise can never reproduce.”
+        </span>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+<!-- wp:html -->
+<section style="background:var(--bg);padding: var(--space-lg) 5% var(--space-lg); gap: var(--space-md);" class="noise-overlay-bg">
+  <div class="ambient-glow-glow" style="top:20%;right:10%;"></div>
+  <div class="section-shell scroll-reveal stagger-lift delay-1" style="max-width:1080px;text-align:center;">
+    <div class="eyebrow">Philosophies</div>
+    <h2 class="section-title" style="font-size:clamp(2.4rem,6.5vw,5rem);line-height:0.95;margin-bottom:34px;font-weight:800;">
+      Crafting details with <span class="text-gradient">high-precision</span> local care.
+    </h2>
+    <p style="max-width:680px;margin:0 auto var(--space-lg);font-size:1.2rem;color:var(--muted);line-height:1.72;">
+      Visual perspectives of our craft and service execution.
+    </p>
+  </div>
+</section>
+<!-- /wp:html -->
+
+<!-- wp:html -->
+<section style="background:var(--bg);padding: var(--space-lg) 5% var(--space-lg); gap: var(--space-md);" class="noise-overlay-bg">
+  <div class="section-shell">
+    <div style="display:flex;justify-content:space-between;align-items:end;gap:var(--space-md);flex-wrap:wrap;margin-bottom:var(--space-lg);">
+      <div>
+        <div class="eyebrow">Services</div>
+        <h2 class="section-title">Comprehensive Textile Services</h2>
+      </div>
+      
+    </div>
+    <div class="feature-bento" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-md);">
+      
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+<!-- wp:html -->
+<section style="background:var(--bg);padding: var(--space-lg) 5% var(--space-lg); gap: var(--space-md);" class="noise-overlay-bg">
+  <div class="section-shell">
+    <div style="text-align:center;margin-bottom:var(--space-lg);">
+      <div class="eyebrow">Endorsements</div>
+      <h2 class="section-title">Client Experiences</h2>
+    </div>
+    <div class="testimonial-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:var(--space-md);">
+      
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+<!-- wp:html -->
+<section style="background:var(--bg);padding: var(--space-lg) 5% var(--space-lg); gap: var(--space-md);" class="noise-overlay-bg">
+  <div class="section-shell" style="max-width:900px;">
+    <div style="text-align:center;margin-bottom:var(--space-lg);">
+      <div class="eyebrow">FAQs</div>
+      <h2 class="section-title">Service Inquiries</h2>
+    </div>
+    <div style="display:grid;gap:16px;">
+      
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+<!-- wp:html -->
+<section style="background:linear-gradient(135deg, var(--primary), var(--accent));position:relative;overflow:hidden;padding: var(--space-2xl) 5% var(--space-2xl); gap: var(--space-xl);">
+  <div class="ambient-glow-glow" style="top:-90px;right:-90px;width:350px;height:350px;opacity:0.35;"></div>
+  <div class="section-shell scroll-reveal stagger-lift delay-1" style="text-align:center;max-width:850px;z-index:2;">
+    <div class="eyebrow" style="background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.18);">Connect</div>
+    <h2 style="font-family:'IBM Plex Sans',serif;font-size:var(--text-section);color:#fff;line-height:1.04;letter-spacing:-.04em;margin:22px 0 16px;font-weight:900;">Experience Flawless Garment Care</h2>
+    <p style="color:rgba(255,255,255,0.8);font-size:1.1rem;line-height:1.72;margin:0 auto var(--space-md);max-width:640px;">Bring your wardrobe essentials to our Market Street location and see the difference expert pressing and gentle cleaning make.</p>
+    <a class="wp-block-button__link wp-element-button hover-lift" href="#contact" style="background:#fff!important;color:var(--primary)!important;box-shadow:none!important;border-radius:var(--radius-md)!important;">Connect Now</a>
+  </div>
+</section>
+<!-- /wp:html -->
+
+<!-- wp:html -->
+<section id="contact" style="background:var(--bg);padding: var(--space-lg) 5% var(--space-lg); gap: var(--space-md);" class="noise-overlay-bg">
+  <div class="section-shell contact-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-xl);align-items:center;">
+    <div class="scroll-reveal stagger-lift delay-1">
+      <div class="eyebrow">Reach Out</div>
+      <h2 class="section-title">Visit Us</h2>
+      <p class="section-copy" style="margin-bottom:34px;">We would love to hear from you. Send us a message.</p>
+      <div style="display:grid;"><div style="margin-bottom:20px;"><div style="font-size:0.72rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);margin-bottom:4px;">Phone</div><div style="font-size:1.1rem;color:var(--text);font-weight:600;">(415) 552-6035</div></div><div style="margin-bottom:20px;"><div style="font-size:0.72rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);margin-bottom:4px;">Address</div><div style="font-size:1.02rem;line-height:1.6;color:var(--text);font-weight:500;">2233 Market St, San Francisco, CA 94114, USA</div></div></div>
+    </div>
+    <div class="scroll-reveal stagger-lift delay-2 hover-lift" style="background: #fafafa !important; border: 1px solid rgba(0,0,0,0.08) !important; box-shadow: var(--shadow-soft) !important; padding:40px;border-radius:var(--radius-lg);">
+      <h3 style="font-family:'IBM Plex Sans',serif;font-size:1.8rem;color:var(--text);margin:0 0 20px;font-weight:700;">Submit Inquiry</h3>
+      <div style="display:grid;gap:14px;">
+        <div style="height:48px;border-radius:var(--radius-sm);background:rgba(0,0,0,0.015);border:1px solid var(--outline);"></div>
+        <div style="height:48px;border-radius:var(--radius-sm);background:rgba(0,0,0,0.015);border:1px solid var(--outline);"></div>
+        <div style="height:110px;border-radius:var(--radius-sm);background:rgba(0,0,0,0.015);border:1px solid var(--outline);"></div>
+        <a class="wp-block-button__link wp-element-button hover-lift" href="#" style="">Send Inquiry</a>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- /wp:html -->
+
+<!-- wp:html -->
+<footer style="background:#090a0f;padding:var(--space-2xl) 5%;text-align:center;position:relative;" class="noise-overlay-bg">
+  <div class="section-shell">
+    <div class="eyebrow" style="background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);color:#fff">Digital Experience</div>
+    <h2 style="font-family:'IBM Plex Sans',serif;color:#fff;font-size:var(--text-section);letter-spacing:-.045em;margin:22px 0 12px;">One Hour Cleaners</h2>
+    <p style="color:rgba(255,255,255,.45);font-size:var(--text-body);margin:0;">Generative design system crafted with emergent visual orchestration.</p>
+  </div>
+</footer>
+<!-- /wp:html -->

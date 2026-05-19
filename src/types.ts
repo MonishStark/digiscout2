@@ -14,6 +14,17 @@ import {
 	SurfaceToken,
 	AnimationToken,
 } from "./lib/layout-registry";
+import {
+	LayoutDNA,
+	IndustryVisualPsychology,
+	TypographyBehavior,
+	MotionLanguage,
+	CompositionSystem,
+	NarrativeComposition,
+	VisualEntropyScore,
+	WebsiteFingerprint,
+	ImageIntelligence,
+} from "./lib/composition-architecture";
 
 export interface ValidationResult {
 	isValid: boolean;
@@ -56,33 +67,59 @@ export interface BrandDNA {
 		| "minimalist"
 		| "friendly"
 		| "corporate"
-		| "premium"
 		| "playful";
-	visualMood: "warm-editorial" | "polished-clinical" | "modern-authority" | "vibrant-energy";
+	visualMood:
+		| "warm-editorial"
+		| "polished-clinical"
+		| "modern-authority"
+		| "vibrant-energy";
 	ctaEnergy: "urgent" | "inviting" | "formal" | "casual";
 	spacingDensity: SpacingToken;
 	imageStyle: "cinematic" | "natural" | "bright-clean" | "moody-luxury";
 	themeIntensity?: string;
-	typographyMood: "elegant" | "corporate" | "energetic" | "editorial" | "minimal";
+	typographyMood:
+		| "elegant"
+		| "corporate"
+		| "energetic"
+		| "editorial"
+		| "minimal";
 	iconStyle: "outline" | "filled" | "minimal" | "playful";
 }
 
 export interface DesignDNA {
-	spacingPersonality: "compressed" | "balanced" | "airy" | "luxury-editorial" | "brutalist-dense";
+	spacingPersonality:
+		| "compressed"
+		| "balanced"
+		| "airy"
+		| "luxury-editorial"
+		| "brutalist-dense";
 	compositionAggression: number; // 0 to 100
-	hierarchyIntensity: number;     // 0 to 100
-	motionEnergy: number;           // 0 to 100
-	visualDensity: number;          // 0 to 100
-	asymmetryLevel: number;         // 0 to 100
-	atmosphereIntensity: number;    // 0 to 100
-	typographyDominance: "restrained" | "balanced" | "dominant-serif" | "brutalist-impact" | "cinematic-oversized" | "layered-typography-walls" | "vertical-accents";
-	imageWeight: number;            // 0 to 100
-	luxuryScore: number;            // 0 to 100
-	cinematicScore: number;         // 0 to 100
-	brutalismScore: number;         // 0 to 100
-	editorialScore: number;         // 0 to 100
-	softnessScore: number;          // 0 to 100
-	visualAtmosphere: "industrial-grit" | "luxury-glow" | "soft-editorial-warmth" | "cinematic-darkness" | "energetic-neon" | "architectural-minimalism";
+	hierarchyIntensity: number; // 0 to 100
+	motionEnergy: number; // 0 to 100
+	visualDensity: number; // 0 to 100
+	asymmetryLevel: number; // 0 to 100
+	atmosphereIntensity: number; // 0 to 100
+	typographyDominance:
+		| "restrained"
+		| "balanced"
+		| "dominant-serif"
+		| "brutalist-impact"
+		| "cinematic-oversized"
+		| "layered-typography-walls"
+		| "vertical-accents";
+	imageWeight: number; // 0 to 100
+	luxuryScore: number; // 0 to 100
+	cinematicScore: number; // 0 to 100
+	brutalismScore: number; // 0 to 100
+	editorialScore: number; // 0 to 100
+	softnessScore: number; // 0 to 100
+	visualAtmosphere:
+		| "industrial-grit"
+		| "luxury-glow"
+		| "soft-editorial-warmth"
+		| "cinematic-darkness"
+		| "energetic-neon"
+		| "architectural-minimalism";
 }
 
 export interface WebsiteTheme {
@@ -137,7 +174,12 @@ export interface SectionComposition {
 	imageTreatment?: string;
 	spacingMode?: string;
 	themeIntensity?: string;
-	hierarchyWeight?: "dominant" | "supporting" | "breathing" | "cinematicPause" | "transitionary";
+	hierarchyWeight?:
+		| "dominant"
+		| "supporting"
+		| "breathing"
+		| "cinematicPause"
+		| "transitionary";
 }
 
 export interface ImageIntent {
@@ -286,6 +328,15 @@ export interface WebsiteSchema {
 		version: number;
 		target: "static" | "wordpress";
 	};
+	layoutDNA?: LayoutDNA;
+	visualPsychology?: IndustryVisualPsychology;
+	imageIntelligence?: ImageIntelligence[];
+	typographyBehavior?: TypographyBehavior;
+	motionLanguage?: MotionLanguage;
+	narrativeCompositions?: NarrativeComposition[];
+	compositionSystems?: CompositionSystem[];
+	entropyScore?: VisualEntropyScore;
+	fingerprint?: WebsiteFingerprint;
 	theme: WebsiteTheme;
 	brand: WebsiteBrand;
 	seo: WebsiteSEO;

@@ -617,6 +617,840 @@ var init_wordpress = __esm({
   }
 });
 
+// src/lib/composition-renderer.ts
+function applyTokenOverrides(tokens, overrides) {
+  if (!overrides) {
+    return tokens;
+  }
+  return {
+    ...tokens,
+    palette: { ...tokens.palette, ...overrides.palette || {} },
+    typography: {
+      ...tokens.typography,
+      headingScale: overrides.typography?.scaleHero || overrides.typography?.scaleH2 || tokens.typography.headingScale,
+      subheadingScale: overrides.typography?.scaleH2 || tokens.typography.subheadingScale,
+      bodyScale: overrides.typography?.scaleBody || tokens.typography.bodyScale,
+      labelScale: overrides.typography?.labelScale || tokens.typography.labelScale,
+      heading: overrides.typography?.heading || tokens.typography.heading,
+      body: overrides.typography?.body || tokens.typography.body
+    },
+    spacing: {
+      ...tokens.spacing,
+      sectionGap: overrides.spacing?.sectionY || tokens.spacing.sectionGap,
+      sectionPadding: overrides.spacing?.cardPad || tokens.spacing.sectionPadding
+    },
+    motion: {
+      ...tokens.motion,
+      duration: overrides.motion?.revealDuration || tokens.motion.duration,
+      ease: overrides.motion?.ease || tokens.motion.ease,
+      reveal: tokens.motion.reveal
+    }
+  };
+}
+function normalizeCssValue(value, fallback) {
+  if (!value) {
+    return fallback;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (/^(\d+(?:\.\d+)?)(px|rem|em|vw|vh|%)$/.test(normalized)) {
+    return normalized;
+  }
+  if (SPACING_MAP[normalized]) {
+    return SPACING_MAP[normalized];
+  }
+  if (RADIUS_MAP[normalized]) {
+    return RADIUS_MAP[normalized];
+  }
+  if (SHADOW_MAP[normalized]) {
+    return SHADOW_MAP[normalized];
+  }
+  if (TEXT_SCALE_MAP[normalized]) {
+    return TEXT_SCALE_MAP[normalized];
+  }
+  if (MOTION_EASING_MAP[normalized]) {
+    return MOTION_EASING_MAP[normalized];
+  }
+  if (MOTION_DURATION_MAP[normalized]) {
+    return MOTION_DURATION_MAP[normalized];
+  }
+  return fallback;
+}
+function normalizeHeadingScale(value) {
+  if (!value) {
+    return DEFAULT_TOKENS.typography.headingScale;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (TEXT_SCALE_MAP[normalized]) {
+    return TEXT_SCALE_MAP[normalized];
+  }
+  return value.trim();
+}
+function escapeHtml2(value) {
+  return (value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function getPrimaryImageClassification(composition) {
+  return composition.images?.[0]?.classification || "none";
+}
+function getImageAspect(composition) {
+  const ratio = composition.images?.[0]?.aspectRatio;
+  if (!ratio) {
+    return "medium";
+  }
+  if (ratio < 0.8) {
+    return "portrait";
+  }
+  if (ratio > 1.4) {
+    return "landscape";
+  }
+  return "square";
+}
+function sectionDataAttributes(composition) {
+  return `data-image-classification="${escapeHtml2(
+    getPrimaryImageClassification(composition)
+  )}" data-image-aspect="${escapeHtml2(getImageAspect(composition))}"`;
+}
+function safeHref(href) {
+  const trimmed = (href || "").trim();
+  return trimmed && trimmed !== "#" ? trimmed : "#contact";
+}
+function safeLabel(label, fallback = "Learn More") {
+  const trimmed = (label || "").trim();
+  return trimmed || fallback;
+}
+function buildRenderingTokens(schema) {
+  const theme = schema.theme || {};
+  const layoutDNA = schema.layoutDNA || {};
+  const palette = {
+    ...DEFAULT_TOKENS.palette,
+    ...theme.palette || {}
+  };
+  const densityHint = layoutDNA.spacingRhythm || theme.density || "balanced";
+  const sectionGap = normalizeCssValue(
+    SPACING_MAP[densityHint] || densityHint,
+    DEFAULT_TOKENS.spacing.sectionGap
+  );
+  const sectionPadding = normalizeCssValue(
+    theme.edgePadding || (layoutDNA.spacingRhythm?.includes("luxury") ? "4rem" : layoutDNA.spacingRhythm === "brutalist-dense" ? "2rem" : "2.75rem"),
+    DEFAULT_TOKENS.spacing.sectionPadding
+  );
+  const panelGap = normalizeCssValue(
+    theme.panelGap || (layoutDNA.spacingRhythm === "brutalist-dense" ? "1.4rem" : "2rem"),
+    DEFAULT_TOKENS.spacing.panelGap
+  );
+  const imageGap = normalizeCssValue(
+    theme.imageGap || (layoutDNA.gridSystem === "asymmetric" ? "1.5rem" : "1rem"),
+    DEFAULT_TOKENS.spacing.imageGap
+  );
+  const textGap = normalizeCssValue(
+    theme.textGap || (layoutDNA.visualTempo?.includes("kinetic") ? "1rem" : "1.3rem"),
+    DEFAULT_TOKENS.spacing.textGap
+  );
+  const headingScale = normalizeHeadingScale(
+    theme.typography?.headingScale || (layoutDNA.dominantAxis === "vertical" ? "clamp(3rem, 6vw, 5rem)" : "clamp(2.25rem, 5vw, 4.5rem)")
+  );
+  const subheadingScale = normalizeHeadingScale(
+    theme.typography?.subheadingScale || (layoutDNA.visualTempo?.includes("kinetic") ? "clamp(1.1rem, 2vw, 1.45rem)" : "clamp(1.2rem, 2vw, 1.6rem)")
+  );
+  return {
+    palette,
+    spacing: {
+      sectionGap,
+      sectionPadding,
+      panelGap,
+      imageGap,
+      textGap
+    },
+    typography: {
+      heading: theme.typography?.heading || DEFAULT_TOKENS.typography.heading,
+      body: theme.typography?.body || DEFAULT_TOKENS.typography.body,
+      headingScale,
+      subheadingScale,
+      bodyScale: normalizeCssValue(
+        theme.typography?.bodyScale || "1rem",
+        DEFAULT_TOKENS.typography.bodyScale
+      ),
+      labelScale: normalizeCssValue(
+        theme.typography?.labelScale || "0.85rem",
+        DEFAULT_TOKENS.typography.labelScale
+      )
+    },
+    radius: {
+      soft: normalizeCssValue(
+        theme.radius || DEFAULT_TOKENS.radius.soft,
+        DEFAULT_TOKENS.radius.soft
+      ),
+      card: normalizeCssValue(
+        theme.cardRadius || DEFAULT_TOKENS.radius.card,
+        DEFAULT_TOKENS.radius.card
+      ),
+      overlay: normalizeCssValue(
+        theme.overlayRadius || DEFAULT_TOKENS.radius.overlay,
+        DEFAULT_TOKENS.radius.overlay
+      )
+    },
+    shadow: {
+      light: normalizeCssValue(
+        theme.lightShadow || DEFAULT_TOKENS.shadow.light,
+        DEFAULT_TOKENS.shadow.light
+      ),
+      medium: normalizeCssValue(
+        theme.mediumShadow || DEFAULT_TOKENS.shadow.medium,
+        DEFAULT_TOKENS.shadow.medium
+      ),
+      deep: normalizeCssValue(
+        theme.deepShadow || DEFAULT_TOKENS.shadow.deep,
+        DEFAULT_TOKENS.shadow.deep
+      )
+    },
+    motion: {
+      ease: normalizeCssValue(theme.motionEase, DEFAULT_TOKENS.motion.ease),
+      duration: normalizeCssValue(
+        theme.motionDuration,
+        DEFAULT_TOKENS.motion.duration
+      ),
+      reveal: normalizeCssValue(
+        theme.motionReveal,
+        DEFAULT_TOKENS.motion.reveal
+      )
+    }
+  };
+}
+function titleFromPurpose(purpose) {
+  return purpose.replace(/[-_]/g, " ").replace(/\b\w/g, (match) => match.toUpperCase());
+}
+function ensureImagePool(section, schema) {
+  const images = [];
+  const addImage = (src, fallbackClass) => {
+    if (!src) {
+      return;
+    }
+    images.push({
+      src,
+      classification: fallbackClass,
+      dominantColor: "#888888",
+      aspectRatio: 1.78,
+      hasText: false,
+      hasfaces: false,
+      emotionalTone: "professional",
+      suggestedTreatment: "contained"
+    });
+  };
+  if (section?.media?.src) {
+    addImage(section.media.src, section.media.classification || "landscape");
+  }
+  if (Array.isArray(section?.items)) {
+    for (const item of section.items) {
+      if (item?.src) {
+        addImage(item.src, item.classification || "product-isolated");
+      }
+    }
+  }
+  if (images.length === 0 && Array.isArray(schema.sections)) {
+    const heroImage = schema.sections.map((s) => s?.media?.src || s?.items?.[0]?.src).find(Boolean);
+    if (heroImage) {
+      addImage(heroImage, "landscape");
+    }
+  }
+  return images;
+}
+function hasStrongImagery(schema) {
+  return (schema.sections || []).some(
+    (section) => Boolean(section?.media?.src || section?.items?.length)
+  );
+}
+function normalizeCompositionHeading(value, fallback) {
+  return escapeHtml2(value || fallback || "");
+}
+function deriveCompositions(schema) {
+  if (schema.narrativeCompositions?.length) {
+    return schema.narrativeCompositions;
+  }
+  const categories = (schema.brand?.category || "").toLowerCase();
+  const strongImages = hasStrongImagery(schema);
+  return (schema.sections || []).map((section, index) => {
+    const type = section.type || "section";
+    const purpose = {
+      hero: "establish-authority",
+      feature: "explain-process",
+      features: "explain-process",
+      gallery: "showcase-work",
+      testimonial: "prove-credibility",
+      faq: "explain-process",
+      contact: "close-conversion",
+      about: "build-emotion",
+      service: "generate-desire"
+    }.hasOwnProperty(type) ? {
+      hero: "establish-authority",
+      feature: "explain-process",
+      features: "explain-process",
+      gallery: "showcase-work",
+      testimonial: "prove-credibility",
+      faq: "explain-process",
+      contact: "close-conversion",
+      about: "build-emotion",
+      service: "generate-desire"
+    }[type] : "generate-desire";
+    const visualBehavior = strongImages ? {
+      hero: "immersive-overlap",
+      feature: "editorial-asymmetry",
+      features: "editorial-asymmetry",
+      gallery: "kinetic-stagger",
+      testimonial: "intimate-paired",
+      faq: "editorial-asymmetry",
+      contact: "intimate-breathe",
+      about: "monumental-scale",
+      service: "cinematic-reveal"
+    }[type] : {
+      hero: "cinematic-reveal",
+      feature: "editorial-asymmetry",
+      features: "editorial-asymmetry",
+      gallery: "brutalist-stack",
+      testimonial: "intimate-paired",
+      faq: "editorial-asymmetry",
+      contact: "intimate-breathe",
+      about: "intimate-breathe",
+      service: "editorial-asymmetry"
+    }[type] || "editorial-asymmetry";
+    const densityMode = section?.density || schema.layoutDNA?.spacingRhythm || "balanced";
+    const composition = {
+      id: `composition-${index + 1}`,
+      narrativePurpose: purpose,
+      visualBehavior,
+      scanPattern: section?.scanPattern || schema.layoutDNA?.scanPath || "diagonal-ascending",
+      densityMode,
+      geometrySystem: section?.layoutMode || (schema.layoutDNA?.gridSystem === "asymmetric" ? "overlap-plane" : "grid-overlay"),
+      contentType: type === "gallery" ? "showcase" : type === "hero" ? "hero" : type === "testimonial" ? "proof" : type === "contact" ? "interaction" : "narrative",
+      viewportRatio: section?.viewportRatio || (type === "hero" ? 1.1 : 0.7),
+      images: ensureImagePool(section, schema),
+      heading: normalizeCompositionHeading(
+        section?.heading || section?.title || section?.name,
+        section?.subtitle || section?.tagline
+      ),
+      description: normalizeCompositionHeading(
+        section?.description || section?.body || section?.intro || section?.summary,
+        section?.copy || ""
+      ),
+      actions: (section?.actions || section?.ctas || []).map((action) => ({
+        label: safeLabel(action?.label, action?.text || "Learn More"),
+        href: safeHref(action?.href || action?.url),
+        style: action?.style === "secondary" ? "secondary" : "primary"
+      })),
+      proofElements: [
+        ...section?.testimonials || [],
+        ...section?.stats || []
+      ].map((item) => ({
+        type: item?.type || (item?.author ? "testimonial" : "stat"),
+        content: escapeHtml2(
+          item?.copy || item?.content || item?.text || item?.label || ""
+        ),
+        author: item?.author
+      })),
+      motionLanguage: {
+        entryTrigger: section?.motionTrigger || "on-scroll",
+        entryType: section?.motionType || (visualBehavior === "kinetic-stagger" ? "slide" : "fade"),
+        internalMotion: section?.motionEnergy || "subtle"
+      },
+      styling: {
+        backgroundColor: section?.background || schema.theme?.palette?.background,
+        textColor: section?.textColor || schema.theme?.palette?.text,
+        accentColor: section?.accentColor || schema.theme?.palette?.accent,
+        typographySize: section?.typographySize || "medium",
+        typographyWeight: section?.typographyWeight || "regular"
+      }
+    };
+    return composition;
+  });
+}
+function chooseEngine(composition, schema) {
+  if (composition.visualBehavior === "immersive-overlap") {
+    return "cinematicImmersive";
+  }
+  if (composition.visualBehavior === "kinetic-stagger") {
+    return "kineticDiagonal";
+  }
+  if (composition.visualBehavior === "brutalist-stack") {
+    return "brutalistGrid";
+  }
+  if (composition.visualBehavior === "monumental-scale") {
+    return "editorialOverlap";
+  }
+  if (composition.visualBehavior === "intimate-paired" || composition.visualBehavior === "intimate-breathe") {
+    return "atmosphericMinimal";
+  }
+  if (composition.visualBehavior === "cinematic-reveal") {
+    return "galleryStack";
+  }
+  return composition.contentType === "showcase" ? "galleryStack" : composition.contentType === "interaction" ? "offsetLayer" : "editorialOverlap";
+}
+function renderActions(actions = []) {
+  if (!actions || !actions.length) {
+    return "";
+  }
+  return `<div class="composition-actions">${actions.map(
+    (action) => `<a class="composition-cta cta-${escapeHtml2(action.style)}" href="${escapeHtml2(action.href)}">${escapeHtml2(action.label)}</a>`
+  ).join("")}</div>`;
+}
+function renderProof(composition) {
+  if (!composition.proofElements || !composition.proofElements.length) {
+    return "";
+  }
+  return `<div class="composition-proof">${composition.proofElements.map(
+    (proof) => `<span class="proof-item proof-${escapeHtml2(proof.type)}">${escapeHtml2(
+      proof.content
+    )}</span>`
+  ).join("")}</div>`;
+}
+function renderMedia(composition, engine) {
+  if (!composition.images || !composition.images.length) {
+    return `<div class="composition-graphic composition-no-image"><div class="graphic-label">${escapeHtml2(
+      composition.heading || composition.narrativePurpose.replace(/-/g, " ")
+    )}</div></div>`;
+  }
+  return composition.images.map(
+    (image, idx) => `<div class="composition-image image-${idx + 1}" style="background-image:url('${escapeHtml2(
+      image.src
+    )}');" data-classification="${escapeHtml2(image.classification)}"></div>`
+  ).join("");
+}
+function compositionClassNames(composition, engine) {
+  return [
+    "composition",
+    `composition-${engine}`,
+    `geometry-${composition.geometrySystem}`,
+    `behavior-${composition.visualBehavior}`,
+    `density-${composition.densityMode}`,
+    `scan-${composition.scanPattern}`
+  ].join(" ");
+}
+function renderCinematicImmersive(composition, tokens) {
+  const images = renderMedia(composition, "cinematicImmersive");
+  return `<section class="${compositionClassNames(
+    composition,
+    "cinematicImmersive"
+  )}" ${sectionDataAttributes(composition)} style="background: radial-gradient(circle at top left, ${escapeHtml2(
+    composition.styling?.accentColor || tokens.palette.accent
+  )}22, transparent 32%);">
+		<div class="cinematic-shell">
+			<div class="cinematic-hero">${images}</div>
+			<aside class="cinematic-copy">
+				<span class="composition-purpose">${escapeHtml2(
+    composition.narrativePurpose.replace(/-/g, " ")
+  )}</span>
+				<h2>${escapeHtml2(
+    composition.heading || titleFromPurpose(composition.narrativePurpose)
+  )}</h2>
+				<p>${escapeHtml2(
+    composition.description || "A cinematic composition that layers imagery with typographic clarity."
+  )}</p>
+				${renderActions(composition.actions)}
+				${renderProof(composition)}
+			</aside>
+		</div>
+	</section>`;
+}
+function renderEditorialOverlap(composition, tokens) {
+  const images = renderMedia(composition, "editorialOverlap");
+  return `<section class="${compositionClassNames(
+    composition,
+    "editorialOverlap"
+  )}" ${sectionDataAttributes(composition)}">
+		<div class="editorial-shell">
+			<div class="editorial-visual">${images}</div>
+			<div class="editorial-copy">
+				<span class="composition-purpose">${escapeHtml2(
+    composition.narrativePurpose.replace(/-/g, " ")
+  )}</span>
+				<h2>${escapeHtml2(
+    composition.heading || titleFromPurpose(composition.narrativePurpose)
+  )}</h2>
+				<p>${escapeHtml2(
+    composition.description || "An editorial overlap composition with layered hierarchy and rich spacing."
+  )}</p>
+				${renderProof(composition)}
+				${renderActions(composition.actions)}
+			</div>
+		</div>
+	</section>`;
+}
+function renderBrutalistGrid(composition, tokens) {
+  const images = renderMedia(composition, "brutalistGrid");
+  return `<section class="${compositionClassNames(
+    composition,
+    "brutalistGrid"
+  )}" ${sectionDataAttributes(composition)}">
+		<div class="brutalist-grid-shell">
+			<div class="brutalist-intro">
+				<span class="composition-purpose">${escapeHtml2(
+    composition.narrativePurpose.replace(/-/g, " ")
+  )}</span>
+				<h2>${escapeHtml2(
+    composition.heading || titleFromPurpose(composition.narrativePurpose)
+  )}</h2>
+				<p>${escapeHtml2(
+    composition.description || "A bold, grid-driven composition built for high-impact visual density."
+  )}</p>
+				${renderActions(composition.actions)}
+			</div>
+			<div class="brutalist-image-grid">${images}</div>
+			${renderProof(composition)}
+		</div>
+	</section>`;
+}
+function renderGalleryStack(composition, tokens) {
+  const images = renderMedia(composition, "galleryStack");
+  return `<section class="${compositionClassNames(
+    composition,
+    "galleryStack"
+  )}" ${sectionDataAttributes(composition)}">
+		<div class="gallery-shell">
+			<header class="gallery-heading">
+				<span class="composition-purpose">${escapeHtml2(
+    composition.narrativePurpose.replace(/-/g, " ")
+  )}</span>
+				<h2>${escapeHtml2(
+    composition.heading || titleFromPurpose(composition.narrativePurpose)
+  )}</h2>
+				<p>${escapeHtml2(
+    composition.description || "A stacked gallery composition that retains playfulness in its rhythm."
+  )}</p>
+				${renderActions(composition.actions)}
+			</header>
+			<div class="gallery-stack">${images}</div>
+			${renderProof(composition)}
+		</div>
+	</section>`;
+}
+function renderOffsetLayer(composition, tokens) {
+  const images = renderMedia(composition, "offsetLayer");
+  return `<section class="${compositionClassNames(composition, "offsetLayer")}" ${sectionDataAttributes(composition)}">
+		<div class="offset-frame">
+			<div class="offset-copy">
+				<span class="composition-purpose">${escapeHtml2(
+    composition.narrativePurpose.replace(/-/g, " ")
+  )}</span>
+				<h2>${escapeHtml2(
+    composition.heading || titleFromPurpose(composition.narrativePurpose)
+  )}</h2>
+				<p>${escapeHtml2(
+    composition.description || "A layered offset composition that keeps motion and pacing alive."
+  )}</p>
+				${renderActions(composition.actions)}
+				${renderProof(composition)}
+			</div>
+			<div class="offset-canvas">${images}</div>
+		</div>
+	</section>`;
+}
+function renderAtmosphericMinimal(composition, tokens) {
+  const images = renderMedia(composition, "atmosphericMinimal");
+  return `<section class="${compositionClassNames(
+    composition,
+    "atmosphericMinimal"
+  )}" ${sectionDataAttributes(composition)}">
+		<div class="atmospheric-shell">
+			<div class="atmospheric-text">
+				<span class="composition-purpose">${escapeHtml2(
+    composition.narrativePurpose.replace(/-/g, " ")
+  )}</span>
+				<h2>${escapeHtml2(
+    composition.heading || titleFromPurpose(composition.narrativePurpose)
+  )}</h2>
+				<p>${escapeHtml2(
+    composition.description || "A typography-forward composition that thrives without strong imagery."
+  )}</p>
+				${renderActions(composition.actions)}
+				${renderProof(composition)}
+			</div>
+			<div class="atmospheric-visual">${images}</div>
+		</div>
+	</section>`;
+}
+function renderKineticDiagonal(composition, tokens) {
+  const images = renderMedia(composition, "kineticDiagonal");
+  return `<section class="${compositionClassNames(
+    composition,
+    "kineticDiagonal"
+  )}" ${sectionDataAttributes(composition)}">
+		<div class="kinetic-wrap">
+			<div class="kinetic-frame">
+				<div class="kinetic-media">${images}</div>
+				<div class="kinetic-copy">
+					<span class="composition-purpose">${escapeHtml2(
+    composition.narrativePurpose.replace(/-/g, " ")
+  )}</span>
+					<h2>${escapeHtml2(
+    composition.heading || titleFromPurpose(composition.narrativePurpose)
+  )}</h2>
+					<p>${escapeHtml2(
+    composition.description || "A diagonal kinetic layout that emphasizes movement and layered geometry."
+  )}</p>
+					${renderActions(composition.actions)}
+					${renderProof(composition)}
+				</div>
+			</div>
+		</div>
+	</section>`;
+}
+function renderCompositionBlock(composition, tokens, index, schema) {
+  const engine = chooseEngine(composition, schema);
+  switch (engine) {
+    case "cinematicImmersive":
+      return renderCinematicImmersive(composition, tokens);
+    case "brutalistGrid":
+      return renderBrutalistGrid(composition, tokens);
+    case "galleryStack":
+      return renderGalleryStack(composition, tokens);
+    case "offsetLayer":
+      return renderOffsetLayer(composition, tokens);
+    case "atmosphericMinimal":
+      return renderAtmosphericMinimal(composition, tokens);
+    case "kineticDiagonal":
+      return renderKineticDiagonal(composition, tokens);
+    case "editorialOverlap":
+    default:
+      return renderEditorialOverlap(composition, tokens);
+  }
+}
+function buildBaseCss(tokens) {
+  return `
+:root {
+	--bg: ${tokens.palette.background};
+	--surface: ${tokens.palette.surface};
+	--primary: ${tokens.palette.primary};
+	--accent: ${tokens.palette.accent};
+	--text: ${tokens.palette.text};
+	--muted: ${tokens.palette.muted};
+	--outline: ${tokens.palette.outline};
+	--section-gap: ${tokens.spacing.sectionGap};
+	--section-padding: ${tokens.spacing.sectionPadding};
+	--panel-gap: ${tokens.spacing.panelGap};
+	--image-gap: ${tokens.spacing.imageGap};
+	--text-gap: ${tokens.spacing.textGap};
+	--radius-soft: ${tokens.radius.soft};
+	--radius-card: ${tokens.radius.card};
+	--radius-overlay: ${tokens.radius.overlay};
+	--shadow-light: ${tokens.shadow.light};
+	--shadow-medium: ${tokens.shadow.medium};
+	--shadow-deep: ${tokens.shadow.deep};
+	--motion-ease: ${tokens.motion.ease};
+	--motion-duration: ${tokens.motion.duration};
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); }
+body { font-family: ${tokens.typography.body}; line-height: 1.6; }
+main.page-grid { display: grid; gap: clamp(2rem, 4vw, 4rem); padding: clamp(1.5rem, 3vw, 3rem); }
+.composition { position: relative; overflow: hidden; border-radius: var(--radius-card); padding: 0; }
+.composition::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at top right, rgba(255,255,255,0.03), transparent 36%); }
+.composition-shell,
+.cinematic-shell,
+.gallery-shell,
+.brutalist-shell,
+.offset-shell { position: relative; display: grid; gap: var(--panel-gap); }
+.composition-purpose { display: inline-flex; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.24em; font-size: ${tokens.typography.labelScale}; color: var(--accent); }
+.composition-actions { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.8rem; }
+.composition-cta { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; padding: 0.95rem 1.5rem; border-radius: 999px; font-weight: 700; transition: transform var(--motion-duration) var(--motion-ease), box-shadow var(--motion-duration) var(--motion-ease); }
+.composition-cta:hover { transform: translateY(-1px); }
+.cta-primary { background: var(--primary); color: #ffffff; }
+.cta-secondary { background: transparent; border: 1px solid var(--outline); color: var(--text); }
+.composition-proof { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-top: 1.5rem; }
+.proof-item { display: inline-flex; align-items: center; padding: 0.85rem 1rem; border-radius: 18px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.06); color: var(--text); font-size: 0.95rem; }
+.composition-media { display: grid; gap: var(--image-gap); }
+.composition-image { min-height: 280px; background-size: cover; background-position: center center; border-radius: var(--radius-soft); box-shadow: var(--shadow-light); transition: transform var(--motion-duration) var(--motion-ease), opacity var(--motion-duration) var(--motion-ease); }
+.composition-no-image { min-height: 320px; display: grid; place-items: center; text-align: center; padding: 2rem; color: var(--muted); background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08)); border-radius: var(--radius-soft); }
+.composition-no-image .graphic-label { font-size: ${tokens.typography.subheadingScale}; color: var(--text); max-width: 28rem; }
+`;
+}
+function buildEngineStyles(tokens) {
+  return `
+.composition-editorialOverlap .composition-shell { grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr); align-items: stretch; gap: calc(var(--panel-gap) * 1.2); }
+.composition-editorialOverlap .editorial-copy { padding: var(--section-padding); background: rgba(17,17,21,0.84); backdrop-filter: blur(12px); border-radius: var(--radius-soft); box-shadow: var(--shadow-medium); }
+.composition-editorialOverlap .editorial-visual { display: grid; gap: var(--image-gap); }
+.composition-editorialOverlap .composition-image:nth-child(2) { transform: translate(12%, 18%); opacity: 0.94; }
+.composition-editorialOverlap h2 { margin: 0 0 1.1rem; font-family: ${tokens.typography.heading}; font-size: clamp(2.3rem, 4vw, 3.4rem); line-height: 1.02; letter-spacing: -0.02em; }
+.composition-editorialOverlap p { margin: 0; color: var(--muted); font-size: clamp(1rem, 1.1vw, 1.18rem); max-width: 56ch; }
+@media (max-width: 980px) {
+	.composition-editorialOverlap .composition-shell { grid-template-columns: 1fr; }
+	.composition-editorialOverlap .editorial-copy { padding: 1.6rem; }
+}
+
+.composition-cinematicImmersive { min-height: clamp(55vh, 72vh, 88vh); }
+.cinematic-shell { display: grid; gap: calc(var(--panel-gap) * 1.1); }
+.cinematic-hero { display: grid; gap: var(--image-gap); }
+.cinematic-hero .composition-image { min-height: 360px; box-shadow: var(--shadow-deep); filter: saturate(1.08); border-radius: var(--radius-card); }
+.cinematic-copy { position: relative; align-self: end; padding: 2.75rem; background: rgba(12,12,16,0.92); border-radius: var(--radius-overlay); box-shadow: var(--shadow-deep); color: #f8fafc; }
+.cinematic-copy .composition-purpose { color: var(--accent); }
+.composition-cinematicImmersive h2 { margin: 0 0 1rem; font-family: ${tokens.typography.heading}; font-size: clamp(2.5rem, 4vw, 3.6rem); line-height: 1.04; }
+.composition-cinematicImmersive p { margin: 0; color: rgba(248,250,252,0.86); font-size: clamp(1rem, 1.2vw, 1.25rem); max-width: 54ch; }
+@media (max-width: 980px) {
+	.composition-cinematicImmersive .cinematic-shell { grid-template-columns: 1fr; }
+	.cinematic-copy { padding: 1.75rem; }
+}
+
+.composition-brutalistGrid .brutalist-grid-shell { grid-template-columns: 1fr 1fr; gap: calc(var(--panel-gap) * 1.3); align-items: start; }
+.composition-brutalistGrid .brutalist-image-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--image-gap); }
+.composition-brutalistGrid .composition-image { min-height: 220px; border-radius: 18px; box-shadow: var(--shadow-light); }
+.composition-brutalistGrid .brutalist-intro { padding: var(--section-padding); background: rgba(18,18,22,0.96); border-radius: var(--radius-soft); }
+.composition-brutalistGrid h2 { margin: 0 0 1rem; font-family: ${tokens.typography.heading}; font-size: clamp(2.1rem, 3.6vw, 3.2rem); line-height: 1.04; letter-spacing: 0.02em; }
+.composition-brutalistGrid p { margin: 0; color: var(--muted); font-size: clamp(0.95rem, 1.0vw, 1.1rem); max-width: 60ch; }
+@media (max-width: 980px) {
+	.composition-brutalistGrid .brutalist-grid-shell { grid-template-columns: 1fr; }
+	.composition-brutalistGrid .brutalist-intro { padding: 1.75rem; }
+}
+
+.composition-galleryStack .gallery-shell { display: grid; gap: calc(var(--panel-gap) * 1.05); }
+.composition-galleryStack .gallery-stack { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: var(--image-gap); }
+.composition-galleryStack .composition-image { min-height: 260px; transition: transform var(--motion-duration) var(--motion-ease); }
+.composition-galleryStack .composition-image:nth-child(odd) { transform: translateY(6%); }
+.composition-galleryStack h2 { margin: 0 0 1rem; font-family: ${tokens.typography.heading}; font-size: clamp(2.2rem, 3.8vw, 3.3rem); line-height: 1.04; }
+.composition-galleryStack p { margin: 0; color: var(--muted); font-size: clamp(0.98rem, 1.05vw, 1.14rem); max-width: 58ch; }
+@media (max-width: 980px) {
+	.composition-galleryStack .gallery-stack { grid-template-columns: 1fr; }
+}
+
+.composition-offsetLayer .offset-frame { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); gap: calc(var(--panel-gap) * 1.25); align-items: center; }
+.composition-offsetLayer .offset-canvas { position: relative; transform: translateX(8%); }
+.composition-offsetLayer .offset-copy { padding: var(--section-padding); background: rgba(255,255,255,0.06); border-radius: var(--radius-soft); box-shadow: var(--shadow-light); }
+.composition-offsetLayer .composition-image { min-height: 260px; filter: grayscale(0.08); border-radius: var(--radius-soft); }
+.composition-offsetLayer h2 { margin: 0 0 1rem; font-family: ${tokens.typography.heading}; font-size: clamp(2rem, 3.5vw, 3rem); line-height: 1.05; }
+.composition-offsetLayer p { margin: 0; color: var(--muted); font-size: clamp(0.96rem, 1.02vw, 1.12rem); max-width: 52ch; }
+@media (max-width: 980px) {
+	.composition-offsetLayer .offset-frame { grid-template-columns: 1fr; }
+	.composition-offsetLayer .offset-copy { padding: 1.75rem; }
+}
+
+.composition-atmosphericMinimal { background: radial-gradient(circle at top right, rgba(255,255,255,0.04), transparent 65%); }
+.composition-atmosphericMinimal .atmospheric-shell { display: grid; grid-template-columns: 1fr; gap: calc(var(--panel-gap) * 1.15); align-items: center; }
+.composition-atmosphericMinimal .atmospheric-text { padding: calc(var(--section-padding) * 1.2); background: rgba(7, 9, 11, 0.94); border-radius: var(--radius-overlay); box-shadow: var(--shadow-deep); }
+.composition-atmosphericMinimal .atmospheric-visual { display: grid; gap: var(--image-gap); opacity: 0.95; }
+.composition-atmosphericMinimal h2 { margin: 0 0 1rem; font-family: ${tokens.typography.heading}; font-size: clamp(2.4rem, 4vw, 3.5rem); line-height: 1.05; }
+.composition-atmosphericMinimal p { margin: 0; color: var(--muted); font-size: clamp(0.98rem, 1.08vw, 1.18rem); max-width: 50ch; }
+@media (max-width: 980px) {
+	.composition-atmosphericMinimal .atmospheric-text { padding: 1.75rem; }
+}
+
+.composition-kineticDiagonal { min-height: 60vh; }
+.composition-kineticDiagonal .kinetic-wrap { overflow: hidden; }
+.composition-kineticDiagonal .kinetic-frame { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: var(--panel-gap); transform: skewY(-2deg); }
+.composition-kineticDiagonal .kinetic-frame > * { transform: skewY(2deg); }
+.composition-kineticDiagonal .composition-image { transition: transform 0.4s var(--motion-ease), filter 0.4s var(--motion-ease); }
+.composition-kineticDiagonal:hover .composition-image { transform: translateY(-12px); filter: saturate(1.15); }
+.composition-kineticDiagonal h2 { margin: 0 0 1rem; font-family: ${tokens.typography.heading}; font-size: clamp(2.3rem, 4vw, 3.4rem); line-height: 1.06; }
+.composition-kineticDiagonal p { margin: 0; color: var(--muted); font-size: clamp(1rem, 1.1vw, 1.2rem); max-width: 54ch; }
+@media (max-width: 980px) {
+	.composition-kineticDiagonal .kinetic-frame { grid-template-columns: 1fr; transform: skewY(-1deg); }
+	.kinetic-copy { padding: 1.75rem; }
+}
+
+.scan-diagonal-ascending .composition-shell,
+.scan-spiral .composition-shell { transform: perspective(1200px) rotateX(0.3deg); }
+.scan-horizontal .composition-shell { grid-auto-flow: column; }
+.scan-vertical .composition-shell { grid-auto-flow: row; }
+`;
+}
+function renderCompositionExperience(schema, tokenOverrides) {
+  const tokens = applyTokenOverrides(
+    buildRenderingTokens(schema),
+    tokenOverrides
+  );
+  const compositions = deriveCompositions(schema);
+  const html = compositions.map(
+    (composition, index) => renderCompositionBlock(composition, tokens, index, schema)
+  ).join("\n");
+  const bodyCss = `${buildBaseCss(tokens)}
+${buildEngineStyles(tokens)}`;
+  return { html, css: bodyCss };
+}
+var DEFAULT_TOKENS, SPACING_MAP, RADIUS_MAP, SHADOW_MAP, TEXT_SCALE_MAP, MOTION_EASING_MAP, MOTION_DURATION_MAP;
+var init_composition_renderer = __esm({
+  "src/lib/composition-renderer.ts"() {
+    DEFAULT_TOKENS = {
+      palette: {
+        background: "#09090b",
+        surface: "#111115",
+        primary: "#7c3aed",
+        accent: "#22d3ee",
+        text: "#f8fafc",
+        muted: "#cbd5e1",
+        outline: "rgba(255,255,255,0.14)"
+      },
+      spacing: {
+        sectionGap: "3.5rem",
+        sectionPadding: "3rem",
+        panelGap: "2rem",
+        imageGap: "1.25rem",
+        textGap: "1.5rem"
+      },
+      typography: {
+        heading: "Inter, ui-sans-serif, system-ui, sans-serif",
+        body: "Inter, ui-sans-serif, system-ui, sans-serif",
+        headingScale: "clamp(2.25rem, 5vw, 4.5rem)",
+        subheadingScale: "clamp(1.2rem, 2vw, 1.6rem)",
+        bodyScale: "1rem",
+        labelScale: "0.8rem"
+      },
+      radius: {
+        soft: "24px",
+        card: "28px",
+        overlay: "32px"
+      },
+      shadow: {
+        light: "0 18px 55px rgba(0,0,0,0.12)",
+        medium: "0 30px 80px rgba(0,0,0,0.18)",
+        deep: "0 40px 110px rgba(0,0,0,0.24)"
+      },
+      motion: {
+        ease: "cubic-bezier(0.22, 1, 0.36, 1)",
+        duration: "480ms",
+        reveal: "120ms"
+      }
+    };
+    SPACING_MAP = {
+      compact: "1.1rem",
+      balanced: "2rem",
+      airy: "3.25rem",
+      "luxury-editorial": "4rem",
+      "rhythmic-breathing": "4.5rem",
+      "sparse-breathing": "5rem",
+      "brutalist-dense": "1.25rem",
+      tight: "1.4rem",
+      relaxed: "3rem"
+    };
+    RADIUS_MAP = {
+      soft: "18px",
+      card: "24px",
+      overlay: "32px",
+      rounded: "36px",
+      pill: "999px",
+      circle: "50%"
+    };
+    SHADOW_MAP = {
+      light: "0 18px 40px rgba(0,0,0,0.1)",
+      medium: "0 28px 70px rgba(0,0,0,0.16)",
+      deep: "0 42px 110px rgba(0,0,0,0.22)",
+      soft: "0 12px 28px rgba(0,0,0,0.08)",
+      premium: "0 30px 100px rgba(0,0,0,0.24)"
+    };
+    TEXT_SCALE_MAP = {
+      small: "0.95rem",
+      medium: "1rem",
+      large: "1.15rem",
+      heading: "clamp(2.75rem, 5vw, 4.5rem)",
+      subheading: "clamp(1.2rem, 2vw, 1.75rem)"
+    };
+    MOTION_EASING_MAP = {
+      subtle: "cubic-bezier(0.25,0.8,0.5,1)",
+      kinetic: "cubic-bezier(0.18,1.0,0.4,1)",
+      cinematic: "cubic-bezier(0.22,1,0.36,1)",
+      instant: "linear"
+    };
+    MOTION_DURATION_MAP = {
+      slow: "820ms",
+      standard: "520ms",
+      fast: "360ms"
+    };
+  }
+});
+
 // src/lib/premium-site-builder.ts
 var premium_site_builder_exports = {};
 __export(premium_site_builder_exports, {
@@ -626,1493 +1460,321 @@ __export(premium_site_builder_exports, {
 function esc(str) {
   return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
-function hexToRgb(hex) {
-  const clean = (hex || "#000000").replace("#", "");
-  const r = parseInt(clean.slice(0, 2), 16) || 0;
-  const g = parseInt(clean.slice(2, 4), 16) || 0;
-  const b = parseInt(clean.slice(4, 6), 16) || 0;
-  return `${r},${g},${b}`;
-}
-function getSectionValue(section, keys, fallback) {
-  for (const key of keys) {
-    const value = section?.[key] ?? section?.content?.[key];
-    if (value !== void 0 && value !== null && value !== "") {
-      return value;
-    }
-  }
-  return fallback;
-}
-function getSectionItems(section) {
-  return section?.items || section?.content?.items || [];
-}
-function curateImagePool(images) {
-  if (!Array.isArray(images) || images.length === 0) return [];
-  return images.map((img) => {
-    const src = img.src || img.url || (typeof img === "string" ? img : "");
-    const alt = img.alt || "Premium visual display";
-    const lowerSrc = src.toLowerCase();
-    let score = 80;
-    let isMaps = false;
-    if (lowerSrc.includes("maps.googleapis") || lowerSrc.includes("googleusercontent.com/p/")) {
-      isMaps = true;
-      score -= 20;
-    }
-    if (lowerSrc.includes("placeholder") || lowerSrc.includes("avatar") || lowerSrc.includes("broken")) {
-      score -= 50;
-    }
-    let storyVal = 60;
-    if (alt && alt.length > 15 && !alt.includes("photo") && !alt.includes("image")) {
-      storyVal += 20;
-    }
-    return {
-      src,
-      alt,
-      qualityScore: Math.max(0, Math.min(100, score)),
-      isMapsImage: isMaps,
-      storytellingValue: Math.max(0, Math.min(100, storyVal))
-    };
-  }).filter((img) => img.src && img.qualityScore > 35);
-}
-function selectBestImages(curated, count, minScore = 50) {
-  return curated.filter((img) => img.qualityScore >= minScore).sort((a, b) => b.qualityScore - a.qualityScore).slice(0, count);
-}
-function getCinematicImageHtml(img, treatment, ctx, customStyle = "") {
-  const enhanceType = ctx.visualAtmosphere || "architectural-minimalism";
-  let filterStyle = "";
-  let overlayHtml = "";
-  if (enhanceType === "cinematic-darkness") {
-    filterStyle = "filter: contrast(1.08) brightness(0.85) saturate(0.85) sepia(0.08) !important;";
-    overlayHtml = `<div style="position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle, transparent 35%, rgba(8,9,13,0.65) 100%);pointer-events:none;"></div>`;
-  } else if (enhanceType === "luxury-glow" || enhanceType === "soft-editorial-warmth") {
-    filterStyle = "filter: sepia(0.18) saturate(0.88) contrast(0.98) brightness(1.02) !important;";
-    overlayHtml = `<div style="position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(to bottom, rgba(${hexToRgb(ctx.BG)}, 0.05), rgba(${hexToRgb(ctx.BG)}, 0.2) 100%);pointer-events:none;"></div>`;
-  } else if (enhanceType === "industrial-grit") {
-    filterStyle = "filter: contrast(1.15) brightness(0.92) grayscale(0.2) !important;";
-    overlayHtml = `<div style="position:absolute;top:0;left:0;width:100%;height:100%;background-image:url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.95" numOctaves="2" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)" opacity="0.02"/%3E%3C/svg%3E');opacity:0.6;pointer-events:none;"></div>`;
-  } else if (enhanceType === "energetic-neon") {
-    filterStyle = "filter: contrast(1.1) brightness(0.88) saturate(1.15) !important;";
-    overlayHtml = `<div style="position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(180deg, transparent 40%, rgba(12,13,18,0.7) 100%);pointer-events:none;"></div>`;
-  }
-  const shapeStyle = getImageTreatmentStyles(treatment, ctx);
-  return `
-<div style="position:relative;overflow:hidden;display:inline-block;width:100%;${customStyle} ${shapeStyle.container}">
-  <img src="${esc(img.src)}" alt="${esc(img.alt)}" style="display:block;width:100%;height:100%;object-fit:cover;transition:transform 0.8s var(--ease-expo);${filterStyle} ${shapeStyle.image}" />
-  ${overlayHtml}
-</div>`;
-}
-function getFallbackDNA(category) {
-  const cat = (category || "").toLowerCase();
-  if (cat.includes("salon") || cat.includes("spa") || cat.includes("boutique") || cat.includes("hair")) {
-    return {
-      spacingPersonality: "luxury-editorial",
-      compositionAggression: 35,
-      // High-end design is more restrained, less aggressive
-      hierarchyIntensity: 65,
-      motionEnergy: 30,
-      visualDensity: 35,
-      asymmetryLevel: 45,
-      atmosphereIntensity: 60,
-      typographyDominance: "dominant-serif",
-      imageWeight: 75,
-      luxuryScore: 90,
-      cinematicScore: 20,
-      brutalismScore: 5,
-      editorialScore: 85,
-      softnessScore: 85,
-      visualAtmosphere: "luxury-glow"
-    };
-  }
-  if (cat.includes("law") || cat.includes("advocat") || cat.includes("consult") || cat.includes("firm")) {
-    return {
-      spacingPersonality: "balanced",
-      compositionAggression: 15,
-      hierarchyIntensity: 50,
-      motionEnergy: 25,
-      visualDensity: 40,
-      asymmetryLevel: 10,
-      atmosphereIntensity: 30,
-      typographyDominance: "restrained",
-      imageWeight: 40,
-      luxuryScore: 60,
-      cinematicScore: 10,
-      brutalismScore: 5,
-      editorialScore: 70,
-      softnessScore: 40,
-      visualAtmosphere: "architectural-minimalism"
-    };
-  }
-  if (cat.includes("restaurant") || cat.includes("cafe") || cat.includes("baker") || cat.includes("food")) {
-    return {
-      spacingPersonality: "balanced",
-      compositionAggression: 40,
-      hierarchyIntensity: 60,
-      motionEnergy: 40,
-      visualDensity: 50,
-      asymmetryLevel: 30,
-      atmosphereIntensity: 70,
-      typographyDominance: "dominant-serif",
-      imageWeight: 80,
-      luxuryScore: 70,
-      cinematicScore: 60,
-      brutalismScore: 10,
-      editorialScore: 60,
-      softnessScore: 60,
-      visualAtmosphere: "soft-editorial-warmth"
-    };
-  }
-  if (cat.includes("gym") || cat.includes("fitness") || cat.includes("crossfit")) {
-    return {
-      spacingPersonality: "brutalist-dense",
-      compositionAggression: 65,
-      hierarchyIntensity: 80,
-      motionEnergy: 80,
-      visualDensity: 65,
-      asymmetryLevel: 55,
-      atmosphereIntensity: 75,
-      typographyDominance: "brutalist-impact",
-      imageWeight: 75,
-      luxuryScore: 10,
-      cinematicScore: 70,
-      brutalismScore: 85,
-      editorialScore: 20,
-      softnessScore: 15,
-      visualAtmosphere: "energetic-neon"
-    };
-  }
-  if (cat.includes("supermarket") || cat.includes("grocery") || cat.includes("market") || cat.includes("food") || cat.includes("bakery")) {
-    return {
-      spacingPersonality: "compressed",
-      compositionAggression: 45,
-      hierarchyIntensity: 55,
-      motionEnergy: 50,
-      visualDensity: 80,
-      asymmetryLevel: 35,
-      atmosphereIntensity: 65,
-      typographyDominance: "balanced",
-      imageWeight: 85,
-      luxuryScore: 50,
-      cinematicScore: 10,
-      brutalismScore: 5,
-      editorialScore: 60,
-      softnessScore: 80,
-      visualAtmosphere: "soft-editorial-warmth"
-    };
-  }
-  if (cat.includes("restoration") || cat.includes("damage") || cat.includes("cleanup")) {
-    return {
-      spacingPersonality: "brutalist-dense",
-      compositionAggression: 60,
-      hierarchyIntensity: 75,
-      motionEnergy: 40,
-      visualDensity: 60,
-      asymmetryLevel: 40,
-      atmosphereIntensity: 70,
-      typographyDominance: "brutalist-impact",
-      imageWeight: 65,
-      luxuryScore: 10,
-      cinematicScore: 90,
-      brutalismScore: 70,
-      editorialScore: 20,
-      softnessScore: 10,
-      visualAtmosphere: "cinematic-darkness"
-    };
-  }
-  if (cat.includes("roofing") || cat.includes("roof")) {
-    return {
-      spacingPersonality: "compressed",
-      compositionAggression: 50,
-      hierarchyIntensity: 70,
-      motionEnergy: 70,
-      visualDensity: 65,
-      asymmetryLevel: 45,
-      atmosphereIntensity: 55,
-      typographyDominance: "brutalist-impact",
-      imageWeight: 70,
-      luxuryScore: 15,
-      cinematicScore: 50,
-      brutalismScore: 60,
-      editorialScore: 30,
-      softnessScore: 15,
-      visualAtmosphere: "industrial-grit"
-    };
-  }
-  return {
-    spacingPersonality: "balanced",
-    compositionAggression: 35,
-    hierarchyIntensity: 50,
-    motionEnergy: 40,
-    visualDensity: 45,
-    asymmetryLevel: 30,
-    atmosphereIntensity: 50,
-    typographyDominance: "balanced",
-    imageWeight: 50,
-    luxuryScore: 50,
-    cinematicScore: 35,
-    brutalismScore: 20,
-    editorialScore: 50,
-    softnessScore: 50,
-    visualAtmosphere: "architectural-minimalism"
-  };
-}
-function applyRestraintModeration(dna) {
-  const moderated = { ...dna };
-  if (moderated.compositionAggression > 75) {
-    moderated.compositionAggression = 70;
-  }
-  if (moderated.atmosphereIntensity > 80) {
-    moderated.atmosphereIntensity = 75;
-  }
-  if (moderated.hierarchyIntensity > 85) {
-    moderated.hierarchyIntensity = 80;
-  }
-  if (moderated.brutalismScore > 75 && moderated.luxuryScore > 30) {
-    moderated.luxuryScore = 15;
-  }
-  return moderated;
-}
-function runPostLayoutTasteRefinement(sections, dna) {
-  let lastSectionBgWasAlternative = false;
-  return sections.map((sec, idx) => {
-    const comp = { ...sec.composition || {} };
-    if (idx > 0 && comp.spacingMode === "luxury-editorial" && sections[idx - 1]?.composition?.spacingMode === "luxury-editorial") {
-      comp.spacingMode = "airy";
-    }
-    if (idx > 0 && comp.visualDepth === "frosted-glow" && sections[idx - 1]?.composition?.visualDepth === "frosted-glow") {
-      comp.visualDepth = "layered-atmospheric";
-    }
-    if (idx === sections.length - 2) {
-      comp.hierarchyWeight = "breathing";
-      comp.spacingMode = "luxury-editorial";
-    }
-    return { ...sec, composition: comp };
-  });
-}
 function buildPremiumPageContent(schema) {
-  const theme = schema.theme || {};
-  const category = schema.brand?.category || "Premium Service";
-  let rawDna = theme.designDNA || getFallbackDNA(category);
-  const dna = applyRestraintModeration(rawDna);
-  const allImages = schema._validation?.photos || schema.photos || [];
-  const curatedImages = curateImagePool(allImages);
-  const palette = theme.palette || {
-    background: "#faf8f5",
-    surface: "#ffffff",
-    primary: "#1a1a1a",
-    accent: "#c4952a",
-    text: "#1a1208",
-    muted: "#6b5c3e",
-    outline: "rgba(0,0,0,0.08)"
-  };
-  let P = palette.primary || "#111827";
-  let BG = palette.background || "#faf8f5";
-  let SURF = palette.surface || "#ffffff";
-  let TEXT = palette.text || "#111827";
-  let MUTED = palette.muted || "#6b7280";
-  let OUTLINE = palette.outline || "rgba(0,0,0,0.08)";
-  let ACCENT = palette.accent || P;
-  const catNorm = category.toLowerCase();
-  if (catNorm.includes("supermarket") || catNorm.includes("grocery") || catNorm.includes("market") || catNorm.includes("food") || catNorm.includes("bakery")) {
-    BG = "#fcfaf7";
-    SURF = "#ffffff";
-    TEXT = "#2e1f0e";
-    MUTED = "#826b52";
-    OUTLINE = "rgba(130,107,82,0.08)";
-    P = "#c85a17";
-    ACCENT = "#4a6b42";
-  } else if (catNorm.includes("restoration") || catNorm.includes("damage") || catNorm.includes("cleanup")) {
-    BG = "#0c0d10";
-    SURF = "#15171e";
-    TEXT = "#f1f3f7";
-    MUTED = "#9ca3af";
-    OUTLINE = "rgba(255,255,255,0.08)";
-    P = "#e2b63f";
-    ACCENT = "#5c6f84";
-  } else if (catNorm.includes("roofing") || catNorm.includes("roof")) {
-    BG = "#0f1115";
-    SURF = "#171a21";
-    TEXT = "#ffffff";
-    MUTED = "#94a3b8";
-    OUTLINE = "rgba(255,255,255,0.08)";
-    P = "#f97316";
-    ACCENT = "#e2e8f0";
-  } else if (dna.visualAtmosphere === "cinematic-darkness") {
-    BG = "#08090d";
-    SURF = "#111218";
-    TEXT = "#f3f4f6";
-    MUTED = "#9ca3af";
-    OUTLINE = "rgba(255,255,255,0.08)";
-    P = "#ffffff";
-    ACCENT = palette.accent || "#c4952a";
-  } else if (dna.visualAtmosphere === "energetic-neon") {
-    BG = "#0b0c10";
-    SURF = "#14161f";
-    TEXT = "#f9fafb";
-    MUTED = "#9ca3af";
-    OUTLINE = "rgba(255,255,255,0.1)";
-    P = "#c084fc";
-    ACCENT = "#a3e635";
-  } else if (dna.visualAtmosphere === "soft-editorial-warmth") {
-    BG = "#fbf8f3";
-    SURF = "#ffffff";
-    TEXT = "#292524";
-    MUTED = "#78716c";
-    OUTLINE = "rgba(0,0,0,0.05)";
-    P = "#78350f";
-    ACCENT = "#d97706";
-  } else if (dna.visualAtmosphere === "luxury-glow") {
-    BG = "#fafaf9";
-    SURF = "#ffffff";
-    TEXT = "#1c1917";
-    MUTED = "#6c6a67";
-    OUTLINE = "rgba(0,0,0,0.05)";
-    P = "#1c1917";
-    ACCENT = "#b45309";
-  } else if (dna.visualAtmosphere === "architectural-minimalism") {
-    BG = "#ffffff";
-    SURF = "#fafafa";
-    TEXT = "#000000";
-    MUTED = "#666666";
-    OUTLINE = "rgba(0,0,0,0.08)";
-    P = "#000000";
-    ACCENT = "#000000";
-  }
-  const radius = dna.brutalismScore > 60 ? "0px" : dna.luxuryScore > 60 ? "32px" : theme.radius || "20px";
-  let typography = theme.typography || { heading: "Cormorant Garamond", body: "Inter" };
-  if (catNorm.includes("supermarket") || catNorm.includes("grocery") || catNorm.includes("market") || catNorm.includes("food") || catNorm.includes("bakery")) {
-    typography = { heading: "Plus Jakarta Sans", body: "Inter" };
-  } else if (catNorm.includes("restoration") || catNorm.includes("damage") || catNorm.includes("cleanup")) {
-    typography = { heading: "Outfit", body: "Space Grotesk" };
-  } else if (catNorm.includes("roofing") || catNorm.includes("roof")) {
-    typography = { heading: "Syne", body: "Inter" };
-  } else if (dna.typographyDominance === "brutalist-impact") {
-    typography = { heading: "Syne", body: "Space Grotesk" };
-  } else if (dna.typographyDominance === "dominant-serif" || dna.typographyDominance === "cinematic-oversized") {
-    typography = { heading: "Cormorant Garamond", body: "Inter" };
-  } else if (dna.typographyDominance === "restrained") {
-    typography = { heading: "Playfair Display", body: "Inter" };
-  }
-  let spaceXs = "6px", spaceSm = "12px", spaceMd = "24px", spaceLg = "48px", spaceXl = "72px", space2xl = "96px";
-  if (dna.spacingPersonality === "airy") {
-    spaceLg = "64px";
-    spaceXl = "96px";
-    space2xl = "128px";
-  } else if (dna.spacingPersonality === "luxury-editorial") {
-    spaceLg = "72px";
-    spaceXl = "108px";
-    space2xl = "144px";
-  } else if (dna.spacingPersonality === "compressed" || dna.spacingPersonality === "brutalist-dense") {
-    spaceLg = "36px";
-    spaceXl = "48px";
-    space2xl = "64px";
-  }
-  let shadowSoft = "0 4px 30px rgba(0,0,0,0.02)";
-  let shadowPremium = "0 20px 80px rgba(0,0,0,0.06)";
-  let shadowIntense = "0 30px 100px rgba(0,0,0,0.12)";
-  if (dna.brutalismScore > 60) {
-    shadowSoft = `4px 4px 0px ${ACCENT}`;
-    shadowPremium = `8px 8px 0px ${P}`;
-    shadowIntense = `12px 12px 0px ${ACCENT}`;
-  } else if (dna.luxuryScore > 60) {
-    shadowSoft = "0 4px 40px rgba(0,0,0,0.015)";
-    shadowPremium = "0 25px 85px rgba(0,0,0,0.04)";
-    shadowIntense = "0 40px 110px rgba(0,0,0,0.07)";
-  }
-  let textHero = "clamp(3rem, 7vw, 5.8rem)";
-  let textSection = "clamp(2rem, 4.8vw, 3.8rem)";
-  if (dna.typographyDominance === "cinematic-oversized" || dna.hierarchyIntensity > 75) {
-    textHero = "clamp(3.8rem, 10vw, 8rem)";
-    textSection = "clamp(2.6rem, 7vw, 5rem)";
-  } else if (dna.typographyDominance === "brutalist-impact") {
-    textHero = "clamp(3.5rem, 9vw, 7.5rem)";
-    textSection = "clamp(2.4rem, 6vw, 4.4rem)";
-  }
-  const businessName = schema.brand?.businessName || "Welcome";
-  const rawSections = schema.sections || [];
-  const sections = runPostLayoutTasteRefinement(rawSections, dna);
-  const globalCss = `<!-- wp:html -->
+  const result = renderCompositionExperience(schema);
+  const cssBlock = `<!-- wp:html -->
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;700;900&family=Space+Grotesk:wght@300;500;700;800&family=Cormorant+Garamond:wght@300;400;600;700&family=Outfit:wght@300;500;700;900&family=Plus+Jakarta+Sans:wght@300;500;700;800&family=Syne:wght@400;700;800&family=Cormorant+Infant:ital,wght@1,400;1,600&display=swap');
-
-:root {
-  --bg: ${BG};
-  --surface: ${SURF};
-  --primary: ${P};
-  --accent: ${ACCENT};
-  --text: ${TEXT};
-  --muted: ${MUTED};
-  --outline: ${OUTLINE};
-  
-  /* Dynamic Curation Spacing Scale */
-  --space-xs: ${spaceXs};
-  --space-sm: ${spaceSm};
-  --space-md: ${spaceMd};
-  --space-lg: ${spaceLg};
-  --space-xl: ${spaceXl};
-  --space-2xl: ${space2xl};
-
-  /* Fluid Typography Scale */
-  --text-hero: ${textHero};
-  --text-section: ${textSection};
-  --text-body: clamp(1.02rem, 1.5vw, 1.25rem);
-
-  /* Radius System */
-  --radius-sm: ${dna.brutalismScore > 60 ? "0px" : "6px"};
-  --radius-md: ${dna.brutalismScore > 60 ? "0px" : "14px"};
-  --radius-lg: ${radius};
-  --radius-full: ${dna.brutalismScore > 60 ? "0px" : "9999px"};
-
-  /* Shadow Depth System */
-  --shadow-soft: ${shadowSoft};
-  --shadow-premium: ${shadowPremium};
-  --shadow-intense: ${shadowIntense};
-
-  /* DNA Animation Timings */
-  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --reveal-duration: ${dna.motionEnergy > 70 ? "0.8s" : "1.2s"};
-  --z-back: -1;
-  --z-base: 1;
-  --z-overlay: 10;
-}
-
-*,*::before,*::after{box-sizing:border-box!important}
-html,body{margin:0!important;padding:0!important;background:var(--bg)!important;color:var(--text)!important;font-family:'${typography.body}',sans-serif!important;-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
-.site-header,.site-footer,.elementor-location-header,.elementor-location-footer,#masthead,#colophon,.entry-title,.wp-block-post-title,.page-title,.breadcrumbs,.posted-on,.byline,header.entry-header{display:none!important}
-.site-content,.hentry,.entry-content,.wp-block-post-content,.wp-site-blocks,.is-layout-flow,.elementor,.page,.single{padding:0!important;margin:0!important;max-width:100%!important;width:100%!important;background:var(--bg)!important}
-
-/* Atmospheric Noise Overlays matching DNA intensity */
-.noise-overlay-bg {
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='${dna.atmosphereIntensity > 70 ? "0.02" : "0.012"}'/%3E%3C/svg%3E");
-}
-
-.text-gradient {
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-/* Stagger hover states */
-.hover-lift {
-  transition: transform .4s var(--ease-expo), box-shadow .4s var(--ease-expo), border-color .4s ease!important;
-}
-.hover-lift:hover {
-  transform: translateY(-5px) scale(1.008)!important;
-  box-shadow: var(--shadow-premium)!important;
-}
-
-/* Scoped Scroll Reveal Styles */
-.scroll-reveal {
-  opacity: 0;
-  will-change: transform, opacity;
-}
-.scroll-reveal.in-view {
-  opacity: 1;
-}
-
-.premium-fade {
-  transition: opacity var(--reveal-duration) var(--ease-expo);
-}
-.cinematic-reveal {
-  transform: translateY(35px) scale(0.99);
-  transition: opacity var(--reveal-duration) var(--ease-expo), transform var(--reveal-duration) var(--ease-expo);
-}
-.cinematic-reveal.in-view {
-  transform: translateY(0) scale(1);
-}
-.stagger-lift {
-  transform: translateY(22px);
-  transition: opacity var(--reveal-duration) var(--ease-expo), transform var(--reveal-duration) var(--ease-expo);
-}
-.stagger-lift.in-view {
-  transform: translateY(0);
-}
-.editorial-slide {
-  transform: translateX(-30px);
-  transition: opacity var(--reveal-duration) var(--ease-expo), transform var(--reveal-duration) var(--ease-expo);
-}
-.editorial-slide.in-view {
-  transform: translateX(0);
-}
-.luxury-glow-reveal {
-  box-shadow: 0 0 0px rgba(0,0,0,0);
-  transition: opacity var(--reveal-duration) var(--ease-expo), box-shadow 1.5s var(--ease-expo);
-}
-.luxury-glow-reveal.in-view {
-  box-shadow: 0 0 40px rgba(${hexToRgb(ACCENT)}, 0.08);
-}
-
-.delay-1 { transition-delay: 0.1s !important; }
-.delay-2 { transition-delay: 0.2s !important; }
-.delay-3 { transition-delay: 0.3s !important; }
-.delay-4 { transition-delay: 0.4s !important; }
-
-.section-shell {
-  max-width: 1280px;
-  margin: 0 auto;
-  position: relative;
-  z-index: var(--z-base);
-}
-
-.eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 16px;
-  border: 1px solid var(--outline);
-  border-radius: var(--radius-full);
-  background: var(--surface);
-  font-size: .74rem;
-  font-weight: 800;
-  letter-spacing: .15em;
-  text-transform: uppercase;
-  color: var(--primary);
-  margin-bottom: 20px;
-}
-
-.section-title {
-  font-family: '${typography.heading}', serif;
-  font-size: var(--text-section);
-  line-height: 0.96;
-  letter-spacing: ${dna.typographyDominance === "brutalist-impact" ? "-.04em" : "-.03em"};
-  font-weight: 800;
-  color: var(--text);
-  margin: 0 0 16px;
-}
-
-.section-copy {
-  font-size: var(--text-body);
-  line-height: 1.72;
-  color: var(--muted);
-  margin: 0;
-}
-
-.wp-block-button__link, .wp-element-button {
-  background: var(--primary)!important;
-  color: ${dna.cinematicScore > 65 || dna.visualAtmosphere === "cinematic-darkness" ? "#000" : "#fff"}!important;
-  border: ${dna.brutalismScore > 60 ? "2px solid #000" : "none"}!important;
-  border-radius: var(--radius-md)!important;
-  padding: 18px 38px!important;
-  font-weight: 800!important;
-  text-transform: ${dna.brutalismScore > 60 ? "uppercase" : "none"}!important;
-  letter-spacing: ${dna.brutalismScore > 60 ? "0.06em" : "normal"}!important;
-  text-decoration: none!important;
-  display: inline-flex!important;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer!important;
-  box-shadow: var(--shadow-soft)!important;
-  transition: transform .28s var(--ease-expo), box-shadow .28s var(--ease-expo), background .28s ease!important;
-}
-.wp-block-button__link:hover {
-  transform: translateY(-2px) scale(1.015)!important;
-  box-shadow: var(--shadow-premium)!important;
-}
-
-.ambient-glow-glow {
-  position: absolute;
-  width: 450px;
-  height: 450px;
-  border-radius: var(--radius-full);
-  background: radial-gradient(circle, rgba(${hexToRgb(ACCENT)}, ${dna.atmosphereIntensity > 70 ? "0.1" : "0.06"}) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: var(--z-back);
-}
-
-@media (max-width: 960px) {
-  .split-grid, .cta-split, .feature-bento, .gallery-editorial, .gallery-stack, .testimonial-grid, .contact-grid {
-    grid-template-columns: 1fr !important;
-  }
-}
+${result.css}
 </style>
-<!-- /wp:html -->
-
-`;
-  const revealScript = `<!-- wp:html -->
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  const obs = new IntersectionObserver((es) => {
-    es.forEach(e => {
-      if (e.isIntersecting) {
-        e.target.classList.add("in-view");
-        obs.unobserve(e.target);
-      }
-    });
-  }, { threshold: 0.05 });
-  document.querySelectorAll(".scroll-reveal").forEach(el => obs.observe(el));
-});
-</script>
-<!-- /wp:html -->
-
-`;
-  let html = globalCss + revealScript;
-  sections.forEach((section, index) => {
-    const comp = section.composition || {};
-    const sectionType = comp.sectionType || (section.type === "hero" ? "cinematicHero" : section.type === "features" ? "asymmetricalFeatures" : section.type === "gallery" ? "immersiveGallery" : section.type === "testimonials" ? "floatingTestimonialWall" : section.type === "cta" ? "layeredCTA" : section.type === "faq" ? "accordionClean" : "premiumContactPanel");
-    const layoutBehavior = comp.layoutBehavior || "asymmetrical";
-    const visualDepth = comp.visualDepth || "layered-atmospheric";
-    const motionStyle = comp.motionStyle || "staggerLift";
-    const imageTreatment = comp.imageTreatment || "floatingDepth";
-    const spacingMode = comp.spacingMode || "balanced";
-    const hierarchyWeight = comp.hierarchyWeight || "supporting";
-    const sectionBg = index % 2 === 0 ? BG : SURF;
-    const componentContext = {
-      typography,
-      P,
-      BG,
-      SURF,
-      TEXT,
-      MUTED,
-      OUTLINE,
-      ACCENT,
-      radius,
-      palette,
-      dna,
-      spacingMode,
-      layoutBehavior,
-      visualDepth,
-      motionStyle,
-      imageTreatment,
-      sectionBg,
-      businessName,
-      category,
-      hierarchyWeight,
-      brand: schema.brand || {},
-      index,
-      curatedImages
-    };
-    switch (sectionType) {
-      case "cinematicHero":
-      case "editorialHero":
-      case "splitNarrativeHero":
-        html += renderAdaptiveHero(section, componentContext);
-        break;
-      case "asymmetricalFeatures":
-      case "glassFeatureCards":
-      case "processNarrative":
-        html += renderAdaptiveFeatures(section, componentContext);
-        break;
-      case "immersiveGallery":
-      case "floatingImageStack":
-        html += renderAdaptiveGallery(section, componentContext);
-        break;
-      case "floatingTestimonialWall":
-        html += renderAdaptiveTestimonials(section, componentContext);
-        break;
-      case "layeredCTA":
-      case "atmosphericBand":
-        html += renderAdaptiveCta(section, componentContext);
-        break;
-      case "storytellingTimeline":
-      case "transformationShowcase":
-      case "luxuryMetricsStrip":
-        html += renderAdaptiveExtra(section, componentContext);
-        break;
-      case "premiumContactPanel":
-      case "accordionClean":
-      default:
-        if (section.type === "faq" || sectionType === "accordionClean") {
-          html += renderAdaptiveFaq(section, componentContext);
-        } else if (section.type === "contact" || sectionType === "premiumContactPanel") {
-          html += renderAdaptiveContact(section, componentContext);
-        } else {
-          html += renderAdaptiveHero(section, componentContext);
-        }
-        break;
-    }
-  });
-  html += `<!-- wp:html -->
-<footer style="background:#090a0f;padding:var(--space-2xl) 5%;text-align:center;position:relative;" class="noise-overlay-bg">
-  <div class="section-shell">
-    <div class="eyebrow" style="background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);color:#fff">Digital Experience</div>
-    <h2 style="font-family:'${typography.heading}',serif;color:#fff;font-size:var(--text-section);letter-spacing:-.045em;margin:22px 0 12px;">${esc(
-    businessName
-  )}</h2>
-    <p style="color:rgba(255,255,255,.45);font-size:var(--text-body);margin:0;">Generative design system crafted with emergent visual orchestration.</p>
-  </div>
-</footer>
 <!-- /wp:html -->`;
-  return html;
-}
-function renderAdaptiveHero(section, ctx) {
-  const curatedList = selectBestImages(ctx.curatedImages, 2, 45);
-  const title = getSectionValue(section, ["headline", "title"], ctx.businessName);
-  const sub = getSectionValue(section, ["subheadline", "body", "description"], "");
-  const ctaPrimary = section.ctaPrimary || { label: "Get Started", href: "#contact" };
-  const ctaSecondary = section.ctaSecondary || null;
-  const spacing = getSpacingStyles(ctx);
-  const motion = getMotionClasses(ctx.motionStyle);
-  const imgTreatment = ctx.imageTreatment || "floatingDepth";
-  const catNorm = (ctx.category || "").toLowerCase();
-  const isSupermarket = catNorm.includes("supermarket") || catNorm.includes("grocery") || catNorm.includes("market") || catNorm.includes("food") || catNorm.includes("bakery");
-  const isRestoration = catNorm.includes("restoration") || catNorm.includes("damage") || catNorm.includes("cleanup");
-  const isRoofing = catNorm.includes("roofing") || catNorm.includes("roof");
-  if (isSupermarket && curatedList.length >= 2) {
-    return `<!-- wp:html -->
-<section class="noise-overlay-bg" style="background:var(--bg);position:relative;overflow:hidden;${spacing}">
-  <div class="ambient-glow-glow" style="top:-5%;left:10%;width:400px;height:400px;opacity:0.85;"></div>
-  <div class="section-shell split-grid" style="display:grid;grid-template-columns:1.1fr 0.9fr;gap:var(--space-xl);align-items:center;width:100%;">
-    <div class="${motion} delay-1">
-      <div class="eyebrow" style="background:rgba(200,90,23,0.06);color:var(--primary);border-color:rgba(200,90,23,0.15);">${esc(ctx.category)}</div>
-      <h1 style="font-family:'${ctx.typography.heading}',serif;font-size:var(--text-hero);line-height:0.92;letter-spacing:-.04em;font-weight:900;color:var(--text);margin:18px 0 16px;">
-        ${esc(title)}
-      </h1>
-      <p style="max-width:580px;font-size:var(--text-body);line-height:1.68;color:var(--muted);margin:0 0 var(--space-md);">${esc(sub)}</p>
-      <div style="display:flex;gap:14px;flex-wrap:wrap;">
-        ${buttonHtml(ctaPrimary.label, ctaPrimary.href, "background:var(--primary)!important;color:#fff!important;border-radius:30px!important;")}
-        ${ctaSecondary ? buttonHtml(ctaSecondary.label, ctaSecondary.href, "background:transparent!important;color:var(--text)!important;border:1px solid var(--outline)!important;box-shadow:none!important;border-radius:30px!important;") : ""}
-      </div>
-    </div>
-    <div class="${motion} delay-2" style="position:relative;display:flex;justify-content:center;height:480px;">
-      <div class="ambient-glow-glow" style="bottom:-50px;right:-50px;width:300px;height:300px;background:radial-gradient(circle, rgba(74,107,66,0.12) 0%, transparent 70%);"></div>
-      <div style="position:absolute;top:0;left:0;width:72%;height:380px;border-radius:24px;overflow:hidden;box-shadow:0 30px 60px rgba(46,31,14,0.15);transform:rotate(-2deg);border:6px solid #fff;">
-        <img src="${esc(curatedList[0].src)}" alt="${esc(curatedList[0].alt)}" style="width:100%;height:100%;object-fit:cover;filter:brightness(1.02) contrast(1.02);" />
-      </div>
-      <div style="position:absolute;bottom:0;right:0;width:58%;height:280px;border-radius:24px;overflow:hidden;box-shadow:0 35px 70px rgba(46,31,14,0.22);transform:rotate(2deg);border:6px solid #fff;outline:2px solid var(--accent);">
-        <img src="${esc(curatedList[1].src)}" alt="${esc(curatedList[1].alt)}" style="width:100%;height:100%;object-fit:cover;" />
-      </div>
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
+  const htmlBlock = `<!-- wp:html -->
+${result.html}
+<!-- /wp:html -->`;
+  return `${cssBlock}
 
-`;
-  }
-  if (isRestoration) {
-    return `<!-- wp:html -->
-<section class="noise-overlay-bg" style="min-height:92vh;display:flex;align-items:center;background:var(--bg);position:relative;overflow:hidden;${spacing}">
-  <div style="position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(to right, rgba(12,13,16,0.95) 45%, rgba(12,13,16,0.7) 100%), url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)" opacity="0.04"/%3E%3C/svg%3E');pointer-events:none;z-index:var(--z-base);"></div>
-  <div class="section-shell split-grid" style="display:grid;grid-template-columns:1.15fr .85fr;gap:var(--space-xl);align-items:center;width:100%;position:relative;z-index:2;">
-    <div class="${motion} delay-1">
-      <div style="display:inline-flex;align-items:center;gap:12px;background:rgba(226,182,63,0.1);border:1px solid rgba(226,182,63,0.3);padding:6px 14px;border-radius:4px;color:var(--primary);font-size:0.75rem;font-weight:900;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:22px;">
-        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--primary);animation:pulse 1.8s infinite;"></span>
-        24/7 Emergency Dispatch Active
-      </div>
-      <h1 style="font-family:'${ctx.typography.heading}',sans-serif;font-size:var(--text-hero);line-height:0.88;letter-spacing:-.045em;font-weight:900;color:var(--text);margin:0 0 16px;text-transform:uppercase;">
-        ${esc(title)}
-      </h1>
-      <p style="max-width:580px;font-size:var(--text-body);line-height:1.7;color:var(--muted);margin:0 0 var(--space-md);">${esc(sub)}</p>
-      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:var(--space-sm);">
-        ${buttonHtml(ctaPrimary.label, ctaPrimary.href, "background:var(--primary)!important;color:#000!important;border-radius:4px!important;box-shadow:0 0 20px rgba(226,182,63,0.35)!important;text-transform:uppercase!important;letter-spacing:0.06em!important;")}
-        ${ctaSecondary ? buttonHtml(ctaSecondary.label, ctaSecondary.href, "background:transparent!important;color:#fff!important;border:2px solid var(--outline)!important;box-shadow:none!important;border-radius:4px!important;text-transform:uppercase!important;letter-spacing:0.06em!important;") : ""}
-      </div>
-    </div>
-    <div class="${motion} delay-2" style="position:relative;display:flex;justify-content:center;height:480px;">
-      ${curatedList[0] ? `
-      <div style="position:relative;width:100%;height:100%;border-radius:8px;overflow:hidden;border:2px solid var(--outline);box-shadow:var(--shadow-intense);">
-        <img src="${esc(curatedList[0].src)}" alt="${esc(curatedList[0].alt)}" style="width:100%;height:100%;object-fit:cover;filter:contrast(1.15) brightness(0.7) grayscale(0.15);" />
-        <div style="position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle, transparent 40%, rgba(12,13,16,0.85) 100%);pointer-events:none;"></div>
-        <div style="position:absolute;bottom:24px;left:24px;background:rgba(21,23,30,0.85);backdrop-filter:blur(10px);border:1px solid var(--outline);padding:18px 24px;border-radius:6px;max-width:calc(100% - 48px);">
-          <div style="font-size:0.7rem;font-weight:900;text-transform:uppercase;color:var(--primary);letter-spacing:0.12em;margin-bottom:4px;">Average Response Time</div>
-          <div style="font-size:1.8rem;font-weight:900;color:#fff;line-height:1.1;">Under 30 Mins</div>
-        </div>
-      </div>` : ""}
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-  }
-  if (isRoofing) {
-    return `<!-- wp:html -->
-<section class="noise-overlay-bg" style="min-height:92vh;display:flex;align-items:center;background:var(--bg);position:relative;overflow:hidden;${spacing};clip-path:polygon(0 0, 100% 0, 100% 96%, 0% 100%);">
-  <div class="ambient-glow-glow" style="top:-80px;right:-80px;width:400px;height:400px;background:radial-gradient(circle, rgba(249,115,22,0.15) 0%, transparent 70%);"></div>
-  <div class="section-shell split-grid" style="display:grid;grid-template-columns:1.05fr .95fr;gap:var(--space-xl);align-items:center;width:100%;">
-    <div class="${motion} delay-1">
-      <div class="eyebrow" style="background:rgba(249,115,22,0.08);color:var(--primary);border-color:rgba(249,115,22,0.2);border-radius:4px;font-weight:900;">${esc(ctx.category)}</div>
-      <h1 style="font-family:'${ctx.typography.heading}',sans-serif;font-size:var(--text-hero);line-height:0.9;letter-spacing:-.04em;font-weight:900;color:var(--text);margin:18px 0 16px;text-transform:uppercase;">
-        ${esc(title)}
-      </h1>
-      <p style="max-width:580px;font-size:var(--text-body);line-height:1.68;color:var(--muted);margin:0 0 var(--space-md);">${esc(sub)}</p>
-      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:var(--space-sm);">
-        ${buttonHtml(ctaPrimary.label, ctaPrimary.href, "background:var(--primary)!important;color:#fff!important;border-radius:2px!important;border:none!important;box-shadow:0 8px 24px rgba(249,115,22,0.35)!important;text-transform:uppercase!important;letter-spacing:0.08em!important;")}
-        ${ctaSecondary ? buttonHtml(ctaSecondary.label, ctaSecondary.href, "background:transparent!important;color:#fff!important;border:2px solid var(--outline)!important;box-shadow:none!important;border-radius:2px!important;text-transform:uppercase!important;letter-spacing:0.08em!important;") : ""}
-      </div>
-    </div>
-    <div class="${motion} delay-2" style="position:relative;display:flex;justify-content:center;height:480px;">
-      ${curatedList[0] ? `
-      <div style="position:relative;width:100%;height:100%;overflow:hidden;border:2px solid var(--outline);box-shadow:var(--shadow-intense);clip-path:polygon(0 8%, 100% 0, 100% 92%, 0 100%);">
-        <img src="${esc(curatedList[0].src)}" alt="${esc(curatedList[0].alt)}" style="width:100%;height:100%;object-fit:cover;" />
-        <div style="position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(to top, rgba(15,17,21,0.7) 0%, transparent 60%);"></div>
-        <div style="position:absolute;top:20px;right:20px;background:var(--primary);color:#fff;font-weight:900;text-transform:uppercase;font-size:0.75rem;padding:8px 16px;border-radius:2px;letter-spacing:0.1em;box-shadow:var(--shadow-soft);">
-          Certified Lifetime Material Warranty
-        </div>
-      </div>` : ""}
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-  }
-  const isLowMedia = ctx.dna.imageWeight < 30 || curatedList.length === 0;
-  if (isLowMedia) {
-    return `<!-- wp:html -->
-<section class="noise-overlay-bg" style="background:var(--bg);position:relative;overflow:hidden;${spacing}">
-  <div class="ambient-glow-glow" style="top:10%;left:10%;"></div>
-  <div class="section-shell ${motion} delay-1" style="max-width:1080px;text-align:left;">
-    <div class="eyebrow">${esc(ctx.category)}</div>
-    <h1 style="font-family:'${ctx.typography.heading}',serif;font-size:var(--text-hero);line-height:0.88;letter-spacing:-.05em;font-weight:900;color:var(--primary);margin:24px 0 28px;">
-      ${esc(title)}
-    </h1>
-    <div style="display:grid;grid-template-columns:1.15fr .85fr;gap:40px;margin-top:var(--space-md);">
-      <div>
-        <p style="font-size:var(--text-body);line-height:1.75;color:var(--text);font-weight:400;margin-bottom:34px;">${esc(sub)}</p>
-        <div style="display:flex;gap:14px;">
-          ${buttonHtml(ctaPrimary.label, ctaPrimary.href)}
-        </div>
-      </div>
-      <div style="border-left:2px solid var(--outline);padding-left:36px;display:flex;align-items:center;">
-        <span style="font-family:'Cormorant Infant',serif;font-style:italic;font-size:1.85rem;color:var(--muted);line-height:1.44;">
-          \u201CQuiet design projects a confidence that visual noise can never reproduce.\u201D
-        </span>
-      </div>
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-  }
-  const imgHtml = getCinematicImageHtml(curatedList[0], imgTreatment, ctx, "width:100%;height:520px;");
-  if (ctx.layoutBehavior === "split-grid" || ctx.dna.cinematicScore > 65) {
-    return `<!-- wp:html -->
-<section class="noise-overlay-bg" style="min-height:90vh;display:flex;align-items:center;background:var(--bg);position:relative;overflow:hidden;${spacing}">
-  <div class="ambient-glow-glow" style="top:-60px;left:-60px;"></div>
-  <div class="section-shell split-grid" style="display:grid;grid-template-columns:1.05fr .95fr;gap:var(--space-xl);align-items:center;width:100%;">
-    <div class="${motion} delay-1">
-      <div class="eyebrow">${esc(ctx.category)}</div>
-      <h1 class="text-gradient" style="font-family:'${ctx.typography.heading}',serif;font-size:var(--text-hero);line-height:0.92;letter-spacing:-.04em;margin:24px 0 20px;font-weight:800;">${esc(title)}</h1>
-      <p style="max-width:580px;font-size:var(--text-body);line-height:1.75;color:var(--muted);margin:0 0 var(--space-md);">${esc(sub)}</p>
-      <div style="display:flex;gap:14px;flex-wrap:wrap;">
-        ${buttonHtml(ctaPrimary.label, ctaPrimary.href)}
-        ${ctaSecondary ? buttonHtml(ctaSecondary.label, ctaSecondary.href, "background:transparent!important;color:var(--text)!important;border:1px solid var(--outline)!important;box-shadow:none!important;") : ""}
-      </div>
-    </div>
-    <div class="${motion} delay-2" style="position:relative;display:flex;justify-content:center;">
-      <div class="ambient-glow-glow" style="bottom:-50px;right:-50px;width:300px;height:300px;"></div>
-      ${imgHtml}
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-  }
-  return `<!-- wp:html -->
-<section class="noise-overlay-bg" style="background:var(--bg);text-align:center;position:relative;overflow:hidden;${spacing}">
-  <div class="ambient-glow-glow" style="top:25%;left:50%;transform:translate(-50%,-50%);width:550px;height:550px;opacity:0.6;"></div>
-  <div class="section-shell ${motion} delay-1" style="max-width:1020px;">
-    <div class="eyebrow">${esc(ctx.category)}</div>
-    <h1 style="font-family:'${ctx.typography.heading}',serif;font-size:var(--text-hero);line-height:0.96;letter-spacing:-.045em;color:var(--text);margin:24px 0 22px;font-weight:800;">${esc(title)}</h1>
-    <p style="font-size:var(--text-body);line-height:1.72;color:var(--muted);max-width:760px;margin:0 auto var(--space-md);">${esc(sub)}</p>
-    <div style="display:flex;gap:14px;justify-content:center;margin-bottom:var(--space-lg);">
-      ${buttonHtml(ctaPrimary.label, ctaPrimary.href)}
-      ${ctaSecondary ? buttonHtml(ctaSecondary.label, ctaSecondary.href, "background:transparent!important;color:var(--text)!important;border:1px solid var(--outline)!important;box-shadow:none!important;") : ""}
-    </div>
-    <div class="${motion} delay-2" style="margin-top:var(--space-sm);position:relative;max-width:920px;margin-left:auto;margin-right:auto;">
-      ${imgHtml}
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-}
-function renderAdaptiveFeatures(section, ctx) {
-  const items = getSectionItems(section);
-  const title = getSectionValue(section, ["title", "headline"], "Specialties");
-  const intro = getSectionValue(section, ["subheadline", "description"], "");
-  const spacing = getSpacingStyles(ctx);
-  const motion = getMotionClasses(ctx.motionStyle);
-  const depth = getDepthStyles(ctx.visualDepth, ctx);
-  const catNorm = (ctx.category || "").toLowerCase();
-  const isSupermarket = catNorm.includes("supermarket") || catNorm.includes("grocery") || catNorm.includes("market") || catNorm.includes("food") || catNorm.includes("bakery");
-  const isRestoration = catNorm.includes("restoration") || catNorm.includes("damage") || catNorm.includes("cleanup");
-  const isRoofing = catNorm.includes("roofing") || catNorm.includes("roof");
-  if (isSupermarket) {
-    return `<!-- wp:html -->
-<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
-  <div class="section-shell">
-    <div style="display:flex;justify-content:space-between;align-items:end;gap:var(--space-md);flex-wrap:wrap;margin-bottom:var(--space-lg);border-bottom: 2px solid var(--outline);padding-bottom: 20px;">
-      <div>
-        <div class="eyebrow" style="background:rgba(74,107,66,0.06);color:var(--accent);border-color:rgba(74,107,66,0.12);">${esc(ctx.category)} Departments</div>
-        <h2 class="section-title" style="font-family:'${ctx.typography.heading}',serif;font-weight:900;color:var(--text);margin-top:8px;">${esc(title)}</h2>
-      </div>
-      ${intro ? `<p class="section-copy" style="max-width:540px;color:var(--muted);">${esc(intro)}</p>` : ""}
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--space-md);">
-      ${items.map((item, idx) => `
-        <article class="${motion} hover-lift" style="background:var(--surface);border:1px solid var(--outline);padding:30px;border-radius:24px;box-shadow:var(--shadow-soft);display:flex;flex-direction:column;justify-content:space-between;min-height:220px;">
-          <div>
-            <div style="width:48px;height:48px;border-radius:50%;background:rgba(200,90,23,0.08);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1rem;margin-bottom:20px;">
-              ${String(idx + 1).padStart(2, "0")}
-            </div>
-            <h3 style="font-family:'${ctx.typography.heading}',serif;font-size:1.5rem;color:var(--text);margin:0 0 10px;font-weight:800;letter-spacing:-.02em;">${esc(item.title || item.name)}</h3>
-            <p style="color:var(--muted);line-height:1.6;font-size:0.95rem;margin:0;">${esc(item.description || item.body)}</p>
-          </div>
-        </article>
-      `).join("")}
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-  }
-  if (isRestoration) {
-    return `<!-- wp:html -->
-<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
-  <div class="section-shell">
-    <div style="margin-bottom:var(--space-lg); border-bottom: 2px solid var(--outline); padding-bottom: 24px;">
-      <div class="eyebrow" style="background:rgba(226,182,63,0.08);color:var(--primary);border-color:rgba(226,182,63,0.2);">Action Protocol</div>
-      <h2 class="section-title" style="font-family:'${ctx.typography.heading}',sans-serif;font-weight:900;text-transform:uppercase;color:#fff;margin-top:8px;">${esc(title)}</h2>
-      ${intro ? `<p class="section-copy" style="max-width:640px;color:var(--muted);">${esc(intro)}</p>` : ""}
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--space-md);position:relative;">
-      ${items.map((item, idx) => `
-        <article class="${motion} ${idx % 2 === 0 ? "delay-1" : "delay-2"}" style="background:var(--surface);border:1px solid var(--outline);padding:30px;border-radius:4px;position:relative;box-shadow:var(--shadow-intense);">
-          <div style="font-family:'${ctx.typography.heading}',sans-serif;font-size:2.8rem;color:var(--primary);opacity:0.8;margin-bottom:12px;font-weight:900;letter-spacing:-.05em;">STEP ${String(idx + 1).padStart(2, "0")}</div>
-          <h3 style="font-family:'${ctx.typography.heading}',sans-serif;font-size:1.4rem;color:#fff;margin:0 0 12px;font-weight:800;text-transform:uppercase;letter-spacing:-.03em;border-bottom:2px solid var(--outline);padding-bottom:10px;">${esc(item.title || item.name)}</h3>
-          <p style="color:var(--muted);line-height:1.68;font-size:0.95rem;margin:0;">${esc(item.description || item.body)}</p>
-        </article>
-      `).join("")}
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-  }
-  if (isRoofing) {
-    return `<!-- wp:html -->
-<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
-  <div class="section-shell">
-    <div style="display:flex;justify-content:space-between;align-items:end;gap:var(--space-md);flex-wrap:wrap;margin-bottom:var(--space-lg);">
-      <div>
-        <div class="eyebrow" style="background:rgba(249,115,22,0.08);color:var(--primary);border-color:rgba(249,115,22,0.2);border-radius:2px;">Contractor Strength</div>
-        <h2 class="section-title" style="font-family:'${ctx.typography.heading}',sans-serif;font-weight:900;text-transform:uppercase;margin-top:8px;">${esc(title)}</h2>
-      </div>
-      ${intro ? `<p class="section-copy" style="max-width:580px;color:var(--muted);">${esc(intro)}</p>` : ""}
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--space-md);">
-      ${items.map((item, idx) => `
-        <article class="${motion} hover-lift" style="background:var(--surface);border:2px solid var(--outline);padding:34px;border-radius:2px;min-height:240px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:var(--shadow-premium);position:relative;overflow:hidden;">
-          <div style="position:absolute;top:0;left:0;width:4px;height:100%;background:var(--primary);"></div>
-          <div>
-            <div style="font-family:'${ctx.typography.heading}',sans-serif;font-size:1.8rem;color:var(--primary);opacity:0.4;margin-bottom:14px;font-weight:900;">${String(idx + 1).padStart(2, "0")}</div>
-            <h3 style="font-family:'${ctx.typography.heading}',sans-serif;font-size:1.5rem;color:#fff;margin:0 0 10px;text-transform:uppercase;font-weight:900;letter-spacing:-.03em;">${esc(item.title || item.name)}</h3>
-          </div>
-          <p style="color:var(--muted);line-height:1.68;font-size:0.95rem;margin:0;">${esc(item.description || item.body)}</p>
-        </article>
-      `).join("")}
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-  }
-  if (ctx.layoutBehavior === "grid-stagger" || ctx.dna.brutalismScore > 60) {
-    return `<!-- wp:html -->
-<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
-  <div class="section-shell">
-    <div style="margin-bottom:var(--space-lg); border-bottom: 1px solid var(--outline); padding-bottom: 24px;">
-      <div class="eyebrow">The Process</div>
-      <h2 class="section-title">${esc(title)}</h2>
-      ${intro ? `<p class="section-copy" style="max-width:640px;">${esc(intro)}</p>` : ""}
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:var(--space-md);">
-      ${items.map((item, idx) => `
-        <article class="${motion} ${idx % 2 === 0 ? "delay-1" : "delay-2"}" style="${depth} padding:var(--space-md); border-radius:var(--radius-lg); position:relative;">
-          <div style="font-family:'${ctx.typography.heading}',serif;font-size:2.8rem;color:var(--accent);opacity:0.35;margin-bottom:var(--space-sm); font-weight:800;">${String(idx + 1).padStart(2, "0")}</div>
-          <h3 style="font-family:'${ctx.typography.heading}',serif;font-size:1.72rem;color:var(--text);margin:0 0 12px;letter-spacing:-.03em;font-weight:700;">${esc(item.title || item.name)}</h3>
-          <p style="color:var(--muted);line-height:1.72;font-size:1rem;margin:0;">${esc(item.description || item.body)}</p>
-        </article>
-      `).join("")}
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-  }
-  return `<!-- wp:html -->
-<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
-  <div class="section-shell">
-    <div style="display:flex;justify-content:space-between;align-items:end;gap:var(--space-md);flex-wrap:wrap;margin-bottom:var(--space-lg);">
-      <div>
-        <div class="eyebrow">Services</div>
-        <h2 class="section-title">${esc(title)}</h2>
-      </div>
-      ${intro ? `<p class="section-copy" style="max-width:580px;">${esc(intro)}</p>` : ""}
-    </div>
-    <div class="feature-bento" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-md);">
-      ${items.map((item, idx) => {
-    const span = idx === 0 || idx === 3 ? "span 2" : "span 1";
-    const offset = ctx.dna.asymmetryLevel > 50 && idx % 2 === 0 ? "transform: translateY(-10px);" : "";
-    return `
-        <article class="${motion} hover-lift" style="grid-column:${span};${depth} ${offset} padding:40px;border-radius:var(--radius-lg);min-height:280px;display:flex;flex-direction:column;justify-content:space-between;">
-          <div>
-            <div style="font-family:'${ctx.typography.heading}',serif;font-size:1.8rem;color:var(--primary);opacity:0.3;margin-bottom:16px;font-weight:800;">${String(idx + 1).padStart(2, "0")}</div>
-            <h3 style="font-family:'${ctx.typography.heading}',serif;font-size:1.75rem;color:var(--text);margin:0 0 10px;letter-spacing:-.03em;font-weight:800;">${esc(item.title || item.name)}</h3>
-          </div>
-          <p style="color:var(--muted);line-height:1.72;font-size:0.98rem;margin:0;">${esc(item.description || item.body)}</p>
-        </article>
-      `;
-  }).join("")}
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-}
-function renderAdaptiveGallery(section, ctx) {
-  const curatedList = selectBestImages(ctx.curatedImages, 4, 45);
-  const title = getSectionValue(section, ["title", "headline"], "Showcase");
-  const intro = getSectionValue(section, ["subheadline", "description"], "Visual perspectives of our craft and service execution.");
-  const spacing = getSpacingStyles(ctx);
-  const motion = getMotionClasses(ctx.motionStyle);
-  const imgTreatment = ctx.imageTreatment || "floatingDepth";
-  const catNorm = (ctx.category || "").toLowerCase();
-  const isSupermarket = catNorm.includes("supermarket") || catNorm.includes("grocery") || catNorm.includes("market") || catNorm.includes("food") || catNorm.includes("bakery");
-  const isRestoration = catNorm.includes("restoration") || catNorm.includes("damage") || catNorm.includes("cleanup");
-  const isRoofing = catNorm.includes("roofing") || catNorm.includes("roof");
-  const isLowMedia = ctx.dna.imageWeight < 30 || curatedList.length === 0;
-  if (isLowMedia) {
-    return `<!-- wp:html -->
-<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
-  <div class="ambient-glow-glow" style="top:20%;right:10%;"></div>
-  <div class="section-shell ${motion} delay-1" style="max-width:1080px;text-align:center;">
-    <div class="eyebrow">Philosophies</div>
-    <h2 class="section-title" style="font-size:clamp(2.4rem,6.5vw,5rem);line-height:0.95;margin-bottom:34px;font-weight:800;">
-      Crafting details with <span class="text-gradient">high-precision</span> local care.
-    </h2>
-    <p style="max-width:680px;margin:0 auto var(--space-lg);font-size:1.2rem;color:var(--muted);line-height:1.72;">
-      ${esc(intro)}
-    </p>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-  }
-  if (isSupermarket) {
-    return `<!-- wp:html -->
-<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
-  <div class="section-shell">
-    <div style="display:flex;justify-content:space-between;align-items:end;gap:var(--space-md);flex-wrap:wrap;margin-bottom:var(--space-lg);">
-      <div>
-        <div class="eyebrow" style="background:rgba(74,107,66,0.06);color:var(--accent);border-color:rgba(74,107,66,0.12);">Sensory Display</div>
-        <h2 class="section-title" style="font-family:'${ctx.typography.heading}',serif;font-weight:900;color:var(--text);margin-top:8px;">${esc(title)}</h2>
-      </div>
-      <p class="section-copy" style="max-width:540px;color:var(--muted);">${esc(intro)}</p>
-    </div>
-    <div class="gallery-editorial" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;">
-      ${curatedList.map((item, idx) => {
-      const rotation = idx % 2 === 0 ? "transform: rotate(-1deg);" : "transform: rotate(1deg);";
-      return `
-        <div class="${motion} delay-${idx + 1}" style="${rotation} overflow:hidden;background:#fff;padding:12px;border-radius:24px;box-shadow:0 20px 45px rgba(46,31,14,0.08);border:1px solid var(--outline);">
-          <img src="${esc(item.src)}" alt="${esc(item.alt)}" style="width:100%;height:280px;object-fit:cover;border-radius:18px;margin-bottom:12px;" />
-          <div style="font-size:0.85rem;color:var(--muted);text-align:center;font-weight:500;">${esc(item.alt || "Fresh Harvest Display")}</div>
-        </div>
-      `;
-    }).join("")}
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-  }
-  if (isRestoration && curatedList.length >= 2) {
-    const beforeImg = curatedList[0];
-    const afterImg = curatedList[1];
-    const beforeImg2 = curatedList[2] || beforeImg;
-    const afterImg2 = curatedList[3] || afterImg;
-    return `<!-- wp:html -->
-<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
-  <div class="section-shell">
-    <div style="margin-bottom:var(--space-lg); border-bottom: 2px solid var(--outline); padding-bottom: 24px;">
-      <div class="eyebrow" style="background:rgba(226,182,63,0.08);color:var(--primary);border-color:rgba(226,182,63,0.2);">Visual Evidence</div>
-      <h2 class="section-title" style="font-family:'${ctx.typography.heading}',sans-serif;font-weight:900;text-transform:uppercase;color:#fff;margin-top:8px;">${esc(title)}</h2>
-      <p class="section-copy" style="color:var(--muted);">${esc(intro)}</p>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md);align-items:stretch;">
-      <div class="${motion} delay-1" style="background:var(--surface);border:1px solid var(--outline);padding:24px;border-radius:4px;box-shadow:var(--shadow-intense);">
-        <div style="font-family:'${ctx.typography.heading}',sans-serif;font-weight:800;color:#fff;font-size:1.2rem;text-transform:uppercase;margin-bottom:16px;letter-spacing:0.04em;">Mitigation & Clean Stage</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;height:260px;">
-          <div style="position:relative;overflow:hidden;border-radius:2px;border:1px solid var(--outline);">
-            <img src="${esc(beforeImg.src)}" alt="Before mitigation" style="width:100%;height:100%;object-fit:cover;filter:grayscale(0.6) brightness(0.6);" />
-            <span style="position:absolute;bottom:10px;left:10px;background:rgba(220,38,38,0.85);color:#fff;font-size:0.65rem;font-weight:900;padding:4px 8px;text-transform:uppercase;letter-spacing:0.1em;border-radius:2px;">RAW DAMAGE</span>
-          </div>
-          <div style="position:relative;overflow:hidden;border-radius:2px;border:1px solid var(--outline);">
-            <img src="${esc(afterImg.src)}" alt="After mitigation" style="width:100%;height:100%;object-fit:cover;" />
-            <span style="position:absolute;bottom:10px;left:10px;background:rgba(22,163,74,0.85);color:#fff;font-size:0.65rem;font-weight:900;padding:4px 8px;text-transform:uppercase;letter-spacing:0.1em;border-radius:2px;">MITIGATED</span>
-          </div>
-        </div>
-      </div>
-      <div class="${motion} delay-2" style="background:var(--surface);border:1px solid var(--outline);padding:24px;border-radius:4px;box-shadow:var(--shadow-intense);">
-        <div style="font-family:'${ctx.typography.heading}',sans-serif;font-weight:800;color:#fff;font-size:1.2rem;text-transform:uppercase;margin-bottom:16px;letter-spacing:0.04em;">Full Structural Rebuilding</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;height:260px;">
-          <div style="position:relative;overflow:hidden;border-radius:2px;border:1px solid var(--outline);">
-            <img src="${esc(beforeImg2.src)}" alt="Before rebuild" style="width:100%;height:100%;object-fit:cover;filter:grayscale(0.6) brightness(0.6);" />
-            <span style="position:absolute;bottom:10px;left:10px;background:rgba(220,38,38,0.85);color:#fff;font-size:0.65rem;font-weight:900;padding:4px 8px;text-transform:uppercase;letter-spacing:0.1em;border-radius:2px;">UNSAFE STRUCTURAL</span>
-          </div>
-          <div style="position:relative;overflow:hidden;border-radius:2px;border:1px solid var(--outline);">
-            <img src="${esc(afterImg2.src)}" alt="After rebuild" style="width:100%;height:100%;object-fit:cover;" />
-            <span style="position:absolute;bottom:10px;left:10px;background:rgba(22,163,74,0.85);color:#fff;font-size:0.65rem;font-weight:900;padding:4px 8px;text-transform:uppercase;letter-spacing:0.1em;border-radius:2px;">RESTORED BRAND</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-  }
-  if (isRoofing) {
-    return `<!-- wp:html -->
-<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
-  <div class="section-shell">
-    <div style="display:flex;justify-content:space-between;align-items:end;gap:var(--space-md);flex-wrap:wrap;margin-bottom:var(--space-lg);">
-      <div>
-        <div class="eyebrow" style="background:rgba(249,115,22,0.08);color:var(--primary);border-color:rgba(249,115,22,0.2);border-radius:2px;">Project Showcase</div>
-        <h2 class="section-title" style="font-family:'${ctx.typography.heading}',sans-serif;font-weight:900;text-transform:uppercase;margin-top:8px;">${esc(title)}</h2>
-      </div>
-      <p class="section-copy" style="max-width:540px;color:var(--muted);">${esc(intro)}</p>
-    </div>
-    <div class="gallery-editorial" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">
-      ${curatedList.map((item, idx) => {
-      return `
-        <div class="${motion} delay-${idx + 1}" style="overflow:hidden;border:2px solid var(--outline);box-shadow:var(--shadow-premium);border-radius:2px;position:relative;height:340px;clip-path:polygon(0 4%, 100% 0, 100% 96%, 0 100%);">
-          <img src="${esc(item.src)}" alt="${esc(item.alt)}" style="width:100%;height:100%;object-fit:cover;transition:transform 0.4s ease;" class="hover-lift" />
-          <div style="position:absolute;bottom:0;left:0;width:100%;background:linear-gradient(to top, rgba(15,17,21,0.9) 0%, transparent 100%);padding:20px;text-align:left;">
-            <div style="font-size:0.68rem;font-weight:900;color:var(--primary);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:4px;">Project ${String(idx + 1).padStart(2, "0")}</div>
-            <div style="font-size:0.95rem;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.04em;">${esc(item.alt || "Completed Roof Construction")}</div>
-          </div>
-        </div>
-      `;
-    }).join("")}
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-  }
-  if (ctx.layoutBehavior === "offset-right" || ctx.dna.cinematicScore > 65) {
-    const img1 = getCinematicImageHtml(curatedList[0], imgTreatment, ctx, "width:100%;height:460px;");
-    const img2 = curatedList[1] ? getCinematicImageHtml(curatedList[1], imgTreatment, ctx, "width:100%;height:220px;") : "";
-    const img3 = curatedList[2] ? getCinematicImageHtml(curatedList[2], imgTreatment, ctx, "width:100%;height:220px;") : "";
-    return `<!-- wp:html -->
-<section style="background:var(--bg);${spacing};overflow:hidden;" class="noise-overlay-bg">
-  <div class="section-shell">
-    <div style="margin-bottom:var(--space-md);max-width:700px;">
-      <div class="eyebrow">Gallery Portfolio</div>
-      <h2 class="section-title">${esc(title)}</h2>
-      <p class="section-copy">${esc(intro)}</p>
-    </div>
-    <div class="gallery-stack" style="display:grid;grid-template-columns:1.15fr .85fr;gap:var(--space-md);align-items:center;">
-      <div class="${motion} delay-1">
-        ${img1}
-      </div>
-      <div style="display:grid;grid-template-columns:1fr;gap:20px;" class="${motion} delay-2">
-        ${img2}
-        ${img3}
-      </div>
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-  }
-  return `<!-- wp:html -->
-<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
-  <div class="section-shell">
-    <div style="display:flex;justify-content:space-between;align-items:end;gap:var(--space-md);flex-wrap:wrap;margin-bottom:var(--space-lg);">
-      <div>
-        <div class="eyebrow">Works</div>
-        <h2 class="section-title">${esc(title)}</h2>
-      </div>
-      <p class="section-copy" style="max-width:540px;">${esc(intro)}</p>
-    </div>
-    <div class="gallery-editorial" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;">
-      ${curatedList.map((item, idx) => {
-    const offset = ctx.dna.asymmetryLevel > 60 && idx % 2 === 0 ? "margin-top: -15px;" : "";
-    const imgH = getCinematicImageHtml(item, imgTreatment, ctx, "width:100%;height:320px;");
-    return `
-        <div class="${motion} ${idx === 0 ? "delay-1" : idx === 1 ? "delay-2" : "delay-3"}" style="${offset} overflow:hidden;">
-          ${imgH}
-        </div>
-      `;
-  }).join("")}
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-}
-function renderAdaptiveTestimonials(section, ctx) {
-  const items = getSectionItems(section);
-  const title = getSectionValue(section, ["title", "headline"], "Endorsements");
-  const spacing = getSpacingStyles(ctx);
-  const motion = getMotionClasses(ctx.motionStyle);
-  const depth = getDepthStyles(ctx.visualDepth, ctx);
-  return `<!-- wp:html -->
-<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
-  <div class="section-shell">
-    <div style="text-align:center;margin-bottom:var(--space-lg);">
-      <div class="eyebrow">Endorsements</div>
-      <h2 class="section-title">${esc(title)}</h2>
-    </div>
-    <div class="testimonial-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:var(--space-md);">
-      ${items.map((item, idx) => {
-    const offset = ctx.dna.asymmetryLevel > 50 && idx % 3 === 1 ? "transform: translateY(-10px);" : "";
-    return `
-        <article class="${motion} ${idx % 3 === 0 ? "delay-1" : idx % 3 === 1 ? "delay-2" : "delay-3"} hover-lift" style="${depth} ${offset} padding:36px;border-radius:var(--radius-lg);position:relative;">
-          <div style="font-family:'${ctx.typography.heading}',serif;font-size:3.2rem;color:var(--accent);opacity:0.22;line-height:0.7;margin-bottom:6px;">\u201C</div>
-          <p style="font-size:1.04rem;line-height:1.72;color:var(--text);margin:0 0 22px;font-style:italic;">${esc(item.quote || "")}</p>
-          <div style="display:flex;align-items:center;gap:14px;">
-            <div style="width:40px;height:40px;border-radius:var(--radius-full);background:var(--primary);color:${ctx.dna.cinematicScore > 65 || ctx.visualAtmosphere === "cinematic-darkness" ? "#000" : "#fff"};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.9rem;">${esc((item.author || "C").charAt(0))}</div>
-            <div>
-              <div style="font-weight:800;color:var(--text);font-size:0.95rem;">${esc(item.author || "Client")}</div>
-              <div style="font-size:0.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">${esc(item.role || "Verified Customer")}</div>
-            </div>
-          </div>
-        </article>
-      `;
-  }).join("")}
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-}
-function renderAdaptiveFaq(section, ctx) {
-  const items = getSectionItems(section);
-  const title = getSectionValue(section, ["title", "headline"], "Support FAQs");
-  const spacing = getSpacingStyles(ctx);
-  const motion = getMotionClasses(ctx.motionStyle);
-  const depth = getDepthStyles(ctx.visualDepth, ctx);
-  return `<!-- wp:html -->
-<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
-  <div class="section-shell" style="max-width:900px;">
-    <div style="text-align:center;margin-bottom:var(--space-lg);">
-      <div class="eyebrow">FAQs</div>
-      <h2 class="section-title">${esc(title)}</h2>
-    </div>
-    <div style="display:grid;gap:16px;">
-      ${items.map((item, idx) => `
-        <details class="${motion} ${idx % 2 === 0 ? "delay-1" : "delay-2"}" style="${depth} padding:22px 28px;border-radius:var(--radius-md);cursor:pointer;">
-          <summary style="font-weight:800;font-size:1.06rem;color:var(--text);outline:none;list-style:none;display:flex;justify-content:space-between;align-items:center;">
-            <span>${esc(item.question || item.title)}</span>
-            <span style="font-size:1.2rem;color:var(--accent);font-weight:800;">+</span>
-          </summary>
-          <p style="margin:14px 0 0;line-height:1.72;color:var(--muted);font-size:0.98rem;cursor:default;">${esc(item.answer || item.description)}</p>
-        </details>
-      `).join("")}
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-}
-function renderAdaptiveCta(section, ctx) {
-  const title = getSectionValue(section, ["title", "headline"], "Let's Get Started");
-  const body = getSectionValue(section, ["body", "description"], "Contact us today for a premium custom consulting consultation.");
-  const label = getSectionValue(section, ["buttonLabel"], "Connect Now");
-  const href = getSectionValue(section, ["buttonHref"], "#contact");
-  const spacing = getSpacingStyles(ctx);
-  const motion = getMotionClasses(ctx.motionStyle);
-  return `<!-- wp:html -->
-<section style="background:linear-gradient(135deg, var(--primary), var(--accent));position:relative;overflow:hidden;${spacing}">
-  <div class="ambient-glow-glow" style="top:-90px;right:-90px;width:350px;height:350px;opacity:0.35;"></div>
-  <div class="section-shell ${motion} delay-1" style="text-align:center;max-width:850px;z-index:2;">
-    <div class="eyebrow" style="background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.18);">Connect</div>
-    <h2 style="font-family:'${ctx.typography.heading}',serif;font-size:var(--text-section);color:#fff;line-height:1.04;letter-spacing:-.04em;margin:22px 0 16px;font-weight:900;">${esc(title)}</h2>
-    <p style="color:rgba(255,255,255,0.8);font-size:1.1rem;line-height:1.72;margin:0 auto var(--space-md);max-width:640px;">${esc(body)}</p>
-    ${buttonHtml(label, href, `background:#fff!important;color:var(--primary)!important;box-shadow:none!important;border-radius:var(--radius-md)!important;`)}
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-}
-function renderAdaptiveContact(section, ctx) {
-  const title = getSectionValue(section, ["title", "headline"], "Get in Touch");
-  const body = getSectionValue(section, ["body", "description"], "We would love to hear from you. Send us a message.");
-  const spacing = getSpacingStyles(ctx);
-  const motion = getMotionClasses(ctx.motionStyle);
-  const depth = getDepthStyles(ctx.visualDepth, ctx);
-  const brand = ctx.brand;
-  const contactItems = [
-    brand.phone ? `<div style="margin-bottom:20px;"><div style="font-size:0.72rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);margin-bottom:4px;">Phone</div><div style="font-size:1.1rem;color:var(--text);font-weight:600;">${esc(brand.phone)}</div></div>` : "",
-    brand.email && brand.email.includes("@") && !/^none|n\/a$/i.test(brand.email) ? `<div style="margin-bottom:20px;"><div style="font-size:0.72rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);margin-bottom:4px;">Email</div><div style="font-size:1.1rem;color:var(--text);font-weight:600;">${esc(brand.email)}</div></div>` : "",
-    brand.address ? `<div style="margin-bottom:20px;"><div style="font-size:0.72rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);margin-bottom:4px;">Address</div><div style="font-size:1.02rem;line-height:1.6;color:var(--text);font-weight:500;">${esc(brand.address)}</div></div>` : ""
-  ].filter(Boolean).join("");
-  return `<!-- wp:html -->
-<section id="contact" style="background:var(--bg);${spacing}" class="noise-overlay-bg">
-  <div class="section-shell contact-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-xl);align-items:center;">
-    <div class="${motion} delay-1">
-      <div class="eyebrow">Reach Out</div>
-      <h2 class="section-title">${esc(title)}</h2>
-      <p class="section-copy" style="margin-bottom:34px;">${esc(body)}</p>
-      <div style="display:grid;">${contactItems}</div>
-    </div>
-    <div class="${motion} delay-2 hover-lift" style="${depth} padding:40px;border-radius:var(--radius-lg);">
-      <h3 style="font-family:'${ctx.typography.heading}',serif;font-size:1.8rem;color:var(--text);margin:0 0 20px;font-weight:700;">Submit Inquiry</h3>
-      <div style="display:grid;gap:14px;">
-        <div style="height:48px;border-radius:var(--radius-sm);background:rgba(0,0,0,0.015);border:1px solid var(--outline);"></div>
-        <div style="height:48px;border-radius:var(--radius-sm);background:rgba(0,0,0,0.015);border:1px solid var(--outline);"></div>
-        <div style="height:110px;border-radius:var(--radius-sm);background:rgba(0,0,0,0.015);border:1px solid var(--outline);"></div>
-        ${buttonHtml("Send Inquiry", "#")}
-      </div>
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-}
-function renderAdaptiveExtra(section, ctx) {
-  const items = getSectionItems(section);
-  const title = getSectionValue(section, ["title", "headline"], "Performance");
-  const spacing = getSpacingStyles(ctx);
-  const motion = getMotionClasses(ctx.motionStyle);
-  const depth = getDepthStyles(ctx.visualDepth, ctx);
-  if (ctx.layoutBehavior === "side-by-side" || ctx.dna.luxuryScore > 60) {
-    return `<!-- wp:html -->
-<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
-  <div class="section-shell">
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:var(--space-md);text-align:center;">
-      ${items.map((item, idx) => `
-        <div class="${motion} ${idx % 3 === 0 ? "delay-1" : idx % 3 === 1 ? "delay-2" : "delay-3"}" style="${depth} padding:36px;border-radius:var(--radius-lg);">
-          <div style="font-family:'${ctx.typography.heading}',serif;font-size:3.5rem;color:var(--accent);font-weight:800;margin-bottom:8px;">${esc(item.title || "100%")}</div>
-          <div style="font-size:0.88rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--text);font-weight:700;">${esc(item.description || item.name || "")}</div>
-        </div>
-      `).join("")}
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-  }
-  return `<!-- wp:html -->
-<section style="background:var(--bg);${spacing}" class="noise-overlay-bg">
-  <div class="section-shell" style="max-width:900px;">
-    <div style="text-align:center;margin-bottom:var(--space-lg);">
-      <div class="eyebrow">Milestones</div>
-      <h2 class="section-title">${esc(title)}</h2>
-    </div>
-    <div style="position:relative;padding-left:40px;border-left:1px solid var(--outline);">
-      ${items.map((item, idx) => `
-        <div class="${motion} delay-1" style="position:relative;margin-bottom:var(--space-lg);">
-          <div style="position:absolute;left:-49px;top:4px;width:16px;height:16px;border-radius:var(--radius-full);background:var(--accent);border:3px solid var(--bg);"></div>
-          <h3 style="font-family:'${ctx.typography.heading}',serif;font-size:1.6rem;color:var(--text);margin:0 0 6px;font-weight:700;">${esc(item.title)}</h3>
-          <p style="color:var(--muted);line-height:1.7;font-size:0.98rem;margin:0;">${esc(item.description || item.body)}</p>
-        </div>
-      `).join("")}
-    </div>
-  </div>
-</section>
-<!-- /wp:html -->
-
-`;
-}
-function getSpacingStyles(ctx) {
-  let bottomPadding = "var(--space-lg)";
-  if (ctx.hierarchyWeight === "breathing") {
-    bottomPadding = "var(--space-2xl)";
-  } else if (ctx.hierarchyWeight === "cinematicPause") {
-    return "padding: var(--space-2xl) 5% var(--space-2xl); gap: var(--space-xl);";
-  }
-  switch (ctx.spacingMode) {
-    case "luxury-editorial":
-      return `padding: var(--space-2xl) 5% ${bottomPadding}; gap: var(--space-xl);`;
-    case "airy":
-      return `padding: var(--space-xl) 5% ${bottomPadding}; gap: var(--space-lg);`;
-    case "compact":
-      return "padding: var(--space-md) 4%; gap: var(--space-sm);";
-    case "balanced":
-    default:
-      return `padding: var(--space-lg) 5% ${bottomPadding}; gap: var(--space-md);`;
-  }
-}
-function getMotionClasses(motionStyle) {
-  switch (motionStyle) {
-    case "cinematicReveal":
-      return "scroll-reveal cinematic-reveal";
-    case "staggerLift":
-      return "scroll-reveal stagger-lift";
-    case "editorialSlide":
-      return "scroll-reveal editorial-slide";
-    case "luxuryGlow":
-      return "scroll-reveal luxury-glow-reveal";
-    case "premiumFade":
-    default:
-      return "scroll-reveal premium-fade";
-  }
-}
-function getDepthStyles(visualDepth, ctx) {
-  const rgbBg = hexToRgb(ctx.BG);
-  const rgbText = hexToRgb(ctx.TEXT);
-  switch (visualDepth) {
-    case "glassmorphic":
-      return `background: rgba(${rgbBg}, 0.74) !important; backdrop-filter: blur(20px) !important; border: 1px solid rgba(${rgbText}, 0.06) !important; box-shadow: var(--shadow-premium) !important;`;
-    case "frosted-glow":
-      return `background: rgba(${rgbBg}, 0.62) !important; backdrop-filter: blur(15px) !important; border: 1px solid rgba(${rgbText}, 0.04) !important; box-shadow: var(--shadow-intense) !important;`;
-    case "dramatic-depth":
-      return `background: ${ctx.SURF} !important; border: 2px solid ${ctx.P} !important; box-shadow: var(--shadow-premium) !important;`;
-    case "flat-minimalist":
-      return `background: transparent !important; border: none !important; box-shadow: none !important; border-bottom: 1px solid ${ctx.OUTLINE} !important;`;
-    case "layered-atmospheric":
-    default:
-      return `background: ${ctx.SURF} !important; border: 1px solid ${ctx.OUTLINE} !important; box-shadow: var(--shadow-soft) !important;`;
-  }
-}
-function getImageTreatmentStyles(treatment, ctx) {
-  let container = "";
-  let image = "";
-  switch (treatment) {
-    case "editorialCrop":
-      container = `border-radius: 200px 200px 0 0 !important; clip-path: ellipse(50% 50% at 50% 50%);`;
-      break;
-    case "layeredGlass":
-      container = `border: 6px solid ${ctx.SURF} !important; box-shadow: var(--shadow-premium), 0 0 0 1px rgba(0,0,0,0.03) !important; transform: rotate(1deg);`;
-      break;
-    case "cinematicBleed":
-      container = `border-radius: 0px !important; width: 100% !important;`;
-      break;
-    case "atmosphericOverlay":
-      container = `box-shadow: var(--shadow-premium) !important; border-radius: var(--radius-md) !important;`;
-      break;
-    case "luxuryFrame":
-      container = `border: 1px solid ${ctx.OUTLINE} !important; padding: var(--space-xs) !important; background: ${ctx.SURF} !important; box-shadow: var(--shadow-soft) !important;`;
-      break;
-    case "brutalistSharp":
-      container = `border: 2px solid var(--primary) !important; border-radius: 0px !important; box-shadow: var(--shadow-premium) !important;`;
-      break;
-    case "floatingDepth":
-    default:
-      container = `box-shadow: var(--shadow-premium) !important; border-radius: var(--radius-md) !important; transform: translateY(-4px);`;
-      break;
-  }
-  return { container, image };
-}
-function buttonHtml(label, href, style = "") {
-  return `<a class="wp-block-button__link wp-element-button hover-lift" href="${esc(
-    href || "#contact"
-  )}" style="${style}">${esc(label)}</a>`;
+${htmlBlock}`;
 }
 var init_premium_site_builder = __esm({
   "src/lib/premium-site-builder.ts"() {
+    init_composition_renderer();
+  }
+});
+
+// src/lib/industry-psychology-engine.ts
+async function generateIndustryVisualPsychology(input, options) {
+  const category = input.business.category.toLowerCase();
+  let baseProfile;
+  for (const [key, profile] of Object.entries(INDUSTRY_PSYCHOLOGY_DATABASE)) {
+    if (category.includes(key.split("-")[0]) || category.includes(key.replace("-", " "))) {
+      baseProfile = profile;
+      break;
+    }
+  }
+  if (!baseProfile) {
+    const prompt = `INDUSTRY VISUAL PSYCHOLOGY PROFILE \u2014 ${input.business.category}
+
+Generate a UNIQUE visual psychology profile for this business category and conversion intent.
+
+Business Category: ${input.business.category}
+Conversion Intent: ${input.conversionIntent}
+
+This profile determines how the ENTIRE website behaves visually.
+
+Return STRICT JSON with THESE EXACT KEYS:
+
+{
+  "emotionalTarget": "string \u2014 primary emotion: trustworthiness, energy, intimacy, authority, joy, calm, rebellion, creativity",
+  "decisionPace": "string \u2014 how fast decisions are made: immediate, deliberate, exploratory, analytical",
+  "typographyBehavior": "string \u2014 restrained-serif | dominant-modern | layered-wall | compressed-kinetic | expansive-airy",
+  "pagePacing": "string \u2014 slow-meditative | moderate-editorial | fast-kinetic | rhythmic-pulse",
+  "colorIntensity": "string \u2014 muted-archive | neutral-professional | vibrant-energy | atmospheric-moody",
+  "imageTreatment": "string \u2014 cinematic-crops | natural-square | product-isolated | lifestyle-editorial | texture-macro",
+  "motionCharacter": "string \u2014 subtle-reveal | kinetic-bounce | cinematic-glide | tactile-feedback | ambient-breathing",
+  "asymmetryPreference": number (0-100, higher = more chaotic asymmetry),
+  "densityPreference": number (0-100, higher = more dense/packed),
+  "contrastPreference": number (0-100, higher = stronger contrast),
+  "atmosphere": "string \u2014 industrial | luxury | editorial | energetic | intimate | archival"
+}`;
+    try {
+      const raw = await options.llmJson(
+        prompt,
+        "industry-psychology-generator"
+      );
+      baseProfile = JSON.parse(raw);
+    } catch (err) {
+      options.logStderr(
+        `[IndustryPsychology] Generation failed: ${String(err)}`
+      );
+      baseProfile = {
+        emotionalTarget: "energy",
+        decisionPace: "moderate-editorial",
+        typographyBehavior: "dominant-modern",
+        pagePacing: "moderate-editorial",
+        colorIntensity: "vibrant-energy",
+        imageTreatment: "lifestyle-editorial",
+        motionCharacter: "kinetic-bounce",
+        asymmetryPreference: 65,
+        densityPreference: 60,
+        contrastPreference: 70,
+        atmosphere: "energetic"
+      };
+    }
+  }
+  const psychology = {
+    industry: input.business.category,
+    category,
+    emotionalTarget: baseProfile.emotionalTarget || "energy",
+    decisionPace: baseProfile.decisionPace || "moderate-editorial",
+    typographyBehavior: baseProfile.typographyBehavior || "dominant-modern",
+    pagePacing: baseProfile.pagePacing || "moderate-editorial",
+    colorIntensity: baseProfile.colorIntensity || "vibrant-energy",
+    imageTreatment: baseProfile.imageTreatment || "lifestyle-editorial",
+    motionCharacter: baseProfile.motionCharacter || "kinetic-bounce",
+    asymmetryPreference: baseProfile.asymmetryPreference || 65,
+    densityPreference: baseProfile.densityPreference || 60,
+    contrastPreference: baseProfile.contrastPreference || 70,
+    atmosphere: baseProfile.atmosphere || "energetic"
+  };
+  if (options.debugSession) {
+    options.persistGenerationDebugFile(
+      options.debugSession,
+      "01-industry-psychology.json",
+      psychology
+    );
+  }
+  return psychology;
+}
+var INDUSTRY_PSYCHOLOGY_DATABASE;
+var init_industry_psychology_engine = __esm({
+  "src/lib/industry-psychology-engine.ts"() {
+    INDUSTRY_PSYCHOLOGY_DATABASE = {
+      "law-firm": {
+        emotionalTarget: "trustworthiness",
+        decisionPace: "deliberate",
+        typographyBehavior: "restrained-serif",
+        pagePacing: "slow-meditative",
+        colorIntensity: "muted-archive",
+        imageTreatment: "natural-square",
+        motionCharacter: "subtle-reveal",
+        asymmetryPreference: 35,
+        densityPreference: 45,
+        contrastPreference: 60,
+        atmosphere: "archival"
+      },
+      "restaurant-cafe": {
+        emotionalTarget: "joy",
+        decisionPace: "immediate",
+        typographyBehavior: "dominant-modern",
+        pagePacing: "moderate-editorial",
+        colorIntensity: "vibrant-energy",
+        imageTreatment: "lifestyle-editorial",
+        motionCharacter: "kinetic-bounce",
+        asymmetryPreference: 75,
+        densityPreference: 65,
+        contrastPreference: 75,
+        atmosphere: "energetic"
+      },
+      "gym-fitness": {
+        emotionalTarget: "energy",
+        decisionPace: "immediate",
+        typographyBehavior: "compressed-kinetic",
+        pagePacing: "fast-kinetic",
+        colorIntensity: "vibrant-energy",
+        imageTreatment: "lifestyle-editorial",
+        motionCharacter: "kinetic-bounce",
+        asymmetryPreference: 80,
+        densityPreference: 75,
+        contrastPreference: 85,
+        atmosphere: "energetic"
+      },
+      "salon-spa": {
+        emotionalTarget: "calm",
+        decisionPace: "deliberate",
+        typographyBehavior: "expansive-airy",
+        pagePacing: "slow-meditative",
+        colorIntensity: "muted-archive",
+        imageTreatment: "texture-macro",
+        motionCharacter: "ambient-breathing",
+        asymmetryPreference: 45,
+        densityPreference: 30,
+        contrastPreference: 40,
+        atmosphere: "intimate"
+      },
+      "consulting-agency": {
+        emotionalTarget: "authority",
+        decisionPace: "analytical",
+        typographyBehavior: "dominant-modern",
+        pagePacing: "moderate-editorial",
+        colorIntensity: "neutral-professional",
+        imageTreatment: "product-isolated",
+        motionCharacter: "cinematic-glide",
+        asymmetryPreference: 55,
+        densityPreference: 50,
+        contrastPreference: 65,
+        atmosphere: "industrial"
+      },
+      "retail-shop": {
+        emotionalTarget: "desire",
+        decisionPace: "exploratory",
+        typographyBehavior: "layered-wall",
+        pagePacing: "moderate-editorial",
+        colorIntensity: "vibrant-energy",
+        imageTreatment: "product-isolated",
+        motionCharacter: "tactile-feedback",
+        asymmetryPreference: 70,
+        densityPreference: 70,
+        contrastPreference: 80,
+        atmosphere: "energetic"
+      },
+      "tattoo-studio": {
+        emotionalTarget: "rebellion",
+        decisionPace: "exploratory",
+        typographyBehavior: "layered-wall",
+        pagePacing: "fast-kinetic",
+        colorIntensity: "vibrant-energy",
+        imageTreatment: "lifestyle-editorial",
+        motionCharacter: "kinetic-bounce",
+        asymmetryPreference: 85,
+        densityPreference: 80,
+        contrastPreference: 90,
+        atmosphere: "industrial"
+      },
+      "design-studio": {
+        emotionalTarget: "creativity",
+        decisionPace: "exploratory",
+        typographyBehavior: "layered-wall",
+        pagePacing: "moderate-editorial",
+        colorIntensity: "vibrant-energy",
+        imageTreatment: "lifestyle-editorial",
+        motionCharacter: "cinematic-glide",
+        asymmetryPreference: 90,
+        densityPreference: 70,
+        contrastPreference: 85,
+        atmosphere: "industrial"
+      },
+      "photography-studio": {
+        emotionalTarget: "emotion",
+        decisionPace: "exploratory",
+        typographyBehavior: "restrained-serif",
+        pagePacing: "slow-meditative",
+        colorIntensity: "atmospheric-moody",
+        imageTreatment: "cinematic-crops",
+        motionCharacter: "cinematic-glide",
+        asymmetryPreference: 75,
+        densityPreference: 40,
+        contrastPreference: 70,
+        atmosphere: "luxury"
+      }
+    };
+  }
+});
+
+// src/lib/layout-dna-engine.ts
+async function generateLayoutDNA(input, options) {
+  const prompt = `LAYOUT DNA GENERATION \u2014 Create the fundamental visual identity system for ${input.business.name}
+
+You are generating the PERSISTENT VISUAL IDENTITY SYSTEM that will control ALL design decisions for this website.
+Every layout choice, spacing decision, and compositional moment must derive from this DNA.
+
+Business: ${input.business.name}
+Category: ${input.business.category}
+Industry Psychology: ${JSON.stringify(input.industryPsychology)}
+Conversion Intent: ${input.conversationIntent}
+
+Generate STRICT JSON with THESE EXACT KEYS (no extra keys):
+
+{
+  "gridSystem": "string \u2014 specify the grid structure: '12-column-asymmetric', '6-column-modular', 'editorial-flexible', 'cinematic-offset', 'brutalist-monolithic'",
+  "spacingRhythm": "string \u2014 specify the spatial rhythm: 'compressed-kinetic', 'balanced-editorial', 'airy-breathing', 'luxury-silence', 'brutalist-dense'",
+  "scanPath": "string \u2014 how the eye should move: 'horizontal-flow', 'diagonal-ascending', 'vertical-stagger', 'z-pattern', 'circular-spiral'",
+  "visualTempo": "string \u2014 pacing through the page: 'slow-meditative', 'steady-editorial', 'kinetic-rapid', 'pulse-cinematic', 'breath-rhythm'",
+  "depthBehavior": "string \u2014 layering approach: 'flat-modern', 'layered-depth', 'overlapping-planes', 'immersive-3d', 'floating-hierarchy'",
+  "imageWeighting": "string \u2014 role of imagery: 'images-dominant', 'images-supporting', 'image-texture-background', 'image-accent-moments'",
+  "interactionDensity": "string \u2014 how interactive: 'interactive-dense', 'interactive-sparse', 'interactive-punctuated', 'interactive-hidden'",
+  "asymmetryLevel": number (0-100, where 0=perfectly symmetric, 100=maximum compositional chaos),
+  "dominantAxis": "string \u2014 primary visual direction: 'horizontal', 'vertical', 'diagonal', 'radial', 'chaotic'",
+  "colorStrategy": "string \u2014 palette approach: 'monochromatic', 'analogous', 'complementary', 'triadic', 'atmospheric'",
+  "shapeLanguage": "string \u2014 primary geometric shapes: 'circles', 'squares', 'triangles', 'organic-curves', 'mixed-geometry'"
+}
+
+CRITICAL RULES:
+- This DNA is PERSISTENT \u2014 every element must respect it
+- Be specific and intentional, not generic
+- Choose based on industry psychology and business category
+- Avoid SaaS/startup defaults (balanced grids, centered layouts, equal spacing)
+- Asymmetry and irregular rhythm are preferred over perfect balance
+`;
+  try {
+    const rawResponse = await options.llmJson(prompt, "layout-dna-generator");
+    const dna = JSON.parse(rawResponse);
+    if (options.debugSession) {
+      options.persistGenerationDebugFile(
+        options.debugSession,
+        "01-layout-dna-response.json",
+        dna
+      );
+    }
+    return dna;
+  } catch (err) {
+    options.logStderr(`[LayoutDNAEngine] Generation failed: ${String(err)}`);
+    return {
+      gridSystem: "editorial-flexible",
+      spacingRhythm: "balanced-editorial",
+      scanPath: "diagonal-ascending",
+      visualTempo: "steady-editorial",
+      depthBehavior: "layered-depth",
+      imageWeighting: "images-supporting",
+      interactionDensity: "interactive-punctuated",
+      asymmetryLevel: 60,
+      dominantAxis: "diagonal",
+      colorStrategy: "complementary",
+      shapeLanguage: "mixed-geometry"
+    };
+  }
+}
+var init_layout_dna_engine = __esm({
+  "src/lib/layout-dna-engine.ts"() {
+  }
+});
+
+// src/lib/website-memory-engine.ts
+function generateWebsiteFingerprint(siteId, compositionSequence, spacingSignature, typographySignature, gridSignature, ctaSignature, entropyScore, colorSignature, industry, conversionIntent) {
+  return {
+    siteId,
+    generatedAt: Date.now(),
+    compositionSequence,
+    spacingFingerprint: spacingSignature,
+    typographyFingerprint: typographySignature,
+    gridFingerprint: gridSignature,
+    ctaFingerprint: ctaSignature,
+    entropyScore,
+    colorFingerprint: colorSignature,
+    industry,
+    conversionIntent
+  };
+}
+var init_website_memory_engine = __esm({
+  "src/lib/website-memory-engine.ts"() {
   }
 });
 
@@ -2276,14 +1938,39 @@ function buildBusinessIntelligence(business) {
   };
 }
 async function buildBrandStrategy(business, intel, options) {
-  const prompt = `You are a Brand Strategy Agent.
-Return strict JSON with keys: typographyPhilosophy, spacingPhilosophy, visualRhythm, compositionPhilosophy, interactionPhilosophy, motionLanguage, densityStrategy, asymmetryStrategy, imageryStrategy.
-Business: ${business.name}
+  const prompt = `PREMIUM BRAND STRATEGY ARCHITECT \u2014 Design Uniquely for ${business.name}
+
+Your mission: Create a completely bespoke visual identity and composition language grounded ONLY in this business's category, psychology, and local context. REJECT all template patterns.
+
+FORBIDDEN OUTPUTS:
+- Standard SaaS/startup layouts (hero-features-testimonials-CTA repeats)
+- Centered, symmetrical grid systems
+- Bootstrap-style card layouts
+- Generic spacing rhythms
+- Startup vocabulary ("Unlock," "Unleash," "Elevate," "Seamless," "Cutting-Edge")
+
+BUSINESS SPECIFICS:
+Name: ${business.name}
 Category: ${business.category}
 Archetype: ${intel.industryArchetype}
-Demographic: ${intel.customerDemographic}
-Tone: ${intel.emotionalTone}
-Avoid generic or safe design language.`;
+Customer Type: ${intel.customerDemographic}
+Emotional Tone: ${intel.emotionalTone}
+Trust Style: ${intel.trustStyle}
+Local Culture: ${intel.localVisualCulture}
+Conversion: ${intel.conversionIntent}
+
+Return ONLY valid JSON with these keys (every value must be specific to THIS business, not generic):
+{
+  "typographyPhilosophy": "Custom font pairing logic grounded in this industry's visual expectations",
+  "spacingPhilosophy": "Breathing vs. density rules unique to how customers perceive this category",
+  "visualRhythm": "Specific pacing patterns: tight hero, breathing proof, dense CTA? Or inverted?",
+  "compositionPhilosophy": "Unique asymmetric or editorial approach. E.g., 'diagonal splits with floating media' or 'staggered grids with layered content'",
+  "interactionPhilosophy": "Motion personality specific to the business vibe",
+  "motionLanguage": "Is it kinetic/energetic, editorial/slow, cinematic/dramatic, or subtle/trust-focused?",
+  "densityStrategy": "How does visual weight change from top to bottom to maintain engagement?",
+  "asymmetryStrategy": "Specific offset and alignment rules to create uniqueness without feeling chaotic",
+  "imageryStrategy": "Crop styles, overlay treatments, depth techniques custom to this business"
+}`;
   try {
     traceLog(options, "CREATIVE_BRIEF", "brand_strategy_prompt", prompt);
     const raw = await options.llmJson(prompt, "brand-strategy-agent");
@@ -2316,10 +2003,26 @@ Avoid generic or safe design language.`;
   }
 }
 async function buildVisualMoodboard(business, strategy, options) {
-  const prompt = `You are a Visual Moodboard Agent. Return strict JSON with keys: references (array), compositionStyles (array), gridBehavior, whitespaceStrategy, editorialRhythm, colorAtmosphere, animationMood, imageTreatmentSystem.
+  const prompt = `CUSTOM VISUAL MOODBOARD \u2014 Composition Language for ${business.name}
+
+You are designing the visual mood and composition aesthetic EXCLUSIVELY for this business. Reject generic references and template patterns.
+
 Business: ${business.name}
 Category: ${business.category}
-Strategy: ${JSON.stringify(strategy)}.`;
+Brand Strategy: ${JSON.stringify(strategy)}
+
+Create a UNIQUE moodboard with these specific outputs:
+
+{
+  "references": ["3-5 specific high-end design/editorial references that match this business's vibe \u2014 NOT generic templates"],
+  "compositionStyles": ["Specific asymmetric, layered, or editorial techniques to apply throughout \u2014 e.g., 'diagonal image bleeds', 'offset stagger grids', 'overlapping panels'"],
+  "gridBehavior": "Specific grid system \u2014 e.g., '12-column with 40% offset first column' or '5-column grid with asymmetric spans'",
+  "whitespaceStrategy": "How to use negative space for this specific business psychology \u2014 NOT generic 'balanced'",
+  "editorialRhythm": "Specific pacing pattern from hero to footer \u2014 tight-breathable-dense? Dense-breathing-tight?",
+  "colorAtmosphere": "Specific color usage rules for this category, NOT generic neutral palettes",
+  "animationMood": "Motion personality \u2014 kinetic-energetic, editorial-slow, cinematic-dramatic, subtle-understated, etc.",
+  "imageTreatmentSystem": "Specific image crop, overlay, and depth techniques \u2014 e.g., 'cinematic crops with atmospheric grain', 'soft vignettes', 'bold asymmetric bleeds'"
+}`;
   try {
     traceLog(options, "MOODBOARD", "moodboard_prompt", prompt);
     const raw = await options.llmJson(prompt, "visual-moodboard-agent");
@@ -2351,15 +2054,53 @@ function buildCompositionPlan(business, intel, seed) {
     "editorial-split",
     "systems"
   ]);
-  const baseSections = [
-    "hero",
-    "features",
-    "gallery",
-    "testimonials",
-    "faq",
-    "cta",
-    "contact"
-  ];
+  let baseSections = ["hero", "contact"];
+  const c = (business.category || "").toLowerCase();
+  if (intel.conversionIntent === "bookings" || c.includes("restaurant") || c.includes("salon") || c.includes("gym")) {
+    baseSections = [
+      "hero",
+      "testimonials",
+      "gallery",
+      "features",
+      "cta",
+      "faq",
+      "contact"
+    ];
+  } else if (intel.conversionIntent === "consultations" || c.includes("law") || c.includes("consult") || c.includes("agency")) {
+    baseSections = [
+      "hero",
+      "features",
+      "testimonials",
+      "gallery",
+      "cta",
+      "contact"
+    ];
+  } else if (intel.conversionIntent === "commerce" || c.includes("store") || c.includes("shop")) {
+    baseSections = [
+      "hero",
+      "gallery",
+      "features",
+      "testimonials",
+      "cta",
+      "contact"
+    ];
+  } else {
+    baseSections = [
+      "hero",
+      "features",
+      "gallery",
+      "testimonials",
+      "faq",
+      "cta",
+      "contact"
+    ];
+  }
+  if (c.includes("law") || c.includes("finance") || c.includes("legal")) {
+    baseSections = baseSections.filter((t) => t !== "gallery" && t !== "faq");
+  }
+  if (!business.photos || business.photos.length < 2) {
+    baseSections = baseSections.filter((t) => t !== "gallery");
+  }
   const sections = baseSections.map((type, index) => {
     const sectionSeed = hashSeed(`${seed}-${type}-${index}`);
     return {
@@ -2386,10 +2127,260 @@ function buildCompositionPlan(business, intel, seed) {
     sections,
     heroMode,
     asymmetryBias: intel.industryArchetype.includes("structured") ? 35 : 70,
-    depthBias: intel.industryArchetype.includes("kinetic") ? 75 : 55
+    depthBias: intel.industryArchetype.includes("kinetic") ? 75 : 55,
+    conversionIntent: intel.conversionIntent
   };
 }
-function createSchemaFromPlan(business, plan, strategy, moodboard, tokens) {
+function classifyImages(photos, business, category) {
+  return photos.map((src, index) => {
+    const lower = src.toLowerCase();
+    let classification;
+    if (lower.includes("portrait")) {
+      classification = "portrait";
+    } else if (lower.includes("interior")) {
+      classification = "interior-full";
+    } else if (lower.includes("detail") || lower.includes("texture")) {
+      classification = "texture-abstract";
+    } else if (lower.includes("people") || lower.includes("person")) {
+      classification = "people-single";
+    } else if (lower.includes("product")) {
+      classification = "product-isolated";
+    } else if (lower.includes("sign") || lower.includes("logo")) {
+      classification = "signage-text";
+    } else if (lower.includes("workspace")) {
+      classification = "workspace";
+    } else {
+      classification = "landscape";
+    }
+    const emotionalTone = classification === "workspace" || classification === "product-isolated" ? "professional" : classification === "people-single" || classification === "people-group" ? "warm" : classification === "texture-abstract" ? "moody" : "calm";
+    const suggestedTreatment = classification === "portrait" || classification === "people-single" ? "overlapped" : classification === "landscape" ? "full-bleed" : classification === "texture-abstract" ? "textured-bg" : "accent-pop";
+    return {
+      src,
+      classification,
+      dominantColor: index % 2 === 0 ? "#121212" : "#999999",
+      aspectRatio: classification === "portrait" ? 0.75 : 1.6,
+      hasText: /text|sign|logo/i.test(src),
+      hasfaces: /people|portrait|face|person/i.test(src),
+      emotionalTone,
+      suggestedTreatment
+    };
+  });
+}
+function buildTypographyBehavior(psychology, layoutDNA) {
+  const role = psychology.typographyBehavior === "restrained-serif" ? "supporting" : psychology.typographyBehavior === "compressed-kinetic" ? "dominant" : "breathing";
+  return {
+    hierarchyRole: role,
+    lineCompressionRatio: psychology.typographyBehavior === "compressed-kinetic" ? 1.15 : psychology.typographyBehavior === "expansive-airy" ? 1.9 : 1.4,
+    sizeProgression: psychology.typographyBehavior === "layered-wall" ? "exponential" : psychology.typographyBehavior === "compressed-kinetic" ? "stepped" : "smooth",
+    scanGuidance: layoutDNA.scanPath.includes("diagonal") ? "diagonal" : layoutDNA.scanPath.includes("vertical") ? "vertical" : "horizontal",
+    emotionalPacing: psychology.pagePacing === "fast-kinetic" ? "aggressive" : psychology.pagePacing === "slow-meditative" ? "calm" : "moderate",
+    fontRationale: `Typography supports ${psychology.emotionalTarget} with ${psychology.typographyBehavior} structure and ${layoutDNA.dominantAxis} movement.`,
+    bodySizeRange: [16, 20],
+    headingSizeRange: [32, 64]
+  };
+}
+function buildMotionLanguage(psychology, layoutDNA) {
+  return {
+    character: psychology.motionCharacter.includes("cinematic") ? "cinematic" : psychology.motionCharacter.includes("kinetic") ? "kinetic" : psychology.motionCharacter.includes("tactile") ? "tactile" : "ambient",
+    primaryDirection: layoutDNA.dominantAxis === "diagonal" ? "diagonal" : layoutDNA.dominantAxis === "radial" ? "spiral" : layoutDNA.dominantAxis === "vertical" ? "ascending" : "horizontal",
+    defaultDuration: psychology.motionCharacter === "kinetic-bounce" ? 900 : 1200,
+    defaultEasing: psychology.motionCharacter === "ambient-breathing" ? "ease-in-out" : "ease-out",
+    parallaxDepth: layoutDNA.depthBehavior.includes("immersive") ? "aggressive" : "subtle",
+    hoverBehavior: psychology.motionCharacter === "tactile-feedback" ? "pronounced" : "subtle",
+    staggerPattern: psychology.pagePacing === "fast-kinetic" ? "offset" : "wave",
+    colorAnimation: "subtle",
+    compositionMotion: {
+      "establish-authority": { enterAnimation: "reveal-up" },
+      "prove-credibility": { enterAnimation: "fade-layer" },
+      "showcase-work": { enterAnimation: "slide-in" },
+      "build-emotion": { enterAnimation: "reveal-layer" },
+      "generate-desire": { enterAnimation: "overscroll" },
+      "explain-process": { enterAnimation: "scale-in" },
+      "facilitate-action": { enterAnimation: "pop-in" },
+      "close-conversion": { enterAnimation: "cinematic-reveal" }
+    }
+  };
+}
+function buildCompositionSystems(plan, layoutDNA, typography) {
+  return plan.sections.map((section) => {
+    const preferredRenderSystem = layoutDNA.imageWeighting === "images-dominant" ? "css-grid" : "css-grid";
+    const overlapBehavior = section.layoutMode === "overlap-layer" ? "immersive" : section.layoutMode === "staggered-grid" ? "subtle" : "none";
+    return {
+      engineType: section.layoutMode === "split-offset" ? "scan-path" : section.layoutMode === "staggered-grid" ? "density" : section.layoutMode === "overlap-layer" ? "overlap" : "hierarchy orchestration",
+      gridColumns: layoutDNA.gridSystem.includes("12") ? 12 : layoutDNA.gridSystem.includes("6") ? 6 : "asymmetric",
+      overlapBehavior,
+      gridTemplate: section.layoutMode === "staggered-grid" ? "repeat(12, minmax(0,1fr))" : section.layoutMode === "split-offset" ? "1.1fr 0.9fr" : "1fr",
+      spacingSystem: {
+        container: typography.lineCompressionRatio > 1.7 ? "clamp(4rem, 8vw, 10rem)" : "clamp(3rem, 6vw, 7rem)",
+        panel: section.span === "full" ? "clamp(2rem, 4vw, 5rem)" : "clamp(1.4rem, 3vw, 4rem)"
+      },
+      responsiveBehavior: [
+        { breakpoint: "1200px", gridColumns: 12, spacingScale: 1 },
+        { breakpoint: "900px", gridColumns: 1, spacingScale: 1.1 }
+      ],
+      preferredRenderSystem
+    };
+  });
+}
+function buildNarrativeCompositions(plan, business, intelligence, layoutDNA, images, typography, motion) {
+  return plan.sections.map((section, index) => {
+    const contentType = section.type === "hero" ? "hero" : section.type === "gallery" ? "showcase" : section.type === "testimonials" ? "proof" : section.type === "features" ? "explain" : section.type === "cta" ? "interaction" : "pause";
+    const purpose = section.type === "hero" ? "establish-authority" : section.type === "gallery" ? "showcase-work" : section.type === "testimonials" ? "prove-credibility" : section.type === "features" ? "explain-process" : section.type === "cta" ? "facilitate-action" : section.type === "faq" ? "explain-process" : "close-conversion";
+    const visualBehavior = section.layoutMode === "split-offset" ? "editorial-asymmetry" : section.layoutMode === "staggered-grid" ? "kinetic-stagger" : section.layoutMode === "overlap-layer" ? "immersive-overlap" : "intimate-paired";
+    const scanPattern = layoutDNA.scanPath === "diagonal-ascending" ? "diagonal-flow" : layoutDNA.scanPath === "vertical-stagger" ? "vertical" : "horizontal";
+    const densityMode = section.density === "airy" ? "sparse-breathing" : section.density === "tight" ? "dense" : "balanced";
+    const geometrySystem = section.layoutMode === "staggered-grid" ? "grid-overlay" : section.layoutMode === "overlap-layer" ? "overlap-plane" : section.layoutMode === "split-offset" ? "organic-flow" : "stack-layer";
+    const imageSet = images.slice(index, index + 2);
+    return {
+      id: `composition-${index + 1}`,
+      narrativePurpose: purpose,
+      visualBehavior,
+      scanPattern,
+      densityMode,
+      geometrySystem,
+      contentType,
+      viewportRatio: section.type === "hero" ? 1.05 : 0.65,
+      images: imageSet.length ? imageSet : images.slice(0, 1),
+      heading: section.type === "hero" ? business.name : section.type === "gallery" ? `A cinematic view of ${business.category}` : section.type === "testimonials" ? `Stories from real customers` : section.type === "features" ? `How ${business.name} delivers results` : section.type === "cta" ? `Make your next move` : `Connect with ${business.name}`,
+      description: section.type === "hero" ? `A crafted website direction for ${business.category} in ${business.address || "your area"}.` : section.type === "gallery" ? `Visual storytelling tailored to your business imagery.` : section.type === "testimonials" ? `Proof that speaks with chosen, specific customer outcomes.` : section.type === "features" ? `Unique service pillars designed for ${business.category}.` : section.type === "cta" ? `A decisive prompt that helps visitors move forward.` : `Clear contact and next-step guidance for your audience.`,
+      actions: section.type === "cta" ? [
+        {
+          label: "Start the conversation",
+          href: "#contact",
+          style: "primary"
+        }
+      ] : section.type === "hero" ? [
+        {
+          label: "Book a consultation",
+          href: "#contact",
+          style: "primary"
+        },
+        {
+          label: "View the work",
+          href: "#gallery",
+          style: "secondary"
+        }
+      ] : [],
+      proofElements: section.type === "testimonials" ? [
+        {
+          type: "testimonial",
+          content: "Exceptional service and lasting results.",
+          author: "Verified client"
+        }
+      ] : section.type === "features" ? [{ type: "stat", content: "4.9/5 average client rating" }] : [],
+      motionLanguage: {
+        entryTrigger: section.type === "cta" ? "on-hover" : "on-scroll",
+        entryType: section.type === "hero" ? "reveal" : section.type === "gallery" ? "slide" : "fade",
+        internalMotion: section.type === "gallery" ? "kinetic" : "subtle"
+      },
+      styling: {
+        backgroundColor: index % 2 === 0 ? "#fff" : "#f7f5f1",
+        textColor: "#111",
+        accentColor: "#2f2b26",
+        typographySize: section.type === "hero" ? "large" : "medium",
+        typographyWeight: section.type === "hero" ? "contrast" : "regular"
+      }
+    };
+  });
+}
+function buildWebsiteFingerprint(id, compositions, layoutDNA, typography, motion, color, industry, conversionIntent) {
+  return generateWebsiteFingerprint(
+    id,
+    compositions.map((c) => c.narrativePurpose),
+    layoutDNA.spacingRhythm,
+    `${typography.hierarchyRole}-${typography.scanGuidance}-${typography.emotionalPacing}`,
+    layoutDNA.gridSystem,
+    compositions.map((c) => `${c.geometrySystem}-${c.visualBehavior}`).join("|"),
+    0,
+    color,
+    industry,
+    conversionIntent
+  );
+}
+function renderCompositionHtml(schema, tokens) {
+  const layoutDNA = schema.layoutDNA;
+  const compositions = schema.narrativeCompositions || [];
+  const rootVars = `
+		--bg:${tokens.palette.background};
+		--surface:${tokens.palette.surface};
+		--primary:${tokens.palette.primary};
+		--accent:${tokens.palette.accent};
+		--text:${tokens.palette.text};
+		--muted:${tokens.palette.muted};
+		--outline:${tokens.palette.outline};
+		--hero:${tokens.typography.scaleHero};
+		--h2:${tokens.typography.scaleH2};
+		--body:${tokens.typography.scaleBody};
+		--sectionY:${tokens.spacing.sectionY};
+		--sectionYTight:${tokens.spacing.sectionYTight};
+		--gutter:${tokens.spacing.gutter};
+		--cardPad:${tokens.spacing.cardPad};
+		--motion-ease:${tokens.motion.ease};
+		--asymmetry:${layoutDNA?.asymmetryLevel ?? 60};
+		--scan:${layoutDNA?.scanPath ?? "diagonal-ascending"};
+		--tempo:${layoutDNA?.visualTempo ?? "steady-editorial"};
+		--depth:${layoutDNA?.depthBehavior ?? "layered-depth"};
+		--image-weight:${layoutDNA?.imageWeighting ?? "images-supporting"};
+	`;
+  const compositionHtml = compositions.map((comp) => {
+    const images = comp.images.map(
+      (img, idx) => `<div class="composition-image image-${idx + 1}" style="background-image:url('${img.src}');"></div>`
+    ).join("");
+    const actions = (comp.actions || []).map(
+      (action) => `<a class="composition-cta cta-${action.style}" href="${action.href}">${action.label}</a>`
+    ).join("");
+    return `<article class="composition composition-${comp.geometrySystem} ${comp.visualBehavior} density-${comp.densityMode}" data-scan="${comp.scanPattern}">
+				<div class="composition-shell">
+					<div class="composition-text">
+						<span class="composition-purpose">${comp.narrativePurpose.replace(/-/g, " ")}</span>
+						<h2>${comp.heading || ""}</h2>
+						<p>${comp.description || ""}</p>
+						<div class="composition-actions">${actions}</div>
+						<div class="composition-proof">${(comp.proofElements || []).map(
+      (proof) => `<span class="proof-item">${proof.content}</span>`
+    ).join("")}</div>
+					</div>
+					<div class="composition-media">${images}</div>
+				</div>
+			</article>`;
+  }).join("");
+  const css = `
+		:root { ${rootVars} }
+		* { box-sizing: border-box; }
+		body { margin:0; font-family:${tokens.typography.body}, ui-sans-serif, system-ui; background:var(--bg); color:var(--text); line-height:1.5; }
+		main { overflow:hidden; }
+		.page-grid { display:grid; gap:clamp(3rem, 6vw, 7rem); padding:clamp(2rem, 4vw, 4rem); }
+		.composition { position:relative; overflow:hidden; min-height:clamp(55vh, 70vh, 95vh); }
+		.composition-shell { display:grid; gap:clamp(1.6rem, 3vw, 3rem); grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items:center; }
+		.composition-grid-overlay { grid-template-columns: 1.1fr .9fr; }
+		.composition-overlap-plane { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+		.composition-stack-layer { grid-template-columns: 1fr; }
+		.composition-organic-flow { grid-template-columns: 1.2fr .8fr; }
+		.composition-text { position:relative; z-index:2; padding:clamp(2rem, 4vw, 5rem); background:rgba(255,255,255,0.92); backdrop-filter:blur(12px); border-radius:24px; box-shadow:0 30px 90px rgba(0,0,0,0.08); }
+		.composition-purpose { display:inline-block; margin-bottom:1rem; text-transform:uppercase; letter-spacing:.22em; font-size:.8rem; color:var(--accent); }
+		.composition-text h2 { font-size:clamp(2.4rem, 6vw, 5rem); line-height:0.95; margin:0 0 1rem; }
+		.composition-text p { max-width: 60ch; color:var(--muted); }
+		.composition-actions { display:flex; flex-wrap:wrap; gap:1rem; margin-top:1.8rem; }
+		.composition-cta { text-decoration:none; padding:.95rem 1.4rem; border-radius:999px; font-weight:700; transition:transform .3s ease; }
+		.cta-primary { background:var(--primary); color:#fff; }
+		.cta-secondary { background:transparent; border:1px solid var(--outline); color:var(--text); }
+		.composition-media { position:relative; display:grid; gap:1rem; grid-template-columns:1fr; }
+		.composition-image { min-height:320px; border-radius:28px; background-size:cover; background-position:center; box-shadow:0 32px 100px rgba(0,0,0,0.14); transform:translateY(0); }
+		.composition-overlap-plane .composition-image:nth-child(1) { grid-column:1; grid-row:1; transform:translateY(0); }
+		.composition-overlap-plane .composition-image:nth-child(2) { grid-column:1 / -1; grid-row:1; transform:translate(12%, 18%); z-index:1; opacity:.96; }
+		.composition-organc-flow .composition-image, .composition-organic-flow .composition-image { border-radius:24px; }
+		.composition-kinetic-stagger .composition-image { transition:transform .6s ease; }
+		.composition-kinetic-stagger:hover .composition-image { transform:translateY(-6px); }
+		.composition-proof .proof-item { display:inline-flex; margin-top:1rem; padding:.8rem 1rem; background:rgba(255,255,255,0.85); border:1px solid var(--outline); border-radius:18px; }
+		@media (max-width: 980px) {
+			.composition-shell { grid-template-columns:1fr; }
+			.composition-text { padding:2rem; }
+			.composition-image { min-height:240px; }
+		}
+	`;
+  return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${schema.seo.title}</title><style>${css}</style></head><body><main class="page-grid">${compositionHtml}</main></body></html>`;
+}
+function createSchemaFromPlan(business, plan, strategy, moodboard, tokens, layoutDNA, industryPsychology, narrativeCompositions, compositionSystems, imageIntelligence, typographyBehavior, motionLanguage, entropy, fingerprint) {
   const siteId = `${business.id || "site"}-${Date.now()}`;
   const slug = (business.name || "site").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   const photos = (business.photos || []).filter(Boolean);
@@ -2407,6 +2398,10 @@ function createSchemaFromPlan(business, plan, strategy, moodboard, tokens) {
       hierarchyWeight: section.type === "hero" ? "dominant" : section.type === "cta" ? "supporting" : "breathing"
     };
     if (section.type === "hero") {
+      const c = (business.category || "").toLowerCase();
+      const primaryLabel = plan.conversionIntent === "bookings" || plan.conversionIntent === "walk-ins" ? "Book Now" : plan.conversionIntent === "consultations" ? "Schedule a Consultation" : plan.conversionIntent === "commerce" ? "Shop Now" : "Get Started";
+      const secondaryLabel = photos.length > 1 ? "View Our Work" : "Learn More";
+      const secondaryHref = photos.length > 1 ? "#gallery" : "#features";
       return {
         id,
         type: "hero",
@@ -2414,39 +2409,81 @@ function createSchemaFromPlan(business, plan, strategy, moodboard, tokens) {
         variant: plan.heroMode,
         composition,
         headline: `${business.name}`,
-        subheadline: `${business.category} in ${business.address || "your local market"}, crafted to convert trust into action.`,
-        ctaPrimary: { label: "Book Consultation", href: "#contact" },
-        ctaSecondary: { label: "View Work", href: "#gallery" },
-        badges: [business.category || "Local Service", "Premium Experience"],
+        subheadline: c.includes("law") ? `${business.name} \u2014 Legal counsel for ${business.address || "your community"}.` : c.includes("restaurant") ? `${business.category} in ${business.address || "your neighborhood"}. Reserve your table.` : c.includes("salon") ? `Premium ${business.category} experiences in ${business.address || "your area"}.` : c.includes("gym") ? `Your fitness journey starts here \u2014 ${business.address || "right in your neighborhood"}.` : `${business.category} in ${business.address || "your local market"}, designed for results.`,
+        ctaPrimary: { label: primaryLabel, href: "#contact" },
+        ctaSecondary: { label: secondaryLabel, href: secondaryHref },
+        badges: [business.category || "Local Service", "Custom Crafted"],
         media: {
           type: "image",
           src: heroPhoto,
-          alt: `${business.name} hero image`
+          alt: `${business.name} hero`
         }
       };
     }
     if (section.type === "features") {
+      const c = (business.category || "").toLowerCase();
+      const featureTitle = c.includes("law") ? "Our Approach" : c.includes("restaurant") || c.includes("cafe") ? "The Experience" : c.includes("fitness") || c.includes("gym") ? "What We Offer" : c.includes("salon") || c.includes("spa") ? "Our Services" : c.includes("consulting") || c.includes("agency") ? "Our Expertise" : "What Sets Us Apart";
+      const featureItems = c.includes("law") ? [
+        {
+          title: "Strategic Counsel",
+          description: "Decades of legal expertise guiding complex matters to resolution."
+        },
+        {
+          title: "Local Authority",
+          description: "Deep roots in this community with trusted relationships."
+        },
+        {
+          title: "Results-Focused",
+          description: "Every case pursued with clarity and tenacity."
+        }
+      ] : c.includes("restaurant") || c.includes("cafe") ? [
+        {
+          title: "Sourced Thoughtfully",
+          description: "Local ingredients, seasonal menus, authentic preparation."
+        },
+        {
+          title: "Atmosphere Matters",
+          description: "Spaces designed for connection and comfort."
+        },
+        {
+          title: "Your Return",
+          description: "Built on regulars and relationship, not churn."
+        }
+      ] : c.includes("fitness") || c.includes("gym") ? [
+        {
+          title: "Real Programming",
+          description: "Expert coaching and programming tailored to your level."
+        },
+        {
+          title: "Community-Driven",
+          description: "A place where you belong, not just another gym."
+        },
+        {
+          title: "Results You'll See",
+          description: "Structured progression and measurable wins."
+        }
+      ] : [
+        {
+          title: "Expertise You Can Trust",
+          description: "Years of focused experience in your category."
+        },
+        {
+          title: "Local & Available",
+          description: "Here when you need us, responsive to your schedule."
+        },
+        {
+          title: "Your Success Is Ours",
+          description: "We're invested in your goals and outcomes."
+        }
+      ];
       return {
         id,
         type: "features",
         layout: "alternating-grid",
         variant: section.layoutMode,
         composition,
-        title: "What Makes This Different",
-        items: [
-          {
-            title: "High-Signal Positioning",
-            description: "Offer framing built for fast local decision-making."
-          },
-          {
-            title: "Proof-Led Narrative",
-            description: "Trust signals and testimonials integrated into the primary story arc."
-          },
-          {
-            title: "Conversion Architecture",
-            description: "CTA hierarchy and friction reduction engineered by section."
-          }
-        ]
+        title: featureTitle,
+        items: featureItems
       };
     }
     if (section.type === "gallery") {
@@ -2454,34 +2491,38 @@ function createSchemaFromPlan(business, plan, strategy, moodboard, tokens) {
         src,
         alt: `${business.name} image ${i + 1}`
       }));
+      const c = (business.category || "").toLowerCase();
+      const galleryTitle = c.includes("restaurant") || c.includes("cafe") ? "The Atmosphere" : c.includes("salon") || c.includes("spa") ? "Your Transformation" : c.includes("fitness") || c.includes("gym") ? "The Journey" : "Our Portfolio";
       return {
         id,
         type: "gallery",
         layout: "asymmetrical",
         variant: section.layoutMode,
         composition,
-        title: "Visual Story",
+        title: galleryTitle,
         items: gallery
       };
     }
     if (section.type === "testimonials") {
+      const c = (business.category || "").toLowerCase();
+      const testimonialTitle = c.includes("law") ? "Client Success" : c.includes("fitness") || c.includes("gym") ? "Transformation Stories" : c.includes("restaurant") || c.includes("cafe") ? "Guest Stories" : c.includes("salon") || c.includes("spa") ? "Client Results" : "Client Experiences";
       return {
         id,
         type: "testimonials",
         layout: "split",
         variant: section.layoutMode,
         composition,
-        title: "Client Outcomes",
+        title: testimonialTitle,
         items: [
           {
-            quote: "The new site feels like a premium agency build and converts far better.",
-            author: "Local Client",
-            role: "Owner"
+            quote: "The experience exceeded my expectations and I'm recommending them to everyone.",
+            author: "Real Client",
+            role: "Trust-Based"
           },
           {
-            quote: "Clear messaging, stronger trust, and a much sharper visual presence.",
-            author: "Repeat Customer",
-            role: "Operations"
+            quote: "Professional, attentive, and genuinely committed to the results.",
+            author: "Satisfied Client",
+            role: "Verified"
           }
         ]
       };
@@ -2540,10 +2581,19 @@ function createSchemaFromPlan(business, plan, strategy, moodboard, tokens) {
       version: 2,
       target: "wordpress"
     },
+    layoutDNA,
+    visualPsychology: industryPsychology,
+    imageIntelligence,
+    typographyBehavior,
+    motionLanguage,
+    narrativeCompositions,
+    compositionSystems,
+    entropyScore: entropy,
+    fingerprint,
     theme: {
       name: `Studio ${business.category || "Modern"}`,
       brandDNA: {
-        personality: "premium",
+        personality: "editorial",
         visualMood: "modern-authority",
         ctaEnergy: "inviting",
         spacingDensity: "balanced",
@@ -2632,113 +2682,6 @@ function buildVisualTokens(business, seed) {
     }
   };
 }
-function renderPremiumHtml(schema, tokens, plan) {
-  const rootVars = `
-		--bg:${tokens.palette.background};
-		--surface:${tokens.palette.surface};
-		--primary:${tokens.palette.primary};
-		--accent:${tokens.palette.accent};
-		--text:${tokens.palette.text};
-		--muted:${tokens.palette.muted};
-		--outline:${tokens.palette.outline};
-		--hero:${tokens.typography.scaleHero};
-		--h2:${tokens.typography.scaleH2};
-		--body:${tokens.typography.scaleBody};
-		--sectionY:${tokens.spacing.sectionY};
-		--sectionYTight:${tokens.spacing.sectionYTight};
-		--gutter:${tokens.spacing.gutter};
-		--cardPad:${tokens.spacing.cardPad};
-		--ease:${tokens.motion.ease};
-	`;
-  const sectionHtml = schema.sections.map((section, index) => {
-    const composition = section.composition || {};
-    const cls = `section s-${section.type} mode-${composition.sectionType || "standard"} tension-${composition.visualDepth || "medium"}`;
-    if (section.type === "hero") {
-      const hero = section;
-      return `<section class="${cls}" id="top"><div class="grid hero-grid"><div class="hero-copy"><p class="eyebrow">${schema.brand.category || ""}</p><h1>${hero.headline || schema.brand.businessName}</h1><p>${hero.subheadline || ""}</p><div class="actions"><a class="btn btn-primary" href="${hero.ctaPrimary?.href || "#contact"}">${hero.ctaPrimary?.label || "Get Started"}</a><a class="btn btn-ghost" href="${hero.ctaSecondary?.href || "#gallery"}">${hero.ctaSecondary?.label || "View Work"}</a></div></div><div class="hero-media">${hero.media?.src ? `<img src="${hero.media.src}" alt="${hero.media.alt || "hero"}"/>` : ""}</div></div></section>`;
-    }
-    if (section.type === "features") {
-      const f = section;
-      return `<section class="${cls}" id="services"><div class="grid"><header><h2>${f.title || "Services"}</h2></header><div class="stagger-grid">${(f.items || []).map(
-        (item, i) => `<article class="feature-card span-${i % 3 + 1}"><h3>${item.title}</h3><p>${item.description}</p></article>`
-      ).join("")}</div></div></section>`;
-    }
-    if (section.type === "gallery") {
-      const g = section;
-      return `<section class="${cls}" id="gallery"><div class="grid"><header><h2>${g.title || "Gallery"}</h2></header><div class="editorial-gallery">${(g.items || []).map(
-        (item, i) => `<figure class="shot shot-${i % 5 + 1}"><img src="${item.src || ""}" alt="${item.alt || ""}"/></figure>`
-      ).join("")}</div></div></section>`;
-    }
-    if (section.type === "testimonials") {
-      const t = section;
-      return `<section class="${cls}" id="testimonials"><div class="grid split"><header><h2>${t.title || "Testimonials"}</h2></header><div class="quotes">${(t.items || []).map(
-        (item) => `<blockquote><p>"${item.quote}"</p><cite>${item.author}${item.role ? `, ${item.role}` : ""}</cite></blockquote>`
-      ).join("")}</div></div></section>`;
-    }
-    if (section.type === "faq") {
-      const f = section;
-      return `<section class="${cls}" id="faq"><div class="grid"><header><h2>${f.title || "FAQ"}</h2></header><div class="faq-list">${(f.items || []).map(
-        (item) => `<details><summary>${item.question}</summary><p>${item.answer}</p></details>`
-      ).join("")}</div></div></section>`;
-    }
-    if (section.type === "cta") {
-      const c = section;
-      return `<section class="${cls}" id="cta"><div class="grid cta-band"><div><h2>${c.title || "Ready?"}</h2><p>${c.body || ""}</p></div><a class="btn btn-primary" href="${c.buttonHref || "#contact"}">${c.buttonLabel || "Start"}</a></div></section>`;
-    }
-    return `<section class="${cls}" id="contact"><div class="grid contact"><h2>Contact</h2><p>${schema.brand.address || ""}</p><p>${schema.brand.phone || ""}</p><p>${schema.brand.email || ""}</p></div></section>`;
-  }).join("\n");
-  const css = `
-		:root { ${rootVars} }
-		* { box-sizing: border-box; }
-		body { margin:0; font-family:${tokens.typography.body}, ui-sans-serif, system-ui; background:var(--bg); color:var(--text); line-height:1.5; }
-		main { overflow:hidden; }
-		.grid { width:min(1320px, 92vw); margin-inline:auto; }
-		.section { padding-block:var(--sectionY); position:relative; }
-		.section header { margin-bottom:clamp(1.2rem,2vw,2rem); }
-		h1 { font-family:${tokens.typography.heading}, serif; font-size:var(--hero); line-height:0.95; letter-spacing:-0.03em; margin:0 0 1rem; max-width:14ch; }
-		h2 { font-family:${tokens.typography.heading}, serif; font-size:var(--h2); line-height:1.05; letter-spacing:-0.02em; margin:0; }
-		h3 { font-size:clamp(1.1rem,1.4vw,1.5rem); margin:0 0 .5rem; }
-		p { margin:0; font-size:var(--body); color:var(--muted); }
-		.hero-grid { display:grid; grid-template-columns:1.1fr .9fr; gap:var(--gutter); align-items:end; }
-		.hero-media img { width:100%; height:100%; object-fit:cover; min-height:460px; border-radius:24px; box-shadow:0 20px 70px rgba(0,0,0,.12); }
-		.eyebrow { text-transform:uppercase; letter-spacing:.18em; font-size:.72rem; color:var(--accent); margin-bottom:1rem; }
-		.actions { display:flex; gap:.75rem; margin-top:1.2rem; flex-wrap:wrap; }
-		.btn { text-decoration:none; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; padding:.78rem 1.2rem; font-weight:600; transition:all .25s var(--ease); }
-		.btn-primary { background:var(--primary); color:#fff; box-shadow:0 10px 28px color-mix(in srgb, var(--primary) 35%, transparent); }
-		.btn-primary:hover { transform:translateY(-2px); }
-		.btn-ghost { border:1px solid var(--outline); color:var(--text); background:var(--surface); }
-		.stagger-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:var(--gutter); }
-		.feature-card { border:1px solid var(--outline); background:var(--surface); border-radius:20px; padding:var(--cardPad); min-height:180px; backdrop-filter: blur(8px); }
-		.feature-card.span-1 { grid-column:span 2; transform:translateY(0); }
-		.feature-card.span-2 { grid-column:span 2; transform:translateY(18px); }
-		.feature-card.span-3 { grid-column:span 2; transform:translateY(-10px); }
-		.editorial-gallery { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:var(--gutter); }
-		.shot { margin:0; border-radius:18px; overflow:hidden; box-shadow:0 18px 55px rgba(0,0,0,.12); }
-		.shot img { width:100%; height:100%; object-fit:cover; display:block; }
-		.shot-1{grid-column:span 7; min-height:360px;} .shot-2{grid-column:span 5; min-height:280px;}
-		.shot-3{grid-column:span 4; min-height:220px;} .shot-4{grid-column:span 4; min-height:240px;} .shot-5{grid-column:span 4; min-height:220px;}
-		.split { display:grid; grid-template-columns:.7fr 1.3fr; gap:var(--gutter); align-items:start; }
-		.quotes { display:grid; gap:var(--gutter); }
-		blockquote { margin:0; border-left:3px solid var(--accent); padding:1rem 1rem 1rem 1.2rem; background:var(--surface); border-radius:16px; }
-		blockquote p { color:var(--text); font-size:clamp(1.1rem,1.4vw,1.4rem); }
-		blockquote cite { display:block; margin-top:.8rem; color:var(--muted); font-size:.92rem; }
-		.faq-list { display:grid; gap:.7rem; }
-		details { border:1px solid var(--outline); border-radius:14px; background:var(--surface); padding:1rem 1.1rem; }
-		details summary { cursor:pointer; font-weight:600; color:var(--text); }
-		.cta-band { display:grid; grid-template-columns:1fr auto; gap:var(--gutter); align-items:center; padding:clamp(1.6rem,3vw,2.8rem); border:1px solid var(--outline); border-radius:24px; background:linear-gradient(130deg, color-mix(in srgb, var(--accent) 11%, var(--surface)), var(--surface)); }
-		.contact { padding:clamp(1.2rem,2vw,2rem); border:1px solid var(--outline); border-radius:18px; background:var(--surface); display:grid; gap:.5rem; }
-		.section::before { content:""; position:absolute; inset:auto -20% 100% auto; width:32vw; height:32vw; background:radial-gradient(circle, color-mix(in srgb, var(--accent) 28%, transparent), transparent 62%); pointer-events:none; filter:blur(30px); opacity:.35; }
-		@media (max-width: 1000px){
-			.hero-grid,.split,.cta-band { grid-template-columns:1fr; }
-			.stagger-grid { grid-template-columns:1fr; }
-			.feature-card { transform:none !important; grid-column:auto; }
-			.editorial-gallery { grid-template-columns:1fr 1fr; }
-			.shot { grid-column:auto !important; min-height:220px !important; }
-			h1 { max-width: 18ch; }
-		}
-	`;
-  return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${schema.seo.title}</title><style>${css}</style></head><body><main>${sectionHtml}</main></body></html>`;
-}
 async function maybeCaptureScreenshotBase64(html) {
   try {
     const dynamicImport = new Function(
@@ -2789,13 +2732,90 @@ async function generateWebsiteWithVisualIntelligence(business, options) {
   const moodboard = await buildVisualMoodboard(business, strategy, options);
   const compositionPlan = buildCompositionPlan(business, intelligence, seed);
   const tokens = buildVisualTokens(business, seed);
-  let schema = createSchemaFromPlan(
+  const industryPsychology = await generateIndustryVisualPsychology(
+    {
+      business: {
+        name: business.name,
+        category: business.category || "",
+        address: business.address
+      },
+      conversionIntent: compositionPlan.conversionIntent
+    },
+    options
+  );
+  const layoutDNA = await generateLayoutDNA(
+    {
+      business: {
+        name: business.name,
+        category: business.category || ""
+      },
+      industryPsychology,
+      conversationIntent: compositionPlan.conversionIntent
+    },
+    options
+  );
+  const typographyBehavior = buildTypographyBehavior(
+    industryPsychology,
+    layoutDNA
+  );
+  const motionLanguage = buildMotionLanguage(industryPsychology, layoutDNA);
+  const imageIntelligence = classifyImages(
+    business.photos || [],
+    business,
+    business.category || ""
+  );
+  const narrativeCompositions = buildNarrativeCompositions(
+    compositionPlan,
+    business,
+    intelligence,
+    layoutDNA,
+    imageIntelligence,
+    typographyBehavior,
+    motionLanguage
+  );
+  const compositionSystems = buildCompositionSystems(
+    compositionPlan,
+    layoutDNA,
+    typographyBehavior
+  );
+  const fingerprint = buildWebsiteFingerprint(
+    `${business.id || "site"}-${Date.now()}`,
+    narrativeCompositions,
+    layoutDNA,
+    typographyBehavior,
+    motionLanguage,
+    tokens.palette.primary,
+    business.category || "unknown",
+    compositionPlan.conversionIntent || "walk-ins"
+  );
+  const initialSchema = createSchemaFromPlan(
     business,
     compositionPlan,
     strategy,
     moodboard,
-    tokens
+    tokens,
+    layoutDNA,
+    industryPsychology,
+    narrativeCompositions,
+    compositionSystems,
+    imageIntelligence,
+    typographyBehavior,
+    motionLanguage,
+    {
+      overallScore: 0,
+      heroUniqueness: 0,
+      typographyDiversity: 0,
+      spacingDiversity: 0,
+      compositionDiversity: 0,
+      gridDiversity: 0,
+      ctaDiversity: 0,
+      templateSimilarityScore: 0,
+      risks: [],
+      lowEntropyCompositions: []
+    },
+    fingerprint
   );
+  let schema = initialSchema;
   traceLog(options, "SCHEMA_GENERATION", "schema_generated", schema);
   try {
     const sectionsMeta = schema.sections.map((s) => ({
@@ -2811,7 +2831,7 @@ async function generateWebsiteWithVisualIntelligence(business, options) {
   } catch (e) {
     traceLog(options, "SCHEMA_GENERATION", "sections_meta_error", String(e));
   }
-  let html = renderPremiumHtml(schema, tokens, compositionPlan);
+  let html = renderCompositionHtml(schema, tokens);
   let lastCritique = null;
   traceLog(options, "HTML_GENERATION", "html_generated_initial", html);
   try {
@@ -2913,7 +2933,7 @@ async function generateWebsiteWithVisualIntelligence(business, options) {
         String(e)
       );
     }
-    html = renderPremiumHtml(schema, tokens, compositionPlan);
+    html = renderCompositionHtml(schema, tokens);
     traceLog(options, "CRITIQUE_LOOP", `html_after_iter_${i}`, html);
   }
   try {
@@ -2996,6 +3016,23 @@ async function generateWebsiteWithVisualIntelligence(business, options) {
       "05c-wordpress-html-final.html",
       html
     );
+    try {
+      const uniquenessCheck = {
+        sectionSequence: schema.sections.map((s) => s.type).join(" \u2192 "),
+        sectionCount: schema.sections.length,
+        heroMode: schema._pipeline?.compositionPlan?.heroMode,
+        asymmetryBias: schema._pipeline?.compositionPlan?.asymmetryBias,
+        depthBias: schema._pipeline?.compositionPlan?.depthBias
+      };
+      traceLog(
+        options,
+        "UNIQUENESS_CHECK",
+        "composition_summary",
+        uniquenessCheck
+      );
+    } catch (e) {
+      traceLog(options, "UNIQUENESS_CHECK", "error", String(e));
+    }
   }
   options.logStderr(
     `[VisualPipeline] Completed with renderSource=visual-intelligence-pipeline`
@@ -3004,6 +3041,10 @@ async function generateWebsiteWithVisualIntelligence(business, options) {
 }
 var init_visual_intelligence_pipeline = __esm({
   "src/lib/visual-intelligence-pipeline.ts"() {
+    init_industry_psychology_engine();
+    init_layout_dna_engine();
+    init_website_memory_engine();
+    init_composition_renderer();
   }
 });
 
