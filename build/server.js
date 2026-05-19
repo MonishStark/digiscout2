@@ -2424,7 +2424,7 @@ async function generateWebsiteContent(business, options) {
   if (typeof window !== "undefined") {
     throw new Error("generateWebsiteContent can only be run on the server-side");
   }
-  const apiKey = options.apiKey || process.env.GOOGLE_CLOUD_API_KEY || process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GOOGLE_CLOUD_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) {
     options.logStderr("[Gemini Generation] No primary API key found. Running website generation via REST Fallback (gemini-flash-latest) immediately...");
     return await options.fallback();
@@ -2939,8 +2939,8 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 var cwd = process.cwd();
 var __filename = fileURLToPath(import.meta.url);
-var __dirname2 = path.dirname(__filename);
-var bundleRoot = path.resolve(__dirname2, "../");
+var __dirname = path.dirname(__filename);
+var bundleRoot = path.resolve(__dirname, "../");
 var searchPaths = [cwd, bundleRoot];
 var envFiles = [".env.production", ".env.local", ".env"];
 console.error(`[Env] Searching in: ${searchPaths.join(", ")}`);
@@ -2979,7 +2979,8 @@ import crypto2 from "crypto";
 import cors from "cors";
 import express from "express";
 import fs3 from "fs";
-import path2 from "path";
+import path2, { dirname } from "path";
+import { fileURLToPath as fileURLToPath2 } from "url";
 
 // src/lib/callhippo-service.ts
 async function sendOutreachViaCallHippo(request, apiKey) {
@@ -4328,6 +4329,8 @@ fs3.writeSync(2, `[BOOT] CWD: ${process.cwd()}
 `);
 fs3.writeSync(2, `[BOOT] DB_USER: ${process.env.DB_USER || "NOT SET"}
 `);
+var __filename2 = fileURLToPath2(import.meta.url);
+var __dirname2 = dirname(__filename2);
 var GoogleGenerativeAI = null;
 var app = express();
 var PORT = process.env.PORT || 5001;
@@ -4458,7 +4461,7 @@ function buildBusinessDebugInput(business) {
 }
 function getLatestApiKeyFromDisk(keyName = "GEMINI_API_KEY") {
   try {
-    const searchPaths2 = [process.cwd(), __dirname, path2.join(process.cwd(), "..")];
+    const searchPaths2 = [process.cwd(), __dirname2, path2.join(process.cwd(), "..")];
     const files = [".env.production", ".env.local", ".env"];
     for (const dir of searchPaths2) {
       for (const f of files) {
@@ -6766,10 +6769,8 @@ ${rawWordPressHtml}
     ];
     try {
       const { generateWebsiteContent: generateWebsiteContent2 } = await Promise.resolve().then(() => (init_gemini(), gemini_exports));
-      const sdkApiKey = getLatestApiKeyFromDisk("GOOGLE_CLOUD_API_KEY") || getLatestApiKeyFromDisk("GEMINI_API_KEY") || process.env.GOOGLE_CLOUD_API_KEY || process.env.GEMINI_API_KEY;
       const generatedSchema = await generateWebsiteContent2(business, {
         fallback: restFallback,
-        apiKey: sdkApiKey || void 0,
         debugSession,
         logStderr: (msg) => logStderr(msg),
         persistGenerationDebugFile: (session, name, content) => persistGenerationDebugFile(session, name, content),
@@ -6782,9 +6783,7 @@ ${rawWordPressHtml}
     } catch (error) {
       if (error instanceof Error && error.message === "AI_GENERATION_FAILED") {
         logStderr(`[Generate] AI Generation pipeline failed completely.`);
-        return res.status(422).json({
-          error: "The AI generation service is currently unavailable. Please try again in a few moments."
-        });
+        return res.status(422).json({ error: "AI generation failed. Please try again." });
       }
       throw error;
     }

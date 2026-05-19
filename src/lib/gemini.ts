@@ -388,7 +388,6 @@ export async function generateWebsiteContent(
 	business: Business,
 	options: {
 		fallback: () => Promise<WebsiteSchema>;
-		apiKey?: string;
 		debugSession?: any;
 		logStderr: (msg: string) => void;
 		persistGenerationDebugFile: (session: any, fileName: string, content: any) => void;
@@ -400,7 +399,7 @@ export async function generateWebsiteContent(
 		throw new Error("generateWebsiteContent can only be run on the server-side");
 	}
 
-	const apiKey = options.apiKey || process.env.GOOGLE_CLOUD_API_KEY || process.env.GEMINI_API_KEY;
+	const apiKey = process.env.GOOGLE_CLOUD_API_KEY || process.env.GEMINI_API_KEY;
 	if (!apiKey) {
 		options.logStderr("[Gemini Generation] No primary API key found. Running website generation via REST Fallback (gemini-flash-latest) immediately...");
 		return await options.fallback();

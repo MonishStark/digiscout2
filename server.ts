@@ -15,7 +15,12 @@ import http from "http";
 import cors from "cors";
 import express, { Request, Response } from "express";
 import fs from "fs";
-import path from "path";
+import path, { dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 // Dynamic import for GoogleGenerativeAI to prevent startup failure if package missing
 let GoogleGenerativeAI: any = null;
 
@@ -3131,11 +3136,8 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
 		try {
 			const { generateWebsiteContent } = await import("./src/lib/gemini");
 			
-			const sdkApiKey = getLatestApiKeyFromDisk("GOOGLE_CLOUD_API_KEY") || getLatestApiKeyFromDisk("GEMINI_API_KEY") || process.env.GOOGLE_CLOUD_API_KEY || process.env.GEMINI_API_KEY;
-
 			const generatedSchema = await generateWebsiteContent(business, {
 				fallback: restFallback,
-				apiKey: sdkApiKey || undefined,
 				debugSession,
 				logStderr: (msg: string) => logStderr(msg),
 				persistGenerationDebugFile: (session: any, name: string, content: any) => persistGenerationDebugFile(session, name, content),
@@ -3149,9 +3151,7 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
 		} catch (error) {
 			if (error instanceof Error && error.message === "AI_GENERATION_FAILED") {
 				logStderr(`[Generate] AI Generation pipeline failed completely.`);
-				return res.status(422).json({
-					error: "The AI generation service is currently unavailable. Please try again in a few moments."
-				});
+				return res.status(422).json({ error: 'AI generation failed. Please try again.' });
 			}
 			throw error;
 		}
