@@ -3728,6 +3728,26 @@ var logStderr = (message) => {
   fs3.writeSync(2, `${message}
 `);
 };
+var lastGeminiCallTime = 0;
+var geminiQueueChain = Promise.resolve();
+async function throttleGemini() {
+  const currentQueue = geminiQueueChain;
+  let resolveLock;
+  const lockPromise = new Promise((resolve) => {
+    resolveLock = resolve;
+  });
+  geminiQueueChain = lockPromise;
+  await currentQueue;
+  const now = Date.now();
+  const elapsed = now - lastGeminiCallTime;
+  if (elapsed < 1e4) {
+    const waitTime = 1e4 - elapsed;
+    logStderr(`[Gemini Throttle] Queue waiting ${waitTime}ms to maintain 10s gap...`);
+    await new Promise((resolve) => setTimeout(resolve, waitTime));
+  }
+  lastGeminiCallTime = Date.now();
+  resolveLock();
+}
 app.use(
   cors({
     exposedHeaders: ["x-debug-generation-id", "x-debug-generation-fallback"]
@@ -4072,6 +4092,7 @@ Return ONLY a valid JSON object matching the following structure (no markdown, n
       }
       const modelRestUrl = restUrl.includes("{model}") ? restUrl.replace("{model}", model.name) : restUrl;
       const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
+      await throttleGemini();
       const fetchResponse = await Promise.race([
         fetch(url, {
           method: "POST",
@@ -4323,6 +4344,7 @@ Return only valid JSON in this exact shape:
         tools: configVariant.tools,
         toolConfig: configVariant.toolConfig
       });
+      await throttleGemini();
       const result = await modelInstance.generateContent({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.1 }
@@ -5968,6 +5990,7 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. Make sur
             `[Gemini] Attempting ${stageLabel} direct REST call to ${modelRestUrl}...`
           );
           const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
+          await throttleGemini();
           const fetchResponse = await Promise.race([
             fetch(url, {
               method: "POST",
@@ -6874,6 +6897,7 @@ Rules for your responses:
           model: "gemini-flash-latest",
           tools: [{ googleSearch: {} }]
         });
+        await throttleGemini();
         const result = await modelInstance.generateContent({
           contents: chatContents,
           systemInstruction: systemPrompt
@@ -6898,6 +6922,7 @@ Rules for your responses:
         },
         tools: [{ googleSearch: {} }]
       };
+      await throttleGemini();
       const fetchResponse = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -43,6 +43,29 @@ const logStderr = (message: string) => {
 	fs.writeSync(2, `${message}\n`);
 };
 
+let lastGeminiCallTime = 0;
+let geminiQueueChain = Promise.resolve();
+
+async function throttleGemini() {
+	const currentQueue = geminiQueueChain;
+	let resolveLock: () => void;
+	const lockPromise = new Promise<void>(resolve => {
+		resolveLock = resolve;
+	});
+	geminiQueueChain = lockPromise;
+
+	await currentQueue;
+	const now = Date.now();
+	const elapsed = now - lastGeminiCallTime;
+	if (elapsed < 10000) {
+		const waitTime = 10000 - elapsed;
+		logStderr(`[Gemini Throttle] Queue waiting ${waitTime}ms to maintain 10s gap...`);
+		await new Promise(resolve => setTimeout(resolve, waitTime));
+	}
+	lastGeminiCallTime = Date.now();
+	resolveLock!();
+}
+
 app.use(
 	cors({
 		exposedHeaders: ["x-debug-generation-id", "x-debug-generation-fallback"],
@@ -493,6 +516,7 @@ Return ONLY a valid JSON object matching the following structure (no markdown, n
 				? restUrl.replace("{model}", model.name)
 				: restUrl;
 			const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
+			await throttleGemini();
 			const fetchResponse = await Promise.race([
 				fetch(url, {
 					method: "POST",
@@ -841,6 +865,7 @@ Return only valid JSON in this exact shape:
 				toolConfig: configVariant.toolConfig as any,
 			} as any);
 
+			await throttleGemini();
 			const result = await modelInstance.generateContent({
 				contents: [{ role: "user", parts: [{ text: prompt }] }],
 				generationConfig: { temperature: 0.1 },
@@ -2929,7 +2954,7 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. Make sur
 					);
 
 					const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
-
+					await throttleGemini();
 					const fetchResponse = await Promise.race([
 						fetch(url, {
 							method: "POST",
@@ -4018,6 +4043,7 @@ Rules for your responses:
 					tools: [{ googleSearch: {} }] as any,
 				});
 
+				await throttleGemini();
 				const result = await modelInstance.generateContent({
 					contents: chatContents,
 					systemInstruction: systemPrompt,
@@ -4048,6 +4074,7 @@ Rules for your responses:
 				tools: [{ googleSearch: {} }]
 			};
 
+			await throttleGemini();
 			const fetchResponse = await fetch(url, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
