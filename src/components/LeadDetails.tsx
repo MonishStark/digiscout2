@@ -130,12 +130,13 @@ export default function LeadDetails({
 		} catch (error: any) {
 			if (error.name !== "AbortError") {
 				console.error("[AI Chat] Streaming failed:", error);
+				const errMessage = error instanceof Error ? error.message : String(error);
 				setChatMessages((prev) => {
 					const updated = [...prev];
 					if (updated.length > 0) {
 						updated[updated.length - 1] = {
 							role: "model",
-							content: "⚠️ *Connection failed. Please verify your internet connection or API settings.*",
+							content: `⚠️ **Connection failed:** ${errMessage}\n\n*Please verify your server environment, API key, and network status.*`,
 						};
 					}
 					return updated;
@@ -517,7 +518,7 @@ export default function LeadDetails({
 						animate={{ opacity: 1, x: 0, scale: 1 }}
 						exit={{ opacity: 0, x: 30, scale: 0.95 }}
 						transition={{ type: "spring", stiffness: 300, damping: 25 }}
-						className='absolute top-20 right-[480px] w-[450px] max-h-[calc(100vh-100px)] flex flex-col glass rounded-2xl shadow-2xl overflow-hidden z-50 accent-glow text-slate-900 h-[calc(100vh-100px)]'>
+						className='absolute top-20 right-[480px] w-[450px] h-[580px] max-h-[calc(100vh-180px)] flex flex-col glass rounded-2xl shadow-2xl overflow-hidden z-50 accent-glow text-slate-900'>
 						
 						{/* Chat Header */}
 						<div className='p-4 border-b border-slate-200 bg-white/50 backdrop-blur-xl flex items-center justify-between'>
