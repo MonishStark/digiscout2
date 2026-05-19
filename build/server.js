@@ -4191,6 +4191,23 @@ function extractJsonObject(text) {
   }
   return null;
 }
+function extractHtmlDocument(text) {
+  if (!text) return null;
+  const trimmed = text.trim();
+  const fencedMatch = trimmed.match(/```(?:html)?\s*([\s\S]*?)\s*```/i);
+  if (fencedMatch?.[1]) {
+    const candidate = fencedMatch[1].trim();
+    if (candidate.includes("<")) return candidate;
+  }
+  if (trimmed.includes("<!-- wp:html -->") || trimmed.includes("<section") || trimmed.includes("<style")) {
+    return trimmed;
+  }
+  const firstTag = trimmed.indexOf("<");
+  if (firstTag >= 0) {
+    return trimmed.slice(firstTag);
+  }
+  return null;
+}
 function parseLeadQualificationOutput(rawText) {
   const candidateJson = extractJsonObject(rawText);
   if (!candidateJson) return null;
@@ -5829,6 +5846,13 @@ PRIMARY OBJECTIVE:
   * "Restoration / Construction / Emergency": Cinematic, rugged, technical, industrial, and highly authoritative. Use clean white/light sand backdrops, bold high-contrast details, dramatic before/after comparing blocks, and technical timelines.
   * "Roofing / Structural Contractor": Rugged, powerful, action-focused, energetic, and extremely durable. Use clean light slate backdrops, angular layouts, diagonal transitions, safety orange highlights, weather-proof metrics strips, and bold trust badges.
 
+COPYWRITING INSTRUCTIONS (CRITICAL):
+- TONE: Journalistic, confident, and highly specific. Write like an editor for Monocle or GQ.
+- RULE 1: NO AI SPEAK. Permanently ban words like: "Unlock, Discover, Unleash, Elevate, Premier, Top-Notch, Cutting-Edge, Tailored, Seamless." 
+- RULE 2: Show, Don't Tell. Instead of "We offer the best plumbing services," write "Emergency leak repair and pipe routing in under 45 minutes."
+- RULE 3: Use hyper-local anchors. Reference the actual neighborhood, street, or city vibe provided in the context to make it feel grounded.
+- RULE 4: Hero Subheadlines must state exactly what the business does, who it is for, and where it is located in plain, striking English.
+
 DYNAMIC SECTIONS & COMPOSITION ORCHESTRATION:
 - Do NOT use a standard, repetitive section structure.
 - You have full creative control over which sections exist, their sequence, and their hierarchy to optimize the brand's narrative.
@@ -6066,23 +6090,80 @@ ${rawText}
       errors: validation.errors || []
     });
     try {
-      logStderr(`[Generate] Compiling deterministic Premium Component Composition HTML traceId=${debugSession.traceId}`);
-      const premiumHtml = buildPremiumPageContent(finalSchema);
-      if (premiumHtml) {
-        finalSchema._wordpressHtml = premiumHtml;
-        finalSchema._renderSource = "component-composition-engine";
-        persistGenerationDebugFile(
-          debugSession,
-          "05c-wordpress-html-final.html",
-          premiumHtml
-        );
+      const wordpressHtmlPrompt = `You are turning an approved website schema into the FINAL WordPress homepage HTML.
+
+Return ONLY homepage HTML suitable for WordPress post_content.
+Do not return JSON.
+Do not explain anything.
+Do not wrap the response in markdown unless it is a plain \`\`\`html fenced block.
+Do not output JavaScript.
+Use one initial <style> block if needed, then the homepage markup.
+Render the sections in the schema order exactly as provided.
+Use the exact business copy and exact media URLs from the schema.
+Do not collapse the page into a common in-house template.
+Make the composition, spacing, typography treatment, and hierarchy feel bespoke to this business.
+Light theme only.
+No site header chrome, no WordPress admin text, no fake badges like "crafted for premium presentation".
+No generic placeholder copy.
+
+MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
+- SPACING: Stop using hard pixel values for padding. Use fluid clamp spacing: padding: clamp(4rem, 8vw, 8rem) 5%;
+- BORDERS & SURFACES: For cards (bento grids, features, testimonials), use modern soft UI. Apply: background: #ffffff; border: 1px solid rgba(0,0,0,0.05); border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.03);
+- TYPOGRAPHY HIERARCHY: Make h1 massive and tight: font-size: clamp(3.5rem, 8vw, 6rem); line-height: 1.05; tracking: -0.02em; Make paragraph text readable: font-size: 1.125rem; line-height: 1.6; color: rgba(0,0,0,0.7);
+- IMAGES: Never use raw sharp corners. All images must have border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); unless they are explicitly arched.
+- BENTO GRID REFINEMENT: Ensure gap spacing is modern. display: grid; gap: 24px;. 
+- MICRO-AESTHETICS: Use subtle background tints for alternating sections instead of pure white everywhere (e.g., #fafafa or #f8f9fa).
+
+BUSINESS:
+${JSON.stringify({
+        name: business.name,
+        category: business.category,
+        address: business.address,
+        phone: business.phoneNumber,
+        email: business.email,
+        website: business.websiteUri
+      }, null, 2)}
+
+APPROVED SCHEMA:
+${JSON.stringify(finalSchema, null, 2)}
+
+Return only the final HTML for the homepage body content.`;
+      persistGenerationDebugFile(debugSession, "05a-wordpress-html-prompt.md", wordpressHtmlPrompt);
+      const rawWordPressHtml = await callGeminiText(wordpressHtmlPrompt, "wordpress-html");
+      fs3.writeSync(2, `
+--- GEMINI WORDPRESS HTML START ---
+${rawWordPressHtml}
+--- GEMINI WORDPRESS HTML END ---
+`);
+      persistGenerationDebugFile(debugSession, "05b-wordpress-html-raw.txt", rawWordPressHtml);
+      const extractedWordPressHtml = extractHtmlDocument(rawWordPressHtml) || rawWordPressHtml.trim();
+      if (extractedWordPressHtml) {
+        finalSchema._wordpressHtml = extractedWordPressHtml;
+        finalSchema._renderSource = "gemini-html";
+        persistGenerationDebugFile(debugSession, "05c-wordpress-html-final.html", extractedWordPressHtml);
+      } else {
+        throw new Error("Extracted HTML was empty");
       }
     } catch (wordpressHtmlError) {
-      finalSchema._renderSource = "local-builder";
-      appendGenerationDebugError(
-        debugSession,
-        `wordpress_html_generation_failed: ${wordpressHtmlError instanceof Error ? wordpressHtmlError.message : String(wordpressHtmlError)}`
-      );
+      try {
+        logStderr(`[Generate] AI WordPress HTML failed. Falling back to local builder traceId=${debugSession.traceId}. Error: ${wordpressHtmlError instanceof Error ? wordpressHtmlError.message : String(wordpressHtmlError)}`);
+        const premiumHtml = buildPremiumPageContent(finalSchema);
+        if (premiumHtml) {
+          finalSchema._wordpressHtml = premiumHtml;
+          finalSchema._renderSource = "component-composition-engine";
+          persistGenerationDebugFile(
+            debugSession,
+            "05c-wordpress-html-final.html",
+            premiumHtml
+          );
+        }
+      } catch (fallbackError) {
+        finalSchema._renderSource = "local-builder";
+        appendGenerationDebugError(
+          debugSession,
+          `wordpress_html_generation_failed: ${wordpressHtmlError instanceof Error ? wordpressHtmlError.message : String(wordpressHtmlError)}`
+        );
+      }
     }
     const renderSource = finalSchema._renderSource || "unknown";
     const wpHtml = finalSchema._wordpressHtml;
@@ -6783,26 +6864,52 @@ Rules for your responses:
       "Cache-Control": "no-cache",
       "Connection": "keep-alive"
     });
-    const modelRestUrl = restUrl.includes("{model}") ? restUrl.replace("{model}", "gemini-pro-latest") : restUrl;
-    const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
-    const requestBody = {
-      contents: chatContents,
-      systemInstruction: {
-        parts: [{ text: systemPrompt }]
-      },
-      tools: [{ googleSearch: {} }]
-    };
-    const fetchResponse = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody)
-    });
-    if (!fetchResponse.ok) {
-      const errorText = await fetchResponse.text().catch(() => "");
-      throw new Error(`Gemini REST API returned status ${fetchResponse.status}: ${errorText}`);
+    let fullResponseText = "";
+    let fallbackUsed = false;
+    const genAI = await getSDKGenAI();
+    if (genAI) {
+      try {
+        console.log("[AI Chat] Attempting SDK generation with gemini-flash-latest...");
+        const modelInstance = genAI.getGenerativeModel({
+          model: "gemini-flash-latest",
+          tools: [{ googleSearch: {} }]
+        });
+        const result = await modelInstance.generateContent({
+          contents: chatContents,
+          systemInstruction: systemPrompt
+        });
+        fullResponseText = result.response.text() || "";
+      } catch (sdkError) {
+        console.warn("[AI Chat] SDK generation failed, falling back to REST:", sdkError);
+        fallbackUsed = true;
+      }
+    } else {
+      console.log("[AI Chat] SDK not available, falling back to REST");
+      fallbackUsed = true;
     }
-    const responseJson = await fetchResponse.json();
-    const fullResponseText = responseJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    if (fallbackUsed || !fullResponseText) {
+      console.log("[AI Chat] Attempting REST generation with gemini-pro-latest...");
+      const modelRestUrl = restUrl.includes("{model}") ? restUrl.replace("{model}", "gemini-pro-latest") : restUrl;
+      const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
+      const requestBody = {
+        contents: chatContents,
+        systemInstruction: {
+          parts: [{ text: systemPrompt }]
+        },
+        tools: [{ googleSearch: {} }]
+      };
+      const fetchResponse = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody)
+      });
+      if (!fetchResponse.ok) {
+        const errorText = await fetchResponse.text().catch(() => "");
+        throw new Error(`Gemini REST API returned status ${fetchResponse.status}: ${errorText}`);
+      }
+      const responseJson = await fetchResponse.json();
+      fullResponseText = responseJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    }
     res.write(fullResponseText);
     if (fullResponseText.trim()) {
       try {
