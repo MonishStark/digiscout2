@@ -115,6 +115,19 @@ export async function initializeDatabase() {
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 		`);
 
+		// Create lead_ai_messages table for conversational memory
+		await pool.query(`
+			CREATE TABLE IF NOT EXISTS lead_ai_messages (
+				id INT AUTO_INCREMENT PRIMARY KEY,
+				lead_id VARCHAR(255) NOT NULL,
+				conversation_id VARCHAR(255) NOT NULL,
+				role VARCHAR(50) NOT NULL,
+				content TEXT NOT NULL,
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				INDEX idx_lead_conv (lead_id, conversation_id)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+		`);
+
 		try {
 			await pool.query(`ALTER TABLE isolated_deployments ADD COLUMN website_schema JSON NULL AFTER encrypted_admin_password`);
 		} catch (e) {}

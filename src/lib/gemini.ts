@@ -318,3 +318,56 @@ export async function generateOutreachEmail(
 	// Placeholder: outreach generation should be proxied to the server for safety.
 	return `Subject: Modern website for ${business.name}\n\nHi ${business.name},\n\nWe created a prototype website at ${websiteUrl}.`;
 }
+
+export interface AIChatMessage {
+	role: "user" | "model";
+	content: string;
+	created_at?: string;
+}
+
+export async function fetchLeadAIChatHistory(leadId: string): Promise<AIChatMessage[]> {
+	try {
+		const resp = await fetch(`${API_URL}/api/business-ai-chat/${encodeURIComponent(leadId)}`);
+		if (!resp.ok) {
+			throw new Error("Failed to fetch chat history");
+		}
+		const data = await resp.json();
+		return data.messages || [];
+	} catch (error) {
+		console.error("Failed to fetch chat history:", error);
+		return [];
+	}
+}
+
+export async function askBusinessAIChatStream(
+	leadId: string,
+	businessContext: any,
+	messages: AIChatMessage[],
+	onChunk: (chunk: string) => void,
+	signal?: AbortSignal
+): Promise<void> {
+	const resp = await fetch(`${API_URL}/api/business-ai-chat`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ leadId, businessContext, messages }),
+		signal
+	});
+
+	if (!resp.ok) {
+		const text = await resp.text().catch(() => "");
+		throw new Error(`Chat request failed: ${resp.status} ${resp.statusText} ${text}`);
+	}
+
+	const reader = resp.body?.getReader();
+	if (!reader) {
+		throw new Error("Response body is not readable");
+	}
+
+	const decoder = new TextDecoder("utf-8");
+	while (true) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		const chunk = decoder.decode(value, { stream: true });
+		onChunk(chunk);
+	}
+}

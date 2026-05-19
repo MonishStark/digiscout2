@@ -1,6 +1,7 @@
 /** @format */
 
 import React, { useState } from "react";
+import { Sparkles, Send, X, Loader2, Bot, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
 	Phone,
@@ -15,7 +16,7 @@ import {
 import { Business, WebsiteProject } from "../types";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { generateWebsite } from "../lib/gemini";
+import { generateWebsite, fetchLeadAIChatHistory, askBusinessAIChatStream, AIChatMessage } from "../lib/gemini";
 import { renderWebsiteArtifact } from "../lib/website-renderer";
 import {
 	buildWordPressProvisioningPlan,
@@ -45,6 +46,121 @@ export default function LeadDetails({
 }: LeadDetailsProps) {
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [isAddingLead, setIsAddingLead] = useState(false);
+	const [isChatOpen, setIsChatOpen] = useState(false);
+	const [chatMessages, setChatMessages] = useState<AIChatMessage[]>([]);
+	const [chatInput, setChatInput] = useState("");
+	const [isChatLoading, setIsChatLoading] = useState(false);
+	const [isChatStreaming, setIsChatStreaming] = useState(false);
+	const [abortController, setAbortController] = useState<AbortController | null>(null);
+
+	const quickActions = [
+		{ label: "🔍 Analyze Competitors", prompt: "Who are our main competitors locally, and what are their visual/branding weaknesses?" },
+		{ label: "🌐 Website Upgrades", prompt: "What exact website structure, typography mood, and pages would convert customers best for this lead?" },
+		{ label: "📈 SEO Opportunities", prompt: "Identify the top 3 high-intent local keywords and quick wins to dominate Google Maps for this category." },
+		{ label: "⭐ Sentiment Audit", prompt: "Review the reviews sentiment. What do customers love most, and what are the operational/trust gaps we should solve?" },
+	];
+
+	function parseMarkdown(text: string) {
+		if (!text) return "";
+		// Replace headers (### or ## or #)
+		let html = text.replace(/^(###|##|#)\s+(.*)$/gim, '<h4 class="font-bold text-slate-800 text-sm mt-3 mb-1">$2</h4>');
+		// Replace bold (**text**)
+		html = html.replace(/\*\*(.*?)\*\*/gim, '<strong class="font-bold text-slate-900">$1</strong>');
+		// Replace italics (*text*)
+		html = html.replace(/\*(.*?)\*/gim, '<em class="italic text-slate-700">$1</em>');
+		// Replace bullet points (e.g. * item or - item)
+		html = html.replace(/^\s*[-*]\s+(.*)$/gim, '<li class="ml-4 list-disc text-xs text-slate-700 my-0.5">$1</li>');
+		// Replace line breaks to <br/>
+		html = html.replace(/\n/g, "<br/>");
+		return <div dangerouslySetInnerHTML={{ __html: html }} className="text-xs leading-relaxed space-y-1" />;
+	}
+
+	React.useEffect(() => {
+		if (isChatOpen) {
+			const loadHistory = async () => {
+				setIsChatLoading(true);
+				const history = await fetchLeadAIChatHistory(business.id);
+				setChatMessages(history);
+				setIsChatLoading(false);
+			};
+			loadHistory();
+		}
+	}, [isChatOpen, business.id]);
+
+	const handleSendMessage = async (customPrompt?: string) => {
+		const promptToSend = (customPrompt || chatInput).trim();
+		if (!promptToSend) return;
+
+		setChatInput("");
+		const userMsg: AIChatMessage = { role: "user", content: promptToSend };
+		setChatMessages((prev) => [...prev, userMsg]);
+		setIsChatStreaming(true);
+
+		const controller = new AbortController();
+		setAbortController(controller);
+
+		let currentResponseText = "";
+		setChatMessages((prev) => [...prev, { role: "model", content: "" }]);
+
+		try {
+			const contextToSend = {
+				...business,
+				websiteSchema: existingProject?.websiteSchema || null,
+			};
+
+			await askBusinessAIChatStream(
+				business.id,
+				contextToSend,
+				[...chatMessages, userMsg],
+				(chunk) => {
+					currentResponseText += chunk;
+					setChatMessages((prev) => {
+						const updated = [...prev];
+						if (updated.length > 0) {
+							updated[updated.length - 1] = {
+								role: "model",
+								content: currentResponseText,
+							};
+						}
+						return updated;
+					});
+				},
+				controller.signal
+			);
+		} catch (error: any) {
+			if (error.name !== "AbortError") {
+				console.error("[AI Chat] Streaming failed:", error);
+				setChatMessages((prev) => {
+					const updated = [...prev];
+					if (updated.length > 0) {
+						updated[updated.length - 1] = {
+							role: "model",
+							content: "⚠️ *Connection failed. Please verify your internet connection or API settings.*",
+						};
+					}
+					return updated;
+				});
+			}
+		} finally {
+			setIsChatStreaming(false);
+			setAbortController(null);
+		}
+	};
+
+	const handleCancelRequest = () => {
+		if (abortController) {
+			abortController.abort();
+			setIsChatStreaming(false);
+			setAbortController(null);
+			setChatMessages((prev) => {
+				const updated = [...prev];
+				if (updated.length > 0 && updated[updated.length - 1].content === "") {
+					return updated.slice(0, -1);
+				}
+				return updated;
+			});
+		}
+	};
 
 	const existingProject = projects.find((p) => p.businessId === business.id);
 
@@ -393,13 +509,133 @@ export default function LeadDetails({
 	const imageSources = getImageSources();
 
 	return (
-		<AnimatePresence>
-			<motion.div
-				initial={{ opacity: 0, scale: 0.95, y: 20 }}
-				animate={{ opacity: 1, scale: 1, y: 0 }}
-				exit={{ opacity: 0, scale: 0.95, y: 20 }}
-				transition={{ type: "spring", stiffness: 300, damping: 25 }}
-				className='absolute top-20 right-10 w-[450px] max-h-[calc(100vh-100px)] flex flex-col glass rounded-2xl shadow-2xl overflow-hidden z-50 accent-glow text-slate-900'>
+		<>
+			<AnimatePresence>
+				{isChatOpen && (
+					<motion.div
+						initial={{ opacity: 0, x: 30, scale: 0.95 }}
+						animate={{ opacity: 1, x: 0, scale: 1 }}
+						exit={{ opacity: 0, x: 30, scale: 0.95 }}
+						transition={{ type: "spring", stiffness: 300, damping: 25 }}
+						className='absolute top-20 right-[480px] w-[450px] max-h-[calc(100vh-100px)] flex flex-col glass rounded-2xl shadow-2xl overflow-hidden z-50 accent-glow text-slate-900 h-[calc(100vh-100px)]'>
+						
+						{/* Chat Header */}
+						<div className='p-4 border-b border-slate-200 bg-white/50 backdrop-blur-xl flex items-center justify-between'>
+							<div className='flex items-center gap-2'>
+								<div className='w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center border border-violet-200'>
+									<Sparkles className='w-4 h-4 text-violet-600 animate-pulse' />
+								</div>
+								<div>
+									<h3 className='font-bold text-sm text-slate-955'>Local Market Intel</h3>
+									<p className='text-[10px] text-slate-500'>Powered by Gemini Grounding</p>
+								</div>
+							</div>
+							<button
+								onClick={() => setIsChatOpen(false)}
+								className='w-7 h-7 rounded-full hover:bg-slate-100 flex items-center justify-center transition-colors border-0 text-slate-500'>
+								<X className='w-4 h-4' />
+							</button>
+						</div>
+
+						{/* Messages scrollable area */}
+						<div className='flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50 relative'>
+							{isChatLoading ? (
+								<div className='flex flex-col items-center justify-center h-full space-y-2'>
+									<Loader2 className='w-8 h-8 animate-spin text-violet-600' />
+									<span className='text-xs text-slate-500'>Loading history...</span>
+								</div>
+							) : chatMessages.length === 0 ? (
+								<div className='flex flex-col items-center justify-center h-full text-center max-w-[280px] mx-auto space-y-4'>
+									<Sparkles className='w-10 h-10 text-violet-400' />
+									<div>
+										<h4 className='font-bold text-slate-800 text-sm'>Strategic Growth Advisor</h4>
+										<p className='text-xs text-slate-500 mt-1 leading-normal'>
+											Ask about real-time competitors, target marketing ideas, and brand recommendations for {business.name}.
+										</p>
+									</div>
+								</div>
+							) : (
+								chatMessages.map((msg, index) => (
+									<div
+										key={index}
+										className={`flex gap-2.5 max-w-[85%] ${msg.role === "user" ? "ml-auto flex-row-reverse" : "mr-auto"}`}>
+										<div
+											className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 border ${msg.role === "user" ? "bg-violet-100 border-violet-200 text-violet-700" : "bg-white border-slate-200 text-slate-600"}`}>
+											{msg.role === "user" ? <User className='w-3.5 h-3.5' /> : <Bot className='w-3.5 h-3.5' />}
+										</div>
+										<div
+											className={`rounded-2xl p-3 border ${msg.role === "user" ? "bg-violet-600 border-violet-700 text-white rounded-tr-none shadow-sm" : "bg-white border-slate-200 text-slate-800 rounded-tl-none shadow-sm"}`}>
+											{msg.role === "user" ? (
+												<div className='text-xs leading-normal font-medium'>{msg.content}</div>
+											) : (
+												parseMarkdown(msg.content)
+											)}
+										</div>
+									</div>
+								))
+							)}
+							
+							{/* Auto-scroll anchor */}
+							<div ref={(el) => el?.scrollIntoView({ behavior: "smooth" })} />
+						</div>
+
+						{/* Quick Action Chips */}
+						{chatMessages.length <= 1 && !isChatStreaming && (
+							<div className='px-4 py-2 bg-white/40 border-t border-slate-100 flex gap-2 overflow-x-auto scrollbar-hide py-3'>
+								{quickActions.map((action, i) => (
+									<button
+										key={i}
+										onClick={() => handleSendMessage(action.prompt)}
+										className='shrink-0 bg-white hover:bg-slate-50 border border-slate-200 hover:border-violet-300 px-3 py-1.5 rounded-full text-[10px] font-bold text-slate-705 transition-all hover:-translate-y-0.5 cursor-pointer shadow-sm'>
+										{action.label}
+									</button>
+								))}
+							</div>
+						)}
+
+						{/* Input Panel */}
+						<div className='p-3 border-t border-slate-200 bg-white/80 backdrop-blur-md flex items-center gap-2'>
+							{isChatStreaming ? (
+								<div className='flex-1 flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 h-10'>
+									<div className='flex items-center gap-2'>
+										<Loader2 className='w-4 h-4 animate-spin text-violet-600' />
+										<span className='text-xs text-slate-505 font-medium animate-pulse'>Intelligence streaming...</span>
+									</div>
+									<button
+										onClick={handleCancelRequest}
+										className='bg-rose-100 hover:bg-rose-200 text-rose-600 px-3 py-1 rounded-lg text-[10px] font-bold border-0 transition-colors cursor-pointer'>
+										Cancel
+									</button>
+								</div>
+							) : (
+								<>
+									<input
+										type='text'
+										value={chatInput}
+										onChange={(e) => setChatInput(e.target.value)}
+										onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+										placeholder={`Query target intel for ${business.name}...`}
+										className='flex-1 bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 rounded-xl px-3 py-2 text-xs outline-none transition-all placeholder-slate-400 h-10'
+									/>
+									<button
+										onClick={() => handleSendMessage()}
+										className='w-10 h-10 rounded-xl bg-violet-600 hover:bg-violet-500 flex items-center justify-center transition-all border-0 shadow-lg shadow-violet-600/10 cursor-pointer text-white'>
+										<Send className='w-4 h-4' />
+									</button>
+								</>
+							)}
+						</div>
+					</motion.div>
+				)}
+			</AnimatePresence>
+
+			<AnimatePresence>
+				<motion.div
+					initial={{ opacity: 0, scale: 0.95, y: 20 }}
+					animate={{ opacity: 1, scale: 1, y: 0 }}
+					exit={{ opacity: 0, scale: 0.95, y: 20 }}
+					transition={{ type: "spring", stiffness: 300, damping: 25 }}
+					className='absolute top-20 right-10 w-[450px] max-h-[calc(100vh-100px)] flex flex-col glass rounded-2xl shadow-2xl overflow-hidden z-50 accent-glow text-slate-900'>
 				<div className='p-6 border-b border-slate-200 relative'>
 					<div className='absolute top-0 right-0 p-4 opacity-10 pointer-events-none text-violet-500'>
 						<Rocket className='w-24 h-24' />
@@ -493,6 +729,11 @@ export default function LeadDetails({
 									)}
 								</Button>
 								<Button
+									onClick={() => setIsChatOpen((prev) => !prev)}
+									className='w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 text-white border-0 h-12 shadow-lg shadow-indigo-600/15'>
+									<Sparkles className='w-4 h-4' /> Ask AI
+								</Button>
+								<Button
 									onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.name + ", " + business.address)}`, "_blank")}
 									className='w-full bg-white hover:bg-slate-50 py-3 rounded-xl font-bold text-sm transition-all text-slate-700 border border-slate-200 h-12 flex items-center justify-center gap-2 shadow-none'>
 									<MapPin className='w-4 h-4 text-rose-500' /> Open Google Maps Location
@@ -515,6 +756,11 @@ export default function LeadDetails({
 									onClick={() => setActivePage?.("leads")}
 									className='w-full bg-violet-600 hover:bg-violet-500 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 text-white border-0 h-12 shadow-xl shadow-violet-600/15'>
 									Go to Leads <ChevronRight className='w-4 h-4 ml-1' />
+								</Button>
+								<Button
+									onClick={() => setIsChatOpen((prev) => !prev)}
+									className='w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 text-white border-0 h-12 shadow-lg shadow-indigo-600/15'>
+									<Sparkles className='w-4 h-4' /> Ask AI
 								</Button>
 								<Button
 									onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.name + ", " + business.address)}`, "_blank")}
@@ -543,6 +789,11 @@ export default function LeadDetails({
 									Go to Leads <ChevronRight className='w-4 h-4 ml-1' />
 								</Button>
 								<Button
+									onClick={() => setIsChatOpen((prev) => !prev)}
+									className='w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 text-white border-0 h-12 shadow-lg shadow-indigo-600/15'>
+									<Sparkles className='w-4 h-4' /> Ask AI
+								</Button>
+								<Button
 									onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.name + ", " + business.address)}`, "_blank")}
 									className='w-full bg-white hover:bg-slate-50 py-3 rounded-xl font-bold text-sm transition-all text-slate-700 border border-slate-200 h-12 flex items-center justify-center gap-2 shadow-none'>
 									<MapPin className='w-4 h-4 text-rose-500' /> Open Google Maps Location
@@ -553,5 +804,6 @@ export default function LeadDetails({
 				</div>
 			</motion.div>
 		</AnimatePresence>
+	</>
 	);
 }

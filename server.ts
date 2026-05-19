@@ -3830,6 +3830,171 @@ app.post(
 	},
 );
 
+app.get("/api/business-ai-chat/:leadId", async (req: Request, res: Response) => {
+	try {
+		const { leadId } = req.params;
+		if (!leadId) {
+			return res.status(400).json({ error: "Missing leadId" });
+		}
+		const [messages]: any = await pool.query(
+			"SELECT role, content, created_at FROM lead_ai_messages WHERE lead_id = ? ORDER BY id ASC",
+			[leadId]
+		);
+		return res.json({ messages: messages || [] });
+	} catch (error) {
+		console.error("[AI Chat] Failed to fetch chat history:", error);
+		return res.status(500).json({ error: "Failed to fetch chat history" });
+	}
+});
+
+app.post("/api/business-ai-chat", async (req: Request, res: Response) => {
+	try {
+		const { leadId, businessContext, messages, conversationId } = req.body;
+
+		if (!leadId || !businessContext || !Array.isArray(messages)) {
+			return res.status(400).json({
+				error: "Missing required fields: leadId, businessContext, messages",
+			});
+		}
+
+		// 1. Save user's latest message if it's the last one in the array
+		const latestMessage = messages[messages.length - 1];
+		let chatContents: any[] = [];
+		try {
+			if (latestMessage && latestMessage.role === "user") {
+				await pool.query(
+					"INSERT INTO lead_ai_messages (lead_id, conversation_id, role, content) VALUES (?, ?, ?, ?)",
+					[leadId, conversationId || leadId, "user", latestMessage.content]
+				);
+			}
+
+			// 2. Fetch full history for local conversational memory
+			const [dbHistory]: any = await pool.query(
+				"SELECT role, content FROM lead_ai_messages WHERE lead_id = ? ORDER BY id ASC",
+				[leadId]
+			);
+
+			chatContents = dbHistory.map((m: any) => ({
+				role: m.role === "user" ? "user" : "model",
+				parts: [{ text: m.content }]
+			}));
+		} catch (dbError) {
+			console.warn("[AI Chat] Database offline. Using stateless array fallback:", dbError);
+			chatContents = messages.map((m: any) => ({
+				role: m.role === "user" ? "user" : "model",
+				parts: [{ text: m.content }]
+			}));
+		}
+
+		if (chatContents.length === 0) {
+			chatContents.push({
+				role: "user",
+				parts: [{ text: latestMessage?.content || "Hello" }]
+			});
+		}
+
+		// 3. Retrieve Gemini SDK client
+		const genAI = await getSDKGenAI();
+		if (!genAI) {
+			return res.status(500).json({
+				error: "Gemini API key is not configured on the server. Please check your .env.local.",
+			});
+		}
+
+		// 4. Construct strategic, contextual system prompt
+		const businessName = businessContext.name || "Local Business";
+		const businessCategory = businessContext.category || "Local Service";
+		const businessAddress = businessContext.address || "N/A";
+		const rating = businessContext.rating || "N/A";
+		const reviewCount = businessContext.reviewCount || 0;
+
+		const reviewsText = Array.isArray(businessContext.reviews) && businessContext.reviews.length
+			? businessContext.reviews.map((r: any, i: number) => `${i + 1}. [Rating: ${r.rating || "N/A"}] "${r.text || r.comment || ""}"`).join("\n")
+			: "No reviews or rating insights available.";
+
+		let websiteText = "";
+		if (businessContext.websiteSchema) {
+			const ws = businessContext.websiteSchema;
+			websiteText = `
+Generated Website Details:
+- Theme: ${ws.theme?.name || "N/A"} (Style: ${ws.theme?.style || "N/A"})
+- Palette Background: ${ws.theme?.palette?.background || "N/A"}, Primary: ${ws.theme?.palette?.primary || "N/A"}, Accent: ${ws.theme?.palette?.accent || "N/A"}
+- Typography: Heading: ${ws.theme?.typography?.heading || "N/A"}, Body: ${ws.theme?.typography?.body || "N/A"}
+- SEO Title: ${ws.seo?.title || "N/A"}
+- SEO Description: ${ws.seo?.description || "N/A"}
+- Sections Configured: ${Array.isArray(ws.sections) ? ws.sections.map((s: any) => `${s.type} (${s.layout || "default"})`).join(", ") : "None"}
+`;
+		}
+
+		const systemPrompt = `You are an elite, production-grade AI Business Intelligence Assistant, local market analyst, SEO consultant, and branding strategist.
+You are deeply grounded in the following business context for ${businessName}:
+- Name: ${businessName}
+- Category: ${businessCategory}
+- Address: ${businessAddress}
+- Rating: ${rating} (${reviewCount} reviews)
+
+Reviews & Sentiment:
+${reviewsText}
+${websiteText}
+
+Rules for your responses:
+1. Act as a high-value growth strategist and consultant, NOT a generic chatbot. Provide action items, local SEO opportunities, conversion enhancements, and competitor analysis.
+2. Utilize native Google Search grounding to query real-world competitors, neighboring prices, local SEO rankings, and local citations for this exact neighborhood and business type.
+3. Be highly structured and readable. Format your answers in professional Markdown with bullet points, bold opportunities, and clean comparison tables. Keep paragraphs strategic and concise.`;
+
+		// 5. Instantiate model with native retrieval tools
+		const modelInstance = genAI.getGenerativeModel({
+			model: "gemini-flash-latest",
+			tools: [{ googleSearch: {} }] as any,
+		});
+
+		// 6. Set headers for standard HTTP chunked text streaming
+		res.writeHead(200, {
+			"Content-Type": "text/plain; charset=utf-8",
+			"Transfer-Encoding": "chunked",
+			"Cache-Control": "no-cache",
+			"Connection": "keep-alive",
+		});
+
+		// 7. Stream content from Gemini
+		const resultStream = await modelInstance.generateContentStream({
+			contents: chatContents,
+			systemInstruction: systemPrompt,
+		});
+
+		let fullResponseText = "";
+		for await (const chunk of resultStream.stream) {
+			const chunkText = chunk.text();
+			fullResponseText += chunkText;
+			res.write(chunkText);
+		}
+
+		// 8. Store response in the database for continuity
+		if (fullResponseText.trim()) {
+			try {
+				await pool.query(
+					"INSERT INTO lead_ai_messages (lead_id, conversation_id, role, content) VALUES (?, ?, ?, ?)",
+					[leadId, conversationId || leadId, "model", fullResponseText]
+				);
+			} catch (dbError) {
+				console.warn("[AI Chat] Failed to save AI response text to database:", dbError);
+			}
+		}
+
+		res.end();
+	} catch (error) {
+		console.error("[AI Chat] Error during chat session:", error);
+		if (!res.headersSent) {
+			return res.status(500).json({
+				error: error instanceof Error ? error.message : "Chat session generation failed",
+			});
+		} else {
+			res.write("\n\n*Error: Connection to Gemini timed out or failed. Please retry.*");
+			res.end();
+		}
+	}
+});
+
 app.get("/health", (req, res) => {
 	res.json({ status: "ok" });
 });
