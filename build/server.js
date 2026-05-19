@@ -6830,7 +6830,10 @@ Rules for your responses:
         error: error instanceof Error ? error.message : "Chat session generation failed"
       });
     } else {
-      res.write("\n\n*Error: Connection to Gemini timed out or failed. Please retry.*");
+      const errMessage = error instanceof Error ? error.message : String(error);
+      res.write(`
+
+*Error: Connection to Gemini failed. Details: ${errMessage}*`);
       res.end();
     }
   }

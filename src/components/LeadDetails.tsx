@@ -636,7 +636,7 @@ export default function LeadDetails({
 					animate={{ opacity: 1, scale: 1, y: 0 }}
 					exit={{ opacity: 0, scale: 0.95, y: 20 }}
 					transition={{ type: "spring", stiffness: 300, damping: 25 }}
-					className='absolute top-20 right-10 w-[450px] max-h-[calc(100vh-100px)] flex flex-col glass rounded-2xl shadow-2xl overflow-hidden z-50 accent-glow text-slate-900'>
+					className='absolute top-20 right-10 w-[450px] h-[540px] max-h-[calc(100vh-180px)] flex flex-col glass rounded-2xl shadow-2xl overflow-hidden z-50 accent-glow text-slate-900'>
 				<div className='p-6 border-b border-slate-200 relative'>
 					<div className='absolute top-0 right-0 p-4 opacity-10 pointer-events-none text-violet-500'>
 						<Rocket className='w-24 h-24' />
