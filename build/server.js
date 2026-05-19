@@ -3871,8 +3871,8 @@ async function getSDKGenAI() {
 var GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
 async function generateCreativeDirection(business, debugSession) {
   const modelsToTry = [
-    { name: "gemini-pro-latest", timeoutMs: 45e3 },
-    { name: "gemini-pro-latest", timeoutMs: 45e3 }
+    { name: "gemini-flash-latest", timeoutMs: 45e3 },
+    { name: "gemini-flash-latest", timeoutMs: 45e3 }
   ];
   const buildImageBlock = (b) => {
     const sources = typeof collectBusinessImages === "function" ? collectBusinessImages(b) : b.photos || [];
@@ -5950,8 +5950,8 @@ ${buildImageBlock(business)}
 
 Return only valid JSON matching the WebsiteSchema TypeScript interface. Make sure the returned theme contains the "designDNA" object exactly as described.`;
     const modelsToTry = [
-      { name: "gemini-pro-latest", timeoutMs: 45e3 },
-      { name: "gemini-pro-latest", timeoutMs: 45e3 }
+      { name: "gemini-flash-latest", timeoutMs: 45e3 },
+      { name: "gemini-flash-latest", timeoutMs: 45e3 }
     ];
     const callGeminiText = async (promptText, stageLabel) => {
       let stageRawText = "";
@@ -6818,7 +6818,7 @@ app.post("/api/business-ai-chat", async (req, res) => {
         parts: [{ text: latestMessage?.content || "Hello" }]
       });
     }
-    const restUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-latest:generateContent";
+    const restUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
     const key = getLatestApiKeyFromDisk() || process.env.GEMINI_API_KEY || process.env.GENAI_KEY || GENAI_KEY;
     if (!key) {
       return res.status(500).json({
@@ -6888,8 +6888,8 @@ Rules for your responses:
       fallbackUsed = true;
     }
     if (fallbackUsed || !fullResponseText) {
-      console.log("[AI Chat] Attempting REST generation with gemini-pro-latest...");
-      const modelRestUrl = restUrl.includes("{model}") ? restUrl.replace("{model}", "gemini-pro-latest") : restUrl;
+      console.log("[AI Chat] Attempting REST generation with gemini-flash-latest...");
+      const modelRestUrl = restUrl.includes("{model}") ? restUrl.replace("{model}", "gemini-flash-latest") : restUrl;
       const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
       const requestBody = {
         contents: chatContents,

@@ -285,8 +285,8 @@ const GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
 
 async function generateCreativeDirection(business: any, debugSession: any): Promise<any> {
 	const modelsToTry = [
-		{ name: "gemini-pro-latest", timeoutMs: 45000 },
-		{ name: "gemini-pro-latest", timeoutMs: 45000 },
+		{ name: "gemini-flash-latest", timeoutMs: 45000 },
+		{ name: "gemini-flash-latest", timeoutMs: 45000 },
 	] as const;
 
 	const buildImageBlock = (b: any) => {
@@ -2903,8 +2903,8 @@ ${buildImageBlock(business)}
 Return only valid JSON matching the WebsiteSchema TypeScript interface. Make sure the returned theme contains the "designDNA" object exactly as described.`;
 
 		const modelsToTry = [
-			{ name: "gemini-pro-latest", timeoutMs: 45000 },
-			{ name: "gemini-pro-latest", timeoutMs: 45000 },
+			{ name: "gemini-flash-latest", timeoutMs: 45000 },
+			{ name: "gemini-flash-latest", timeoutMs: 45000 },
 		] as const;
 
 		const callGeminiText = async (
@@ -3949,7 +3949,7 @@ app.post("/api/business-ai-chat", async (req: Request, res: Response) => {
 		}
 
 		// 3. Resolve REST API Url and Key
-		const restUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-latest:generateContent";
+		const restUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
 		const key = getLatestApiKeyFromDisk() || process.env.GEMINI_API_KEY || process.env.GENAI_KEY || GENAI_KEY;
 		if (!key) {
 			return res.status(500).json({
@@ -4034,9 +4034,9 @@ Rules for your responses:
 		}
 
 		if (fallbackUsed || !fullResponseText) {
-			console.log("[AI Chat] Attempting REST generation with gemini-pro-latest...");
+			console.log("[AI Chat] Attempting REST generation with gemini-flash-latest...");
 			const modelRestUrl = restUrl.includes("{model}")
-				? restUrl.replace("{model}", "gemini-pro-latest")
+				? restUrl.replace("{model}", "gemini-flash-latest")
 				: restUrl;
 			const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
 
