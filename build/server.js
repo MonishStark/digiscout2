@@ -818,6 +818,93 @@ function buildRenderingTokens(schema) {
 function titleFromPurpose(purpose) {
   return purpose.replace(/[-_]/g, " ").replace(/\b\w/g, (match) => match.toUpperCase());
 }
+function imageClassificationScore(classification) {
+  switch (classification) {
+    case "before-after":
+      return 100;
+    case "workspace":
+      return 95;
+    case "interior-full":
+    case "macro-detail":
+      return 90;
+    case "interior-detail":
+      return 85;
+    case "landscape":
+      return 78;
+    case "environment":
+      return 74;
+    case "portrait":
+      return 72;
+    case "product-isolated":
+      return 68;
+    case "lifestyle":
+      return 62;
+    case "people-single":
+    case "people-group":
+      return 58;
+    case "texture-abstract":
+      return 48;
+    case "signage-text":
+      return 32;
+    default:
+      return 55;
+  }
+}
+function scoreImage(image) {
+  let score = imageClassificationScore(image.classification);
+  if (image.suggestedTreatment === "full-bleed") {
+    score += 10;
+  }
+  if (image.emotionalTone === "professional") {
+    score += 6;
+  }
+  if (image.emotionalTone === "moody") {
+    score += 4;
+  }
+  if (image.hasText) {
+    score -= 6;
+  }
+  return score;
+}
+function sortImagesByImportance(images) {
+  return images.slice().sort((a, b) => scoreImage(b) - scoreImage(a));
+}
+function findBestHeroImage(schema) {
+  const pool2 = [];
+  const add = (src, classification) => {
+    if (!src) {
+      return;
+    }
+    pool2.push({
+      src,
+      classification,
+      dominantColor: "#888888",
+      aspectRatio: 1.78,
+      hasText: false,
+      hasfaces: false,
+      emotionalTone: "professional",
+      suggestedTreatment: "full-bleed"
+    });
+  };
+  if (Array.isArray(schema.sections)) {
+    for (const section of schema.sections) {
+      if (section?.media?.src) {
+        add(section.media.src, section.media.classification || "workspace");
+      }
+      if (Array.isArray(section?.items)) {
+        for (const item of section.items) {
+          if (item?.src) {
+            add(item.src, item.classification || "product-isolated");
+          }
+        }
+      }
+    }
+  }
+  if (!pool2.length) {
+    return null;
+  }
+  return sortImagesByImportance(pool2)[0];
+}
 function ensureImagePool(section, schema) {
   const images = [];
   const addImage = (src, fallbackClass) => {
@@ -832,11 +919,14 @@ function ensureImagePool(section, schema) {
       hasText: false,
       hasfaces: false,
       emotionalTone: "professional",
-      suggestedTreatment: "contained"
+      suggestedTreatment: fallbackClass === "before-after" || fallbackClass === "workspace" ? "full-bleed" : "contained"
     });
   };
   if (section?.media?.src) {
-    addImage(section.media.src, section.media.classification || "landscape");
+    addImage(
+      section.media.src,
+      section.media.classification || (section.type === "hero" ? "workspace" : "landscape")
+    );
   }
   if (Array.isArray(section?.items)) {
     for (const item of section.items) {
@@ -845,13 +935,19 @@ function ensureImagePool(section, schema) {
       }
     }
   }
+  if (images.length === 0 && section?.type === "hero") {
+    const fallbackHeroImage = findBestHeroImage(schema);
+    if (fallbackHeroImage) {
+      return [fallbackHeroImage];
+    }
+  }
   if (images.length === 0 && Array.isArray(schema.sections)) {
     const heroImage = schema.sections.map((s) => s?.media?.src || s?.items?.[0]?.src).find(Boolean);
     if (heroImage) {
       addImage(heroImage, "landscape");
     }
   }
-  return images;
+  return sortImagesByImportance(images);
 }
 function hasStrongImagery(schema) {
   return (schema.sections || []).some(
@@ -861,13 +957,48 @@ function hasStrongImagery(schema) {
 function normalizeCompositionHeading(value, fallback) {
   return escapeHtml2(value || fallback || "");
 }
+function sectionPriority(section) {
+  switch (section?.type) {
+    case "hero":
+      return 0;
+    case "features":
+    case "feature":
+    case "service":
+      return 1;
+    case "about":
+      return 2;
+    case "gallery":
+      return 3;
+    case "testimonials":
+    case "testimonial":
+      return 4;
+    case "faq":
+      return 5;
+    case "cta":
+      return 6;
+    case "contact":
+      return 7;
+    default:
+      return 8;
+  }
+}
+function orderSectionsForBusinessFirst(sections) {
+  return sections.map((section, index) => ({ section, index })).sort((left, right) => {
+    const priority = sectionPriority(left.section) - sectionPriority(right.section);
+    if (priority !== 0) {
+      return priority;
+    }
+    return left.index - right.index;
+  }).map((item) => item.section);
+}
 function deriveCompositions(schema) {
   if (schema.narrativeCompositions?.length) {
     return schema.narrativeCompositions;
   }
   const categories = (schema.brand?.category || "").toLowerCase();
   const strongImages = hasStrongImagery(schema);
-  return (schema.sections || []).map((section, index) => {
+  const orderedSections = orderSectionsForBusinessFirst(schema.sections || []);
+  return orderedSections.map((section, index) => {
     const type = section.type || "section";
     const purpose = {
       hero: "establish-authority",
@@ -890,7 +1021,7 @@ function deriveCompositions(schema) {
       about: "build-emotion",
       service: "generate-desire"
     }[type] : "generate-desire";
-    const visualBehavior = strongImages ? {
+    const visualBehavior = section?.visualBehavior || (type === "hero" ? "immersive-overlap" : strongImages ? {
       hero: "immersive-overlap",
       feature: "editorial-asymmetry",
       features: "editorial-asymmetry",
@@ -910,7 +1041,10 @@ function deriveCompositions(schema) {
       contact: "intimate-breathe",
       about: "intimate-breathe",
       service: "editorial-asymmetry"
-    }[type] || "editorial-asymmetry";
+    }[type] || "editorial-asymmetry");
+    const brandName = schema.brand?.businessName || "This business";
+    const defaultHeroHeading = type === "hero" ? `${brandName} \u2014 museum-quality restoration craftsmanship` : void 0;
+    const defaultHeroDescription = type === "hero" ? `${brandName} brings a trusted workshop approach to heirlooms, antiques, and restoration projects with museum-grade care, local authenticity, and visible craftsmanship.` : void 0;
     const densityMode = section?.density || schema.layoutDNA?.spacingRhythm || "balanced";
     const composition = {
       id: `composition-${index + 1}`,
@@ -924,27 +1058,44 @@ function deriveCompositions(schema) {
       images: ensureImagePool(section, schema),
       heading: normalizeCompositionHeading(
         section?.heading || section?.title || section?.name,
-        section?.subtitle || section?.tagline
+        type === "hero" ? defaultHeroHeading : section?.subtitle || section?.tagline
       ),
       description: normalizeCompositionHeading(
         section?.description || section?.body || section?.intro || section?.summary,
-        section?.copy || ""
+        type === "hero" ? defaultHeroDescription : section?.copy || ""
       ),
-      actions: (section?.actions || section?.ctas || []).map((action) => ({
-        label: safeLabel(action?.label, action?.text || "Learn More"),
-        href: safeHref(action?.href || action?.url),
-        style: action?.style === "secondary" ? "secondary" : "primary"
-      })),
-      proofElements: [
-        ...section?.testimonials || [],
-        ...section?.stats || []
-      ].map((item) => ({
-        type: item?.type || (item?.author ? "testimonial" : "stat"),
-        content: escapeHtml2(
-          item?.copy || item?.content || item?.text || item?.label || ""
-        ),
-        author: item?.author
-      })),
+      actions: (() => {
+        const existingActions = (section?.actions || section?.ctas || []).map(
+          (action) => ({
+            label: safeLabel(action?.label, action?.text || "Learn More"),
+            href: safeHref(action?.href || action?.url),
+            style: action?.style === "secondary" ? "secondary" : "primary"
+          })
+        );
+        return existingActions.length ? existingActions : heroActions;
+      })(),
+      proofElements: (() => {
+        const sectionProof = [
+          ...section?.testimonials || [],
+          ...section?.stats || []
+        ].map((item) => ({
+          type: item?.type || (item?.author ? "testimonial" : "stat"),
+          content: escapeHtml2(
+            item?.copy || item?.content || item?.text || item?.label || ""
+          ),
+          author: item?.author
+        }));
+        if (type === "hero" && !sectionProof.length) {
+          return [
+            ...sectionProof,
+            {
+              type: "stat",
+              content: "Trusted restoration workshop with museum-grade care and visible craftsmanship."
+            }
+          ];
+        }
+        return sectionProof;
+      })(),
       motionLanguage: {
         entryTrigger: section?.motionTrigger || "on-scroll",
         entryType: section?.motionType || (visualBehavior === "kinetic-stagger" ? "slide" : "fade"),
@@ -954,8 +1105,8 @@ function deriveCompositions(schema) {
         backgroundColor: section?.background || schema.theme?.palette?.background,
         textColor: section?.textColor || schema.theme?.palette?.text,
         accentColor: section?.accentColor || schema.theme?.palette?.accent,
-        typographySize: section?.typographySize || "medium",
-        typographyWeight: section?.typographyWeight || "regular"
+        typographySize: section?.typographySize || (type === "hero" ? "large" : "medium"),
+        typographyWeight: section?.typographyWeight || (type === "hero" ? "contrast" : "regular")
       }
     };
     return composition;
