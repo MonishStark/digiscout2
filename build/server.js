@@ -3721,6 +3721,7 @@ fs3.writeSync(2, `[BOOT] CWD: ${process.cwd()}
 `);
 fs3.writeSync(2, `[BOOT] DB_USER: ${process.env.DB_USER || "NOT SET"}
 `);
+var GoogleGenerativeAI = null;
 var app = express();
 var PORT = process.env.PORT || 5001;
 var logStderr = (message) => {
@@ -3851,6 +3852,21 @@ function getLatestApiKeyFromDisk() {
     console.warn("[AI Chat] Failed to read environment key from disk:", err);
   }
   return null;
+}
+async function getSDKGenAI() {
+  const key = getLatestApiKeyFromDisk() || process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
+  console.log(`[AI Chat] getSDKGenAI runtime lookup key:`, key ? `${key.substring(0, 10)}...` : "NOT FOUND");
+  if (!key) return null;
+  if (!GoogleGenerativeAI) {
+    try {
+      const mod = await import("@google/generative-ai");
+      GoogleGenerativeAI = mod.GoogleGenerativeAI;
+    } catch (e) {
+      console.error("[Gemini] SDK package @google/generative-ai not found.");
+      return null;
+    }
+  }
+  return new GoogleGenerativeAI(key);
 }
 var GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
 async function generateCreativeDirection(business, debugSession) {
@@ -4136,6 +4152,7 @@ Return ONLY a valid JSON object matching the following structure (no markdown, n
   }
 }
 var CALLHIPPO_API_KEY = process.env.CALLHIPPO_API_KEY;
+var NETLIFY_TOKEN = process.env.VITE_NETLIFY_TOKEN || process.env.NETLIFY_TOKEN;
 var WEBSITE_GENERATION_MODE = process.env.WEBSITE_GENERATION_MODE || "gemini";
 function extractEmails(html) {
   const emailPattern = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
@@ -4223,14 +4240,14 @@ async function qualifyLeadCandidate(business, city) {
       notes: "Google Places returned an official website URL."
     };
   }
-  const key = getLatestApiKeyFromDisk() || process.env.GEMINI_API_KEY || process.env.GENAI_KEY || GENAI_KEY;
-  if (!key) {
+  const genAI = await getSDKGenAI();
+  if (!genAI) {
     return {
       hasWebsite: false,
       email: business.email,
       phoneNumber: business.phoneNumber,
       confidence: "low",
-      notes: "Gemini API key is not configured."
+      notes: "Gemini API key is not configured or SDK missing."
     };
   }
   const prompt = `You are qualifying a local business lead using live grounded data.
@@ -4264,32 +4281,45 @@ Return only valid JSON in this exact shape:
   "confidence": "high",
   "notes": "short explanation"
 }`;
+  const configsToTry = [
+    {
+      tools: [{ googleMaps: {} }, { googleSearch: {} }],
+      toolConfig: business.location ? {
+        retrievalConfig: {
+          latLng: {
+            latitude: business.location.lat,
+            longitude: business.location.lng
+          }
+        }
+      } : void 0
+    },
+    {
+      tools: [{ googleSearch: {} }],
+      toolConfig: void 0
+    }
+  ];
   let lastError = null;
-  const restUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-latest:generateContent";
-  const modelRestUrl = restUrl.includes("{model}") ? restUrl.replace("{model}", "gemini-pro-latest") : restUrl;
-  const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
-  try {
-    const requestBody = {
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.1 },
-      tools: [{ googleSearch: {} }]
-    };
-    const fetchResponse = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody)
-    });
-    if (!fetchResponse.ok) {
-      throw new Error(`REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`);
+  for (const configVariant of configsToTry) {
+    try {
+      const modelInstance = genAI.getGenerativeModel({
+        model: "gemini-1.5-pro",
+        tools: configVariant.tools,
+        toolConfig: configVariant.toolConfig
+      });
+      const result = await modelInstance.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1 }
+      });
+      const response = await result.response;
+      const parsed = parseLeadQualificationOutput(
+        (response.text() || "").trim()
+      );
+      if (parsed) {
+        return parsed;
+      }
+    } catch (error) {
+      lastError = error;
     }
-    const data = await fetchResponse.json();
-    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    const parsed = parseLeadQualificationOutput(responseText.trim());
-    if (parsed) {
-      return parsed;
-    }
-  } catch (error) {
-    lastError = error;
   }
   return {
     hasWebsite: false,

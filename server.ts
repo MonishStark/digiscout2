@@ -265,6 +265,21 @@ function getLatestApiKeyFromDisk(): string | null {
 }
 
 
+async function getSDKGenAI() {
+	const key = getLatestApiKeyFromDisk() || process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
+	console.log(`[AI Chat] getSDKGenAI runtime lookup key:`, key ? `${key.substring(0, 10)}...` : "NOT FOUND");
+	if (!key) return null;
+	if (!GoogleGenerativeAI) {
+		try {
+			const mod = await import("@google/generative-ai");
+			GoogleGenerativeAI = mod.GoogleGenerativeAI;
+		} catch (e) {
+			console.error("[Gemini] SDK package @google/generative-ai not found.");
+			return null;
+		}
+	}
+	return new GoogleGenerativeAI(key);
+}
 
 const GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
 
@@ -563,6 +578,7 @@ Return ONLY a valid JSON object matching the following structure (no markdown, n
 }
 
 const CALLHIPPO_API_KEY = process.env.CALLHIPPO_API_KEY;
+const NETLIFY_TOKEN = process.env.VITE_NETLIFY_TOKEN || process.env.NETLIFY_TOKEN;
 const WEBSITE_GENERATION_MODE = process.env.WEBSITE_GENERATION_MODE || "gemini";
 
 interface DeployRequest {
@@ -752,14 +768,14 @@ async function qualifyLeadCandidate(
 		};
 	}
 
-	const key = getLatestApiKeyFromDisk() || process.env.GEMINI_API_KEY || process.env.GENAI_KEY || GENAI_KEY;
-	if (!key) {
+	const genAI = await getSDKGenAI();
+	if (!genAI) {
 		return {
 			hasWebsite: false,
 			email: business.email,
 			phoneNumber: business.phoneNumber,
 			confidence: "low",
-			notes: "Gemini API key is not configured.",
+			notes: "Gemini API key is not configured or SDK missing.",
 		};
 	}
 
@@ -795,38 +811,51 @@ Return only valid JSON in this exact shape:
   "notes": "short explanation"
 }`;
 
+	const configsToTry = [
+		{
+			tools: [{ googleMaps: {} }, { googleSearch: {} }],
+			toolConfig: business.location
+				? {
+						retrievalConfig: {
+							latLng: {
+								latitude: business.location.lat,
+								longitude: business.location.lng,
+							},
+						},
+					}
+				: undefined,
+		},
+		{
+			tools: [{ googleSearch: {} }],
+			toolConfig: undefined,
+		},
+	] as const;
+
 	let lastError: unknown = null;
-	const restUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-latest:generateContent";
-	const modelRestUrl = restUrl.includes("{model}")
-		? restUrl.replace("{model}", "gemini-pro-latest")
-		: restUrl;
-	const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
 
-	try {
-		const requestBody = {
-			contents: [{ role: "user", parts: [{ text: prompt }] }],
-			generationConfig: { temperature: 0.1 },
-			tools: [{ googleSearch: {} }]
-		};
+	for (const configVariant of configsToTry) {
+		try {
+			const modelInstance = genAI.getGenerativeModel({
+				model: "gemini-1.5-pro",
+				tools: configVariant.tools as any,
+				toolConfig: configVariant.toolConfig as any,
+			} as any);
 
-		const fetchResponse = await fetch(url, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(requestBody),
-		});
+			const result = await modelInstance.generateContent({
+				contents: [{ role: "user", parts: [{ text: prompt }] }],
+				generationConfig: { temperature: 0.1 },
+			});
 
-		if (!fetchResponse.ok) {
-			throw new Error(`REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`);
+			const response = await result.response;
+			const parsed = parseLeadQualificationOutput(
+				(response.text() || "").trim(),
+			);
+			if (parsed) {
+				return parsed;
+			}
+		} catch (error) {
+			lastError = error;
 		}
-
-		const data = await fetchResponse.json() as any;
-		const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-		const parsed = parseLeadQualificationOutput(responseText.trim());
-		if (parsed) {
-			return parsed;
-		}
-	} catch (error) {
-		lastError = error;
 	}
 
 	return {
@@ -2906,7 +2935,7 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. Make sur
 								},
 							}),
 						}),
-						new Promise<Response>((_, reject) =>
+						new Promise<globalThis.Response>((_, reject) =>
 							setTimeout(
 								() =>
 									reject(
