@@ -21,8 +21,8 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Dynamic import for GoogleGenerativeAI to prevent startup failure if package missing
-let GoogleGenerativeAI: any = null;
+// Dynamic import for GoogleGenAI to prevent startup failure if package missing
+let GoogleGenAIInstance: any = null;
 
 import {
 	deleteProvisionedWordPressMultisiteSite,
@@ -266,48 +266,29 @@ async function readRequestBody(req: Request): Promise<Buffer> {
 	return Buffer.concat(chunks);
 }
 
-function getLatestApiKeyFromDisk(keyName = "GEMINI_API_KEY"): string | null {
-	try {
-		const searchPaths = [process.cwd(), __dirname, path.join(process.cwd(), "..")];
-		const files = [".env.production", ".env.local", ".env"];
-		
-		for (const dir of searchPaths) {
-			for (const f of files) {
-				const fullPath = path.join(dir, f);
-				if (fs.existsSync(fullPath)) {
-					const content = fs.readFileSync(fullPath, "utf8");
-					const regex = new RegExp(`${keyName}\\s*=\\s*([^\\r\\n]+)`);
-					const match = content.match(regex);
-					if (match && match[1]) {
-						const resolvedKey = match[1].trim().replace(/['"]/g, "");
-						if (resolvedKey) {
-							return resolvedKey;
-						}
-					}
-				}
-			}
-		}
-	} catch (err) {
-		console.warn(`[AI Chat] Failed to read ${keyName} from disk:`, err);
+function getLatestApiKeyFromDisk(keyName = "GEMINI_API_KEY"): string {
+	const key = process.env.GOOGLE_CLOUD_API_KEY || process.env.GEMINI_API_KEY;
+	if (!key) {
+		throw new Error(`Missing Gemini API Key. Please provide GOOGLE_CLOUD_API_KEY or GEMINI_API_KEY in your environment.`);
 	}
-	return null;
+	return key;
 }
 
 
 async function getSDKGenAI() {
-	const key = getLatestApiKeyFromDisk() || process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
+	const key = getLatestApiKeyFromDisk();
 	console.log(`[AI Chat] getSDKGenAI runtime lookup key:`, key ? `${key.substring(0, 10)}...` : "NOT FOUND");
 	if (!key) return null;
-	if (!GoogleGenerativeAI) {
+	if (!GoogleGenAIInstance) {
 		try {
-			const mod = await import("@google/generative-ai");
-			GoogleGenerativeAI = mod.GoogleGenerativeAI;
+			const { GoogleGenAI } = await import("@google/genai");
+			GoogleGenAIInstance = new GoogleGenAI({ apiKey: key });
 		} catch (e) {
-			console.error("[Gemini] SDK package @google/generative-ai not found.");
+			console.error("[Gemini] SDK package @google/genai not found.");
 			return null;
 		}
 	}
-	return new GoogleGenerativeAI(key);
+	return GoogleGenAIInstance;
 }
 
 const GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
@@ -865,22 +846,18 @@ Return only valid JSON in this exact shape:
 
 	for (const configVariant of configsToTry) {
 		try {
-			const modelInstance = genAI.getGenerativeModel({
-				model: "gemini-1.5-pro",
-				tools: configVariant.tools as any,
-				toolConfig: configVariant.toolConfig as any,
-			} as any);
-
 			await throttleGemini();
-			const result = await modelInstance.generateContent({
-				contents: [{ role: "user", parts: [{ text: prompt }] }],
-				generationConfig: { temperature: 0.1 },
+			const response = await genAI.models.generateContent({
+				model: "gemini-3.1-pro-preview",
+				contents: prompt,
+				config: {
+					tools: configVariant.tools as any,
+					temperature: 0.1,
+				}
 			});
 
-			const response = await result.response;
-			const parsed = parseLeadQualificationOutput(
-				(response.text() || "").trim(),
-			);
+			const text = response.text || "";
+			const parsed = parseLeadQualificationOutput(text.trim());
 			if (parsed) {
 				return parsed;
 			}
@@ -3995,19 +3972,18 @@ Rules for your responses:
 		const genAI = await getSDKGenAI();
 		if (genAI) {
 			try {
-				console.log("[AI Chat] Attempting SDK generation with gemini-flash-latest...");
-				const modelInstance = genAI.getGenerativeModel({
-					model: "gemini-flash-latest",
-					tools: [{ googleSearch: {} }] as any,
-				});
-
+				console.log("[AI Chat] Attempting SDK generation with gemini-3.1-pro-preview...");
 				await throttleGemini();
-				const result = await modelInstance.generateContent({
+				const result = await genAI.models.generateContent({
+					model: "gemini-3.1-pro-preview",
 					contents: chatContents,
-					systemInstruction: systemPrompt,
+					config: {
+						systemInstruction: systemPrompt,
+						tools: [{ googleSearch: {} }] as any,
+					}
 				});
 
-				fullResponseText = result.response.text() || "";
+				fullResponseText = result.text || "";
 			} catch (sdkError) {
 				console.warn("[AI Chat] SDK generation failed, falling back to REST:", sdkError);
 				fallbackUsed = true;

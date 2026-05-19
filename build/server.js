@@ -4331,7 +4331,7 @@ fs3.writeSync(2, `[BOOT] DB_USER: ${process.env.DB_USER || "NOT SET"}
 `);
 var __filename2 = fileURLToPath2(import.meta.url);
 var __dirname2 = dirname(__filename2);
-var GoogleGenerativeAI = null;
+var GoogleGenAIInstance = null;
 var app = express();
 var PORT = process.env.PORT || 5001;
 var logStderr = (message) => {
@@ -4460,44 +4460,26 @@ function buildBusinessDebugInput(business) {
   };
 }
 function getLatestApiKeyFromDisk(keyName = "GEMINI_API_KEY") {
-  try {
-    const searchPaths2 = [process.cwd(), __dirname2, path2.join(process.cwd(), "..")];
-    const files = [".env.production", ".env.local", ".env"];
-    for (const dir of searchPaths2) {
-      for (const f of files) {
-        const fullPath = path2.join(dir, f);
-        if (fs3.existsSync(fullPath)) {
-          const content = fs3.readFileSync(fullPath, "utf8");
-          const regex = new RegExp(`${keyName}\\s*=\\s*([^\\r\\n]+)`);
-          const match = content.match(regex);
-          if (match && match[1]) {
-            const resolvedKey = match[1].trim().replace(/['"]/g, "");
-            if (resolvedKey) {
-              return resolvedKey;
-            }
-          }
-        }
-      }
-    }
-  } catch (err) {
-    console.warn(`[AI Chat] Failed to read ${keyName} from disk:`, err);
+  const key = process.env.GOOGLE_CLOUD_API_KEY || process.env.GEMINI_API_KEY;
+  if (!key) {
+    throw new Error(`Missing Gemini API Key. Please provide GOOGLE_CLOUD_API_KEY or GEMINI_API_KEY in your environment.`);
   }
-  return null;
+  return key;
 }
 async function getSDKGenAI() {
-  const key = getLatestApiKeyFromDisk() || process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
+  const key = getLatestApiKeyFromDisk();
   console.log(`[AI Chat] getSDKGenAI runtime lookup key:`, key ? `${key.substring(0, 10)}...` : "NOT FOUND");
   if (!key) return null;
-  if (!GoogleGenerativeAI) {
+  if (!GoogleGenAIInstance) {
     try {
-      const mod = await import("@google/generative-ai");
-      GoogleGenerativeAI = mod.GoogleGenerativeAI;
+      const { GoogleGenAI } = await import("@google/genai");
+      GoogleGenAIInstance = new GoogleGenAI({ apiKey: key });
     } catch (e) {
-      console.error("[Gemini] SDK package @google/generative-ai not found.");
+      console.error("[Gemini] SDK package @google/genai not found.");
       return null;
     }
   }
-  return new GoogleGenerativeAI(key);
+  return GoogleGenAIInstance;
 }
 var GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
 async function generateCreativeDirection(business, debugSession) {
@@ -4950,20 +4932,17 @@ Return only valid JSON in this exact shape:
   let lastError = null;
   for (const configVariant of configsToTry) {
     try {
-      const modelInstance = genAI.getGenerativeModel({
-        model: "gemini-1.5-pro",
-        tools: configVariant.tools,
-        toolConfig: configVariant.toolConfig
-      });
       await throttleGemini();
-      const result = await modelInstance.generateContent({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.1 }
+      const response = await genAI.models.generateContent({
+        model: "gemini-3.1-pro-preview",
+        contents: prompt,
+        config: {
+          tools: configVariant.tools,
+          temperature: 0.1
+        }
       });
-      const response = await result.response;
-      const parsed = parseLeadQualificationOutput(
-        (response.text() || "").trim()
-      );
+      const text = response.text || "";
+      const parsed = parseLeadQualificationOutput(text.trim());
       if (parsed) {
         return parsed;
       }
@@ -7462,17 +7441,17 @@ Rules for your responses:
     const genAI = await getSDKGenAI();
     if (genAI) {
       try {
-        console.log("[AI Chat] Attempting SDK generation with gemini-flash-latest...");
-        const modelInstance = genAI.getGenerativeModel({
-          model: "gemini-flash-latest",
-          tools: [{ googleSearch: {} }]
-        });
+        console.log("[AI Chat] Attempting SDK generation with gemini-3.1-pro-preview...");
         await throttleGemini();
-        const result = await modelInstance.generateContent({
+        const result = await genAI.models.generateContent({
+          model: "gemini-3.1-pro-preview",
           contents: chatContents,
-          systemInstruction: systemPrompt
+          config: {
+            systemInstruction: systemPrompt,
+            tools: [{ googleSearch: {} }]
+          }
         });
-        fullResponseText = result.response.text() || "";
+        fullResponseText = result.text || "";
       } catch (sdkError) {
         console.warn("[AI Chat] SDK generation failed, falling back to REST:", sdkError);
         fallbackUsed = true;
