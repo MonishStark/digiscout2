@@ -4066,8 +4066,8 @@ Return ONLY a valid JSON object matching the following structure (no markdown, n
   let lastError = null;
   for (const model of modelsToTry) {
     try {
-      const restUrl = process.env.GEMINI_REST_URL;
-      const key = process.env.GEMINI_API_KEY || process.env.GENAI_KEY || GENAI_KEY;
+      const restUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
+      const key = getLatestApiKeyFromDisk() || process.env.GEMINI_API_KEY || process.env.GENAI_KEY || GENAI_KEY;
       if (restUrl && key) {
         const modelRestUrl = restUrl.includes("{model}") ? restUrl.replace("{model}", model.name) : restUrl;
         const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
