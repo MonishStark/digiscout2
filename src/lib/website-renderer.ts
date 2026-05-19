@@ -378,6 +378,7 @@ function renderHero(section: HeroSection, schema: WebsiteSchema) {
 function renderFeatures(schema: WebsiteSchema, section: FeatureSection) {
 	const layout = ((section as any).layout || "cards").toString().toLowerCase();
 	const voice = getSiteVoice(schema);
+	const items = (section.items || []).filter(Boolean);
 	const sectionTitle =
 		(
 			section as FeatureSection & {
@@ -396,23 +397,23 @@ function renderFeatures(schema: WebsiteSchema, section: FeatureSection) {
     <h2>${escapeHtml(sectionTitle)}</h2>
   </div>
   <div class="feature-stack">
-    ${(section.items || [])
-			.map(
-				(item, index) => `
+      ${items
+				.map(
+					(item, index) => `
     <article class="feature-card feature-card-stack">
       <span class="feature-index">${String(index + 1).padStart(2, "0")}</span>
       <div>
-        <h3>${escapeHtml(item.title)}</h3>
-        <p>${escapeHtml(item.description)}</p>
+        	<h3>${escapeHtml(item?.title || "")}</h3>
+        	<p>${escapeHtml(item?.description || "")}</p>
       </div>
     </article>`,
-			)
-			.join("")}
+				)
+				.join("")}
   </div>
 </section>`;
 	}
 	if (layout === "feature-grid") {
-		const leadItem = (section.items || [])[0];
+		const leadItem = items[0];
 		return `
 <section class="site-section features features-layout-bento" id="services" data-layout="feature-grid">
   <div class="section-heading">
@@ -425,26 +426,26 @@ function renderFeatures(schema: WebsiteSchema, section: FeatureSection) {
 				? `
     <article class="feature-card feature-card-lead">
       <span class="feature-index">01</span>
-      <h3>${escapeHtml(leadItem.title)}</h3>
-      <p>${escapeHtml(leadItem.description)}</p>
+        <h3>${escapeHtml(leadItem?.title || "")}</h3>
+        <p>${escapeHtml(leadItem?.description || "")}</p>
     </article>`
 				: ""
 		}
-    ${(section.items || [])
-			.slice(leadItem ? 1 : 0)
-			.map(
-				(item, index) => `
+      ${items
+				.slice(leadItem ? 1 : 0)
+				.map(
+					(item, index) => `
     <article class="feature-card feature-card-support">
       <span class="feature-index">${String(index + (leadItem ? 2 : 1)).padStart(2, "0")}</span>
-      <h3>${escapeHtml(item.title)}</h3>
-      <p>${escapeHtml(item.description)}</p>
+        <h3>${escapeHtml(item?.title || "")}</h3>
+        <p>${escapeHtml(item?.description || "")}</p>
     </article>`,
-			)
-			.join("")}
+				)
+				.join("")}
   </div>
 </section>`;
 	}
-	const leadItem = layout === "bento" ? (section.items || [])[0] : null;
+	const leadItem = layout === "bento" ? items[0] : null;
 	return `
 <section class="site-section features features-layout-${layout}" id="services" data-layout="${escapeHtml(layout)}">
   <div class="section-heading">
@@ -457,22 +458,22 @@ function renderFeatures(schema: WebsiteSchema, section: FeatureSection) {
 				? `
     <article class="feature-card feature-card-lead">
       <span class="feature-index">01</span>
-      <h3>${escapeHtml(leadItem.title)}</h3>
-      <p>${escapeHtml(leadItem.description)}</p>
+        <h3>${escapeHtml(leadItem?.title || "")}</h3>
+        <p>${escapeHtml(leadItem?.description || "")}</p>
     </article>`
 				: ""
 		}
-    ${(section.items || [])
-			.slice(leadItem ? 1 : 0)
-			.map(
-				(item, index) => `
+      ${items
+				.slice(leadItem ? 1 : 0)
+				.map(
+					(item, index) => `
     <article class="feature-card feature-card-support">
       <span class="feature-index">${String(index + (leadItem ? 2 : 1)).padStart(2, "0")}</span>
-      <h3>${escapeHtml(item.title)}</h3>
-      <p>${escapeHtml(item.description)}</p>
+        <h3>${escapeHtml(item?.title || "")}</h3>
+        <p>${escapeHtml(item?.description || "")}</p>
     </article>`,
-			)
-			.join("")}
+				)
+				.join("")}
   </div>
 </section>`;
 }
@@ -843,7 +844,7 @@ function renderPageBody(schema: WebsiteSchema) {
 function renderFooter(schema: WebsiteSchema) {
 	const logo = schema.brand.logo;
 	const currentYear = new Date().getFullYear();
-	
+
 	return `
 <footer class="site-footer">
   <div class="footer-grid">

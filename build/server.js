@@ -2153,9 +2153,6 @@ async function generateWebsite(business) {
       debugFallbackUsed: (resp.headers.get("x-debug-generation-fallback") || "").toLowerCase() === "true"
     };
   } catch (err) {
-    if (err.status === 422) {
-      throw err;
-    }
     throw err;
   }
 }
@@ -2213,6 +2210,17 @@ async function generateWithFallback(promptOrContents, config = {}, options) {
   const geminiApiKey = process.env.GEMINI_API_KEY;
   const geminiRestUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
   const contents = typeof promptOrContents === "string" ? [{ role: "user", parts: [{ text: promptOrContents }] }] : promptOrContents;
+  const contextLabel = options.contextLabel || "unknown-stage";
+  const logProvider = (payload) => {
+    if (!options.debugSession || !options.persistGenerationDebugFile) return;
+    const line = `[${(/* @__PURE__ */ new Date()).toISOString()}] stage=${contextLabel} provider=${payload.provider} model=${payload.model} status=${payload.status}${payload.outputChars !== void 0 ? ` outputChars=${payload.outputChars}` : ""}${payload.error ? ` error=${payload.error}` : ""}`;
+    options.persistGenerationDebugFile(
+      options.debugSession,
+      "00-provider.log",
+      line,
+      true
+    );
+  };
   if (googleCloudApiKey) {
     const apiEndpoint = process.env.VERTEX_API_ENDPOINT || "aiplatform.googleapis.com";
     const modelId = "gemini-3.1-pro-preview";
@@ -2258,6 +2266,12 @@ async function generateWithFallback(promptOrContents, config = {}, options) {
         }
         if (text) {
           options.logStderr(`[AI] Vertex Success!`);
+          logProvider({
+            provider: "vertex",
+            model: modelId,
+            status: "success",
+            outputChars: text.length
+          });
           return text;
         }
         throw new Error("Vertex response contents parts were empty");
@@ -2270,6 +2284,12 @@ async function generateWithFallback(promptOrContents, config = {}, options) {
       options.logStderr(
         `[AI] Vertex Failed, Switching to Gemini Flash... Error: ${err.message || err}`
       );
+      logProvider({
+        provider: "vertex",
+        model: modelId,
+        status: "failure",
+        error: err?.message || String(err)
+      });
       if (options.debugSession && options.appendGenerationDebugError) {
         options.appendGenerationDebugError(
           options.debugSession,
@@ -2306,6 +2326,12 @@ async function generateWithFallback(promptOrContents, config = {}, options) {
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text) {
           options.logStderr(`[AI] Public Gemini Success!`);
+          logProvider({
+            provider: "public-gemini",
+            model: geminiRestUrl,
+            status: "success",
+            outputChars: text.length
+          });
           return text;
         }
         throw new Error("Public Gemini response contents parts were empty");
@@ -2318,6 +2344,12 @@ async function generateWithFallback(promptOrContents, config = {}, options) {
       options.logStderr(
         `[AI] Public Gemini Failed. Error: ${err.message || err}`
       );
+      logProvider({
+        provider: "public-gemini",
+        model: geminiRestUrl,
+        status: "failure",
+        error: err?.message || String(err)
+      });
       if (options.debugSession && options.appendGenerationDebugError) {
         options.appendGenerationDebugError(
           options.debugSession,
@@ -2397,7 +2429,7 @@ Return ONLY a valid JSON object matching this structure:
     const stage0Text = await generateWithFallback(
       stage0Prompt,
       { temperature: 0.2, responseMimeType: "application/json" },
-      options
+      { ...options, contextLabel: "stage0-creative-direction" }
     );
     options.logStderr(
       `[Gemini Generation] Stage 0 raw length=${stage0Text.length}`
@@ -2544,7 +2576,7 @@ Return only valid JSON matching the WebsiteSchema interface. Include the "design
     const schemaText = await generateWithFallback(
       stage1Prompt,
       { temperature: 0.9, responseMimeType: "application/json" },
-      options
+      { ...options, contextLabel: "stage1-schema" }
     );
     options.logStderr(
       `[Gemini Generation] Stage 1 raw length=${schemaText.length}`
@@ -2608,7 +2640,7 @@ MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
     const htmlText = await generateWithFallback(
       stage2Contents,
       { temperature: 0.75 },
-      options
+      { ...options, contextLabel: "stage2-wordpress-html" }
     );
     options.logStderr(
       `[Gemini Generation] Stage 2 raw length=${htmlText.length}`
