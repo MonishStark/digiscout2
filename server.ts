@@ -3895,11 +3895,12 @@ app.post("/api/business-ai-chat", async (req: Request, res: Response) => {
 			});
 		}
 
-		// 3. Retrieve Gemini SDK client
-		const genAI = await getSDKGenAI();
-		if (!genAI) {
+		// 3. Resolve REST API Url and Key
+		const restUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
+		const key = process.env.GEMINI_API_KEY || process.env.GENAI_KEY || GENAI_KEY;
+		if (!key) {
 			return res.status(500).json({
-				error: "Gemini API key is not configured on the server. Please check your .env.local.",
+				error: "Gemini API key is not configured on the server. Please check your .env.production.",
 			});
 		}
 
@@ -3944,12 +3945,6 @@ Rules for your responses:
 2. Utilize native Google Search grounding to query real-world competitors, neighboring prices, local SEO rankings, and local citations for this exact neighborhood and business type.
 3. Be highly structured and readable. Format your answers in professional Markdown with bullet points, bold opportunities, and clean comparison tables. Keep paragraphs strategic and concise.`;
 
-		// 5. Instantiate model with native retrieval tools
-		const modelInstance = genAI.getGenerativeModel({
-			model: "gemini-flash-latest",
-			tools: [{ googleSearch: {} }] as any,
-		});
-
 		// 6. Set headers for standard HTTP text response
 		res.writeHead(200, {
 			"Content-Type": "text/plain; charset=utf-8",
@@ -3957,13 +3952,33 @@ Rules for your responses:
 			"Connection": "keep-alive",
 		});
 
-		// 7. Generate content from Gemini (non-streaming standard POST call as requested)
-		const result = await modelInstance.generateContent({
+		// 7. Generate content from Gemini REST API (non-streaming standard POST call)
+		const modelRestUrl = restUrl.includes("{model}")
+			? restUrl.replace("{model}", "gemini-flash-latest")
+			: restUrl;
+		const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
+
+		const requestBody = {
 			contents: chatContents,
-			systemInstruction: systemPrompt,
+			systemInstruction: {
+				parts: [{ text: systemPrompt }]
+			},
+			tools: [{ googleSearch: {} }]
+		};
+
+		const fetchResponse = await fetch(url, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(requestBody),
 		});
 
-		const fullResponseText = result.response.text() || "";
+		if (!fetchResponse.ok) {
+			const errorText = await fetchResponse.text().catch(() => "");
+			throw new Error(`Gemini REST API returned status ${fetchResponse.status}: ${errorText}`);
+		}
+
+		const responseJson = await fetchResponse.json() as any;
+		const fullResponseText = responseJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
 		res.write(fullResponseText);
 
 		// 8. Store response in the database for continuity

@@ -6745,10 +6745,11 @@ app.post("/api/business-ai-chat", async (req, res) => {
         parts: [{ text: latestMessage?.content || "Hello" }]
       });
     }
-    const genAI = await getSDKGenAI();
-    if (!genAI) {
+    const restUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
+    const key = process.env.GEMINI_API_KEY || process.env.GENAI_KEY || GENAI_KEY;
+    if (!key) {
       return res.status(500).json({
-        error: "Gemini API key is not configured on the server. Please check your .env.local."
+        error: "Gemini API key is not configured on the server. Please check your .env.production."
       });
     }
     const businessName = businessContext.name || "Local Business";
@@ -6785,20 +6786,31 @@ Rules for your responses:
 1. Act as a high-value growth strategist and consultant, NOT a generic chatbot. Provide action items, local SEO opportunities, conversion enhancements, and competitor analysis.
 2. Utilize native Google Search grounding to query real-world competitors, neighboring prices, local SEO rankings, and local citations for this exact neighborhood and business type.
 3. Be highly structured and readable. Format your answers in professional Markdown with bullet points, bold opportunities, and clean comparison tables. Keep paragraphs strategic and concise.`;
-    const modelInstance = genAI.getGenerativeModel({
-      model: "gemini-flash-latest",
-      tools: [{ googleSearch: {} }]
-    });
     res.writeHead(200, {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "no-cache",
       "Connection": "keep-alive"
     });
-    const result = await modelInstance.generateContent({
+    const modelRestUrl = restUrl.includes("{model}") ? restUrl.replace("{model}", "gemini-flash-latest") : restUrl;
+    const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
+    const requestBody = {
       contents: chatContents,
-      systemInstruction: systemPrompt
+      systemInstruction: {
+        parts: [{ text: systemPrompt }]
+      },
+      tools: [{ googleSearch: {} }]
+    };
+    const fetchResponse = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody)
     });
-    const fullResponseText = result.response.text() || "";
+    if (!fetchResponse.ok) {
+      const errorText = await fetchResponse.text().catch(() => "");
+      throw new Error(`Gemini REST API returned status ${fetchResponse.status}: ${errorText}`);
+    }
+    const responseJson = await fetchResponse.json();
+    const fullResponseText = responseJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
     res.write(fullResponseText);
     if (fullResponseText.trim()) {
       try {
