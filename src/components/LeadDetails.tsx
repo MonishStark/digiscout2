@@ -518,7 +518,7 @@ export default function LeadDetails({
 						animate={{ opacity: 1, x: 0, scale: 1 }}
 						exit={{ opacity: 0, x: 30, scale: 0.95 }}
 						transition={{ type: "spring", stiffness: 300, damping: 25 }}
-						className='absolute top-20 right-[480px] w-[450px] h-[580px] max-h-[calc(100vh-180px)] flex flex-col glass rounded-2xl shadow-2xl overflow-hidden z-50 accent-glow text-slate-900'>
+						className='absolute top-20 right-[480px] w-[400px] h-[540px] max-h-[calc(100vh-180px)] flex flex-col glass rounded-2xl shadow-2xl overflow-hidden z-50 accent-glow text-slate-900'>
 						
 						{/* Chat Header */}
 						<div className='p-4 border-b border-slate-200 bg-white/50 backdrop-blur-xl flex items-center justify-between'>

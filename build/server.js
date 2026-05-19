@@ -2348,11 +2348,14 @@ for (const root of searchPaths) {
     const fullPath = path.join(root, file);
     if (fs.existsSync(fullPath)) {
       console.error(`[Env] Found environment file: ${fullPath}`);
-      const result = dotenv.config({ path: fullPath });
+      const result = dotenv.config({
+        path: fullPath,
+        override: file === ".env.production"
+      });
       if (result.error) {
         console.error(`[Env] Error parsing ${fullPath}: ${result.error.message}`);
       } else {
-        console.error(`[Env] Successfully loaded ${fullPath}`);
+        console.error(`[Env] Successfully loaded ${fullPath} (override: ${file === ".env.production"})`);
       }
     }
   }
@@ -3827,7 +3830,9 @@ function buildBusinessDebugInput(business) {
   };
 }
 async function getSDKGenAI() {
-  if (!GENAI_KEY) return null;
+  const key = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
+  console.log(`[AI Chat] getSDKGenAI runtime lookup key:`, key ? `${key.substring(0, 10)}...` : "NOT FOUND");
+  if (!key) return null;
   if (!GoogleGenerativeAI) {
     try {
       const mod = await import("@google/generative-ai");
@@ -3837,9 +3842,9 @@ async function getSDKGenAI() {
       return null;
     }
   }
-  return new GoogleGenerativeAI(GENAI_KEY);
+  return new GoogleGenerativeAI(key);
 }
-var GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_API_KEY;
+var GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
 async function generateCreativeDirection(business, debugSession) {
   const modelsToTry = [
     { name: "gemini-flash-latest", timeoutMs: 45e3 },

@@ -239,7 +239,9 @@ async function readRequestBody(req: Request): Promise<Buffer> {
 }
 
 async function getSDKGenAI() {
-	if (!GENAI_KEY) return null;
+	const key = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
+	console.log(`[AI Chat] getSDKGenAI runtime lookup key:`, key ? `${key.substring(0, 10)}...` : "NOT FOUND");
+	if (!key) return null;
 	if (!GoogleGenerativeAI) {
 		try {
 			const mod = await import("@google/generative-ai");
@@ -249,10 +251,10 @@ async function getSDKGenAI() {
 			return null;
 		}
 	}
-	return new GoogleGenerativeAI(GENAI_KEY);
+	return new GoogleGenerativeAI(key);
 }
 
-const GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_API_KEY;
+const GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
 
 async function generateCreativeDirection(business: any, debugSession: any): Promise<any> {
 	const modelsToTry = [

@@ -29,11 +29,14 @@ for (const root of searchPaths) {
 		const fullPath = path.join(root, file);
 		if (fs.existsSync(fullPath)) {
 			console.error(`[Env] Found environment file: ${fullPath}`);
-			const result = dotenv.config({ path: fullPath });
+			const result = dotenv.config({ 
+				path: fullPath, 
+				override: file === ".env.production"
+			});
 			if (result.error) {
 				console.error(`[Env] Error parsing ${fullPath}: ${result.error.message}`);
 			} else {
-				console.error(`[Env] Successfully loaded ${fullPath}`);
+				console.error(`[Env] Successfully loaded ${fullPath} (override: ${file === ".env.production"})`);
 			}
 		}
 	}
