@@ -265,7 +265,12 @@ export default function DeploymentsView({
 
 		} catch (error) {
 			console.error("Failed to generate website for lead:", error);
-			alert("Failed to generate website. Check console.");
+			const errorMsg = error instanceof Error ? error.message : String(error);
+			if ((error as any).status === 422) {
+				alert(`Website generation could not be completed: ${errorMsg}. Please try again.`);
+			} else {
+				alert("Failed to generate website. Check console.");
+			}
 			setProjects((prev) =>
 				prev.map((p) =>
 					p.id === project.id

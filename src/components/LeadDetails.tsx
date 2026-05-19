@@ -509,7 +509,12 @@ export default function LeadDetails({
 			}
 		} catch (error) {
 			console.error(error);
-			alert("Failed to generate website. Check console.");
+			const errorMsg = error instanceof Error ? error.message : String(error);
+			if ((error as any).status === 422) {
+				alert(`Website generation could not be completed: ${errorMsg}. Please try again.`);
+			} else {
+				alert("Failed to generate website. Check console.");
+			}
 		} finally {
 			setIsGenerating(false);
 		}

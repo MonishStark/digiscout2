@@ -23,10 +23,17 @@ export async function generateWebsite(
 		});
 
 		if (!resp.ok) {
-			const text = await resp.text().catch(() => "");
-			throw new Error(
-				`Generate failed: ${resp.status} ${resp.statusText} ${text}`,
-			);
+			let errorMsg = "";
+			try {
+				const errorJson = await resp.json();
+				errorMsg = errorJson.error || errorJson.message || `${resp.status} ${resp.statusText}`;
+			} catch {
+				const text = await resp.text().catch(() => "");
+				errorMsg = text || `${resp.status} ${resp.statusText}`;
+			}
+			const errorObj = new Error(errorMsg);
+			(errorObj as any).status = resp.status;
+			throw errorObj;
 		}
 
 		const payload = (await resp.json()) as WebsiteSchema;
@@ -39,6 +46,9 @@ export async function generateWebsite(
 				).toLowerCase() === "true",
 		};
 	} catch (err) {
+		if ((err as any).status === 422) {
+			throw err;
+		}
 		console.warn("Backend generate failed, returning dry-run schema:", err);
 		// Return a conservative, editable schema for UI testing
 		const now = Date.now();
@@ -371,5 +381,348 @@ export async function askBusinessAIChatStream(
 		if (done) break;
 		const chunk = decoder.decode(value, { stream: true });
 		onChunk(chunk);
+	}
+}
+
+export async function generateWebsiteContent(
+	business: Business,
+	options: {
+		fallback: () => Promise<WebsiteSchema>;
+		apiKey?: string;
+		debugSession?: any;
+		logStderr: (msg: string) => void;
+		persistGenerationDebugFile: (session: any, fileName: string, content: any) => void;
+		appendGenerationDebugError: (session: any, errorMsg: string) => void;
+		throttleGemini: () => Promise<void>;
+	}
+): Promise<WebsiteSchema> {
+	if (typeof window !== "undefined") {
+		throw new Error("generateWebsiteContent can only be run on the server-side");
+	}
+
+	const apiKey = options.apiKey || process.env.GOOGLE_CLOUD_API_KEY || process.env.GEMINI_API_KEY;
+	if (!apiKey) {
+		options.logStderr("[Gemini Generation] No primary API key found. Running website generation via REST Fallback (gemini-flash-latest) immediately...");
+		return await options.fallback();
+	}
+
+	try {
+		options.logStderr("[Gemini Generation] Running website generation via SDK (gemini-3.1-pro-preview)...");
+		const { GoogleGenAI, HarmCategory, HarmBlockThreshold } = await import("@google/genai");
+		const ai = new GoogleGenAI({ apiKey });
+		const model = "gemini-3.1-pro-preview";
+
+		const safetySettings = [
+			{
+				category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+				threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+			},
+			{
+				category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+				threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+			},
+			{
+				category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+				threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+			},
+			{
+				category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+				threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+			}
+		];
+
+		// Stage 0: Creative Direction
+		options.logStderr("[Gemini SDK] Generating Stage 0 Creative Direction...");
+		
+		const buildImageBlock = (b: any) => {
+			const sources = b.photos || [];
+			return sources.length ? sources.slice(0, 10).map((u: string, i: number) => `${i + 1}. ${u}`).join("\n") : "None";
+		};
+
+		const buildReviewsBlock = (b: any) => {
+			if (Array.isArray(b.reviews) && b.reviews.length) {
+				return b.reviews.slice(0, 5).map((r: any, i: number) => `${i + 1}. ${r.rating || ""} - ${r.text || r.comment || ""}`).join("\n");
+			}
+			return "None";
+		};
+
+		const stage0Prompt = `You are a premium Senior Staff Brand Director and Art Director.
+Establish a custom brand Creative Direction Brief based on:
+Business Name: ${business.name}
+Category: ${business.category || "Local Service"}
+Address: ${business.address || "N/A"}
+Phone: ${business.phoneNumber || "N/A"}
+Reviews:
+${buildReviewsBlock(business)}
+Reference Images:
+${buildImageBlock(business)}
+
+Return ONLY a valid JSON object matching this structure:
+{
+  "emotionalTone": "...",
+  "brandPersonality": { "luxuryVsApproachable": 50, "technicalVsEmotional": 50, "modernVsHeritage": 50, "industrialVsEditorial": 50, "minimalistVsLayered": 50, "premiumVsEnergetic": 50 },
+  "visualIdentity": { "themeMode": "light", "colorPalettePhilosophy": "...", "primaryColorIntent": "...", "accentColorIntent": "...", "backgroundColorIntent": "...", "surfaceColorIntent": "..." },
+  "compositionPhilosophy": { "alignment": "asymmetrical", "layoutCadence": "...", "spacingRhythm": "balanced", "sectionTransitions": "..." },
+  "typographyMood": { "headingFontFamily": "...", "bodyFontFamily": "...", "moodDescriptor": "..." },
+  "mediaTreatment": { "style": "...", "shapes": ["..."] },
+  "motionAndInteractions": { "personality": "subtle", "feel": "..." },
+  "premiumReferences": ["..."],
+  "atmosphericDirectionDescription": "...",
+  "designTokens": {
+    "spacingScale": { "xs": "...", "sm": "...", "md": "...", "lg": "...", "xl": "...", "xxl": "..." },
+    "typographyScale": { "heroHeadline": "clamp(...)", "sectionHeadline": "clamp(...)", "bodyText": "clamp(...)", "headingFont": "...", "bodyFont": "..." },
+    "radiusSystem": { "sm": "...", "md": "...", "lg": "...", "full": "..." },
+    "shadowSystem": { "soft": "...", "premium": "...", "intense": "..." },
+    "textureSystem": { "mode": "grain", "styleString": "..." },
+    "animationTimingSystem": { "easingCurve": "...", "revealDuration": "..." },
+    "layeringDepthSystem": { "zBack": "...", "zBase": "...", "zOverlay": "..." },
+    "colorRamp": { "background": "...", "surface": "...", "primary": "...", "accent": "...", "text": "...", "muted": "...", "outline": "..." },
+    "gradientSystem": { "ambientLighting": "...", "brandGradient": "..." }
+  }
+}`;
+
+		// Enforce 10s gap
+		await options.throttleGemini();
+
+		const stage0Response = await ai.models.generateContent({
+			model,
+			contents: stage0Prompt,
+			config: {
+				thinkingConfig: { thinkingLevel: "HIGH" },
+				safetySettings,
+				responseMimeType: "application/json"
+			}
+		});
+
+		const stage0Text = stage0Response.text;
+		if (!stage0Text) {
+			throw new Error("Empty response from Stage 0 SDK generation");
+		}
+		const creativeDirection = JSON.parse(stage0Text.trim());
+		if (options.debugSession) {
+			options.persistGenerationDebugFile(options.debugSession, "01a-creative-direction.json", creativeDirection);
+		}
+
+		// Stage 1: Website Schema JSON Layout (Multi-turn chat)
+		options.logStderr("[Gemini SDK] Starting Stage 1 Layout Generation...");
+		const chat = ai.chats.create({
+			model,
+			config: {
+				thinkingConfig: { thinkingLevel: "HIGH" },
+				safetySettings
+			}
+		});
+
+		// Build Stage 1 prompt
+		const qualificationNotes = business.notes || (business as any).qualificationNotes || "None";
+		const neighborhood = business.neighborhood || business.vibe || "Unknown";
+		const specialties = Array.isArray(business.specialties) ? business.specialties.join(", ") : business.specialties || "General services";
+		const tone = business.tone || "professional";
+
+		const stage1Prompt = `You are generating a PREMIUM WORDPRESS HOMEPAGE schema for a real local business based on the custom-designed Creative Direction Brief.
+
+CREATIVE DIRECTION BRIEF:
+${JSON.stringify(creativeDirection, null, 2)}
+
+PRIMARY OBJECTIVE:
+- Generate a highly bespoke, custom-themed WebsiteSchema that implements the Creative Direction Brief with extreme visual restraint, elegance, and emotional sophistication.
+- FORCE LIGHT THEME: You MUST generate "light" or "textured-neutral" themes only. Under NO circumstances should any section backgrounds, cards, or hero wrappers be dark, charcoal, deep gray, or pitch black. All surfaces must be bright (warm eggshell, soft cream, linen, or white).
+- GOOGLE MAPS IMAGES MANDATE: You MUST use the provided Google Maps photos from the "Reference Images" list directly for all image, media, or background URL properties in your sections. Do NOT invent external stock links or placeholder names. Simply copy the exact Google Maps URL strings from the list directly into your schema!
+- Avoid excessive, empty whitespace that causes the site to feel "underdeveloped" or generic startup-like. Maintain tight, high-impact padding variables to ensure a cohesive, robust visual experience.
+- Break free from templates. Create a unique pacing, visual flow, and section rhythm specifically suited for this business, prioritizing fewer, more high-impact sections over many repetitive ones.
+- Enforce the brand's visual identity (theme mode, color palette, custom gradients, typography pairing) with absolute consistency. Avoid excessive mutations or contrast mismatch.
+
+COPYWRITING INSTRUCTIONS (CRITICAL):
+- TONE: Journalistic, confident, and highly specific. Write like an editor for Monocle or GQ.
+- RULE 1: NO AI SPEAK. Permanently ban words like: "Unlock, Discover, Unleash, Elevate, Premier, Top-Notch, Cutting-Edge, Tailored, Seamless." 
+- RULE 2: Show, Don't Tell. Instead of "We offer the best plumbing services," write "Emergency leak repair and pipe routing in under 45 minutes."
+- RULE 3: Use hyper-local anchors. Reference the actual neighborhood, street, or city vibe provided in the context to make it feel grounded.
+- RULE 4: Hero Subheadlines must state exactly what the business does, who it is for, and where it is located in plain, striking English.
+
+DYNAMIC SECTIONS & COMPOSITION ORCHESTRATION:
+- Do NOT use a standard, repetitive section structure.
+- You have full creative control over which sections exist, their sequence, and their hierarchy to optimize the brand's narrative.
+- You do NOT write raw HTML. Instead, you are the Creative Director and Orchestrator.
+- For EVERY section in the "sections" array, you MUST generate a highly custom "composition" object instructing our premium rendering engine how to build that section.
+
+COMPOSITION DICTIONARY OPTIONS (Choose appropriate properties matching business category tone):
+"composition": {
+  "sectionType": Choose from [
+    "cinematicHero", "editorialHero", "splitNarrativeHero", 
+    "asymmetricalFeatures", "glassFeatureCards", "processNarrative", 
+    "immersiveGallery", "floatingImageStack", 
+    "floatingTestimonialWall", 
+    "layeredCTA", 
+    "luxuryMetricsStrip", "storytellingTimeline", "transformationShowcase", 
+    "premiumContactPanel", "accordionClean"
+  ],
+  "layoutBehavior": Choose from [
+    "offset-right", "offset-left", "grid-stagger", "asymmetrical", "side-by-side", "split-grid", "centered-dramatic", "horizontal-carousel", "diagonal-split"
+  ],
+  "visualDepth": Choose from [
+    "layered-atmospheric", "glassmorphic", "frosted-glow", "dramatic-depth", "flat-minimalist"
+  ],
+  "motionStyle": Choose from [
+    "premiumFade", "cinematicReveal", "staggerLift", "softFloat", "atmosphericParallax", "editorialSlide", "luxuryGlow"
+  ],
+  "imageTreatment": Choose from [
+    "layeredGlass", "editorialCrop", "cinematicBleed", "atmosphericOverlay", "luxuryFrame", "brutalistSharp", "floatingDepth", "diagonalWedge"
+  ],
+  "spacingMode": Choose from [
+    "luxury-editorial", "balanced", "compact", "airy"
+  ],
+  "themeIntensity": Choose from [
+    "dramatic", "soft", "balanced", "high-contrast"
+  ],
+  "hierarchyWeight": Choose from [
+    "dominant", "supporting", "breathing", "cinematicPause", "transitionary"
+  ]
+}
+
+THEME DESIGN SYSTEM:
+- Choose the theme mode determined in the Creative Direction Brief: "${creativeDirection.visualIdentity.themeMode}".
+- Derive all palette colors (background, surface, primary, accent, text, muted, outline) directly from the visualIdentity and brand personality intents.
+- Generative Design DNA: You MUST generate a "designDNA" object under "theme". This DNA system drives the adaptive visual rendering and mutation rules:
+  "designDNA": {
+    "spacingPersonality": Choose from ["compressed", "balanced", "airy", "luxury-editorial", "brutalist-dense"],
+    "compositionAggression": Number (0 to 100 representing layout mutation/offset levels),
+    "hierarchyIntensity": Number (0 to 100 representing font size scales & weight variance),
+    "motionEnergy": Number (0 to 100 representing stagger/speed timings),
+    "visualDensity": Number (0 to 100 representing complexity/content density),
+    "asymmetryLevel": Number (0 to 100 representing vertical alignment shifts and margins offsets),
+    "atmosphereIntensity": Number (0 to 100 representing ambient radial glow levels & noise opacity),
+    "typographyDominance": Choose from ["restrained", "balanced", "dominant-serif", "brutalist-impact", "cinematic-oversized", "layered-typography-walls", "vertical-accents"],
+    "imageWeight": Number (0 to 100 representing image coverage vs text layout),
+    "luxuryScore": Number (0 to 100 representing rounded smooth cards, high-end serif styling),
+    "cinematicScore": Number (0 to 100 representing dark themes, immersive split and bleed panels),
+    "brutalismScore": Number (0 to 100 representing blocky outlines, sharp text, raw structural elements),
+    "editorialScore": Number (0 to 100 representing warm neutral tones, spacious asymmetric structures),
+    "softnessScore": Number (0 to 100 representing rounded curves, fluid overlays, low-contrast shadows),
+    "visualAtmosphere": Choose from ["industrial-grit", "luxury-glow", "soft-editorial-warmth", "cinematic-darkness", "energetic-neon", "architectural-minimalism"]
+  }
+
+Business Context:
+- Name: ${business.name}
+- Category: ${business.category || "Local Service"}
+- Address: ${business.address || "N/A"}
+- Phone: ${business.phoneNumber || "N/A"}
+- Email: ${business.email || "NONE PROVIDED"}
+- Website: ${business.websiteUri || "N/A"}
+- Logo: ${business.logo || "None"}
+
+Qualification Notes:
+${qualificationNotes}
+
+Neighborhood / Vibe:
+${neighborhood}
+
+Service Specialties:
+${specialties}
+
+Customer Tone / Sentiment:
+${tone}
+
+Reviews:
+${buildReviewsBlock(business)}
+
+Reference Images:
+${buildImageBlock(business)}
+
+Return only valid JSON matching the WebsiteSchema interface. Include the "designDNA" object under "theme" exactly as specified. Do not enclose in markdown code fences.`;
+
+		// Enforce 10s gap
+		await options.throttleGemini();
+
+		// Use sendMessageStream as requested
+		const schemaStream = await chat.sendMessageStream({ message: stage1Prompt });
+		let schemaText = "";
+		for await (const chunk of schemaStream) {
+			schemaText += chunk.text;
+		}
+
+		if (options.debugSession) {
+			options.persistGenerationDebugFile(options.debugSession, "03-gemini-raw-response.txt", schemaText);
+		}
+
+		// Parse the JSON schema
+		let parsedSchema: WebsiteSchema;
+		try {
+			let cleanedJson = schemaText.trim();
+			if (cleanedJson.startsWith("```")) {
+				cleanedJson = cleanedJson.replace(/^```[a-zA-Z]*\n/, "").replace(/\n```$/, "");
+			}
+			parsedSchema = JSON.parse(cleanedJson.trim()) as WebsiteSchema;
+		} catch (parseError) {
+			throw new Error(`Failed to parse Stage 1 generated schema JSON: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
+		}
+
+		// Stage 2: WordPress HTML generation in same chat session
+		options.logStderr("[Gemini SDK] Starting Stage 2 WordPress HTML Generation...");
+
+		const stage2Prompt = `You are turning the approved website schema you just generated into the FINAL WordPress homepage HTML.
+
+Return ONLY homepage HTML suitable for WordPress post_content.
+Do not return JSON.
+Do not explain anything.
+Do not wrap the response in markdown unless it is a plain \`\`\`html fenced block.
+Do not output JavaScript.
+Use one initial <style> block if needed, then the homepage markup.
+Render the sections in the schema order exactly as provided.
+Use the exact business copy and exact media URLs from the schema.
+Do not collapse the page into a common in-house template.
+Make the composition, spacing, typography treatment, and hierarchy feel bespoke to this business.
+Light theme only.
+No site header chrome, no WordPress admin text, no fake badges like "crafted for premium presentation".
+No generic placeholder copy.
+
+MODERN UI & STYLING CONSTRAINTS (Apply via inline styles):
+- SPACING: Stop using hard pixel values for padding. Use fluid clamp spacing: padding: clamp(4rem, 8vw, 8rem) 5%;
+- BORDERS & SURFACES: For cards (bento grids, features, testimonials), use modern soft UI. Apply: background: #ffffff; border: 1px solid rgba(0,0,0,0.05); border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.03);
+- TYPOGRAPHY HIERARCHY: Make h1 massive and tight: font-size: clamp(3.5rem, 8vw, 6rem); line-height: 1.05; tracking: -0.02em; Make paragraph text readable: font-size: 1.125rem; line-height: 1.6; color: rgba(0,0,0,0.7);
+- IMAGES: Never use raw sharp corners. All images must have border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); unless they are explicitly arched.
+- BENTO GRID REFINEMENT: Ensure gap spacing is modern. display: grid; gap: 24px;.`;
+
+		// Enforce 10s gap
+		await options.throttleGemini();
+
+		const htmlStream = await chat.sendMessageStream({ message: stage2Prompt });
+		let htmlText = "";
+		for await (const chunk of htmlStream) {
+			htmlText += chunk.text;
+		}
+
+		if (options.debugSession) {
+			options.persistGenerationDebugFile(options.debugSession, "05b-wordpress-html-raw.txt", htmlText);
+		}
+
+		let cleanedHtml = htmlText.trim();
+		if (cleanedHtml.startsWith("```")) {
+			cleanedHtml = cleanedHtml.replace(/^```[a-zA-Z]*\n/, "").replace(/\n```$/, "");
+		}
+
+		if (!cleanedHtml) {
+			throw new Error("Generated WordPress HTML was empty");
+		}
+
+		parsedSchema._wordpressHtml = cleanedHtml;
+		parsedSchema._renderSource = "gemini-html";
+
+		options.logStderr("[Gemini Generation] Primary SDK website generation succeeded!");
+		return parsedSchema;
+	} catch (sdkError) {
+		options.logStderr(`[Gemini Generation] SDK generation failed. Switching to REST Fallback (gemini-flash-latest)... Error: ${sdkError instanceof Error ? sdkError.message : String(sdkError)}`);
+		if (options.debugSession) {
+			options.appendGenerationDebugError(options.debugSession, `sdk_generation_failed: ${sdkError instanceof Error ? sdkError.message : String(sdkError)}`);
+		}
+		
+		try {
+			return await options.fallback();
+		} catch (fallbackError) {
+			options.logStderr(`[Gemini Generation] Fallback REST generation also failed! Error: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`);
+			if (options.debugSession) {
+				options.appendGenerationDebugError(options.debugSession, `fallback_generation_failed: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`);
+			}
+			throw new Error("AI_GENERATION_FAILED");
+		}
 	}
 }
