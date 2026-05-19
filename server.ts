@@ -339,26 +339,25 @@ CATEGORY-SPECIFIC DESIGN MANDATES (Enforce specifically if the business matches 
 - Damage Restoration / Cleanup / Emergency Contractors:
   * luxuryVsApproachable: 50 to 65 (authoritative, trustworthy, highly-professional).
   * technicalVsEmotional: 80 to 95 (technical precision, dramatic safety confidence).
-  * minimalistVsLayered: 60 to 80 (structural layouts, dark atmospheric contrast).
-  * themeMode: "charcoal" or "dark" (deep iron-slate, cold metal, dark backgrounds).
+  * minimalistVsLayered: 60 to 80 (structural layouts, atmospheric contrast).
+  * themeMode: "light" or "textured-neutral" (warm eggshell, clean white, or light slate backgrounds. Do NOT use dark backgrounds under any circumstances).
   * headingFontFamily / bodyFontFamily: Strong uppercase impact (e.g. Outfit / Space Grotesk).
   * spacingRhythm: "balanced" or "compact" (rugged precision).
 - Roofing Companies / Roofers / Structural Contractors:
   * luxuryVsApproachable: 35 to 50 (bold contractor, powerful, action-focused).
   * technicalVsEmotional: 65 to 80 (precise durable roofing engineering).
   * minimalistVsLayered: 50 to 70 (high-energy bold highlights).
-  * themeMode: "charcoal" or "dark" (slate roof color theme with bright safety-orange alerts).
+  * themeMode: "light" or "textured-neutral" (eggshell or clean white background, accented with bright safety-orange or durable blue details. Do NOT use dark backgrounds under any circumstances).
   * headingFontFamily / bodyFontFamily: Heavy geometric headings (e.g. Syne / Inter).
   * spacingRhythm: "compact" (highly energetic, high readability, compact text columns).
 
 
-2. Determine the Visual Theme Mode. Do NOT restrict to light themes. Choose the mode that fits best:
+2. Determine the Visual Theme Mode. FORCE "light" or "textured-neutral" themes ONLY. Do NOT generate "dark" or "charcoal" themes under any circumstances. All designs must feel bright, airy, clean, professional, and accessible.
    - "light": Warm-white, clean, high visibility. Best for medical, local cleaners, organic day-spas.
-   - "dark": Deep premium black, charcoal, or dark navy. Best for high-end cocktail bars, premium photography, high-end design agencies.
-   - "charcoal": Textured dark grays, industrial, cool silver accents. Best for fitness gyms, specialty coffee, architectural firms.
    - "textured-neutral": Warm linen, eggshell, textured beige, soft taupe. Best for fine-dining restaurants, boutique hotels, artisan pottery.
-   - "high-contrast": Stark black and white, bold neon accents, raw layout. Best for energetic fitness clubs, boxing gyms, modern tattoo parlors.
-   - "atmospheric-gradient": Ethereal glassmorphism, glowing colorful background gradients. Best for digital brands, modern hair studios, dynamic creative spaces.
+
+3. GOOGLE MAPS PHOTO MANDATE:
+   - Always prioritize using the provided Google Maps photos from the "Reference Images" list inside the media layouts. Do not recommend placeholder designs or external stock illustrations when custom business imagery is available.
 
 3. Establish the Brand Concept and Art Direction Brief:
    - emotionalTone (e.g. "Warm, slow-paced luxury" or "Raw, high-octane energetic speed")
@@ -2800,13 +2799,15 @@ ${JSON.stringify(creativeDirection, null, 2)}
 
 PRIMARY OBJECTIVE:
 - Generate a highly bespoke, custom-themed WebsiteSchema that implements the Creative Direction Brief with extreme visual restraint, elegance, and emotional sophistication.
+- FORCE LIGHT THEME: You MUST generate "light" or "textured-neutral" themes only. Under NO circumstances should any section backgrounds, cards, or hero wrappers be dark, charcoal, deep gray, or pitch black. All surfaces must be bright (warm eggshell, soft cream, linen, or white).
+- GOOGLE MAPS IMAGES MANDATE: You MUST use the provided Google Maps photos from the "Reference Images" list directly for all image, media, or background URL properties in your sections. Do NOT invent external stock links or placeholder names. Simply copy the exact Google Maps URL strings from the list directly into your schema!
 - Avoid excessive, empty whitespace that causes the site to feel "underdeveloped" or generic startup-like. Maintain tight, high-impact padding variables to ensure a cohesive, robust visual experience.
 - Break free from templates. Create a unique pacing, visual flow, and section rhythm specifically suited for this business, prioritizing fewer, more high-impact sections over many repetitive ones.
 - Enforce the brand's visual identity (theme mode, color palette, custom gradients, typography pairing) with absolute consistency. Avoid excessive mutations or contrast mismatch.
 - Adopt a visual reference language suited perfectly to the business category:
   * "Supermarkets / Groceries": Sensory, abundant, rich, culturally-layered, and fresh-produce oriented. Use soft warm colors, magazine-style layouts, overlapping collages, dense marketplace section showcases, and warm approachable fonts.
-  * "Restoration / Construction / Emergency": Cinematic, rugged, technical, industrial, and highly authoritative. Use dark atmospheric steel/charcoal scales, bold contrast outlines, dramatic before/after comparing blocks, and technical timelines.
-  * "Roofing / Structural Contractor": Rugged, powerful, action-focused, energetic, and extremely durable. Use angular layouts, diagonal transitions, safety orange highlights, weather-proof metrics strips, and bold trust badges.
+  * "Restoration / Construction / Emergency": Cinematic, rugged, technical, industrial, and highly authoritative. Use clean white/light sand backdrops, bold high-contrast details, dramatic before/after comparing blocks, and technical timelines.
+  * "Roofing / Structural Contractor": Rugged, powerful, action-focused, energetic, and extremely durable. Use clean light slate backdrops, angular layouts, diagonal transitions, safety orange highlights, weather-proof metrics strips, and bold trust badges.
 
 DYNAMIC SECTIONS & COMPOSITION ORCHESTRATION:
 - Do NOT use a standard, repetitive section structure.
