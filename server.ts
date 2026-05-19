@@ -264,28 +264,14 @@ function getLatestApiKeyFromDisk(): string | null {
 	return null;
 }
 
-async function getSDKGenAI() {
-	const key = getLatestApiKeyFromDisk() || process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
-	console.log(`[AI Chat] getSDKGenAI runtime lookup key:`, key ? `${key.substring(0, 10)}...` : "NOT FOUND");
-	if (!key) return null;
-	if (!GoogleGenerativeAI) {
-		try {
-			const mod = await import("@google/generative-ai");
-			GoogleGenerativeAI = mod.GoogleGenerativeAI;
-		} catch (e) {
-			console.error("[Gemini] SDK package @google/generative-ai not found.");
-			return null;
-		}
-	}
-	return new GoogleGenerativeAI(key);
-}
+
 
 const GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
 
 async function generateCreativeDirection(business: any, debugSession: any): Promise<any> {
 	const modelsToTry = [
-		{ name: "gemini-flash-latest", timeoutMs: 45000 },
-		{ name: "gemini-flash-latest", timeoutMs: 45000 },
+		{ name: "gemini-pro-latest", timeoutMs: 45000 },
+		{ name: "gemini-pro-latest", timeoutMs: 45000 },
 	] as const;
 
 	const buildImageBlock = (b: any) => {
@@ -485,48 +471,35 @@ Return ONLY a valid JSON object matching the following structure (no markdown, n
 		try {
 			const restUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
 			const key = getLatestApiKeyFromDisk() || process.env.GEMINI_API_KEY || process.env.GENAI_KEY || GENAI_KEY;
-			if (restUrl && key) {
-				const modelRestUrl = restUrl.includes("{model}")
-					? restUrl.replace("{model}", model.name)
-					: restUrl;
-				const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
-				const fetchResponse = await Promise.race([
-					fetch(url, {
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({
-							contents: [{ parts: [{ text: prompt }] }],
-							generationConfig: {
-								temperature: 0.85,
-								maxOutputTokens: 2048,
-							},
-						}),
-					}),
-					new Promise<Response>((_, reject) =>
-						setTimeout(() => reject(new Error(`Creative Direction timeout after ${model.timeoutMs}ms`)), model.timeoutMs)
-					),
-				]);
-
-				if (!fetchResponse.ok) {
-					throw new Error(`REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`);
-				}
-				const data = await fetchResponse.json() as any;
-				responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-			} else {
-				const genAI = await getSDKGenAI();
-				if (!genAI) {
-					throw new Error("SDK not available");
-				}
-				const modelInstance = genAI.getGenerativeModel({ model: model.name });
-				const response = await Promise.race([
-					modelInstance.generateContent(prompt),
-					new Promise<any>((_, reject) =>
-						setTimeout(() => reject(new Error(`Timeout after ${model.timeoutMs}ms`)), model.timeoutMs)
-					),
-				]);
-				const result = await response.response;
-				responseText = result.text().trim();
+			if (!key) {
+				throw new Error("Gemini API key is not configured.");
 			}
+			const modelRestUrl = restUrl.includes("{model}")
+				? restUrl.replace("{model}", model.name)
+				: restUrl;
+			const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
+			const fetchResponse = await Promise.race([
+				fetch(url, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						contents: [{ parts: [{ text: prompt }] }],
+						generationConfig: {
+							temperature: 0.85,
+							maxOutputTokens: 2048,
+						},
+					}),
+				}),
+				new Promise<Response>((_, reject) =>
+					setTimeout(() => reject(new Error(`Creative Direction timeout after ${model.timeoutMs}ms`)), model.timeoutMs)
+				),
+			]);
+
+			if (!fetchResponse.ok) {
+				throw new Error(`REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`);
+			}
+			const data = await fetchResponse.json() as any;
+			responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
 			if (responseText) {
 				break;
@@ -779,14 +752,14 @@ async function qualifyLeadCandidate(
 		};
 	}
 
-	const genAI = await getSDKGenAI();
-	if (!genAI) {
+	const key = getLatestApiKeyFromDisk() || process.env.GEMINI_API_KEY || process.env.GENAI_KEY || GENAI_KEY;
+	if (!key) {
 		return {
 			hasWebsite: false,
 			email: business.email,
 			phoneNumber: business.phoneNumber,
 			confidence: "low",
-			notes: "Gemini API key is not configured or SDK missing.",
+			notes: "Gemini API key is not configured.",
 		};
 	}
 
@@ -822,51 +795,38 @@ Return only valid JSON in this exact shape:
   "notes": "short explanation"
 }`;
 
-	const configsToTry = [
-		{
-			tools: [{ googleMaps: {} }, { googleSearch: {} }],
-			toolConfig: business.location
-				? {
-						retrievalConfig: {
-							latLng: {
-								latitude: business.location.lat,
-								longitude: business.location.lng,
-							},
-						},
-					}
-				: undefined,
-		},
-		{
-			tools: [{ googleSearch: {} }],
-			toolConfig: undefined,
-		},
-	] as const;
-
 	let lastError: unknown = null;
+	const restUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-latest:generateContent";
+	const modelRestUrl = restUrl.includes("{model}")
+		? restUrl.replace("{model}", "gemini-pro-latest")
+		: restUrl;
+	const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
 
-	for (const configVariant of configsToTry) {
-		try {
-			const modelInstance = genAI.getGenerativeModel({
-				model: "gemini-1.5-pro",
-				tools: configVariant.tools as any,
-				toolConfig: configVariant.toolConfig as any,
-			} as any);
+	try {
+		const requestBody = {
+			contents: [{ role: "user", parts: [{ text: prompt }] }],
+			generationConfig: { temperature: 0.1 },
+			tools: [{ googleSearch: {} }]
+		};
 
-			const result = await modelInstance.generateContent({
-				contents: [{ role: "user", parts: [{ text: prompt }] }],
-				generationConfig: { temperature: 0.1 },
-			});
+		const fetchResponse = await fetch(url, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(requestBody),
+		});
 
-			const response = await result.response;
-			const parsed = parseLeadQualificationOutput(
-				(response.text() || "").trim(),
-			);
-			if (parsed) {
-				return parsed;
-			}
-		} catch (error) {
-			lastError = error;
+		if (!fetchResponse.ok) {
+			throw new Error(`REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`);
 		}
+
+		const data = await fetchResponse.json() as any;
+		const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+		const parsed = parseLeadQualificationOutput(responseText.trim());
+		if (parsed) {
+			return parsed;
+		}
+	} catch (error) {
+		lastError = error;
 	}
 
 	return {
@@ -2907,8 +2867,8 @@ ${buildImageBlock(business)}
 Return only valid JSON matching the WebsiteSchema TypeScript interface. Make sure the returned theme contains the "designDNA" object exactly as described.`;
 
 		const modelsToTry = [
-			{ name: "gemini-flash-latest", timeoutMs: 45000 },
-			{ name: "gemini-flash-latest", timeoutMs: 45000 },
+			{ name: "gemini-pro-latest", timeoutMs: 45000 },
+			{ name: "gemini-pro-latest", timeoutMs: 45000 },
 		] as const;
 
 		const callGeminiText = async (
@@ -2920,77 +2880,52 @@ Return only valid JSON matching the WebsiteSchema TypeScript interface. Make sur
 
 			for (const model of modelsToTry) {
 				try {
-					const restUrl = process.env.GEMINI_REST_URL;
-					if (restUrl && GENAI_KEY) {
-						const modelRestUrl = restUrl.includes("{model}")
-							? restUrl.replace("{model}", model.name)
-							: restUrl;
-						console.error(
-							`[Gemini] Attempting ${stageLabel} direct REST call to ${modelRestUrl}...`,
-						);
-
-						const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${GENAI_KEY}`;
-
-						const fetchResponse = await Promise.race([
-							fetch(url, {
-								method: "POST",
-								headers: { "Content-Type": "application/json" },
-								body: JSON.stringify({
-									contents: [{ parts: [{ text: promptText }] }],
-									generationConfig: {
-										temperature: stageLabel === "schema" ? 0.9 : 0.75,
-										maxOutputTokens: stageLabel === "schema" ? 8192 : 12288,
-									},
-								}),
-							}),
-							new Promise<Response>((_, reject) =>
-								setTimeout(
-									() =>
-										reject(
-											new Error(`REST timeout after ${model.timeoutMs}ms`),
-										),
-									model.timeoutMs,
-								),
-							),
-						]);
-
-						if (!fetchResponse.ok) {
-							throw new Error(
-								`REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`,
-							);
-						}
-
-						const data = (await fetchResponse.json()) as any;
-						stageRawText =
-							data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-					} else {
-						console.error(
-							`[Gemini] Attempting ${stageLabel} SDK call for ${model.name}...`,
-						);
-						const genAI = await getSDKGenAI();
-						if (!genAI) {
-							throw new Error("Gemini SDK not available.");
-						}
-						const response = (await Promise.race([
-							genAI
-								.getGenerativeModel({ model: model.name })
-								.generateContent(promptText),
-							new Promise((_, reject) =>
-								setTimeout(
-									() =>
-										reject(
-											new Error(
-												`${model.name} request timed out after ${model.timeoutMs}ms`,
-											),
-										),
-									model.timeoutMs,
-								),
-							),
-						])) as any;
-
-						const result = await response.response;
-						stageRawText = result.text().trim();
+					const restUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
+					const key = getLatestApiKeyFromDisk() || process.env.GEMINI_API_KEY || process.env.GENAI_KEY || GENAI_KEY;
+					if (!key) {
+						throw new Error("Gemini API key is not configured.");
 					}
+					const modelRestUrl = restUrl.includes("{model}")
+						? restUrl.replace("{model}", model.name)
+						: restUrl;
+					console.error(
+						`[Gemini] Attempting ${stageLabel} direct REST call to ${modelRestUrl}...`,
+					);
+
+					const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
+
+					const fetchResponse = await Promise.race([
+						fetch(url, {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({
+								contents: [{ parts: [{ text: promptText }] }],
+								generationConfig: {
+									temperature: stageLabel === "schema" ? 0.9 : 0.75,
+									maxOutputTokens: stageLabel === "schema" ? 8192 : 12288,
+								},
+							}),
+						}),
+						new Promise<Response>((_, reject) =>
+							setTimeout(
+								() =>
+									reject(
+										new Error(`REST timeout after ${model.timeoutMs}ms`),
+									),
+								model.timeoutMs,
+							),
+						),
+					]);
+
+					if (!fetchResponse.ok) {
+						throw new Error(
+							`REST failed (${fetchResponse.status}): ${await fetchResponse.text()}`,
+						);
+					}
+
+					const data = (await fetchResponse.json()) as any;
+					stageRawText =
+						data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
 					if (stageRawText) {
 						console.error(
@@ -3923,7 +3858,7 @@ app.post("/api/business-ai-chat", async (req: Request, res: Response) => {
 		}
 
 		// 3. Resolve REST API Url and Key
-		const restUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
+		const restUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-latest:generateContent";
 		const key = getLatestApiKeyFromDisk() || process.env.GEMINI_API_KEY || process.env.GENAI_KEY || GENAI_KEY;
 		if (!key) {
 			return res.status(500).json({
@@ -3981,7 +3916,7 @@ Rules for your responses:
 
 		// 7. Generate content from Gemini REST API (non-streaming standard POST call)
 		const modelRestUrl = restUrl.includes("{model}")
-			? restUrl.replace("{model}", "gemini-flash-latest")
+			? restUrl.replace("{model}", "gemini-pro-latest")
 			: restUrl;
 		const url = `${modelRestUrl}${modelRestUrl.includes("?") ? "&" : "?"}key=${key}`;
 
