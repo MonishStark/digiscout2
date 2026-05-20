@@ -752,20 +752,18 @@ export default function DeploymentsView({
 												</div>
 											</div>
 
-											<div className='flex flex-col gap-3 xl:items-end'>
-												<div className='flex flex-wrap items-center gap-2 xl:justify-end'>
-													{isSent && (
-														<Badge className='rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-medium text-amber-700'>
-															Outreach sent
-														</Badge>
-													)}
-												</div>
-												<div className='flex flex-wrap items-center gap-2 xl:justify-end'>
+											<div className='flex flex-col gap-3 xl:items-end justify-start'>
+												{isSent && (
+													<Badge className='rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-medium text-amber-700 self-end'>
+														Outreach sent
+													</Badge>
+												)}
+												<div className='flex flex-col gap-2 w-full sm:w-[180px]'>
 													{isLive && project.wordpressSiteUrl && (
 														<Button
 															onClick={() => window.open(project.wordpressSiteUrl, "_blank")}
 															disabled={deletingId === project.id}
-															className='h-10 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 text-cyan-700 hover:bg-cyan-100 flex items-center gap-1.5 font-semibold'>
+															className='h-10 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 text-cyan-700 hover:bg-cyan-100 flex items-center justify-center gap-1.5 font-semibold w-full'>
 															<Globe className='h-4 w-4' />
 															WP Preview
 														</Button>
@@ -774,7 +772,7 @@ export default function DeploymentsView({
 														<Button
 															onClick={() => window.open(project.wordpressAdminUrl, "_blank")}
 															disabled={deletingId === project.id}
-															className='h-10 rounded-2xl border border-slate-200 bg-white px-4 text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 font-semibold'>
+															className='h-10 rounded-2xl border border-slate-200 bg-white px-4 text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-1.5 font-semibold w-full'>
 															<KeyRound className='h-4 w-4' />
 															WP Admin
 														</Button>
@@ -783,7 +781,7 @@ export default function DeploymentsView({
 														<Button
 															onClick={() => handleGenerateWebsiteForLead(project)}
 															disabled={isActionLoading || deletingId === project.id}
-															className='h-10 rounded-2xl bg-violet-600 px-4 text-white hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60 border-none font-semibold flex items-center justify-center gap-2 shadow-xl shadow-violet-600/15'>
+															className='h-10 rounded-2xl bg-violet-600 px-4 text-white hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60 border-none font-semibold flex items-center justify-center gap-2 shadow-xl shadow-violet-600/15 w-full'>
 															{isActionLoading ? (
 																<Activity className='h-4 w-4 animate-spin' />
 															) : (
@@ -797,7 +795,7 @@ export default function DeploymentsView({
 															disabled={
 																!isLive || sendingId === project.id || deletingId === project.id
 															}
-															className='h-10 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 flex items-center gap-1.5 font-semibold'>
+															className='h-10 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center gap-1.5 font-semibold w-full'>
 															{sendingId === project.id ? (
 																<Activity className='h-4 w-4 animate-spin' />
 															) : (
@@ -809,7 +807,7 @@ export default function DeploymentsView({
 													<Button
 														onClick={() => handleDeleteLead(project.id)}
 														disabled={deletingId === project.id}
-														className='h-10 rounded-2xl border border-rose-200 bg-rose-50 px-4 text-rose-700 transition-all duration-200 hover:border-rose-600 hover:bg-rose-600 hover:text-white shadow-none flex items-center gap-1.5 font-semibold disabled:cursor-not-allowed disabled:opacity-60'>
+														className='h-10 rounded-2xl border border-rose-200 bg-rose-50 px-4 text-rose-700 transition-all duration-200 hover:border-rose-600 hover:bg-rose-600 hover:text-white shadow-none flex items-center justify-center gap-1.5 font-semibold disabled:cursor-not-allowed disabled:opacity-60 w-full'>
 														{deletingId === project.id ? (
 															<Activity className='h-4 w-4 animate-spin' />
 														) : (
