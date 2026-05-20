@@ -1812,19 +1812,63 @@ async function generateHomepageViaDirectVertexPrompt(business, options) {
       id: business.id || `homepage-${Date.now()}`,
       businessId: business.id,
       businessName: business.name || "Untitled",
+      schemaVersion: "1.0",
+      meta: {
+        businessId: business.id || `biz-${Date.now()}`,
+        siteId: `site-${business.id || "business"}-${Date.now()}`,
+        slug: (business.name || "site").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+        version: 1,
+        target: "wordpress",
+        traceId: options?.debugSession?.traceId
+      },
+      brand: {
+        businessName: business.name || "Business",
+        category: business.category || "Local Business",
+        address: business.address || "",
+        phone: business.phoneNumber || "",
+        email: business.email || "",
+        websiteUri: business.websiteUri || "",
+        logo: business.logo || ""
+      },
+      seo: {
+        title: `${business.name || "Business"} | Preview`,
+        description: business.tagline || `Bespoke web presentation for ${business.name || "our client"}.`,
+        keywords: [business.category || "Local Business"]
+      },
       theme: {
         primaryColor: request.colors?.primary || "#0066cc",
         accentColor: request.colors?.accent || "#ff6600",
         neutralColor: request.colors?.neutral || "#f5f5f5",
         name: "modern-agency",
-        mode: "light"
+        mode: "light",
+        palette: {
+          primary: request.colors?.primary || "#0066cc",
+          surface: "#ffffff",
+          background: "#f8fafc",
+          accent: request.colors?.accent || "#ff6600",
+          text: "#0f172a",
+          muted: "#64748b",
+          outline: "#e2e8f0"
+        },
+        typography: {
+          heading: "Inter",
+          body: "Inter"
+        }
       },
       sections: [],
       createdAt: (/* @__PURE__ */ new Date()).toISOString(),
       // Store the generated HTML/CSS for WordPress rendering
       _wordpressHtml: wpSafeHtml,
       _renderSource: "direct-vertex-prompt",
-      _generatedHomepage: response
+      _generatedHomepage: response,
+      _validation: {
+        repairs: [],
+        validatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        traceId: options?.debugSession?.traceId,
+        photos: business.photos || [],
+        imageSuggestions: business.imageSuggestions || [],
+        logo: business.logo || ""
+      }
     };
     persist("04-minimal-schema.json", schema);
     log(`[DirectVertex] Homepage generation complete`);
