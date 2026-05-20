@@ -41,6 +41,7 @@ import { pool, initializeDatabase } from "./src/lib/db";
 import { startProvisioningWorker } from "./src/lib/provisioning-worker";
 import { deleteProvisionedWordPressSite } from "./src/lib/provisioning-engine";
 import { buildPremiumPageContent } from "./src/lib/premium-site-builder";
+import { generateHomepageViaDirectVertexPrompt } from "./src/lib/direct-vertex-homepage-generation";
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -2775,20 +2776,32 @@ function ensureSchemaMetadata(
 	if (!safeSchema.brand) {
 		safeSchema.brand = {};
 	}
-	safeSchema.brand.businessName = safeSchema.brand.businessName || business?.name || "Business";
-	safeSchema.brand.category = safeSchema.brand.category || business?.category || "Local Business";
-	safeSchema.brand.address = safeSchema.brand.address || business?.address || "";
-	safeSchema.brand.phone = safeSchema.brand.phone || business?.phoneNumber || "";
+	safeSchema.brand.businessName =
+		safeSchema.brand.businessName || business?.name || "Business";
+	safeSchema.brand.category =
+		safeSchema.brand.category || business?.category || "Local Business";
+	safeSchema.brand.address =
+		safeSchema.brand.address || business?.address || "";
+	safeSchema.brand.phone =
+		safeSchema.brand.phone || business?.phoneNumber || "";
 	safeSchema.brand.email = safeSchema.brand.email || business?.email || "";
-	safeSchema.brand.websiteUri = safeSchema.brand.websiteUri || business?.websiteUri || "";
+	safeSchema.brand.websiteUri =
+		safeSchema.brand.websiteUri || business?.websiteUri || "";
 	safeSchema.brand.logo = safeSchema.brand.logo || business?.logo || "";
 
 	if (!safeSchema.seo) {
 		safeSchema.seo = {};
 	}
-	safeSchema.seo.title = safeSchema.seo.title || business?.name || "Website Preview";
-	safeSchema.seo.description = safeSchema.seo.description || business?.description || `Bespoke web presentation for ${business?.name || "our client"}.`;
-	safeSchema.seo.keywords = safeSchema.seo.keywords || [business?.name || "Business", business?.category || "Local Business"];
+	safeSchema.seo.title =
+		safeSchema.seo.title || business?.name || "Website Preview";
+	safeSchema.seo.description =
+		safeSchema.seo.description ||
+		business?.description ||
+		`Bespoke web presentation for ${business?.name || "our client"}.`;
+	safeSchema.seo.keywords = safeSchema.seo.keywords || [
+		business?.name || "Business",
+		business?.category || "Local Business",
+	];
 
 	if (!safeSchema.theme) {
 		safeSchema.theme = {
@@ -2808,11 +2821,11 @@ function ensureSchemaMetadata(
 				accent: "#f59e0b",
 				text: "#0f172a",
 				muted: "#64748b",
-				outline: "#e2e8f0"
+				outline: "#e2e8f0",
 			},
 			typography: {
 				heading: "Inter",
-				body: "Inter"
+				body: "Inter",
 			},
 			brandDNA: {
 				spacingPersonality: "balanced",
@@ -2829,8 +2842,8 @@ function ensureSchemaMetadata(
 				brutalismScore: 50,
 				editorialScore: 50,
 				softnessScore: 50,
-				visualAtmosphere: "soft-editorial-warmth"
-			}
+				visualAtmosphere: "soft-editorial-warmth",
+			},
 		};
 	} else {
 		safeSchema.theme.brandDNA = safeSchema.theme.brandDNA || {
@@ -2848,7 +2861,7 @@ function ensureSchemaMetadata(
 			brutalismScore: 50,
 			editorialScore: 50,
 			softnessScore: 50,
-			visualAtmosphere: "soft-editorial-warmth"
+			visualAtmosphere: "soft-editorial-warmth",
 		};
 	}
 	if (!safeSchema._validation) {
@@ -3460,6 +3473,65 @@ app.get(
 		return res.json(session);
 	},
 );
+
+/**
+ * Simplified deterministic homepage generation using direct Vertex prompt
+ * Uses: Business Context → Single Vertex Prompt → Final HTML/CSS → WordPress rendering
+ */
+app.post("/api/generate-v2", async (req: Request, res: Response) => {
+	try {
+		const business = req.body;
+		if (!business || !business.name) {
+			return res.status(400).json({ error: "Missing business payload" });
+		}
+
+		const debugSession = createGenerationDebugSession(business);
+		logStderr(
+			`[GenerateV2] start traceId=${debugSession.traceId} business=${business.name}`,
+		);
+		res.setHeader("x-debug-generation-id", debugSession.traceId);
+		res.setHeader("x-debug-generation-fallback", "false");
+
+		// Check if TEST MODE is enabled
+		if (WEBSITE_GENERATION_MODE === "template") {
+			logStderr(`[GenerateV2] Template mode enabled - skipping generation`);
+			return res.status(422).json({
+				error: "Website creation failed: template mode is enabled.",
+			});
+		}
+
+		// Validate Gemini configuration
+		if (!GENAI_KEY && !process.env.GEMINI_REST_URL) {
+			logStderr(`[GenerateV2] Missing Gemini API configuration`);
+			return res.status(422).json({
+				error: "Website creation failed: AI configuration missing.",
+			});
+		}
+
+		// Generate homepage using direct Vertex prompt
+		const schema = await generateHomepageViaDirectVertexPrompt(business, {
+			debugLog: (msg: string) => logStderr(msg),
+			debugSession,
+			persistFile: (filename: string, content: any) => {
+				persistGenerationDebugFile(debugSession, filename, content);
+			},
+		});
+
+		logStderr(
+			`[GenerateV2] complete traceId=${debugSession.traceId} renderSource=direct-vertex-prompt`,
+		);
+
+		// Return the schema for compatibility with existing pipeline
+		return res.json(schema);
+	} catch (error) {
+		const errorMsg = error instanceof Error ? error.message : String(error);
+		logStderr(`[GenerateV2] Error: ${errorMsg}`);
+
+		return res.status(500).json({
+			error: `Website generation failed: ${errorMsg}`,
+		});
+	}
+});
 
 app.post(
 	"/api/deploy",
