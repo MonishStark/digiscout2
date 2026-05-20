@@ -209,9 +209,14 @@ export default function LeadDetails({
 			};
 
 			const API_URL = ((import.meta as any).env?.VITE_API_URL as string | undefined) || "http://localhost:5001";
+			const dsToken = localStorage.getItem("ds_token");
+			const provisionHeaders: Record<string, string> = { "Content-Type": "application/json" };
+			if (dsToken) {
+				provisionHeaders["Authorization"] = `Bearer ${dsToken}`;
+			}
 			const response = await fetch(`${API_URL}/api/wordpress/provision-site`, {
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
+				headers: provisionHeaders,
 				body: JSON.stringify({
 					projectId: leadId,
 					business,
