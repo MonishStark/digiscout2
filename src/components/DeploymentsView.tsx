@@ -47,6 +47,7 @@ export default function DeploymentsView({
 	setProjects,
 }: DeploymentsViewProps) {
 	const [deployingId, setDeployingId] = useState<string | null>(null);
+	const [deletingId, setDeletingId] = useState<string | null>(null);
 	const [copiedId, setCopiedId] = useState<string | null>(null);
 
 	const handleCopy = (text: string, id: string) => {
@@ -70,7 +71,7 @@ export default function DeploymentsView({
 		const project = projects.find((item) => item.id === projectId);
 		if (!project) return false;
 
-		setDeployingId(projectId);
+		setDeletingId(projectId);
 
 		try {
 			// Purge WordPress/Isolated deployments
@@ -83,7 +84,7 @@ export default function DeploymentsView({
 			);
 			return false;
 		} finally {
-			setDeployingId(null);
+			setDeletingId(null);
 		}
 	};
 
@@ -668,56 +669,7 @@ export default function DeploymentsView({
 								key={project.id}
 								className='group relative overflow-hidden rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_24px_90px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-violet-200 hover:shadow-[0_30px_100px_rgba(15,23,42,0.1)] sm:p-5 lg:p-6'>
 								<div className='absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.08),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.05),transparent_25%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100' />
-								<div className='relative flex flex-col gap-5 xl:flex-row xl:items-stretch xl:gap-6'>
-									{/* ── MINI PREVIEW ── */}
-									<div className='relative h-[200px] w-full overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50 shadow-[0_20px_50px_rgba(15,23,42,0.08)] sm:h-[220px] xl:h-auto xl:w-[320px] xl:flex-shrink-0'>
-										{project.provisioningStatus === "lead" ? (
-											<div className='flex h-full w-full flex-col items-center justify-center p-6 text-center'>
-												<div className='mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-violet-100 text-violet-600'>
-													<BriefcaseBusiness className='h-6 w-6' />
-												</div>
-												<p className='text-sm font-semibold text-slate-700'>
-													Lead Profile
-												</p>
-												<p className='mt-1 text-xs text-slate-500 max-w-[200px]'>
-													No website generated yet. Click "Generate Website" to start.
-												</p>
-											</div>
-										) : project.wordpressSiteUrl && isLive ? (
-											<iframe
-												src={project.wordpressSiteUrl}
-												className='absolute left-0 top-0 h-full w-full border-0'
-												loading='lazy'
-												style={{
-													transform: 'scale(0.5)',
-													transformOrigin: 'top left',
-													width: '200%',
-													height: '200%',
-													pointerEvents: 'none',
-												}}
-												title={`Preview of ${project.businessName}`}
-											/>
-										) : (
-											<div className='flex h-full w-full flex-col items-center justify-center p-6 text-center'>
-												<div className='mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-violet-100 text-violet-600'>
-													<Database className='h-6 w-6 animate-pulse' />
-												</div>
-												<p className='text-sm font-medium text-slate-600'>
-													Building your unique site...
-												</p>
-												<p className='mt-1 text-xs text-slate-400'>
-													Provisioning Hello Elementor & Content
-												</p>
-											</div>
-										)}
-										<div className='absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none' />
-										<div className='absolute left-4 top-4 flex items-center gap-2'>
-											<Badge className='rounded-full border border-slate-200 bg-white/85 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-slate-600 backdrop-blur-xl'>
-												{getProvisioningLabel(project)}
-											</Badge>
-										</div>
-									</div>
-
+								<div className='relative flex flex-col gap-5'>
 									<div className='flex min-w-0 flex-1 flex-col gap-5'>
 										<div className='flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between'>
 											<div className='min-w-0 space-y-3'>
@@ -751,31 +703,8 @@ export default function DeploymentsView({
 															{getGeneratedDate(project.id)}
 														</span>
 													</p>
-													{isLive && project.wordpressSiteUrl && (
-														<a
-															href={project.wordpressSiteUrl}
-															target='_blank'
-															rel='noreferrer'
-															className='inline-flex max-w-full items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-xs text-cyan-700 hover:bg-cyan-100'>
-															<Database className='h-3.5 w-3.5 flex-shrink-0' />
-															<span className='truncate'>
-																{project.wordpressSiteUrl}
-															</span>
-														</a>
-													)}
-													{isLive && project.wordpressAdminUrl && (
-														<a
-															href={project.wordpressAdminUrl}
-															target='_blank'
-															rel='noreferrer'
-															className='inline-flex max-w-full items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50'>
-															<KeyRound className='h-3.5 w-3.5 flex-shrink-0' />
-															<span className='truncate'>WP Admin</span>
-															<ExternalLink className='h-3 w-3 flex-shrink-0' />
-														</a>
-													)}
 													{project.wordpressPassword && (
-														<div className='mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 space-y-1.5'>
+														<div className='mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 space-y-1.5 max-w-md'>
 															<p className='font-bold mb-1'>WordPress Admin Credentials</p>
 															<div className='flex items-center gap-1.5'>
 																<span>User:</span>
@@ -832,10 +761,28 @@ export default function DeploymentsView({
 													)}
 												</div>
 												<div className='flex flex-wrap items-center gap-2 xl:justify-end'>
+													{isLive && project.wordpressSiteUrl && (
+														<Button
+															onClick={() => window.open(project.wordpressSiteUrl, "_blank")}
+															disabled={deletingId === project.id}
+															className='h-10 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 text-cyan-700 hover:bg-cyan-100 flex items-center gap-1.5 font-semibold'>
+															<Globe className='h-4 w-4' />
+															WP Preview
+														</Button>
+													)}
+													{isLive && project.wordpressAdminUrl && (
+														<Button
+															onClick={() => window.open(project.wordpressAdminUrl, "_blank")}
+															disabled={deletingId === project.id}
+															className='h-10 rounded-2xl border border-slate-200 bg-white px-4 text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 font-semibold'>
+															<KeyRound className='h-4 w-4' />
+															WP Admin
+														</Button>
+													)}
 													{project.provisioningStatus === "lead" ? (
 														<Button
 															onClick={() => handleGenerateWebsiteForLead(project)}
-															disabled={isActionLoading}
+															disabled={isActionLoading || deletingId === project.id}
 															className='h-10 rounded-2xl bg-violet-600 px-4 text-white hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60 border-none font-semibold flex items-center justify-center gap-2 shadow-xl shadow-violet-600/15'>
 															{isActionLoading ? (
 																<Activity className='h-4 w-4 animate-spin' />
@@ -848,22 +795,27 @@ export default function DeploymentsView({
 														<Button
 															onClick={() => handleSendOutreach(project.id)}
 															disabled={
-																!isLive || sendingId === project.id
+																!isLive || sendingId === project.id || deletingId === project.id
 															}
-															className='h-10 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60'>
+															className='h-10 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 flex items-center gap-1.5 font-semibold'>
 															{sendingId === project.id ? (
-																<Activity className='mr-2 h-4 w-4 animate-spin' />
+																<Activity className='h-4 w-4 animate-spin' />
 															) : (
-																<Mail className='mr-2 h-4 w-4' />
+																<Mail className='h-4 w-4' />
 															)}
 															Send Outreach
 														</Button>
 													)}
 													<Button
 														onClick={() => handleDeleteLead(project.id)}
-														className='h-10 rounded-2xl border border-rose-200 bg-rose-50 px-4 text-rose-700 transition-all duration-200 hover:border-rose-600 hover:bg-rose-600 hover:text-white shadow-none'>
-														<Trash2 className='mr-2 h-4 w-4' />
-														Delete Lead
+														disabled={deletingId === project.id}
+														className='h-10 rounded-2xl border border-rose-200 bg-rose-50 px-4 text-rose-700 transition-all duration-200 hover:border-rose-600 hover:bg-rose-600 hover:text-white shadow-none flex items-center gap-1.5 font-semibold disabled:cursor-not-allowed disabled:opacity-60'>
+														{deletingId === project.id ? (
+															<Activity className='h-4 w-4 animate-spin' />
+														) : (
+															<Trash2 className='h-4 w-4' />
+														)}
+														{deletingId === project.id ? "Deleting..." : "Delete Lead"}
 													</Button>
 												</div>
 											</div>
