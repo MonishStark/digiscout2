@@ -148,28 +148,43 @@ Responsive Design & Sticky Navigation:
   - On desktop ('@media (min-width: 768px)'), hide '.ds-mobile-menu-label' and display '.ds-nav' as a flex row.
 
 Visual Design & Polish:
-- Spacing: Use 'clamp()' to scale padding fluidly (e.g. 'padding: clamp(4.5rem, 10vw, 8rem) 0;' for sections). This gives the page breathing room.
-- Spacing Rhythm: Use different background colors (white '#ffffff', soft light grey/blue '#f8fafc' or '#f1f5f9', and dark saturated brand background for specific highlighted blocks like Reviews or CTA) to break up the boxed template feel.
-- Typography: Use strong hierarchy with '-0.03em' letter-spacing and compact line-height (1.1 to 1.25) on bold headings.
-- Cards/Containers: Use modern styled containers with '12px' to '16px' border-radius, thin border lines ('1px solid rgba(0, 0, 0, 0.06)'), and premium layered shadows ('box-shadow: 0 10px 30px rgba(0,0,0,0.03), 0 1px 3px rgba(0,0,0,0.02);').
-- CTA Buttons: Refine CTA button styles. Use linear gradients for backgrounds (e.g., 'linear-gradient(135deg, var(--ds-primary), var(--ds-primary-dark))'), smooth transition offsets, and distinct active/focus/hover states with slight zoom or scale up.
-- Spacing & Rhythm: Ensure no containers are boxy. Make margins/paddings asymmetric where appropriate (e.g., a left-aligned hero section text with empty right side on desktop, etc.).
+- Spacing: Use 'clamp()' to scale padding fluidly (e.g. 'padding: clamp(5rem, 12vw, 9rem) 0;' for sections). Give sections lots of breathing room and vertical separation.
+- Modern Bento-Grid / Asymmetric Layouts: Avoid flat, repetitive 3-column grids. Vary card shapes, use asymmetrical layouts (e.g. 2/3 and 1/3 columns), or give cards unequal heights or backgrounds.
+- Premium Accent Badges: Use elegant glass badges above headers instead of plain text:
+  '.ds-badge { display: inline-flex; align-items: center; padding: 0.5rem 1.25rem; background: rgba(0, 102, 204, 0.08); color: var(--ds-primary); border-radius: 9999px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; border: 1px solid rgba(0, 102, 204, 0.15); margin-bottom: 1.25rem; }'
+  If the background is dark (e.g. in the hero), use a white/translucent glass badge:
+  '.ds-badge-light { background: rgba(255,255,255,0.12); color: #ffffff; border-color: rgba(255,255,255,0.2); }'
+- Gradient Text Headers: To make headings stand out, use subtle linear-gradients on main page/hero headings:
+  '.ds-gradient-text { background: linear-gradient(135deg, var(--ds-primary) 0%, var(--ds-primary-dark) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }'
+- Cards & Containers: Cards must feel premium:
+  '.ds-card { background: #ffffff; border-radius: 20px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 10px 30px rgba(0,0,0,0.02); transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }'
+  '.ds-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0,0,0,0.08); border-color: var(--ds-primary); }'
+- CTA Buttons: Refine CTA button styles. Use pill shapes (border-radius: 50px), linear-gradient backgrounds, and active hover state zooms.
 
 Hero Refinement:
-- Hero section must feel large, immersive and dominant (min-height '65vh' to '80vh' on desktop).
-- If image is background: use a semi-transparent linear-gradient overlay ('linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7))') to ensure high contrast for the white header text.
-- If split grid layout: make text side asymmetrical with clean typography and CTA buttons, and wrap image in a stylized frame with a clean border, rounded corners, and shadow.
+- Hero section must feel large, immersive and dominant (min-height '75vh' to '85vh' on desktop).
+- Use a modern clip-path separator at the bottom of the hero to avoid a flat horizontal edge (e.g., 'clip-path: ellipse(150% 100% at 50% 0%);' or a diagonal slope).
+- Use rich overlay styling for the hero text side: gradients, custom icons, and offset spacing.
 
-Lightweight Interaction & Animations:
-- Subtle transitions: '.ds-homepage * { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }'
-- ENTRANCE FADE-IN & SLIDE-UP ANIMATIONS: Implement a keyframe animation to make the elements animate in beautifully on page load. Define:
-  '@keyframes dsFadeInUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }'
-  Apply this keyframe animation to hero content title/p/actions (with staggered animation-delays like '0.1s', '0.2s', '0.3s' using 'animation: dsFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;'), intro headers, services cards, and testimonial blocks.
-- PREMIUM FLOATING BACKGROUND GRADIENTS: To make the page look like a high-end modern custom-designed website, add one or two subtle floating background glow circles (using a slow CSS float keyframe animation with low opacity brand colors):
-  '@keyframes dsFloat { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(4%, 4%) scale(1.05); } 100% { transform: translate(0, 0) scale(1); } }'
-  and apply it to soft blurred absolute-positioned circles with 'pointer-events: none; z-index: 1; filter: blur(80px); opacity: 0.1;'.
-- Hover Lift: Lift buttons and cards slightly: 'transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.08);' on hover.
-- Image Zoom: Wrap images in containers with 'overflow: hidden; border-radius: inherit;' and scale image on hover: 'transform: scale(1.05);'.
+Lightweight Interaction & Animations (CRITICAL):
+- GLOBAL ANIMATION CLASSES: You MUST declare and use these exact classes to animate page content on load:
+  '.ds-reveal { opacity: 0; transform: translateY(30px); animation: dsFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }'
+  '.ds-delay-1 { animation-delay: 0.15s; }'
+  '.ds-delay-2 { animation-delay: 0.3s; }'
+  '.ds-delay-3 { animation-delay: 0.45s; }'
+  '.ds-delay-4 { animation-delay: 0.6s; }'
+  '@keyframes dsFadeInUp { to { opacity: 1; transform: translateY(0); } }'
+- IMPLEMENTATION RULE: Apply the '.ds-reveal' class and staggered delay classes to:
+  - Hero Title, taglines, and actions.
+  - Section intro titles and description paragraphs.
+  - Individual grid items/cards so they fade in sequentially on load.
+- PREMIUM FLOATING GLOW BLOBS: To give the site a state-of-the-art feel, include floating backdrop blobs:
+  '<div class="ds-glow-1"></div><div class="ds-glow-2"></div>' in the HTML layout, and style them:
+  '.ds-glow-1, .ds-glow-2 { position: absolute; width: clamp(200px, 40vw, 400px); height: clamp(200px, 40vw, 400px); border-radius: 50%; filter: blur(100px); opacity: 0.06; pointer-events: none; z-index: 0; }'
+  '.ds-glow-1 { background: var(--ds-primary); top: 15%; left: -10%; animation: dsFloat 18s infinite alternate ease-in-out; }'
+  '.ds-glow-2 { background: var(--ds-accent); bottom: 25%; right: -10%; animation: dsFloat 24s infinite alternate-reverse ease-in-out; }'
+  '@keyframes dsFloat { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(6%, 6%) scale(1.08); } 100% { transform: translate(0, 0) scale(1); } }'
+- Image Zoom: Scale images inside cards on hover: 'transform: scale(1.06);' with transition: 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)'.
 - Accessibility support: '@media (prefers-reduced-motion: reduce) { .ds-homepage * { transition: none !important; transform: none !important; animation: none !important; } }'
 
 ============================================
