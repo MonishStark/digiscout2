@@ -3997,7 +3997,14 @@ app.get("/api/leads", authenticateToken, async (req: any, res) => {
 				} catch (e) {}
 			}
 
-			const schema = row.websiteSchema || {};
+			let schema: any = {};
+			try {
+				schema = typeof row.websiteSchema === "string"
+					? JSON.parse(row.websiteSchema)
+					: (row.websiteSchema || {});
+			} catch {
+				schema = {};
+			}
 			return {
 				...row,
 				businessId: schema.meta?.businessId || row.id,
