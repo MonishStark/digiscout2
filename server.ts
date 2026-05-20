@@ -667,10 +667,10 @@ async function readRequestBody(req: Request): Promise<Buffer> {
 }
 
 function getLatestApiKeyFromDisk(keyName = "GEMINI_API_KEY"): string {
-	const key = process.env.GOOGLE_CLOUD_API_KEY || process.env.GEMINI_API_KEY;
+	const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_CLOUD_API_KEY;
 	if (!key) {
 		throw new Error(
-			`Missing Gemini API Key. Please provide GOOGLE_CLOUD_API_KEY or GEMINI_API_KEY in your environment.`,
+			`Missing Gemini API Key. Please provide GEMINI_API_KEY or GOOGLE_CLOUD_API_KEY in your environment.`,
 		);
 	}
 	return key;
