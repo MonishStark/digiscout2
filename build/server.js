@@ -1878,6 +1878,8 @@ async function generateHomepageViaDirectVertexPrompt(business, options) {
       _renderSource: "direct-vertex-prompt",
       _generatedHomepage: response,
       _validation: {
+        rating: business.rating || 0,
+        reviewCount: business.reviewCount || 0,
         repairs: [],
         validatedAt: (/* @__PURE__ */ new Date()).toISOString(),
         traceId: options?.debugSession?.traceId,
@@ -4813,9 +4815,9 @@ app.get("/api/wordpress/site-status/:projectId", authenticateToken, async (req, 
       return res.status(404).json({ error: "Job not found" });
     }
     const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscout.online";
-    const liveUrl = rows[0].subdomain_url || (rows[0].subdomain ? `http://${rows[0].subdomain}.${rootDomain}` : null);
-    const adminUrl = rows[0].wp_admin_url || (rows[0].subdomain ? `http://${rows[0].subdomain}.${rootDomain}/wp-admin` : null);
-    const effectiveStatus = rows[0].status === "completed" || liveUrl || adminUrl ? "completed" : rows[0].status;
+    const liveUrl = rows[0].subdomain_url || null;
+    const adminUrl = rows[0].wp_admin_url || null;
+    const effectiveStatus = rows[0].status;
     let rawPassword = null;
     if (effectiveStatus === "completed" && rows[0].wp_admin_pass_encrypted) {
       try {

@@ -318,6 +318,8 @@ export async function generateHomepageViaDirectVertexPrompt(
 			_renderSource: "direct-vertex-prompt",
 			_generatedHomepage: response,
 			_validation: {
+				rating: business.rating || 0,
+				reviewCount: business.reviewCount || 0,
 				repairs: [],
 				validatedAt: new Date().toISOString(),
 				traceId: options?.debugSession?.traceId,

@@ -390,7 +390,14 @@ export default function DeploymentsView({
 			"http://localhost:5001";
 
 		try {
-			const response = await fetch(`${API_URL}/api/wordpress/site-status/${projectId}`);
+			const dsToken = localStorage.getItem("ds_token");
+			const headers: Record<string, string> = {};
+			if (dsToken) {
+				headers["Authorization"] = `Bearer ${dsToken}`;
+			}
+			const response = await fetch(`${API_URL}/api/wordpress/site-status/${projectId}`, {
+				headers,
+			});
 			if (response.ok) {
 				const data = await response.json();
 				if (data.deployment?.liveUrl) {
@@ -583,8 +590,14 @@ export default function DeploymentsView({
 					const API_URL =
 						((import.meta as any).env?.VITE_API_URL as string | undefined) ||
 						"http://localhost:5001";
+					const dsToken = localStorage.getItem("ds_token");
+					const headers: Record<string, string> = {};
+					if (dsToken) {
+						headers["Authorization"] = `Bearer ${dsToken}`;
+					}
 					const response = await fetch(
 						`${API_URL}/api/wordpress/site-status/${project.id}`,
+						{ headers }
 					);
 					if (response.ok) {
 						const data = await response.json();

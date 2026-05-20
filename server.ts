@@ -3838,18 +3838,9 @@ app.get("/api/wordpress/site-status/:projectId", authenticateToken, async (req: 
 		}
 
 		const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscout.online";
-		const liveUrl =
-			rows[0].subdomain_url ||
-			(rows[0].subdomain ? `http://${rows[0].subdomain}.${rootDomain}` : null);
-		const adminUrl =
-			rows[0].wp_admin_url ||
-			(rows[0].subdomain
-				? `http://${rows[0].subdomain}.${rootDomain}/wp-admin`
-				: null);
-		const effectiveStatus =
-			rows[0].status === "completed" || liveUrl || adminUrl
-				? "completed"
-				: rows[0].status;
+		const liveUrl = rows[0].subdomain_url || null;
+		const adminUrl = rows[0].wp_admin_url || null;
+		const effectiveStatus = rows[0].status;
 		let rawPassword = null;
 		if (effectiveStatus === "completed" && rows[0].wp_admin_pass_encrypted) {
 			try {
