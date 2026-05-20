@@ -78,7 +78,11 @@ async function throttleGemini() {
 
 app.use(
 	cors({
+		origin: true, // reflect request origin — allows any origin with credentials
+		credentials: true,
+		allowedHeaders: ["Content-Type", "Authorization", "x-debug-generation-id", "x-debug-generation-fallback"],
 		exposedHeaders: ["x-debug-generation-id", "x-debug-generation-fallback"],
+		methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 	}),
 );
 app.use(express.json({ limit: "50mb" }));
