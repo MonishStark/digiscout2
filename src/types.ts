@@ -48,6 +48,7 @@ export interface Business {
 	imageSuggestions?: string[];
 	logo?: string;
 	isOpen?: boolean;
+	reviews?: any[];
 }
 
 export type WebsiteSectionType =

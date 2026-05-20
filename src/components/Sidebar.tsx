@@ -50,6 +50,7 @@ function sanitizeBusiness(b: any): Business {
 			: [],
 		logo: b.logo ? String(b.logo) : undefined,
 		isOpen: Boolean(b.isOpen),
+		reviews: Array.isArray(b.reviews) ? b.reviews : undefined,
 	};
 }
 
@@ -354,6 +355,7 @@ export default function Sidebar({
 					"nationalPhoneNumber",
 					"photos",
 					"businessStatus",
+					"reviews",
 				],
 				locationBias: location,
 				maxResultCount: 20,
@@ -397,6 +399,14 @@ export default function Sidebar({
 						? p.photos.map((photo) => String(photo.getURI({ maxWidth: 400 })))
 						: [],
 					isOpen: p.businessStatus === "OPERATIONAL",
+					reviews: p.reviews
+						? p.reviews.map((r: any) => ({
+								author: r.authorAttribution?.displayName || "Customer",
+								rating: r.rating || 5,
+								text: r.text?.text || (typeof r.text === "string" ? r.text : ""),
+								date: r.relativePublishTimeDescription || "",
+						  }))
+						: [],
 				};
 			});
 

@@ -747,8 +747,11 @@ async function injectWebsiteContent(
 		}
 
 		await logCallback("Premium WordPress site injection complete ✓");
-		// Attempt to fetch final rendered DOM for forensic trace (if siteUrl is available)
+		// Attempt to fetch final rendered DOM for forensic trace
 		try {
+			const subdomain = path.basename(docRoot);
+			const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscoutwp.online";
+			const siteUrl = `http://${subdomain}.${rootDomain}`;
 			if (siteUrl) {
 				await logCallback(
 					`Fetching final rendered site at ${siteUrl} for debug capture...`,

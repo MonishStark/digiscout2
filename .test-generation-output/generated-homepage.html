@@ -1,132 +1,808 @@
 <!-- wp:html -->
 <style>
-.ds-homepage { width: 100vw !important; max-width: 100vw !important; position: relative !important; left: 50% !important; right: 50% !important; margin-left: -50vw !important; margin-right: -50vw !important; box-sizing: border-box !important; overflow-x: hidden !important; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; color: #1e293b; background: #ffffff; line-height: 1.6; }
-.entry-title, .entry-header, .post-title, .page-title, .wp-block-post-title, .site-header, #masthead, .site-branding, .header-footer-group, .theme-header, .custom-header, .nav-container { display: none !important; }
-.ds-homepage * { box-sizing: border-box; margin: 0; padding: 0; }
-:root { --ds-primary: #0066cc; --ds-primary-dark: #004c99; --ds-accent: #00a651; --ds-neutral: #f5f5f5; --ds-text: #1e293b; --ds-text-light: #64748b; }
-.ds-container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
-.ds-section { padding: clamp(4rem, 10vw, 8rem) 0; position: relative; z-index: 1; }
-.ds-bg-neutral { background-color: var(--ds-neutral); }
-.ds-mt-4 { margin-top: 2rem; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;600;700&display=swap');
+
+/* Override theme page containers to allow full-width blocks */
+.entry-content, .post-content, .wp-site-blocks, .site-content, .ast-container, .hello-elementor-content, .site-main {
+  max-width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+}
+
+/* Hide Theme Chrome */
+.entry-title, .entry-header, .post-title, .page-title, .wp-block-post-title, .site-header, #masthead, .site-branding, .header-footer-group, .theme-header, .custom-header, .nav-container {
+  display: none !important;
+}
+
+/* Base Scoped Styles */
+.ds-homepage {
+  --ds-primary: #0066cc;
+  --ds-primary-dark: #004c99;
+  --ds-accent: #00a651;
+  --ds-neutral: #f5f5f5;
+  --ds-text-main: #1e293b;
+  --ds-text-light: #64748b;
+  --ds-bg-white: #ffffff;
+  --ds-font-heading: 'Playfair Display', serif;
+  --ds-font-body: 'Inter', sans-serif;
+  
+  width: 100vw !important;
+  max-width: 100vw !important;
+  position: relative !important;
+  left: 50% !important;
+  right: 50% !important;
+  margin-left: -50vw !important;
+  margin-right: -50vw !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+  font-family: var(--ds-font-body);
+  color: var(--ds-text-main);
+  background: var(--ds-bg-white);
+  line-height: 1.6;
+}
+
+.ds-homepage * {
+  box-sizing: border-box;
+}
+
+.ds-homepage img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.ds-homepage a {
+  text-decoration: none;
+  color: inherit;
+}
 
 /* Typography */
-h1, h2, h3, h4 { color: var(--ds-text); font-weight: 700; line-height: 1.2; }
-.ds-gradient-text { background: linear-gradient(135deg, var(--ds-primary) 0%, var(--ds-primary-dark) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: inline-block; margin-bottom: 1.5rem; font-size: clamp(2rem, 4vw, 3rem); }
-.ds-section-header { text-align: center; margin-bottom: clamp(3rem, 6vw, 5rem); max-width: 800px; margin-left: auto; margin-right: auto; }
+.ds-homepage h1, .ds-homepage h2, .ds-homepage h3, .ds-homepage h4 {
+  font-family: var(--ds-font-heading);
+  margin: 0 0 1rem 0;
+  line-height: 1.2;
+  color: var(--ds-text-main);
+}
 
-/* Header & Nav */
-.ds-header { position: sticky; top: 0; z-index: 1000; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px) saturate(180%); -webkit-backdrop-filter: blur(12px) saturate(180%); border-bottom: 1px solid rgba(0, 0, 0, 0.06); box-shadow: 0 4px 30px rgba(0,0,0,0.03); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); padding: 1rem 0; }
-.ds-header-inner { display: flex; justify-content: space-between; align-items: center; }
-.ds-logo { text-decoration: none; display: flex; align-items: center; }
-.ds-logo-text { font-size: 1.5rem; font-weight: 800; color: var(--ds-primary); letter-spacing: -0.02em; }
-.ds-nav { display: none; gap: 2rem; align-items: center; }
-.ds-nav-link { text-decoration: none; position: relative; padding: 0.5rem 0; font-weight: 500; color: rgba(15, 23, 42, 0.8); transition: color 0.3s ease; }
-.ds-nav-link::after { content: ""; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: var(--ds-primary); transform: scaleX(0); transform-origin: right; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-.ds-nav-link:hover { color: var(--ds-primary); }
-.ds-nav-link:hover::after { transform: scaleX(1); transform-origin: left; }
+.ds-gradient-text {
+  background: linear-gradient(135deg, var(--ds-primary) 0%, var(--ds-primary-dark) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ds-gradient-text-light {
+  background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Layout & Containers */
+.ds-container {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.ds-section {
+  padding: clamp(4rem, 10vw, 8rem) 0;
+  position: relative;
+  z-index: 1;
+}
+
+.ds-bg-neutral {
+  background-color: var(--ds-neutral);
+}
+
+/* Badges */
+.ds-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1.25rem;
+  background: rgba(0, 102, 204, 0.08);
+  color: var(--ds-primary);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid rgba(0, 102, 204, 0.15);
+  margin-bottom: 1.25rem;
+}
+
+.ds-badge-light {
+  background: rgba(255,255,255,0.12);
+  color: #ffffff;
+  border-color: rgba(255,255,255,0.2);
+}
+
+/* Buttons */
+.ds-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.875rem 2rem;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  border: none;
+}
+
+.ds-btn-small {
+  padding: 0.6rem 1.5rem;
+  font-size: 0.875rem;
+}
+
+.ds-btn-primary {
+  background: linear-gradient(135deg, var(--ds-primary) 0%, var(--ds-primary-dark) 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(0, 102, 204, 0.3);
+}
+
+.ds-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 102, 204, 0.4);
+  color: #ffffff;
+}
+
+.ds-btn-secondary {
+  background: #ffffff;
+  color: var(--ds-primary);
+  border: 1px solid rgba(0, 102, 204, 0.2);
+}
+
+.ds-btn-secondary:hover {
+  border-color: var(--ds-primary);
+  background: rgba(0, 102, 204, 0.05);
+  transform: translateY(-2px);
+}
+
+/* Header & Navigation */
+.ds-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 30px rgba(0,0,0,0.03);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 1.25rem 0;
+}
+
+.ds-header.ds-scrolled {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0.75rem 0;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+}
+
+.ds-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ds-logo-text {
+  font-family: var(--ds-font-heading);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ds-primary);
+}
+
+.ds-nav {
+  display: none;
+}
+
+.ds-nav-link {
+  position: relative;
+  padding: 0.5rem 0;
+  font-weight: 500;
+  color: rgba(15, 23, 42, 0.8);
+  transition: color 0.3s ease;
+}
+
+.ds-nav-link::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--ds-primary);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ds-nav-link:hover {
+  color: var(--ds-primary);
+}
+
+.ds-nav-link:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+.ds-mobile-menu-toggle {
+  display: none;
+}
+
+.ds-mobile-menu-label {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 30px;
+  height: 21px;
+  cursor: pointer;
+  z-index: 1001;
+}
+
+.ds-hamburger-line {
+  display: block;
+  height: 3px;
+  width: 100%;
+  background: var(--ds-text-main);
+  border-radius: 3px;
+  transition: all 0.3s ease;
+}
+
+.ds-header-cta {
+  display: none;
+}
+
+.ds-mobile-only {
+  display: inline-flex;
+  margin-top: 1rem;
+}
 
 /* Mobile Menu Hack */
-.ds-mobile-menu-toggle { display: none; }
-.ds-mobile-menu-label { display: flex; flex-direction: column; gap: 6px; cursor: pointer; z-index: 1001; }
-.ds-mobile-menu-label span { display: block; width: 28px; height: 3px; background: var(--ds-text); border-radius: 3px; transition: all 0.3s ease; }
-.ds-mobile-menu-toggle:checked ~ .ds-nav { display: flex; flex-direction: column; position: absolute; top: 100%; left: 0; width: 100%; background: #ffffff; padding: 2rem 1.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-top: 1px solid rgba(0,0,0,0.05); gap: 1.5rem; align-items: flex-start; }
-@media (min-width: 768px) { .ds-mobile-menu-label { display: none; } .ds-nav { display: flex !important; flex-direction: row; position: static; padding: 0; box-shadow: none; background: transparent; border: none; align-items: center; } }
+#ds-mobile-menu-toggle:checked ~ .ds-nav {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  background: #ffffff;
+  padding: 1.5rem;
+  box-shadow: 0 10px 15px rgba(0,0,0,0.05);
+  gap: 1rem;
+  border-top: 1px solid rgba(0,0,0,0.05);
+}
 
-/* Buttons & Badges */
-.ds-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.875rem 2rem; border-radius: 50px; font-weight: 600; text-decoration: none; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); cursor: pointer; border: none; }
-.ds-btn-primary { background: linear-gradient(135deg, var(--ds-primary) 0%, var(--ds-primary-dark) 100%); color: #ffffff; box-shadow: 0 4px 15px rgba(0, 102, 204, 0.3); }
-.ds-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 102, 204, 0.4); color: #ffffff; }
-.ds-btn-secondary { background: #ffffff; color: var(--ds-text); border: 1px solid rgba(0,0,0,0.1); }
-.ds-btn-secondary:hover { border-color: var(--ds-primary); color: var(--ds-primary); transform: translateY(-2px); }
-.ds-badge { display: inline-flex; align-items: center; padding: 0.5rem 1.25rem; background: rgba(0, 102, 204, 0.08); color: var(--ds-primary); border-radius: 9999px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; border: 1px solid rgba(0, 102, 204, 0.15); margin-bottom: 1.25rem; }
-.ds-badge-light { background: rgba(255,255,255,0.15); color: #ffffff; border-color: rgba(255,255,255,0.3); backdrop-filter: blur(4px); }
-
-/* Cards */
-.ds-card { background: #ffffff; border-radius: 20px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 10px 30px rgba(0,0,0,0.02); transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); overflow: hidden; }
-.ds-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0,0,0,0.08); border-color: rgba(0, 102, 204, 0.2); }
+#ds-mobile-menu-toggle:checked ~ .ds-mobile-menu-label .ds-hamburger-line:nth-child(1) {
+  transform: translateY(9px) rotate(45deg);
+}
+#ds-mobile-menu-toggle:checked ~ .ds-mobile-menu-label .ds-hamburger-line:nth-child(2) {
+  opacity: 0;
+}
+#ds-mobile-menu-toggle:checked ~ .ds-mobile-menu-label .ds-hamburger-line:nth-child(3) {
+  transform: translateY(-9px) rotate(-45deg);
+}
 
 /* Hero Section */
-.ds-hero { position: relative; min-height: clamp(600px, 80vh, 900px); display: flex; align-items: center; padding: clamp(6rem, 15vw, 10rem) 0; overflow: hidden; color: #ffffff; }
-.ds-hero-bg { position: absolute; inset: 0; z-index: 0; }
-.ds-hero-bg img { width: 100%; height: 100%; object-fit: cover; }
-.ds-hero-overlay { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(0, 102, 204, 0.92) 0%, rgba(0, 166, 81, 0.7) 100%); mix-blend-mode: multiply; }
-.ds-hero-content { position: relative; z-index: 1; max-width: 700px; }
-.ds-hero h1 { font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 800; line-height: 1.1; margin-bottom: 1.5rem; color: #ffffff; }
-.ds-hero p { font-size: clamp(1.125rem, 2.5vw, 1.5rem); margin-bottom: 2.5rem; opacity: 0.95; max-width: 600px; line-height: 1.6; }
-.ds-hero-actions { display: flex; gap: 1rem; flex-wrap: wrap; }
-.ds-hero-shape { position: absolute; bottom: -1px; left: 0; width: 100%; height: clamp(50px, 10vw, 120px); background: #ffffff; clip-path: polygon(0 100%, 100% 100%, 100% 0, 0 100%); z-index: 1; }
+.ds-hero {
+  position: relative;
+  min-height: 85vh;
+  display: flex;
+  align-items: center;
+  padding: 6rem 0;
+  clip-path: ellipse(180% 100% at 50% 0%);
+  overflow: hidden;
+}
 
-/* Intro Section */
-.ds-intro-grid { display: grid; grid-template-columns: 1fr; gap: 3rem; align-items: center; }
-@media (min-width: 992px) { .ds-intro-grid { grid-template-columns: 1fr 1fr; gap: 5rem; } }
-.ds-intro-text p { font-size: 1.125rem; color: var(--ds-text-light); }
-.ds-intro-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-.ds-stat-card { padding: 2rem; text-align: center; }
-.ds-stat-value { font-size: 2.5rem; font-weight: 800; color: var(--ds-primary); margin-bottom: 0.5rem; }
-.ds-stat-label { font-size: 0.875rem; font-weight: 600; color: var(--ds-text-light); text-transform: uppercase; letter-spacing: 0.05em; }
+.ds-hero-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+}
 
-/* Services Section */
-.ds-services-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; }
-.ds-service-card { display: flex; flex-direction: column; }
-.ds-service-img { height: 200px; overflow: hidden; }
-.ds-service-img img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
-.ds-service-card:hover .ds-service-img img { transform: scale(1.06); }
-.ds-service-content { padding: 2rem; flex-grow: 1; }
-.ds-service-content h3 { margin-bottom: 1rem; font-size: 1.25rem; }
-.ds-service-content p { color: var(--ds-text-light); font-size: 0.95rem; }
+.ds-hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
-/* Reviews Section */
-.ds-reviews-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; }
-.ds-review-card { padding: 2.5rem; display: flex; flex-direction: column; justify-content: space-between; }
-.ds-stars { color: #fbbf24; font-size: 1.25rem; margin-bottom: 1.5rem; letter-spacing: 2px; }
-.ds-review-text { font-size: 1.125rem; font-style: italic; margin-bottom: 2rem; color: var(--ds-text); line-height: 1.7; }
-.ds-review-author { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 1.5rem; }
-.ds-review-author strong { color: var(--ds-primary); }
-.ds-review-author span { font-size: 0.875rem; color: var(--ds-text-light); }
+.ds-hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(0, 20, 40, 0.9) 0%, rgba(0, 40, 80, 0.7) 50%, rgba(0, 102, 204, 0.4) 100%);
+}
 
-/* Gallery Section */
-.ds-gallery-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; }
-.ds-gallery-item { height: clamp(300px, 50vw, 500px); overflow: hidden; }
-.ds-gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
-.ds-gallery-item:hover img { transform: scale(1.04); }
+.ds-hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 800px;
+}
 
-/* Contact Section */
-.ds-contact-grid { display: grid; grid-template-columns: 1fr; gap: 4rem; }
-@media (min-width: 992px) { .ds-contact-grid { grid-template-columns: 1fr 1fr; align-items: center; } }
-.ds-contact-info p { color: var(--ds-text-light); margin-bottom: 2rem; font-size: 1.125rem; }
-.ds-contact-details { display: flex; flex-direction: column; gap: 1.5rem; }
-.ds-contact-item { display: flex; flex-direction: column; gap: 0.25rem; }
-.ds-contact-item strong { color: var(--ds-primary); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; }
-.ds-contact-item a, .ds-contact-item span { color: var(--ds-text); text-decoration: none; font-size: 1.125rem; font-weight: 500; }
-.ds-contact-item a:hover { color: var(--ds-primary); }
-.ds-contact-map { height: 400px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #e2e8f0; }
-.ds-map-placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-.ds-map-placeholder .ds-btn { position: absolute; z-index: 2; }
+.ds-hero-title {
+  font-size: clamp(3rem, 6vw, 5rem);
+  color: #ffffff;
+  margin-bottom: 1.5rem;
+}
+
+.ds-hero-subtitle {
+  font-size: clamp(1.125rem, 2vw, 1.25rem);
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 2.5rem;
+  max-width: 600px;
+}
+
+.ds-hero-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Intro & Stats */
+.ds-intro-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3rem;
+  align-items: center;
+}
+
+.ds-section-title {
+  font-size: clamp(2rem, 4vw, 3rem);
+  margin-bottom: 1.5rem;
+}
+
+.ds-section-desc {
+  font-size: 1.125rem;
+  color: var(--ds-text-light);
+  max-width: 700px;
+  margin-bottom: 2rem;
+}
+
+.ds-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 2rem;
+}
+
+.ds-stat-card {
+  text-align: center;
+  padding: 2rem;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+.ds-stat-number {
+  font-family: var(--ds-font-heading);
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--ds-primary);
+  margin-bottom: 0.5rem;
+}
+
+.ds-stat-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ds-text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Cards & Services */
+.ds-card {
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1px solid rgba(0,0,0,0.05);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.ds-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(800px circle at var(--mouse-x, 0) var(--mouse-y, 0), rgba(0, 102, 204, 0.06), transparent 40%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.ds-card:hover::before {
+  opacity: 1;
+}
+
+.ds-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+  border-color: rgba(0, 102, 204, 0.3);
+}
+
+.ds-services-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.ds-service-img-wrap {
+  width: 100%;
+  height: 240px;
+  overflow: hidden;
+}
+
+.ds-service-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ds-card:hover .ds-service-img {
+  transform: scale(1.06);
+}
+
+.ds-service-content {
+  padding: 2rem;
+  position: relative;
+  z-index: 2;
+}
+
+.ds-service-title {
+  font-size: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.ds-service-desc {
+  color: var(--ds-text-light);
+  font-size: 1rem;
+}
+
+/* Reviews */
+.ds-reviews-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.ds-review-card {
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.ds-stars {
+  color: #fbbf24;
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+  letter-spacing: 2px;
+}
+
+.ds-review-text {
+  font-size: 1.125rem;
+  font-style: italic;
+  margin-bottom: 2rem;
+  color: var(--ds-text-main);
+}
+
+.ds-review-author {
+  display: flex;
+  flex-direction: column;
+}
+
+.ds-review-author strong {
+  font-family: var(--ds-font-heading);
+  font-size: 1.125rem;
+  color: var(--ds-primary);
+}
+
+.ds-review-author span {
+  font-size: 0.875rem;
+  color: var(--ds-text-light);
+}
+
+/* Gallery */
+.ds-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.ds-gallery-item {
+  border-radius: 20px;
+  overflow: hidden;
+  height: 250px;
+}
+
+.ds-gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ds-gallery-item:hover img {
+  transform: scale(1.06);
+}
+
+/* Contact */
+.ds-contact-wrapper {
+  display: grid;
+  grid-template-columns: 1fr;
+  overflow: hidden;
+}
+
+.ds-contact-info {
+  padding: 3rem;
+}
+
+.ds-contact-details {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.ds-contact-item strong {
+  display: block;
+  color: var(--ds-primary);
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ds-contact-item a, .ds-contact-item p {
+  color: var(--ds-text-main);
+  font-size: 1.125rem;
+}
+
+.ds-contact-item a:hover {
+  color: var(--ds-accent);
+}
+
+.ds-mt-4 {
+  margin-top: 2rem;
+}
+
+.ds-contact-map {
+  height: 400px;
+  position: relative;
+}
+
+.ds-map-placeholder {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.ds-map-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ds-map-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.ds-contact-map:hover .ds-map-overlay {
+  opacity: 1;
+}
 
 /* Footer */
-.ds-footer { background: #0f172a; color: #ffffff; padding: 4rem 0 2rem; }
-.ds-footer-content { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2rem; margin-bottom: 3rem; }
-.ds-footer-brand h3 { color: #ffffff; margin-bottom: 0.5rem; }
-.ds-footer-brand p { color: #94a3b8; }
-.ds-footer-links { display: flex; gap: 2rem; }
-.ds-footer-links a { color: #e2e8f0; text-decoration: none; transition: color 0.3s; }
-.ds-footer-links a:hover { color: var(--ds-primary); }
-.ds-footer-bottom { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 2rem; text-align: center; color: #64748b; font-size: 0.875rem; }
+.ds-footer {
+  background: #0f172a;
+  color: #ffffff;
+  padding: 4rem 0 2rem;
+}
+
+.ds-footer-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-bottom: 3rem;
+  text-align: center;
+}
+
+.ds-footer-brand h3 {
+  color: #ffffff;
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.ds-footer-brand p {
+  color: #94a3b8;
+}
+
+.ds-footer-links {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ds-footer-links a {
+  color: #cbd5e1;
+  transition: color 0.3s;
+}
+
+.ds-footer-links a:hover {
+  color: var(--ds-accent);
+}
+
+.ds-footer-bottom {
+  text-align: center;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  color: #64748b;
+  font-size: 0.875rem;
+}
 
 /* Animations & Effects */
-.ds-reveal { opacity: 0; transform: translateY(30px); animation: dsFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-.ds-delay-1 { animation-delay: 0.15s; }
-.ds-delay-2 { animation-delay: 0.3s; }
-.ds-delay-3 { animation-delay: 0.45s; }
-.ds-delay-4 { animation-delay: 0.6s; }
-@keyframes dsFadeInUp { to { opacity: 1; transform: translateY(0); } }
+.ds-reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
 
-.ds-glow-1, .ds-glow-2 { position: absolute; width: clamp(200px, 40vw, 400px); height: clamp(200px, 40vw, 400px); border-radius: 50%; filter: blur(100px); opacity: 0.06; pointer-events: none; z-index: 0; }
-.ds-glow-1 { background: var(--ds-primary); top: 15%; left: -10%; animation: dsFloat 18s infinite alternate ease-in-out; }
-.ds-glow-2 { background: var(--ds-accent); bottom: 25%; right: -10%; animation: dsFloat 24s infinite alternate-reverse ease-in-out; }
-@keyframes dsFloat { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(6%, 6%) scale(1.08); } 100% { transform: translate(0, 0) scale(1); } }
+.ds-reveal.visible, .ds-reveal.ds-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
 
-@media (prefers-reduced-motion: reduce) { .ds-homepage * { transition: none !important; transform: none !important; animation: none !important; } }
+.ds-delay-1 { transition-delay: 0.15s; }
+.ds-delay-2 { transition-delay: 0.3s; }
+.ds-delay-3 { transition-delay: 0.45s; }
+.ds-delay-4 { transition-delay: 0.6s; }
+
+.ds-glow-1, .ds-glow-2 {
+  position: absolute;
+  width: clamp(200px, 40vw, 400px);
+  height: clamp(200px, 40vw, 400px);
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.06;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ds-glow-1 {
+  background: var(--ds-primary);
+  top: 15%;
+  left: -10%;
+  animation: dsFloat 18s infinite alternate ease-in-out;
+}
+
+.ds-glow-2 {
+  background: var(--ds-accent);
+  bottom: 25%;
+  right: -10%;
+  animation: dsFloat 24s infinite alternate-reverse ease-in-out;
+}
+
+@keyframes dsFloat {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(6%, 6%) scale(1.08); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+/* Cursor */
+.ds-cursor {
+  display: none;
+}
+.ds-cursor-dot {
+  display: none;
+}
+
+@media (pointer: fine) {
+  .ds-cursor {
+    display: block;
+    width: 40px;
+    height: 40px;
+    border: 2px solid var(--ds-primary);
+    border-radius: 50%;
+    position: fixed;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    transition: width 0.3s, height 0.3s, transform 0.1s ease-out, border-color 0.3s;
+    z-index: 9999;
+  }
+  .ds-cursor-dot {
+    display: block;
+    width: 8px;
+    height: 8px;
+    background: var(--ds-primary);
+    border-radius: 50%;
+    position: fixed;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    transition: transform 0.05s ease-out;
+    z-index: 9999;
+  }
+}
+
+/* Responsive Breakpoints */
+@media (min-width: 768px) {
+  .ds-mobile-menu-label {
+    display: none;
+  }
+  .ds-nav {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+  }
+  .ds-header-cta {
+    display: block;
+  }
+  .ds-mobile-only {
+    display: none;
+  }
+  .ds-intro-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ds-services-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .ds-reviews-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .ds-gallery-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .ds-contact-wrapper {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ds-contact-map {
+    height: auto;
+  }
+  .ds-footer-inner {
+    flex-direction: row;
+    justify-content: space-between;
+    text-align: left;
+  }
+  .ds-footer-links {
+    flex-direction: row;
+    gap: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ds-services-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-homepage * {
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
+  }
+}
 </style>
 <!-- /wp:html -->
 
@@ -135,6 +811,8 @@ h1, h2, h3, h4 { color: var(--ds-text); font-weight: 700; line-height: 1.2; }
 <div class="ds-homepage">
   <div class="ds-glow-1"></div>
   <div class="ds-glow-2"></div>
+  <div class="ds-cursor"></div>
+  <div class="ds-cursor-dot"></div>
 
   <header class="ds-header">
     <div class="ds-container ds-header-inner">
@@ -144,107 +822,119 @@ h1, h2, h3, h4 { color: var(--ds-text); font-weight: 700; line-height: 1.2; }
       
       <input type="checkbox" id="ds-mobile-menu-toggle" class="ds-mobile-menu-toggle">
       <label for="ds-mobile-menu-toggle" class="ds-mobile-menu-label">
-        <span></span><span></span><span></span>
+        <span class="ds-hamburger-line"></span>
+        <span class="ds-hamburger-line"></span>
+        <span class="ds-hamburger-line"></span>
       </label>
 
       <nav class="ds-nav">
         <a href="#services" class="ds-nav-link">Services</a>
         <a href="#reviews" class="ds-nav-link">Reviews</a>
         <a href="#contact" class="ds-nav-link">Contact</a>
-        <a href="https://sunrisedental.com/book" class="ds-btn ds-btn-primary ds-nav-cta">Schedule an Appointment</a>
+        <a href="https://sunrisedental.com/book" class="ds-btn ds-btn-small ds-mobile-only">Book Now</a>
       </nav>
+      
+      <div class="ds-header-cta">
+        <a href="https://sunrisedental.com/book" class="ds-btn ds-btn-small">Schedule an Appointment</a>
+      </div>
     </div>
   </header>
 
   <main>
     <section class="ds-hero">
       <div class="ds-hero-bg">
-        <img src="https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800&h=600" alt="Sunrise Dental Care - Modern dental care in Brooklyn">
+        <img src="https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800&h=600" alt="Sunrise Dental Care Clinic" class="ds-hero-img">
         <div class="ds-hero-overlay"></div>
       </div>
-      <div class="ds-container ds-hero-content">
-        <div class="ds-badge ds-badge-light ds-reveal">Trusted Dentistry in Williamsburg</div>
-        <h1 class="ds-reveal ds-delay-1">Modern dental care in Brooklyn</h1>
-        <p class="ds-reveal ds-delay-2">Trusted Dentistry serving the Williamsburg community.</p>
-        <div class="ds-hero-actions ds-reveal ds-delay-3">
+      <div class="ds-container ds-hero-content ds-reveal">
+        <div class="ds-badge ds-badge-light">Top Rated in Williamsburg</div>
+        <h1 class="ds-hero-title ds-gradient-text-light">Modern dental care<br>in Brooklyn</h1>
+        <p class="ds-hero-subtitle">Trusted Dentistry serving the Williamsburg community. Experience gentle, professional care in a state-of-the-art environment.</p>
+        <div class="ds-hero-actions">
           <a href="https://sunrisedental.com/book" class="ds-btn ds-btn-primary">Schedule an Appointment</a>
           <a href="https://sunrisedental.com/services" class="ds-btn ds-btn-secondary">Learn More</a>
         </div>
       </div>
-      <div class="ds-hero-shape"></div>
     </section>
 
-    <section class="ds-section ds-intro">
-      <div class="ds-container ds-intro-grid">
-        <div class="ds-intro-text ds-reveal">
-          <h2 class="ds-gradient-text">Welcome to Sunrise Dental Care</h2>
-          <p>We provide comprehensive, state-of-the-art dental care in a comfortable and welcoming environment. Whether you need a routine cleaning or advanced restorative work, our team is dedicated to your smile.</p>
-        </div>
-        <div class="ds-intro-stats ds-reveal ds-delay-1">
-          <div class="ds-stat-card ds-card">
-            <div class="ds-stat-value">5★</div>
-            <div class="ds-stat-label">Top Rated in Brooklyn</div>
+    <section class="ds-intro ds-section">
+      <div class="ds-container">
+        <div class="ds-intro-grid">
+          <div class="ds-intro-text ds-reveal">
+            <h2 class="ds-section-title ds-gradient-text">Compassionate Care for Your Best Smile</h2>
+            <p class="ds-section-desc">At Sunrise Dental Care, we combine advanced dental technology with a gentle, patient-first approach. Whether you need a routine cleaning or a complete smile makeover, our Brooklyn team is dedicated to making your visit comfortable and stress-free.</p>
           </div>
-          <div class="ds-stat-card ds-card">
-            <div class="ds-stat-value">100%</div>
-            <div class="ds-stat-label">Commitment to Care</div>
+          <div class="ds-stats-grid">
+            <div class="ds-stat-card ds-reveal ds-delay-1">
+              <div class="ds-stat-number"><span class="ds-count-value" data-target="15">0</span>+</div>
+              <div class="ds-stat-label">Years Experience</div>
+            </div>
+            <div class="ds-stat-card ds-reveal ds-delay-2">
+              <div class="ds-stat-number"><span class="ds-count-value" data-target="2500">0</span>+</div>
+              <div class="ds-stat-label">Happy Patients</div>
+            </div>
+            <div class="ds-stat-card ds-reveal ds-delay-3">
+              <div class="ds-stat-number"><span class="ds-count-value" data-target="5">0</span></div>
+              <div class="ds-stat-label">Star Average Rating</div>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <section id="services" class="ds-section ds-bg-neutral">
+    <section id="services" class="ds-services ds-section ds-bg-neutral">
       <div class="ds-container">
         <div class="ds-section-header ds-reveal">
-          <div class="ds-badge">Our Services</div>
-          <h2 class="ds-gradient-text">Comprehensive Dental Solutions</h2>
+          <div class="ds-badge">Our Expertise</div>
+          <h2 class="ds-section-title ds-gradient-text">Comprehensive Dental Services</h2>
+          <p class="ds-section-desc">From preventative care to advanced restorative treatments, we offer everything you need for a healthy smile under one roof.</p>
         </div>
         <div class="ds-services-grid">
           <div class="ds-card ds-service-card ds-reveal ds-delay-1">
-            <div class="ds-service-img">
-              <img src="https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800" alt="General Dentistry">
+            <div class="ds-service-img-wrap">
+              <img src="https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800" alt="General Dentistry" class="ds-service-img">
             </div>
             <div class="ds-service-content">
-              <h3>General Dentistry</h3>
-              <p>Comprehensive cleanings, exams, and preventative care</p>
+              <h3 class="ds-service-title">General Dentistry</h3>
+              <p class="ds-service-desc">Comprehensive cleanings, exams, and preventative care</p>
             </div>
           </div>
           <div class="ds-card ds-service-card ds-reveal ds-delay-2">
-            <div class="ds-service-img">
-              <img src="https://images.unsplash.com/photo-1606811841689-23db3d821364?w=800" alt="Cosmetic Dentistry">
+            <div class="ds-service-img-wrap">
+              <img src="https://images.unsplash.com/photo-1606811841689-23db3d821364?w=800" alt="Cosmetic Dentistry" class="ds-service-img">
             </div>
             <div class="ds-service-content">
-              <h3>Cosmetic Dentistry</h3>
-              <p>Teeth whitening, veneers, and smile makeovers</p>
+              <h3 class="ds-service-title">Cosmetic Dentistry</h3>
+              <p class="ds-service-desc">Teeth whitening, veneers, and smile makeovers</p>
             </div>
           </div>
           <div class="ds-card ds-service-card ds-reveal ds-delay-3">
-            <div class="ds-service-img">
-              <img src="https://images.unsplash.com/photo-1532096122144-03b913f3e25f?w=800" alt="Implants">
+            <div class="ds-service-img-wrap">
+              <img src="https://images.unsplash.com/photo-1532096122144-03b913f3e25f?w=800" alt="Implants" class="ds-service-img">
             </div>
             <div class="ds-service-content">
-              <h3>Implants</h3>
-              <p>State-of-the-art dental implant procedures</p>
+              <h3 class="ds-service-title">Implants</h3>
+              <p class="ds-service-desc">State-of-the-art dental implant procedures</p>
             </div>
           </div>
           <div class="ds-card ds-service-card ds-reveal ds-delay-4">
-            <div class="ds-service-img">
-              <img src="https://images.unsplash.com/photo-1606811841689-23db3d821364?w=800" alt="Orthodontics">
+            <div class="ds-service-img-wrap">
+              <img src="https://images.unsplash.com/photo-1606811841689-23db3d821364?w=800" alt="Orthodontics" class="ds-service-img">
             </div>
             <div class="ds-service-content">
-              <h3>Orthodontics</h3>
-              <p>Modern braces and Invisalign treatments</p>
+              <h3 class="ds-service-title">Orthodontics</h3>
+              <p class="ds-service-desc">Modern braces and Invisalign treatments</p>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <section id="reviews" class="ds-section">
+    <section id="reviews" class="ds-reviews ds-section">
       <div class="ds-container">
         <div class="ds-section-header ds-reveal">
           <div class="ds-badge">Patient Stories</div>
-          <h2 class="ds-gradient-text">Real Reviews from Brooklyn</h2>
+          <h2 class="ds-section-title ds-gradient-text">What Our Community Says</h2>
         </div>
         <div class="ds-reviews-grid">
           <div class="ds-card ds-review-card ds-reveal ds-delay-1">
@@ -252,7 +942,7 @@ h1, h2, h3, h4 { color: var(--ds-text); font-weight: 700; line-height: 1.2; }
             <p class="ds-review-text">"Dr. Chen is incredibly gentle and professional. The office is clean and modern. Highly recommend!"</p>
             <div class="ds-review-author">
               <strong>Sarah M.</strong>
-              <span>2024-03-15</span>
+              <span>March 15, 2024</span>
             </div>
           </div>
           <div class="ds-card ds-review-card ds-reveal ds-delay-2">
@@ -260,7 +950,7 @@ h1, h2, h3, h4 { color: var(--ds-text); font-weight: 700; line-height: 1.2; }
             <p class="ds-review-text">"Best dental experience I've had. The team explained everything and made me comfortable throughout."</p>
             <div class="ds-review-author">
               <strong>James K.</strong>
-              <span>2024-02-28</span>
+              <span>February 28, 2024</span>
             </div>
           </div>
           <div class="ds-card ds-review-card ds-reveal ds-delay-3">
@@ -268,55 +958,62 @@ h1, h2, h3, h4 { color: var(--ds-text); font-weight: 700; line-height: 1.2; }
             <p class="ds-review-text">"Love the new office! They're very friendly and the wait time is minimal."</p>
             <div class="ds-review-author">
               <strong>Lisa R.</strong>
-              <span>2024-02-10</span>
+              <span>February 10, 2024</span>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="ds-section ds-bg-neutral">
+    <section class="ds-gallery ds-section ds-bg-neutral">
       <div class="ds-container">
-        <div class="ds-section-header ds-reveal">
-          <div class="ds-badge">Our Clinic</div>
-          <h2 class="ds-gradient-text">A Modern Environment</h2>
-        </div>
-        <div class="ds-gallery-grid ds-reveal ds-delay-1">
-          <div class="ds-gallery-item ds-card">
-            <img src="https://images.unsplash.com/photo-1576091160550-112173f7f869?w=800&h=600" alt="Sunrise Dental Care Clinic Interior">
+        <div class="ds-gallery-grid">
+          <div class="ds-gallery-item ds-reveal ds-delay-1">
+            <img src="https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800&h=600" alt="Sunrise Dental Care Clinic Interior">
+          </div>
+          <div class="ds-gallery-item ds-reveal ds-delay-2">
+            <img src="https://images.unsplash.com/photo-1606811841689-23db3d821364?w=800&h=600" alt="Cosmetic Dentistry Procedure">
+          </div>
+          <div class="ds-gallery-item ds-reveal ds-delay-3">
+            <img src="https://images.unsplash.com/photo-1532096122144-03b913f3e25f?w=800&h=600" alt="Dental Implants Equipment">
+          </div>
+          <div class="ds-gallery-item ds-reveal ds-delay-4">
+            <img src="https://images.unsplash.com/photo-1576091160550-112173f7f869?w=800&h=600" alt="Modern Dental Office">
           </div>
         </div>
       </div>
     </section>
 
-    <section id="contact" class="ds-section ds-contact-section">
-      <div class="ds-container ds-contact-grid">
-        <div class="ds-contact-info ds-reveal">
-          <div class="ds-badge">Get in Touch</div>
-          <h2 class="ds-gradient-text">Visit Our Williamsburg Office</h2>
-          <p>Ready to improve your smile? Contact us today to schedule your appointment.</p>
-          
-          <div class="ds-contact-details">
-            <div class="ds-contact-item">
-              <strong>Address:</strong>
-              <a href="https://maps.google.com/?q=Sunrise%20Dental%20Care" target="_blank" rel="noopener">123 Oak Street, Brooklyn, NY 11217</a>
+    <section id="contact" class="ds-contact ds-section">
+      <div class="ds-container">
+        <div class="ds-contact-wrapper ds-card ds-reveal">
+          <div class="ds-contact-info">
+            <h2 class="ds-section-title">Visit Our Clinic</h2>
+            <p class="ds-section-desc">Conveniently located in Williamsburg, Brooklyn. We're accepting new patients and look forward to caring for your smile.</p>
+            
+            <div class="ds-contact-details">
+              <div class="ds-contact-item">
+                <strong>Address</strong>
+                <a href="https://maps.google.com/?q=Sunrise%20Dental%20Care" target="_blank">123 Oak Street, Brooklyn, NY 11217</a>
+              </div>
+              <div class="ds-contact-item">
+                <strong>Phone</strong>
+                <a href="tel:+17185550123">+1 (718) 555-0123</a>
+              </div>
+              <div class="ds-contact-item">
+                <strong>Hours</strong>
+                <p>Monday-Friday: 9am-6pm<br>Saturday: 10am-4pm<br>Sunday: Closed</p>
+              </div>
             </div>
-            <div class="ds-contact-item">
-              <strong>Phone:</strong>
-              <a href="tel:+17185550123">+1 (718) 555-0123</a>
-            </div>
-            <div class="ds-contact-item">
-              <strong>Hours:</strong>
-              <span>Monday-Friday: 9am-6pm<br>Saturday: 10am-4pm<br>Sunday: Closed</span>
-            </div>
+            <a href="https://sunrisedental.com/book" class="ds-btn ds-btn-primary ds-mt-4">Schedule an Appointment</a>
           </div>
-          
-          <a href="https://sunrisedental.com/book" class="ds-btn ds-btn-primary ds-mt-4">Schedule an Appointment</a>
-        </div>
-        <div class="ds-contact-map ds-card ds-reveal ds-delay-2">
-          <div class="ds-map-placeholder">
-            <img src="https://images.unsplash.com/photo-1576091160550-112173f7f869?w=800&h=600" alt="Location Map" style="width:100%; height:100%; object-fit:cover; opacity:0.5;">
-            <a href="https://maps.google.com/?q=Sunrise%20Dental%20Care" target="_blank" rel="noopener" class="ds-btn ds-btn-primary">Open in Google Maps</a>
+          <div class="ds-contact-map">
+            <div class="ds-map-placeholder">
+              <img src="https://images.unsplash.com/photo-1576091160550-112173f7f869?w=800&h=600" alt="Sunrise Dental Care Location" class="ds-map-img">
+              <div class="ds-map-overlay">
+                <a href="https://maps.google.com/?q=Sunrise%20Dental%20Care" target="_blank" class="ds-btn ds-btn-secondary">Get Directions</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -325,7 +1022,7 @@ h1, h2, h3, h4 { color: var(--ds-text); font-weight: 700; line-height: 1.2; }
 
   <footer class="ds-footer">
     <div class="ds-container">
-      <div class="ds-footer-content">
+      <div class="ds-footer-inner">
         <div class="ds-footer-brand">
           <h3>Sunrise Dental Care</h3>
           <p>Modern dental care in Brooklyn</p>
@@ -341,6 +1038,107 @@ h1, h2, h3, h4 { color: var(--ds-text); font-weight: 700; line-height: 1.2; }
       </div>
     </div>
   </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const homepage = document.querySelector('.ds-homepage');
+      if (!homepage) return;
+
+      // Sticky Header
+      const header = homepage.querySelector('.ds-header');
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 20) {
+          header.classList.add('ds-scrolled');
+        } else {
+          header.classList.remove('ds-scrolled');
+        }
+      }, { passive: true });
+
+      // Intersection Observer for Reveal Animations
+      const observerOptions = {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.15
+      };
+      const observer = new IntersectionObserver((entries, obs) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            
+            // Trigger count-up if it contains counters
+            const counters = entry.target.querySelectorAll('.ds-count-value');
+            counters.forEach(counter => {
+              if (!counter.classList.contains('counted')) {
+                animateValue(counter, 0, parseInt(counter.getAttribute('data-target')), 2000);
+                counter.classList.add('counted');
+              }
+            });
+            
+            obs.unobserve(entry.target);
+          }
+        });
+      }, observerOptions);
+
+      homepage.querySelectorAll('.ds-reveal, .ds-card').forEach(el => {
+        observer.observe(el);
+      });
+
+      // Count-up Animation Function
+      function animateValue(obj, start, end, duration) {
+        let startTimestamp = null;
+        const step = (timestamp) => {
+          if (!startTimestamp) startTimestamp = timestamp;
+          const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+          // easeOutQuart
+          const easeProgress = 1 - Math.pow(1 - progress, 4);
+          obj.innerHTML = Math.floor(easeProgress * (end - start) + start);
+          if (progress < 1) {
+            window.requestAnimationFrame(step);
+          }
+        };
+        window.requestAnimationFrame(step);
+      }
+
+      // Custom Cursor & Radial Glow (Desktop Only)
+      const cursor = homepage.querySelector('.ds-cursor');
+      const cursorDot = homepage.querySelector('.ds-cursor-dot');
+      const cards = homepage.querySelectorAll('.ds-card');
+      
+      if (window.matchMedia('(pointer: fine)').matches) {
+        document.addEventListener('mousemove', (e) => {
+          // Cursor follower
+          if (cursor && cursorDot) {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+            cursorDot.style.left = e.clientX + 'px';
+            cursorDot.style.top = e.clientY + 'px';
+          }
+
+          // Radial Glow on Cards
+          cards.forEach(card => {
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            card.style.setProperty('--mouse-x', `${x}px`);
+            card.style.setProperty('--mouse-y', `${y}px`);
+          });
+        });
+
+        // Hover effects for cursor
+        const interactiveElements = homepage.querySelectorAll('a, button, input, label');
+        interactiveElements.forEach(el => {
+          el.addEventListener('mouseenter', () => {
+            if (cursor) cursor.style.transform = 'translate(-50%, -50%) scale(1.5)';
+            if (cursor) cursor.style.borderColor = 'var(--ds-accent)';
+          });
+          el.addEventListener('mouseleave', () => {
+            if (cursor) cursor.style.transform = 'translate(-50%, -50%) scale(1)';
+            if (cursor) cursor.style.borderColor = 'var(--ds-primary)';
+          });
+        });
+      }
+    });
+  </script>
 </div>
 </div>
 <!-- /wp:group -->

@@ -1,18 +1,3 @@
-/**
- * Refined Vertex/Gemini Deterministic Prompt for Modern Business Homepage Generation
- *
- * This prompt generates FINAL WordPress-safe homepage HTML/CSS directly.
- * Output: Single JSON object with {html, css, assets, notes}
- *
- * Key principles:
- * - Deterministic output (temperature 0.1)
- * - Real agency-quality homepages
- * - WordPress-safe without scripts or fragile layouts
- * - Business-focused, not design experimentation
- *
- * @format
- */
-
 export const VERTEX_HOMEPAGE_GENERATION_PROMPT = `You are a professional agency web design engine specializing in modern local business websites built for WordPress.
 
 Your task: using ONLY the full business context provided in the input variables below, generate ONE final production-ready WordPress-safe homepage as a JSON object with exactly these keys: "html", "css", "assets", "notes". Return ONLY valid JSON. No other text.
@@ -54,7 +39,6 @@ Return a JSON object with exactly these keys:
   "notes": "..."      // Brief fallback decisions
 }
 
-============================================
 ============================================
 HTML REQUIREMENTS
 ============================================
@@ -106,26 +90,30 @@ Accessibility:
 - Include proper alt text for all images.
 - Use semantic HTML for structure.
 
-WordPress Safety (CRITICAL):
-- Do NOT include <script> tags or inline JavaScript code.
-- Do NOT include event handlers (onclick, onload, etc.).
-- Do NOT rely on external JS libraries.
-- Use CSS-only animations and transitions.
-- Use anchor links and tel: links for interactivity.
-- Avoid fragile absolute positioning; use flexbox/grid.
-- Ensure selectors work if Gutenberg wraps the DOM.
+WordPress Interactivity & Scripting (CRITICAL):
+- You MUST include a SINGLE, SELF-CONTAINED <script> tag at the very end of your HTML.
+- The script must be pure ES6 Vanilla Javascript. Do NOT use external libraries or jQuery.
+- The script MUST implement the following:
+  1. Sticky Header scroll state toggler (adds/removes class 'ds-scrolled' to '.ds-header' when window scroll Y is greater than 20px).
+  2. IntersectionObserver to detect when elements enter the viewport. When an element with class '.ds-reveal' or '.ds-card' enters the viewport, add the class 'visible' or 'ds-visible' to trigger smooth CSS animations.
+  3. Interactive cursor follower: Inject a cursor element (<div class="ds-cursor"></div><div class="ds-cursor-dot"></div>) into the DOM via the script (only on desktop/pointer devices). Make it smoothly follow the mouse position.
+  4. Radial mouse glow element: Track mouse move and dynamically update custom CSS variables '--mouse-x' and '--mouse-y' on elements (like hero card backgrounds or sections) to create a beautiful hover radial gradient spotlight glow.
+  5. Count-up animation for metrics: Automatically detect and animate text elements with class '.ds-count-value' (e.g. from 0 to their target number like 1500, 24, 99) when they become visible.
+- Scope all JavaScript DOM actions strictly under '.ds-homepage' to avoid affecting any WordPress admin pages.
 
 ============================================
 CSS REQUIREMENTS
 ============================================
 
 Scope & Structure:
-- Scope ALL CSS under .ds-homepage selectors (no global rules), EXCEPT for hiding the default WordPress headers/page titles.
-- FULL WIDTH SCREEN BREAKOUT (CRITICAL): To ensure the homepage spans the full viewport width and is not constrained to a narrow centered column by the WordPress theme layout, you MUST include this rule at the beginning of the CSS:
-  '.ds-homepage { width: 100vw !important; max-width: 100vw !important; position: relative !important; left: 50% !important; right: 50% !important; margin-left: -50vw !important; margin-right: -50vw !important; box-sizing: border-box !important; overflow-x: hidden !important; }'
+- Scope ALL CSS under .ds-homepage selectors (no global rules), EXCEPT for hiding the default WordPress headers/page titles and breaking out parent containers.
+- FULL WIDTH SCREEN BREAKOUT & CONTAINER OVERRIDES (CRITICAL): To ensure the homepage spans the full viewport width and is not constrained to a narrow centered column by the WordPress theme layout, you MUST include these rules:
+  '/* Override theme page containers to allow full-width blocks */
+  .entry-content, .post-content, .wp-site-blocks, .site-content, .ast-container, .hello-elementor-content, .site-main { max-width: 100% !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }
+  .ds-homepage { width: 100vw !important; max-width: 100vw !important; position: relative !important; left: 50% !important; right: 50% !important; margin-left: -50vw !important; margin-right: -50vw !important; box-sizing: border-box !important; overflow-x: hidden !important; }'
 - HIDE THEME CHROME (CRITICAL): To prevent the WordPress theme from displaying the default site title or the page title (like "San Francisco Water Restoration Service" or "Home") on top of our generated header, you MUST hide them using this CSS:
   '.entry-title, .entry-header, .post-title, .page-title, .wp-block-post-title, .site-header, #masthead, .site-branding, .header-footer-group, .theme-header, .custom-header, .nav-container { display: none !important; }'
-- Single stylesheet string (no @import, no external fonts, no <link> tags).
+- Typography & Google Fonts: To give each site a unique, high-end agency feel, you MUST import 1 or 2 specific Google Fonts at the very top of your CSS using '@import url(...)'. Choose an appropriate font pairing matching the business category (e.g., 'Bebas Neue' + 'DM Sans' + 'DM Serif Display' for rugged/urgent; 'Playfair Display' + 'Inter' for luxury/medical; 'Outfit' + 'Plus Jakarta Sans' for modern tech/fitness).
 - Use semantic, scoped class names.
 - Keep CSS compact (~600-800 lines max).
 
@@ -135,6 +123,7 @@ Responsive Design & Sticky Navigation:
 - Use modern CSS: flexbox, grid, clamp(), min(), max() for fluid scaling.
 - MODERN STICKY HEADER (GLASSMORPHISM): The header styling must feel extremely premium, using a frosted-glass blur effect:
   '.ds-header { position: sticky; top: 0; z-index: 1000; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px) saturate(180%); -webkit-backdrop-filter: blur(12px) saturate(180%); border-bottom: 1px solid rgba(0, 0, 0, 0.06); box-shadow: 0 4px 30px rgba(0,0,0,0.03); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); padding: 1.25rem 0; }'
+  '.ds-header.ds-scrolled { background: rgba(255, 255, 255, 0.95); padding: 0.75rem 0; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }'
 - NAV LINK HOVER EFFECT (SLIDING UNDERLINE): Navigation links must have a modern sliding underline on hover. Design it like:
   '.ds-nav-link { position: relative; padding: 0.5rem 0; font-weight: 500; color: rgba(15, 23, 42, 0.8); transition: color 0.3s ease; }'
   '.ds-nav-link::after { content: ""; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: var(--ds-primary); transform: scaleX(0); transform-origin: right; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }'
@@ -154,6 +143,8 @@ Visual Design & Polish:
   '.ds-badge { display: inline-flex; align-items: center; padding: 0.5rem 1.25rem; background: rgba(0, 102, 204, 0.08); color: var(--ds-primary); border-radius: 9999px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; border: 1px solid rgba(0, 102, 204, 0.15); margin-bottom: 1.25rem; }'
   If the background is dark (e.g. in the hero), use a white/translucent glass badge:
   '.ds-badge-light { background: rgba(255,255,255,0.12); color: #ffffff; border-color: rgba(255,255,255,0.2); }'
+- Typographic Outlines: Use stylish heading fonts (like 'Bebas Neue' or 'DM Serif Display') with outlines:
+  '.ds-outline-text { -webkit-text-stroke: 1px var(--ds-primary); color: transparent; font-family: "Bebas Neue", sans-serif; }'
 - Gradient Text Headers: To make headings stand out, use subtle linear-gradients on main page/hero headings:
   '.ds-gradient-text { background: linear-gradient(135deg, var(--ds-primary) 0%, var(--ds-primary-dark) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }'
 - Cards & Containers: Cards must feel premium:
@@ -167,17 +158,13 @@ Hero Refinement:
 - Use rich overlay styling for the hero text side: gradients, custom icons, and offset spacing.
 
 Lightweight Interaction & Animations (CRITICAL):
-- GLOBAL ANIMATION CLASSES: You MUST declare and use these exact classes to animate page content on load:
-  '.ds-reveal { opacity: 0; transform: translateY(30px); animation: dsFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }'
-  '.ds-delay-1 { animation-delay: 0.15s; }'
-  '.ds-delay-2 { animation-delay: 0.3s; }'
-  '.ds-delay-3 { animation-delay: 0.45s; }'
-  '.ds-delay-4 { animation-delay: 0.6s; }'
-  '@keyframes dsFadeInUp { to { opacity: 1; transform: translateY(0); } }'
-- IMPLEMENTATION RULE: Apply the '.ds-reveal' class and staggered delay classes to:
-  - Hero Title, taglines, and actions.
-  - Section intro titles and description paragraphs.
-  - Individual grid items/cards so they fade in sequentially on load.
+- GLOBAL ANIMATION CLASSES: You MUST declare and use these exact classes to animate page content:
+  '.ds-reveal { opacity: 0; transform: translateY(30px); transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); }'
+  '.ds-reveal.visible, .ds-reveal.ds-visible { opacity: 1; transform: translateY(0); }'
+  '.ds-delay-1 { transition-delay: 0.15s; }'
+  '.ds-delay-2 { transition-delay: 0.3s; }'
+  '.ds-delay-3 { transition-delay: 0.45s; }'
+  '.ds-delay-4 { transition-delay: 0.6s; }'
 - PREMIUM FLOATING GLOW BLOBS: To give the site a state-of-the-art feel, include floating backdrop blobs:
   '<div class="ds-glow-1"></div><div class="ds-glow-2"></div>' in the HTML layout, and style them:
   '.ds-glow-1, .ds-glow-2 { position: absolute; width: clamp(200px, 40vw, 400px); height: clamp(200px, 40vw, 400px); border-radius: 50%; filter: blur(100px); opacity: 0.06; pointer-events: none; z-index: 0; }'
@@ -185,26 +172,11 @@ Lightweight Interaction & Animations (CRITICAL):
   '.ds-glow-2 { background: var(--ds-accent); bottom: 25%; right: -10%; animation: dsFloat 24s infinite alternate-reverse ease-in-out; }'
   '@keyframes dsFloat { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(6%, 6%) scale(1.08); } 100% { transform: translate(0, 0) scale(1); } }'
 - Image Zoom: Scale images inside cards on hover: 'transform: scale(1.06);' with transition: 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)'.
+- Radial Mouse spotlight overlay hover background styling.
+- Custom Cursor follower styling (scoped to desktop devices, e.g. pointer accuracy media query):
+  '.ds-cursor { width: 40px; height: 40px; border: 2px solid var(--ds-primary); border-radius: 50%; position: fixed; transform: translate(-50%, -50%); pointer-events: none; transition: width 0.3s, height 0.3s, transform 0.1s ease-out; z-index: 9999; }'
+  '.ds-cursor-dot { width: 8px; height: 8px; background: var(--ds-primary); border-radius: 50%; position: fixed; transform: translate(-50%, -50%); pointer-events: none; transition: transform 0.05s ease-out; z-index: 9999; }'
 - Accessibility support: '@media (prefers-reduced-motion: reduce) { .ds-homepage * { transition: none !important; transform: none !important; animation: none !important; } }'
-
-============================================
-ASSETS ARRAY
-============================================
-
-Return array of image objects actually used:
-[
-  {
-    "role": "hero" | "service" | "gallery" | "logo",
-    "url": "absolute URL",
-    "width": number or null,
-    "height": number or null,
-    "alt": "derived alt text"
-  },
-  ...
-]
-
-Only include images that appear in the HTML.
-If image is missing, document in "notes" instead.
 
 ============================================
 IMPORTANT DESIGN RULES
