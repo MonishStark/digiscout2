@@ -3515,6 +3515,7 @@ app.post("/api/generate-v2", async (req: Request, res: Response) => {
 			persistFile: (filename: string, content: any) => {
 				persistGenerationDebugFile(debugSession, filename, content);
 			},
+			throttleGemini: () => throttleGemini(),
 		});
 
 		logStderr(

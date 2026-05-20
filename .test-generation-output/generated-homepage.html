@@ -1,0 +1,224 @@
+<!-- wp:html -->
+<style>
+.ds-homepage { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; color: #333; line-height: 1.6; box-sizing: border-box; }
+.ds-homepage *, .ds-homepage *::before, .ds-homepage *::after { box-sizing: inherit; }
+.ds-homepage img { max-width: 100%; height: auto; display: block; }
+.ds-homepage a { color: #0066cc; text-decoration: none; }
+.ds-homepage a:hover { text-decoration: underline; }
+.ds-homepage .ds-container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
+.ds-homepage h1, .ds-homepage h2, .ds-homepage h3 { color: #111; margin-top: 0; margin-bottom: 1rem; line-height: 1.2; }
+.ds-homepage .ds-section-title { text-align: center; font-size: clamp(2rem, 4vw, 2.5rem); margin-bottom: 3rem; }
+.ds-homepage .ds-text-white { color: #fff !important; }
+.ds-homepage .ds-btn { display: inline-block; padding: 0.75rem 1.5rem; border-radius: 4px; font-weight: 600; text-align: center; transition: all 0.2s ease; text-decoration: none !important; }
+.ds-homepage .ds-btn-primary { background-color: #0066cc; color: #fff !important; border: 2px solid #0066cc; }
+.ds-homepage .ds-btn-primary:hover { background-color: #004c99; border-color: #004c99; }
+.ds-homepage .ds-btn-secondary { background-color: transparent; color: #0066cc !important; border: 2px solid #0066cc; }
+.ds-homepage .ds-btn-secondary:hover { background-color: #f0f7ff; }
+.ds-homepage .ds-btn-full { display: block; width: 100%; }
+.ds-homepage .ds-header { padding: 1rem 0; border-bottom: 1px solid #eee; background: #fff; }
+.ds-homepage .ds-header-inner { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.ds-homepage .ds-logo { font-size: 1.5rem; font-weight: 700; color: #0066cc; }
+.ds-homepage .ds-nav { display: none; }
+@media (min-width: 768px) {
+  .ds-homepage .ds-nav { display: flex; gap: 2rem; }
+  .ds-homepage .ds-nav a { color: #555; font-weight: 500; }
+  .ds-homepage .ds-nav a:hover { color: #0066cc; }
+}
+.ds-homepage .ds-hero { padding: clamp(3rem, 8vw, 6rem) 0; background: #fff; }
+.ds-homepage .ds-hero-inner { display: grid; grid-template-columns: 1fr; gap: 3rem; align-items: center; }
+@media (min-width: 768px) {
+  .ds-homepage .ds-hero-inner { grid-template-columns: 1fr 1fr; }
+}
+.ds-homepage .ds-hero-title { font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 800; letter-spacing: -0.02em; margin-bottom: 1.5rem; }
+.ds-homepage .ds-hero-summary { font-size: clamp(1.125rem, 2vw, 1.25rem); color: #555; margin-bottom: 2rem; }
+.ds-homepage .ds-hero-actions { display: flex; flex-wrap: wrap; gap: 1rem; }
+.ds-homepage .ds-hero-image-wrapper { border-radius: 12px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+.ds-homepage .ds-hero-image { width: 100%; height: auto; aspect-ratio: 4/3; object-fit: cover; }
+.ds-homepage .ds-bg-neutral { background-color: #f5f5f5; }
+.ds-homepage .ds-intro { padding: clamp(3rem, 6vw, 5rem) 0; }
+.ds-homepage .ds-intro-inner { display: grid; grid-template-columns: 1fr; gap: 3rem; align-items: center; }
+@media (min-width: 768px) {
+  .ds-homepage .ds-intro-inner { grid-template-columns: 1fr 1fr; }
+}
+.ds-homepage .ds-intro-text h2 { font-size: clamp(1.75rem, 3vw, 2.25rem); }
+.ds-homepage .ds-intro-text p { font-size: 1.125rem; color: #555; }
+.ds-homepage .ds-intro-image img { border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+.ds-homepage .ds-services { padding: clamp(4rem, 8vw, 6rem) 0; background: #fff; }
+.ds-homepage .ds-services-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; }
+@media (min-width: 640px) {
+  .ds-homepage .ds-services-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1024px) {
+  .ds-homepage .ds-services-grid { grid-template-columns: repeat(4, 1fr); }
+}
+.ds-homepage .ds-service-card { background: #fff; border: 1px solid #eee; border-radius: 8px; overflow: hidden; transition: transform 0.3s ease, box-shadow 0.3s ease; display: flex; flex-direction: column; }
+.ds-homepage .ds-service-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.08); }
+.ds-homepage .ds-service-card img { width: 100%; aspect-ratio: 3/2; object-fit: cover; }
+.ds-homepage .ds-service-content { padding: 1.5rem; flex-grow: 1; }
+.ds-homepage .ds-service-content h3 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+.ds-homepage .ds-service-content p { color: #666; font-size: 0.95rem; margin: 0; }
+.ds-homepage .ds-bg-primary { background-color: #0066cc; color: #fff; }
+.ds-homepage .ds-reviews { padding: clamp(4rem, 8vw, 6rem) 0; }
+.ds-homepage .ds-reviews-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; }
+@media (min-width: 768px) {
+  .ds-homepage .ds-reviews-grid { grid-template-columns: repeat(3, 1fr); }
+}
+.ds-homepage .ds-review-card { background: rgba(255,255,255,0.1); padding: 2rem; border-radius: 8px; backdrop-filter: blur(10px); }
+.ds-homepage .ds-stars { color: #00a651; font-size: 1.25rem; margin-bottom: 1rem; letter-spacing: 2px; }
+.ds-homepage .ds-review-text { font-size: 1.125rem; font-style: italic; margin-bottom: 1.5rem; line-height: 1.5; }
+.ds-homepage .ds-review-author { font-weight: 600; margin: 0; }
+.ds-homepage .ds-contact { padding: clamp(4rem, 8vw, 6rem) 0; background: #fff; }
+.ds-homepage .ds-contact-inner { display: grid; grid-template-columns: 1fr; gap: 3rem; }
+@media (min-width: 768px) {
+  .ds-homepage .ds-contact-inner { grid-template-columns: 3fr 2fr; }
+}
+.ds-homepage .ds-contact-list { list-style: none; padding: 0; margin: 2rem 0 0 0; }
+.ds-homepage .ds-contact-list li { margin-bottom: 1rem; font-size: 1.125rem; display: flex; flex-direction: column; }
+@media (min-width: 640px) {
+  .ds-homepage .ds-contact-list li { flex-direction: row; gap: 0.5rem; }
+}
+.ds-homepage .ds-contact-list strong { color: #111; min-width: 80px; }
+.ds-homepage .ds-contact-card { background: #f5f5f5; padding: 2.5rem; border-radius: 8px; text-align: center; }
+.ds-homepage .ds-contact-card h3 { margin-bottom: 1rem; }
+.ds-homepage .ds-contact-card p { color: #555; margin-bottom: 2rem; }
+.ds-homepage .ds-footer { background: #111; color: #888; padding: 2rem 0; text-align: center; }
+.ds-homepage .ds-footer p { margin: 0; font-size: 0.9rem; }
+@media (prefers-reduced-motion: reduce) {
+  .ds-homepage * { transition: none !important; transform: none !important; animation: none !important; }
+}
+</style>
+<!-- /wp:html -->
+
+<!-- wp:group {"layout":{"type":"constrained"}} -->
+<div class="wp-block-group">
+<div class="ds-homepage">
+  <header class="ds-header">
+    <div class="ds-container ds-header-inner">
+      <div class="ds-logo">Sunrise Dental Care</div>
+      <nav class="ds-nav">
+        <a href="#services">Services</a>
+        <a href="#reviews">Reviews</a>
+        <a href="#contact">Contact</a>
+      </nav>
+      <a href="https://sunrisedental.com/book" class="ds-btn ds-btn-primary">Schedule an Appointment</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="ds-hero">
+      <div class="ds-container ds-hero-inner">
+        <div class="ds-hero-content">
+          <h1 class="ds-hero-title">Modern dental care in Brooklyn</h1>
+          <p class="ds-hero-summary">Trusted Dentistry serving the Williamsburg community.</p>
+          <div class="ds-hero-actions">
+            <a href="https://sunrisedental.com/book" class="ds-btn ds-btn-primary">Schedule an Appointment</a>
+            <a href="https://sunrisedental.com/services" class="ds-btn ds-btn-secondary">Learn More</a>
+          </div>
+        </div>
+        <div class="ds-hero-image-wrapper">
+          <img src="https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800&h=600" alt="Sunrise Dental Care clinic in Brooklyn" class="ds-hero-image">
+        </div>
+      </div>
+    </section>
+
+    <section class="ds-intro ds-bg-neutral">
+      <div class="ds-container ds-intro-inner">
+        <div class="ds-intro-text">
+          <h2>Welcome to Sunrise Dental Care</h2>
+          <p>Located in the heart of Williamsburg, we provide comprehensive and gentle dental care for the Brooklyn community. From routine cleanings to advanced cosmetic procedures, our team is dedicated to your oral health and comfort.</p>
+        </div>
+        <div class="ds-intro-image">
+           <img src="https://images.unsplash.com/photo-1576091160550-112173f7f869?w=800&h=600" alt="Sunrise Dental Care office interior">
+        </div>
+      </div>
+    </section>
+
+    <section id="services" class="ds-services">
+      <div class="ds-container">
+        <h2 class="ds-section-title">Our Dental Services</h2>
+        <div class="ds-services-grid">
+          <div class="ds-service-card">
+            <img src="https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800" alt="General Dentistry services">
+            <div class="ds-service-content">
+              <h3>General Dentistry</h3>
+              <p>Comprehensive cleanings, exams, and preventative care</p>
+            </div>
+          </div>
+          <div class="ds-service-card">
+            <img src="https://images.unsplash.com/photo-1606811841689-23db3d821364?w=800" alt="Cosmetic Dentistry services">
+            <div class="ds-service-content">
+              <h3>Cosmetic Dentistry</h3>
+              <p>Teeth whitening, veneers, and smile makeovers</p>
+            </div>
+          </div>
+          <div class="ds-service-card">
+            <img src="https://images.unsplash.com/photo-1532096122144-03b913f3e25f?w=800" alt="Dental Implants">
+            <div class="ds-service-content">
+              <h3>Implants</h3>
+              <p>State-of-the-art dental implant procedures</p>
+            </div>
+          </div>
+          <div class="ds-service-card">
+            <img src="https://images.unsplash.com/photo-1606811841689-23db3d821364?w=800" alt="Orthodontics and Invisalign">
+            <div class="ds-service-content">
+              <h3>Orthodontics</h3>
+              <p>Modern braces and Invisalign treatments</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="reviews" class="ds-reviews ds-bg-primary">
+      <div class="ds-container">
+        <h2 class="ds-section-title ds-text-white">What Our Patients Say</h2>
+        <div class="ds-reviews-grid">
+          <div class="ds-review-card">
+            <div class="ds-stars">★★★★★</div>
+            <p class="ds-review-text">"Dr. Chen is incredibly gentle and professional. The office is clean and modern. Highly recommend!"</p>
+            <p class="ds-review-author">- Sarah M.</p>
+          </div>
+          <div class="ds-review-card">
+            <div class="ds-stars">★★★★★</div>
+            <p class="ds-review-text">"Best dental experience I've had. The team explained everything and made me comfortable throughout."</p>
+            <p class="ds-review-author">- James K.</p>
+          </div>
+          <div class="ds-review-card">
+            <div class="ds-stars">★★★★★</div>
+            <p class="ds-review-text">"Love the new office! They're very friendly and the wait time is minimal."</p>
+            <p class="ds-review-author">- Lisa R.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact" class="ds-contact">
+      <div class="ds-container ds-contact-inner">
+        <div class="ds-contact-info">
+          <h2>Visit Our Brooklyn Office</h2>
+          <p>Ready to schedule your visit? Contact us today.</p>
+          <ul class="ds-contact-list">
+            <li><strong>Address:</strong> <a href="https://maps.google.com/?q=Sunrise%20Dental%20Care">123 Oak Street, Brooklyn, NY 11217</a></li>
+            <li><strong>Phone:</strong> <a href="tel:+17185550123">+1 (718) 555-0123</a></li>
+            <li><strong>Hours:</strong> Monday-Friday: 9am-6pm, Saturday: 10am-4pm, Sunday: Closed</li>
+          </ul>
+        </div>
+        <div class="ds-contact-map">
+          <div class="ds-contact-card">
+            <h3>Book Your Visit</h3>
+            <p>New patients are always welcome at Sunrise Dental Care.</p>
+            <a href="https://sunrisedental.com/book" class="ds-btn ds-btn-primary ds-btn-full">Schedule an Appointment</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="ds-footer">
+    <div class="ds-container">
+      <p>&copy; 2026 Sunrise Dental Care. All rights reserved.</p>
+    </div>
+  </footer>
+</div>
+</div>
+<!-- /wp:group -->

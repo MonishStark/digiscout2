@@ -133,62 +133,44 @@ async function callVertexHomepageGeneration(
 	prompt: string,
 	request: HomepageGenerationRequest,
 	debugLog?: (msg: string) => void,
+	options?: {
+		debugSession?: any;
+		throttleGemini?: () => Promise<void>;
+		persistFile?: (filename: string, content: any) => void;
+	},
 ): Promise<HomepageGenerationResponse> {
 	const log = debugLog || ((msg: string) => console.error(msg));
 
-	const apiKey =
-		GENAI_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_CLOUD_API_KEY;
-	if (!apiKey) {
-		throw new Error(
-			"Gemini API key not found. Set GEMINI_API_KEY or GENAI_KEY environment variable.",
-		);
-	}
-
-	const restUrl =
-		process.env.GEMINI_REST_URL ||
-		"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
-
-	const url = `${restUrl}${restUrl.includes("?") ? "&" : "?"}key=${apiKey}`;
-
-	log(`[Vertex] Calling homepage generation endpoint...`);
+	log(`[Vertex] Calling unified homepage generation via generateWithFallback...`);
 	log(`[Vertex] Business: ${request.business_name}`);
 	log(`[Vertex] Category: ${request.business_category}`);
 
 	try {
-		const response = await fetch(url, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				contents: [
-					{
-						parts: [
-							{
-								text: prompt,
-							},
-							{
-								text: `\n\nBusiness Context (JSON):\n${JSON.stringify(request, null, 2)}`,
-							},
-						],
-					},
-				],
-				generationConfig: {
-					temperature: 0.1, // Deterministic
-					topP: 0.95,
-					maxOutputTokens: 6000,
-					stopSequences: [],
+		const { generateWithFallback } = await import("./gemini");
+		const responseText = await generateWithFallback(
+			[
+				{
+					role: "user",
+					parts: [
+						{ text: prompt },
+						{ text: `\n\nBusiness Context (JSON):\n${JSON.stringify(request, null, 2)}` },
+					],
 				},
-			}),
-		});
-
-		if (!response.ok) {
-			const errorText = await response.text();
-			throw new Error(
-				`Vertex API error ${response.status}: ${errorText.slice(0, 500)}`,
-			);
-		}
-
-		const data = (await response.json()) as any;
-		const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+			],
+			{
+				temperature: 0.1,
+				responseMimeType: "application/json",
+			},
+			{
+				logStderr: log,
+				debugSession: options?.debugSession,
+				throttleGemini: options?.throttleGemini || (async () => {}),
+				persistGenerationDebugFile: options?.persistFile
+					? (session, filename, content) => options.persistFile!(filename, content)
+					: undefined,
+				contextLabel: "direct-vertex-prompt",
+			},
+		);
 
 		if (!responseText) {
 			throw new Error("Vertex returned empty response");
@@ -197,10 +179,11 @@ async function callVertexHomepageGeneration(
 		log(`[Vertex] Response received (${responseText.length} characters)`);
 
 		// Extract JSON from response (may be wrapped in markdown)
-		let jsonString = responseText;
-		const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
-		if (jsonMatch) {
-			jsonString = jsonMatch[1];
+		let jsonString = responseText.trim();
+		if (jsonString.startsWith("```")) {
+			jsonString = jsonString
+				.replace(/^```[a-zA-Z]*\n/, "")
+				.replace(/\n```$/, "");
 		}
 
 		const parsed = JSON.parse(jsonString) as HomepageGenerationResponse;
@@ -249,6 +232,7 @@ export async function generateHomepageViaDirectVertexPrompt(
 		debugLog?: (msg: string) => void;
 		debugSession?: any;
 		persistFile?: (filename: string, content: any) => void;
+		throttleGemini?: () => Promise<void>;
 	},
 ): Promise<WebsiteSchema> {
 	const log = options?.debugLog || ((msg: string) => console.error(msg));
@@ -267,6 +251,7 @@ export async function generateHomepageViaDirectVertexPrompt(
 			VERTEX_HOMEPAGE_GENERATION_PROMPT,
 			request,
 			log,
+			options,
 		);
 		persist("02-vertex-response.json", response);
 

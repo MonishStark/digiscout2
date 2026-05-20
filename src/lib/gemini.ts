@@ -752,44 +752,31 @@ export async function generateWebsiteContent(
 
 	try {
 		options.logStderr(
-			"[Visual Pipeline] Starting multi-stage visual intelligence generation...",
+			"[Gemini] Running direct deterministic homepage generation...",
 		);
-		const { generateWebsiteWithVisualIntelligence } = await import(
-			/* @vite-ignore */ "./visual-intelligence-pipeline"
+		const { generateHomepageViaDirectVertexPrompt } = await import(
+			"./direct-vertex-homepage-generation"
 		);
-		const schema = await generateWebsiteWithVisualIntelligence(business, {
+		return await generateHomepageViaDirectVertexPrompt(business, {
+			debugLog: options.logStderr,
 			debugSession: options.debugSession,
-			logStderr: options.logStderr,
-			persistGenerationDebugFile: options.persistGenerationDebugFile,
-			appendGenerationDebugError: options.appendGenerationDebugError,
-			llmJson: async (
-				promptOrContents: string | any[],
-				contextLabel: string,
-			) => {
-				return generateWithFallback(
-					promptOrContents,
-					{ temperature: 0.65, responseMimeType: "application/json" },
-					{ ...options, contextLabel },
-				);
+			persistFile: (filename: string, content: any) => {
+				if (options.persistGenerationDebugFile && options.debugSession) {
+					options.persistGenerationDebugFile(options.debugSession, filename, content);
+				}
 			},
+			throttleGemini: options.throttleGemini,
 		});
-
+	} catch (error) {
 		options.logStderr(
-			"[Visual Pipeline] Success. Using composition-first render output.",
+			`[Gemini] Direct homepage generation failed. Error: ${error instanceof Error ? error.message : String(error)}`,
 		);
-		return schema;
-	} catch (visualPipelineError) {
-		options.logStderr(
-			`[Visual Pipeline] Failed. Falling back to legacy pipeline. Error: ${visualPipelineError instanceof Error ? visualPipelineError.message : String(visualPipelineError)}`,
-		);
-
-		if (options.debugSession) {
+		if (options.debugSession && options.appendGenerationDebugError) {
 			options.appendGenerationDebugError(
 				options.debugSession,
-				`visual_pipeline_failed: ${visualPipelineError instanceof Error ? visualPipelineError.message : String(visualPipelineError)}`,
+				`generation_failed: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
-
-		return generateWebsiteContentLegacy(business, options);
+		throw error;
 	}
 }

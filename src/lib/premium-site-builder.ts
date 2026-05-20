@@ -19,6 +19,10 @@ export function esc(str: string) {
 }
 
 export function buildPremiumPageContent(schema: any): string {
+	// Priority guardrail: if the schema already contains the compiled WordPress HTML/CSS from the direct prompt flow, return it directly.
+	if (schema && schema._wordpressHtml) {
+		return schema._wordpressHtml;
+	}
 	// Use the simplified direct homepage renderer for production-ready business pages.
 	const result = renderBusinessHomepage(schema);
 	// Inject CSS via a wp:html block (safe) and wrap the content in a constrained group

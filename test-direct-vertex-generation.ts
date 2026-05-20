@@ -123,9 +123,13 @@ async function testDirectVertexGeneration() {
 
 		console.log("✓ Server is running");
 		console.log("");
+		console.log("⚠️  IMPORTANT: Using NEW deterministic endpoint /api/generate-v2");
+		console.log("   (NOT the legacy /api/generate with cinematic composition pipeline)");
+		console.log("");
 
-		// Call the new /api/generate-v2 endpoint
+		// Call the new /api/generate-v2 endpoint (simplified deterministic flow)
 		console.log("📡 Calling /api/generate-v2 with sample business data...");
+		console.log("   Flow: Business Context → Direct Vertex Prompt → Final HTML/CSS → WP");
 		console.log("");
 
 		const startTime = Date.now();

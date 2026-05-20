@@ -708,6 +708,9 @@ function esc(str) {
   return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 function buildPremiumPageContent(schema) {
+  if (schema && schema._wordpressHtml) {
+    return schema._wordpressHtml;
+  }
   const result = renderBusinessHomepage(schema);
   const cssBlock = `<!-- wp:html -->
 <style>
@@ -729,1577 +732,260 @@ var init_premium_site_builder = __esm({
   }
 });
 
-// src/lib/industry-psychology-engine.ts
-async function generateIndustryVisualPsychology(input, options) {
-  const category = input.business.category.toLowerCase();
-  let baseProfile;
-  for (const [key, profile] of Object.entries(INDUSTRY_PSYCHOLOGY_DATABASE)) {
-    if (category.includes(key.split("-")[0]) || category.includes(key.replace("-", " "))) {
-      baseProfile = profile;
-      break;
-    }
-  }
-  if (!baseProfile) {
-    const prompt = `INDUSTRY VISUAL PSYCHOLOGY PROFILE \u2014 ${input.business.category}
+// src/lib/vertex-homepage-generation-prompt.ts
+var VERTEX_HOMEPAGE_GENERATION_PROMPT;
+var init_vertex_homepage_generation_prompt = __esm({
+  "src/lib/vertex-homepage-generation-prompt.ts"() {
+    VERTEX_HOMEPAGE_GENERATION_PROMPT = `You are a professional agency web design engine specializing in modern local business websites built for WordPress.
 
-Generate a UNIQUE visual psychology profile for this business category and conversion intent.
+Your task: using ONLY the full business context provided in the input variables below, generate ONE final production-ready WordPress-safe homepage as a JSON object with exactly these keys: "html", "css", "assets", "notes". Return ONLY valid JSON. No other text.
 
-Business Category: ${input.business.category}
-Conversion Intent: ${input.conversionIntent}
+============================================
+INPUT VARIABLES (provided by caller)
+============================================
+- business_name (string)
+- business_category (string)
+- short_tagline (string)
+- one_sentence_summary (string)
+- primary_cta_text (string)
+- primary_cta_url (string)
+- secondary_cta_text (string)
+- secondary_cta_url (string)
+- phone (string)
+- address (string)
+- maps_url (string)
+- hours (string or array)
+- services (array of {title, short_description, image_url})
+- categories (array of strings)
+- reviews (array of {author, rating (1-5), text, date})
+- images (object with keys: hero, service1, service2, gallery[]; each value is absolute URL)
+- colors (object: primary, accent, neutral - optional)
+- logo_url (string - optional)
+- local_context (string - neighborhood/city/region)
+- competitors (array - optional)
+- trust_logos (array of {name, url} - optional)
 
-This profile determines how the ENTIRE website behaves visually.
-
-Return STRICT JSON with THESE EXACT KEYS:
-
-{
-  "emotionalTarget": "string \u2014 primary emotion: trustworthiness, energy, intimacy, authority, joy, calm, rebellion, creativity",
-  "decisionPace": "string \u2014 how fast decisions are made: immediate, deliberate, exploratory, analytical",
-  "typographyBehavior": "string \u2014 restrained-serif | dominant-modern | layered-wall | compressed-kinetic | expansive-airy",
-  "pagePacing": "string \u2014 slow-meditative | moderate-editorial | fast-kinetic | rhythmic-pulse",
-  "colorIntensity": "string \u2014 muted-archive | neutral-professional | vibrant-energy | atmospheric-moody",
-  "imageTreatment": "string \u2014 cinematic-crops | natural-square | product-isolated | lifestyle-editorial | texture-macro",
-  "motionCharacter": "string \u2014 subtle-reveal | kinetic-bounce | cinematic-glide | tactile-feedback | ambient-breathing",
-  "asymmetryPreference": number (0-100, higher = more chaotic asymmetry),
-  "densityPreference": number (0-100, higher = more dense/packed),
-  "contrastPreference": number (0-100, higher = stronger contrast),
-  "atmosphere": "string \u2014 industrial | luxury | editorial | energetic | intimate | archival"
-}`;
-    try {
-      const raw = await options.llmJson(
-        prompt,
-        "industry-psychology-generator"
-      );
-      baseProfile = JSON.parse(raw);
-    } catch (err) {
-      options.logStderr(
-        `[IndustryPsychology] Generation failed: ${String(err)}`
-      );
-      baseProfile = {
-        emotionalTarget: "energy",
-        decisionPace: "moderate-editorial",
-        typographyBehavior: "dominant-modern",
-        pagePacing: "moderate-editorial",
-        colorIntensity: "vibrant-energy",
-        imageTreatment: "lifestyle-editorial",
-        motionCharacter: "kinetic-bounce",
-        asymmetryPreference: 65,
-        densityPreference: 60,
-        contrastPreference: 70,
-        atmosphere: "energetic"
-      };
-    }
-  }
-  const psychology = {
-    industry: input.business.category,
-    category,
-    emotionalTarget: baseProfile.emotionalTarget || "energy",
-    decisionPace: baseProfile.decisionPace || "moderate-editorial",
-    typographyBehavior: baseProfile.typographyBehavior || "dominant-modern",
-    pagePacing: baseProfile.pagePacing || "moderate-editorial",
-    colorIntensity: baseProfile.colorIntensity || "vibrant-energy",
-    imageTreatment: baseProfile.imageTreatment || "lifestyle-editorial",
-    motionCharacter: baseProfile.motionCharacter || "kinetic-bounce",
-    asymmetryPreference: baseProfile.asymmetryPreference || 65,
-    densityPreference: baseProfile.densityPreference || 60,
-    contrastPreference: baseProfile.contrastPreference || 70,
-    atmosphere: baseProfile.atmosphere || "energetic"
-  };
-  if (options.debugSession) {
-    options.persistGenerationDebugFile(
-      options.debugSession,
-      "01-industry-psychology.json",
-      psychology
-    );
-  }
-  return psychology;
-}
-var INDUSTRY_PSYCHOLOGY_DATABASE;
-var init_industry_psychology_engine = __esm({
-  "src/lib/industry-psychology-engine.ts"() {
-    INDUSTRY_PSYCHOLOGY_DATABASE = {
-      "law-firm": {
-        emotionalTarget: "trustworthiness",
-        decisionPace: "deliberate",
-        typographyBehavior: "restrained-serif",
-        pagePacing: "slow-meditative",
-        colorIntensity: "muted-archive",
-        imageTreatment: "natural-square",
-        motionCharacter: "subtle-reveal",
-        asymmetryPreference: 35,
-        densityPreference: 45,
-        contrastPreference: 60,
-        atmosphere: "archival"
-      },
-      "restaurant-cafe": {
-        emotionalTarget: "joy",
-        decisionPace: "immediate",
-        typographyBehavior: "dominant-modern",
-        pagePacing: "moderate-editorial",
-        colorIntensity: "vibrant-energy",
-        imageTreatment: "lifestyle-editorial",
-        motionCharacter: "kinetic-bounce",
-        asymmetryPreference: 75,
-        densityPreference: 65,
-        contrastPreference: 75,
-        atmosphere: "energetic"
-      },
-      "gym-fitness": {
-        emotionalTarget: "energy",
-        decisionPace: "immediate",
-        typographyBehavior: "compressed-kinetic",
-        pagePacing: "fast-kinetic",
-        colorIntensity: "vibrant-energy",
-        imageTreatment: "lifestyle-editorial",
-        motionCharacter: "kinetic-bounce",
-        asymmetryPreference: 80,
-        densityPreference: 75,
-        contrastPreference: 85,
-        atmosphere: "energetic"
-      },
-      "salon-spa": {
-        emotionalTarget: "calm",
-        decisionPace: "deliberate",
-        typographyBehavior: "expansive-airy",
-        pagePacing: "slow-meditative",
-        colorIntensity: "muted-archive",
-        imageTreatment: "texture-macro",
-        motionCharacter: "ambient-breathing",
-        asymmetryPreference: 45,
-        densityPreference: 30,
-        contrastPreference: 40,
-        atmosphere: "intimate"
-      },
-      "consulting-agency": {
-        emotionalTarget: "authority",
-        decisionPace: "analytical",
-        typographyBehavior: "dominant-modern",
-        pagePacing: "moderate-editorial",
-        colorIntensity: "neutral-professional",
-        imageTreatment: "product-isolated",
-        motionCharacter: "cinematic-glide",
-        asymmetryPreference: 55,
-        densityPreference: 50,
-        contrastPreference: 65,
-        atmosphere: "industrial"
-      },
-      "retail-shop": {
-        emotionalTarget: "desire",
-        decisionPace: "exploratory",
-        typographyBehavior: "layered-wall",
-        pagePacing: "moderate-editorial",
-        colorIntensity: "vibrant-energy",
-        imageTreatment: "product-isolated",
-        motionCharacter: "tactile-feedback",
-        asymmetryPreference: 70,
-        densityPreference: 70,
-        contrastPreference: 80,
-        atmosphere: "energetic"
-      },
-      "tattoo-studio": {
-        emotionalTarget: "rebellion",
-        decisionPace: "exploratory",
-        typographyBehavior: "layered-wall",
-        pagePacing: "fast-kinetic",
-        colorIntensity: "vibrant-energy",
-        imageTreatment: "lifestyle-editorial",
-        motionCharacter: "kinetic-bounce",
-        asymmetryPreference: 85,
-        densityPreference: 80,
-        contrastPreference: 90,
-        atmosphere: "industrial"
-      },
-      "design-studio": {
-        emotionalTarget: "creativity",
-        decisionPace: "exploratory",
-        typographyBehavior: "layered-wall",
-        pagePacing: "moderate-editorial",
-        colorIntensity: "vibrant-energy",
-        imageTreatment: "lifestyle-editorial",
-        motionCharacter: "cinematic-glide",
-        asymmetryPreference: 90,
-        densityPreference: 70,
-        contrastPreference: 85,
-        atmosphere: "industrial"
-      },
-      "photography-studio": {
-        emotionalTarget: "emotion",
-        decisionPace: "exploratory",
-        typographyBehavior: "restrained-serif",
-        pagePacing: "slow-meditative",
-        colorIntensity: "atmospheric-moody",
-        imageTreatment: "cinematic-crops",
-        motionCharacter: "cinematic-glide",
-        asymmetryPreference: 75,
-        densityPreference: 40,
-        contrastPreference: 70,
-        atmosphere: "luxury"
-      }
-    };
-  }
-});
-
-// src/lib/layout-dna-engine.ts
-async function generateLayoutDNA(input, options) {
-  const prompt = `LAYOUT DNA GENERATION \u2014 Create the fundamental visual identity system for ${input.business.name}
-
-You are generating the PERSISTENT VISUAL IDENTITY SYSTEM that will control ALL design decisions for this website.
-Every layout choice, spacing decision, and compositional moment must derive from this DNA.
-
-Business: ${input.business.name}
-Category: ${input.business.category}
-Industry Psychology: ${JSON.stringify(input.industryPsychology)}
-Conversion Intent: ${input.conversationIntent}
-
-Generate STRICT JSON with THESE EXACT KEYS (no extra keys):
+============================================
+OUTPUT FORMAT (REQUIRED)
+============================================
+Return a JSON object with exactly these keys:
 
 {
-  "gridSystem": "string \u2014 specify the grid structure: '12-column-asymmetric', '6-column-modular', 'editorial-flexible', 'cinematic-offset', 'brutalist-monolithic'",
-  "spacingRhythm": "string \u2014 specify the spatial rhythm: 'compressed-kinetic', 'balanced-editorial', 'airy-breathing', 'luxury-silence', 'brutalist-dense'",
-  "scanPath": "string \u2014 how the eye should move: 'horizontal-flow', 'diagonal-ascending', 'vertical-stagger', 'z-pattern', 'circular-spiral'",
-  "visualTempo": "string \u2014 pacing through the page: 'slow-meditative', 'steady-editorial', 'kinetic-rapid', 'pulse-cinematic', 'breath-rhythm'",
-  "depthBehavior": "string \u2014 layering approach: 'flat-modern', 'layered-depth', 'overlapping-planes', 'immersive-3d', 'floating-hierarchy'",
-  "imageWeighting": "string \u2014 role of imagery: 'images-dominant', 'images-supporting', 'image-texture-background', 'image-accent-moments'",
-  "interactionDensity": "string \u2014 how interactive: 'interactive-dense', 'interactive-sparse', 'interactive-punctuated', 'interactive-hidden'",
-  "asymmetryLevel": number (0-100, where 0=perfectly symmetric, 100=maximum compositional chaos),
-  "dominantAxis": "string \u2014 primary visual direction: 'horizontal', 'vertical', 'diagonal', 'radial', 'chaotic'",
-  "colorStrategy": "string \u2014 palette approach: 'monochromatic', 'analogous', 'complementary', 'triadic', 'atmospheric'",
-  "shapeLanguage": "string \u2014 primary geometric shapes: 'circles', 'squares', 'triangles', 'organic-curves', 'mixed-geometry'"
+  "html": "...",     // HTML fragment only (no <html>/<head>/<body> tags)
+  "css": "...",       // Full CSS stylesheet string (no <link> tags, scoped under .ds-homepage)
+  "assets": [...],    // Array of image objects used
+  "notes": "..."      // Brief fallback decisions
 }
 
-CRITICAL RULES:
-- This DNA is PERSISTENT \u2014 every element must respect it
-- Be specific and intentional, not generic
-- Choose based on industry psychology and business category
-- Avoid SaaS/startup defaults (balanced grids, centered layouts, equal spacing)
-- Asymmetry and irregular rhythm are preferred over perfect balance
+============================================
+HTML REQUIREMENTS
+============================================
+
+Structure:
+- Wrap entire HTML in a single top-level container with class "ds-homepage"
+- Use semantic HTML: <header>, <main>, <section>, <footer>
+- Do NOT include <html>, <head>, or <body> tags
+- Build a REAL business homepage with:
+  * ONE dominant hero section (strongest image + emotional headline + 1 primary CTA)
+  * Clear business introduction (what they do)
+  * Services section (with real service descriptions from input)
+  * Trust/proof section (at least two real review excerpts)
+  * Gallery or supporting imagery section
+  * Contact/location block with tel: and maps_url links
+
+Copy & Tone:
+- MUST be business-specific, derived from input context
+- MUST sound like a real local business (human, trustworthy, practical)
+- MUST avoid generic AI phrases: "premium solutions", "elevate", "transform", "cutting-edge", "innovative", "elevate your experience"
+- Use concrete service descriptions from the services array
+- Use locality signals from local_context or address
+- Use at least TWO real review excerpts from the reviews array
+- Copy should immediately communicate: what they do, why they're trustworthy, what services they offer, how to contact them
+
+Image Usage (CRITICAL):
+- Identify the STRONGEST provided image and use it as the hero image (dominant visual focal point)
+- Use remaining images only as supporting visuals (services, gallery)
+- Do NOT treat all images equally or use random image placement
+- If images are weak or missing, state fallback in "notes" and prefer typographic hero with solid accent background
+- Include alt text derived from business name and service context
+
+Imagery Specifics:
+- Use only provided image URLs (do not invent external images)
+- For hero: use colors.primary or colors.accent as overlay if needed for contrast
+- For gallery: arrange remaining images with clear visual hierarchy
+- If image URL missing: document in notes and use fallback solid color
+
+Accessibility:
+- Ensure body text has WCAG AA color contrast
+- Provide accessible labels for all CTAs
+- Include proper alt text for all images
+- Use semantic HTML for structure
+
+WordPress Safety (CRITICAL):
+- Do NOT include <script> tags or inline JavaScript code
+- Do NOT include event handlers (onclick, onload, etc.)
+- Do NOT rely on external JS libraries
+- Use CSS-only animations and transitions
+- Use anchor links and tel: links for interactivity
+- Avoid fragile absolute positioning; use flexbox/grid
+- Ensure selectors work if Gutenberg wraps the DOM
+
+============================================
+CSS REQUIREMENTS
+============================================
+
+Scope & Structure:
+- Scope ALL CSS under .ds-homepage selectors (no global rules)
+- Single stylesheet string (no @import, no external fonts, no <link> tags)
+- Use semantic, scoped class names
+- Keep CSS compact (~600-800 lines max)
+
+Responsive Design:
+- Mobile-first approach
+- Provide breakpoints for tablet (640px+) and desktop (1024px+)
+- Use modern CSS: flexbox, grid, clamp(), min(), max()
+- Use percent widths and clamp() for fluid scaling
+- Test that layout doesn't break when wrapped by Gutenberg
+
+Visual Design:
+- Strong spacing rhythm and hierarchy
+- Restrained, modern styling
+- Layered sections with clear visual separation
+- Use system font stack (no external font links)
+- Subtle animations only (use prefers-reduced-motion support)
+
+Effects & Styling:
+- Avoid: fragile absolute positioning, excessive glassmorphism, excessive gradients, unnecessary animation systems
+- Use: stable flexbox/grid, clean spacing, readable typography, restrained effects
+- Prefer solid backgrounds and clear contrast over decorative overlays
+
+Animations:
+- Keep animations subtle (fade, slide, scale)
+- Use CSS transforms and opacity only (GPU-friendly)
+- Include prefers-reduced-motion: reduce support
+- Avoid heavy keyframe animations
+
+============================================
+ASSETS ARRAY
+============================================
+
+Return array of image objects actually used:
+[
+  {
+    "role": "hero" | "service" | "gallery" | "logo",
+    "url": "absolute URL",
+    "width": number or null,
+    "height": number or null,
+    "alt": "derived alt text"
+  },
+  ...
+]
+
+Only include images that appear in the HTML.
+If image is missing, document in "notes" instead.
+
+============================================
+IMPORTANT DESIGN RULES
+============================================
+
+Homepage Must Resemble:
+- A professionally designed modern local business website built by a real agency
+- NOT: an AI experiment, composition demo, cinematic prototype, or design showcase
+
+Prioritize:
+- Clarity
+- Trust and credibility
+- Services and offerings
+- Contact intent
+- Business authenticity
+
+Avoid:
+- Repetitive left/right split sections
+- Equal-weight sections (no visual hierarchy)
+- Endless cards or lists
+- SaaS startup templates
+- FAQ spam
+- Abstract editorial experiments
+- Design flourishes that don't serve the business
+
+Visual Hierarchy:
+- One DOMINANT hero section
+- One strong focal image
+- One clear primary CTA
+- Supporting sections with decreasing visual intensity
+- Strong spacing and typographic hierarchy
+
+Section Structure (Recommended):
+1. Hero: image + headline + subheading + primary CTA
+2. Intro/Why Us: 1-2 sentences about the business
+3. Services: 3-5 key services with descriptions (no repetitive cards)
+4. Trust/Proof: 2-3 review quotes + ratings + maybe logos if provided
+5. Gallery: 4-6 supporting images (clean grid)
+6. CTA: one more conversion moment
+7. Contact/Location: phone + address + maps link + hours
+
+Avoid Patterns:
+- Do NOT generate 10+ equal-weight cards
+- Do NOT create repeated left-image / right-text sections
+- Do NOT generate generic startup FAQ sections
+- Do NOT use abstract section titles like "Discover", "Elevate", "Transform"
+- Do NOT add unnecessary complexity
+
+Copy Constraints:
+- Real business language only
+- No marketing clich\xE9s
+- Grounded, practical, trustworthy tone
+- Services should reflect the actual business category
+- CTAs should be clear and action-oriented
+
+============================================
+WORDPRESS INTEGRATION
+============================================
+
+The output must work with the existing WordPress render/deploy flow:
+- HTML will be inserted into WordPress post content
+- CSS will be scoped and injected via wp:html blocks
+- Gutenberg may wrap or add additional div/block containers
+- Output must survive DOM wrapping and style injection
+
+Guardrails:
+- No script dependencies
+- No inline event handlers
+- CSS scoped to prevent theme conflicts
+- Use standard, well-supported CSS (avoid cutting-edge features)
+- Responsive layout that works with common WP constraints
+
+============================================
+DETERMINISM & OUTPUT
+============================================
+
+Generation Settings (caller will apply):
+- Temperature: 0.1 (for consistency)
+- Top_p: 0.95
+- Max tokens: 6000
+- Stop: none (parse JSON output)
+
+Output:
+- MUST be valid JSON only
+- MUST contain exactly 4 keys: html, css, assets, notes
+- MUST NOT include any explanatory text, markdown, or code fences
+- MUST be parseable and ready for immediate injection into the pipeline
+
+Final Quality Gate:
+The homepage should feel like:
+\u2713 A real professionally built WordPress business homepage
+\u2713 Something a customer would be proud to see as their new site
+\u2713 Immediately clear what the business does and how to contact them
+
+NOT:
+\u2717 An AI experiment
+\u2717 A design showcase
+\u2717 An architectural prototype
+\u2717 An experimental rendering system demo
+\u2717 A composition or art direction study
+
+If you cannot generate perfect output for any reason, prefer clarity and simplicity over ambitious but fragile design.
 `;
-  try {
-    const rawResponse = await options.llmJson(prompt, "layout-dna-generator");
-    const dna = JSON.parse(rawResponse);
-    if (options.debugSession) {
-      options.persistGenerationDebugFile(
-        options.debugSession,
-        "01-layout-dna-response.json",
-        dna
-      );
-    }
-    return dna;
-  } catch (err) {
-    options.logStderr(`[LayoutDNAEngine] Generation failed: ${String(err)}`);
-    return {
-      gridSystem: "editorial-flexible",
-      spacingRhythm: "balanced-editorial",
-      scanPath: "diagonal-ascending",
-      visualTempo: "steady-editorial",
-      depthBehavior: "layered-depth",
-      imageWeighting: "images-supporting",
-      interactionDensity: "interactive-punctuated",
-      asymmetryLevel: 60,
-      dominantAxis: "diagonal",
-      colorStrategy: "complementary",
-      shapeLanguage: "mixed-geometry"
-    };
-  }
-}
-var init_layout_dna_engine = __esm({
-  "src/lib/layout-dna-engine.ts"() {
-  }
-});
-
-// src/lib/website-memory-engine.ts
-function generateWebsiteFingerprint(siteId, compositionSequence, spacingSignature, typographySignature, gridSignature, ctaSignature, entropyScore, colorSignature, industry, conversionIntent) {
-  return {
-    siteId,
-    generatedAt: Date.now(),
-    compositionSequence,
-    spacingFingerprint: spacingSignature,
-    typographyFingerprint: typographySignature,
-    gridFingerprint: gridSignature,
-    ctaFingerprint: ctaSignature,
-    entropyScore,
-    colorFingerprint: colorSignature,
-    industry,
-    conversionIntent
-  };
-}
-var init_website_memory_engine = __esm({
-  "src/lib/website-memory-engine.ts"() {
-  }
-});
-
-// src/lib/composition-renderer.ts
-var init_composition_renderer = __esm({
-  "src/lib/composition-renderer.ts"() {
-  }
-});
-
-// src/lib/visual-intelligence-pipeline.ts
-var visual_intelligence_pipeline_exports = {};
-__export(visual_intelligence_pipeline_exports, {
-  generateWebsiteWithVisualIntelligence: () => generateWebsiteWithVisualIntelligence
-});
-function traceLog(options, stage, label, payload, append = false) {
-  const traceId = options.debugSession?.traceId || "no-trace";
-  const header = `[${traceId}][${stage}] ${label}`;
-  try {
-    options.logStderr(
-      `${header} ${typeof payload === "string" ? payload : JSON.stringify(payload)}`
-    );
-  } catch (e) {
-    try {
-      console.warn(header, payload);
-    } catch {
-    }
-  }
-  try {
-    if (options.debugSession && options.persistGenerationDebugFile) {
-      const safeName = `${stage.toLowerCase().replace(/[^a-z0-9]+/g, "_")}-${label.replace(/[^a-z0-9.-]+/gi, "_")}`.slice(
-        0,
-        160
-      );
-      options.persistGenerationDebugFile(
-        options.debugSession,
-        `${safeName}.log`,
-        payload,
-        append
-      );
-    }
-  } catch (e) {
-    try {
-      options.appendGenerationDebugError?.(
-        options.debugSession,
-        `trace_write_failed: ${String(e)}`
-      );
-    } catch {
-    }
-  }
-}
-function hashSeed(value) {
-  const input = value || "seed";
-  let hash = 2166136261;
-  for (let i = 0; i < input.length; i++) {
-    hash ^= input.charCodeAt(i);
-    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
-  }
-  return (hash >>> 0).toString(16).padStart(8, "0").slice(0, 8);
-}
-function pick(seed, values) {
-  const num = parseInt(seed, 16);
-  return values[num % values.length];
-}
-function industryPreset(category) {
-  const c = (category || "").toLowerCase();
-  if (c.includes("law") || c.includes("attorney")) {
-    return {
-      archetype: "structured-authority",
-      palette: {
-        background: "#f4f3f1",
-        surface: "#ffffff",
-        primary: "#1f2a37",
-        accent: "#9c7b4f",
-        text: "#121722",
-        muted: "#4f5b67",
-        outline: "rgba(17,24,39,0.14)"
-      },
-      typography: { heading: "Fraunces", body: "Manrope" }
-    };
-  }
-  if (c.includes("restaurant") || c.includes("cafe") || c.includes("bakery")) {
-    return {
-      archetype: "sensory-immersion",
-      palette: {
-        background: "#f8f5ef",
-        surface: "#fffdf9",
-        primary: "#6a2f1f",
-        accent: "#d5862d",
-        text: "#2a2018",
-        muted: "#6d5945",
-        outline: "rgba(42,32,24,0.12)"
-      },
-      typography: { heading: "Cormorant Garamond", body: "Sora" }
-    };
-  }
-  if (c.includes("architecture") || c.includes("studio")) {
-    return {
-      archetype: "brutalist-editorial",
-      palette: {
-        background: "#efefed",
-        surface: "#ffffff",
-        primary: "#151515",
-        accent: "#4f84ff",
-        text: "#111111",
-        muted: "#444444",
-        outline: "rgba(0,0,0,0.18)"
-      },
-      typography: { heading: "Space Grotesk", body: "IBM Plex Sans" }
-    };
-  }
-  if (c.includes("fitness") || c.includes("gym")) {
-    return {
-      archetype: "kinetic-energy",
-      palette: {
-        background: "#f2f6f9",
-        surface: "#ffffff",
-        primary: "#0f172a",
-        accent: "#ff4d2d",
-        text: "#10131a",
-        muted: "#4b5563",
-        outline: "rgba(15,23,42,0.15)"
-      },
-      typography: { heading: "Archivo", body: "Space Grotesk" }
-    };
-  }
-  if (c.includes("saas") || c.includes("software") || c.includes("ai")) {
-    return {
-      archetype: "futuristic-systems",
-      palette: {
-        background: "#f6f7ff",
-        surface: "#ffffff",
-        primary: "#1e2a78",
-        accent: "#23b6ff",
-        text: "#121933",
-        muted: "#5b6480",
-        outline: "rgba(30,42,120,0.16)"
-      },
-      typography: { heading: "Sora", body: "Inter" }
-    };
-  }
-  return {
-    archetype: "modern-editorial-premium",
-    palette: {
-      background: "#f5f6f8",
-      surface: "#ffffff",
-      primary: "#111827",
-      accent: "#3366ff",
-      text: "#141a27",
-      muted: "#576079",
-      outline: "rgba(17,24,39,0.12)"
-    },
-    typography: { heading: "General Sans", body: "Manrope" }
-  };
-}
-function buildBusinessIntelligence(business) {
-  const category = business.category || "local business";
-  const lower = category.toLowerCase();
-  const conversionIntent = lower.includes("restaurant") || lower.includes("cafe") ? "bookings" : lower.includes("store") || lower.includes("shop") ? "commerce" : lower.includes("law") || lower.includes("consult") ? "consultations" : "walk-ins";
-  return {
-    industryArchetype: industryPreset(category).archetype,
-    customerDemographic: conversionIntent === "commerce" ? "price-aware but design-conscious local buyers" : "decision-focused local customers seeking trust and proof",
-    brandPersonality: ["credible", "distinctive", "high-conviction", "modern"],
-    emotionalTone: lower.includes("fitness") || lower.includes("gym") ? "motivating and energetic" : "confident and refined",
-    trustStyle: lower.includes("law") || lower.includes("finance") ? "structured authority with evidence" : "social proof with craft signals",
-    localVisualCulture: business.address || "urban contemporary",
-    conversionIntent
-  };
-}
-async function buildBrandStrategy(business, intel, options) {
-  const prompt = `PREMIUM BRAND STRATEGY ARCHITECT \u2014 Design Uniquely for ${business.name}
-
-Your mission: Create a completely bespoke visual identity and composition language grounded ONLY in this business's category, psychology, and local context. REJECT all template patterns.
-
-FORBIDDEN OUTPUTS:
-- Standard SaaS/startup layouts (hero-features-testimonials-CTA repeats)
-- Centered, symmetrical grid systems
-- Bootstrap-style card layouts
-- Generic spacing rhythms
-- Startup vocabulary ("Unlock," "Unleash," "Elevate," "Seamless," "Cutting-Edge")
-
-BUSINESS SPECIFICS:
-Name: ${business.name}
-Category: ${business.category}
-Archetype: ${intel.industryArchetype}
-Customer Type: ${intel.customerDemographic}
-Emotional Tone: ${intel.emotionalTone}
-Trust Style: ${intel.trustStyle}
-Local Culture: ${intel.localVisualCulture}
-Conversion: ${intel.conversionIntent}
-
-Return ONLY valid JSON with these keys (every value must be specific to THIS business, not generic):
-{
-  "typographyPhilosophy": "Custom font pairing logic grounded in this industry's visual expectations",
-  "spacingPhilosophy": "Breathing vs. density rules unique to how customers perceive this category",
-  "visualRhythm": "Specific pacing patterns: tight hero, breathing proof, dense CTA? Or inverted?",
-  "compositionPhilosophy": "Unique asymmetric or editorial approach. E.g., 'diagonal splits with floating media' or 'staggered grids with layered content'",
-  "interactionPhilosophy": "Motion personality specific to the business vibe",
-  "motionLanguage": "Is it kinetic/energetic, editorial/slow, cinematic/dramatic, or subtle/trust-focused?",
-  "densityStrategy": "How does visual weight change from top to bottom to maintain engagement?",
-  "asymmetryStrategy": "Specific offset and alignment rules to create uniqueness without feeling chaotic",
-  "imageryStrategy": "Crop styles, overlay treatments, depth techniques custom to this business"
-}`;
-  try {
-    traceLog(options, "CREATIVE_BRIEF", "brand_strategy_prompt", prompt);
-    const raw = await options.llmJson(prompt, "brand-strategy-agent");
-    traceLog(options, "CREATIVE_BRIEF", "brand_strategy_raw_response", raw);
-    try {
-      const parsed = JSON.parse(raw);
-      traceLog(options, "CREATIVE_BRIEF", "brand_strategy_parsed", parsed);
-      return parsed;
-    } catch (parseErr) {
-      traceLog(
-        options,
-        "CREATIVE_BRIEF",
-        "brand_strategy_parse_error",
-        String(parseErr)
-      );
-      throw parseErr;
-    }
-  } catch {
-    return {
-      typographyPhilosophy: "Oversized heading contrast with compact body rhythm.",
-      spacingPhilosophy: "Cadenced section compression with deliberate breathing zones.",
-      visualRhythm: "High-contrast alternation between dense and airy sections.",
-      compositionPhilosophy: "Asymmetric split grids with layered media anchors.",
-      interactionPhilosophy: "Intentional motion on reveals and CTA hover depth.",
-      motionLanguage: "Subtle cinematic translate and opacity choreography.",
-      densityStrategy: "Start dense above the fold, then progressively breathe.",
-      asymmetryStrategy: "Offset blocks and uneven column weight to build tension.",
-      imageryStrategy: "Narrative-led crops with overlapping foreground accents."
-    };
-  }
-}
-async function buildVisualMoodboard(business, strategy, options) {
-  const prompt = `CUSTOM VISUAL MOODBOARD \u2014 Composition Language for ${business.name}
-
-You are designing the visual mood and composition aesthetic EXCLUSIVELY for this business. Reject generic references and template patterns.
-
-Business: ${business.name}
-Category: ${business.category}
-Brand Strategy: ${JSON.stringify(strategy)}
-
-Create a UNIQUE moodboard with these specific outputs:
-
-{
-  "references": ["3-5 specific high-end design/editorial references that match this business's vibe \u2014 NOT generic templates"],
-  "compositionStyles": ["Specific asymmetric, layered, or editorial techniques to apply throughout \u2014 e.g., 'diagonal image bleeds', 'offset stagger grids', 'overlapping panels'"],
-  "gridBehavior": "Specific grid system \u2014 e.g., '12-column with 40% offset first column' or '5-column grid with asymmetric spans'",
-  "whitespaceStrategy": "How to use negative space for this specific business psychology \u2014 NOT generic 'balanced'",
-  "editorialRhythm": "Specific pacing pattern from hero to footer \u2014 tight-breathable-dense? Dense-breathing-tight?",
-  "colorAtmosphere": "Specific color usage rules for this category, NOT generic neutral palettes",
-  "animationMood": "Motion personality \u2014 kinetic-energetic, editorial-slow, cinematic-dramatic, subtle-understated, etc.",
-  "imageTreatmentSystem": "Specific image crop, overlay, and depth techniques \u2014 e.g., 'cinematic crops with atmospheric grain', 'soft vignettes', 'bold asymmetric bleeds'"
-}`;
-  try {
-    traceLog(options, "MOODBOARD", "moodboard_prompt", prompt);
-    const raw = await options.llmJson(prompt, "visual-moodboard-agent");
-    traceLog(options, "MOODBOARD", "moodboard_raw_response", raw);
-    try {
-      const parsed = JSON.parse(raw);
-      traceLog(options, "MOODBOARD", "moodboard_parsed", parsed);
-      return parsed;
-    } catch (parseErr) {
-      traceLog(options, "MOODBOARD", "moodboard_parse_error", String(parseErr));
-      throw parseErr;
-    }
-  } catch {
-    return {
-      references: ["Awwwards editorial", "Framer premium"],
-      compositionStyles: ["offset split", "stagger grid", "layered hero"],
-      gridBehavior: "12-column adaptive with asymmetrical pulls",
-      whitespaceStrategy: "rhythm-compressed with tension breaks",
-      editorialRhythm: "dense intro, breathable proof, strong CTA closure",
-      colorAtmosphere: "high-contrast modern neutral with accent pulse",
-      animationMood: "deliberate reveal sequencing",
-      imageTreatmentSystem: "editorial crops with atmospheric overlay"
-    };
-  }
-}
-function buildCompositionPlan(business, intel, seed) {
-  const heroMode = pick(seed, [
-    "immersive",
-    "editorial-split",
-    "systems"
-  ]);
-  let baseSections = ["hero", "contact"];
-  const c = (business.category || "").toLowerCase();
-  if (intel.conversionIntent === "bookings" || c.includes("restaurant") || c.includes("salon") || c.includes("gym")) {
-    baseSections = [
-      "hero",
-      "testimonials",
-      "gallery",
-      "features",
-      "cta",
-      "faq",
-      "contact"
-    ];
-  } else if (intel.conversionIntent === "consultations" || c.includes("law") || c.includes("consult") || c.includes("agency")) {
-    baseSections = [
-      "hero",
-      "features",
-      "testimonials",
-      "gallery",
-      "cta",
-      "contact"
-    ];
-  } else if (intel.conversionIntent === "commerce" || c.includes("store") || c.includes("shop")) {
-    baseSections = [
-      "hero",
-      "gallery",
-      "features",
-      "testimonials",
-      "cta",
-      "contact"
-    ];
-  } else {
-    baseSections = [
-      "hero",
-      "features",
-      "gallery",
-      "testimonials",
-      "faq",
-      "cta",
-      "contact"
-    ];
-  }
-  if (c.includes("law") || c.includes("finance") || c.includes("legal")) {
-    baseSections = baseSections.filter((t) => t !== "gallery" && t !== "faq");
-  }
-  if (!business.photos || business.photos.length < 2) {
-    baseSections = baseSections.filter((t) => t !== "gallery");
-  }
-  const sections = baseSections.map((type, index) => {
-    const sectionSeed = hashSeed(`${seed}-${type}-${index}`);
-    return {
-      type,
-      priority: index,
-      layoutMode: pick(sectionSeed, [
-        "split-offset",
-        "staggered-grid",
-        "overlap-layer",
-        "editorial-stack"
-      ]),
-      span: pick(sectionSeed, ["full", "wide", "split"]),
-      offset: parseInt(sectionSeed.slice(0, 2), 16) % 5 - 2,
-      density: pick(sectionSeed, ["tight", "balanced", "airy"]),
-      visualTension: pick(sectionSeed, ["low", "medium", "high"])
-    };
-  });
-  return {
-    grid: {
-      columns: 12,
-      maxWidth: "min(1320px, 92vw)",
-      gutters: "clamp(1rem, 2vw, 2rem)"
-    },
-    sections,
-    heroMode,
-    asymmetryBias: intel.industryArchetype.includes("structured") ? 35 : 70,
-    depthBias: intel.industryArchetype.includes("kinetic") ? 75 : 55,
-    conversionIntent: intel.conversionIntent
-  };
-}
-function classifyImages(photos, business, category) {
-  return photos.map((src, index) => {
-    const lower = src.toLowerCase();
-    let classification;
-    if (lower.includes("portrait")) {
-      classification = "portrait";
-    } else if (lower.includes("interior")) {
-      classification = "interior-full";
-    } else if (lower.includes("detail") || lower.includes("texture")) {
-      classification = "texture-abstract";
-    } else if (lower.includes("people") || lower.includes("person")) {
-      classification = "people-single";
-    } else if (lower.includes("product")) {
-      classification = "product-isolated";
-    } else if (lower.includes("sign") || lower.includes("logo")) {
-      classification = "signage-text";
-    } else if (lower.includes("workspace")) {
-      classification = "workspace";
-    } else {
-      classification = "landscape";
-    }
-    const emotionalTone = classification === "workspace" || classification === "product-isolated" ? "professional" : classification === "people-single" || classification === "people-group" ? "warm" : classification === "texture-abstract" ? "moody" : "calm";
-    const suggestedTreatment = classification === "portrait" || classification === "people-single" ? "overlapped" : classification === "landscape" ? "full-bleed" : classification === "texture-abstract" ? "textured-bg" : "accent-pop";
-    return {
-      src,
-      classification,
-      dominantColor: index % 2 === 0 ? "#121212" : "#999999",
-      aspectRatio: classification === "portrait" ? 0.75 : 1.6,
-      hasText: /text|sign|logo/i.test(src),
-      hasfaces: /people|portrait|face|person/i.test(src),
-      emotionalTone,
-      suggestedTreatment
-    };
-  });
-}
-function buildTypographyBehavior(psychology, layoutDNA) {
-  const role = psychology.typographyBehavior === "restrained-serif" ? "supporting" : psychology.typographyBehavior === "compressed-kinetic" ? "dominant" : "breathing";
-  return {
-    hierarchyRole: role,
-    lineCompressionRatio: psychology.typographyBehavior === "compressed-kinetic" ? 1.15 : psychology.typographyBehavior === "expansive-airy" ? 1.9 : 1.4,
-    sizeProgression: psychology.typographyBehavior === "layered-wall" ? "exponential" : psychology.typographyBehavior === "compressed-kinetic" ? "stepped" : "smooth",
-    scanGuidance: layoutDNA.scanPath.includes("diagonal") ? "diagonal" : layoutDNA.scanPath.includes("vertical") ? "vertical" : "horizontal",
-    emotionalPacing: psychology.pagePacing === "fast-kinetic" ? "aggressive" : psychology.pagePacing === "slow-meditative" ? "calm" : "moderate",
-    fontRationale: `Typography supports ${psychology.emotionalTarget} with ${psychology.typographyBehavior} structure and ${layoutDNA.dominantAxis} movement.`,
-    bodySizeRange: [16, 20],
-    headingSizeRange: [32, 64]
-  };
-}
-function buildMotionLanguage(psychology, layoutDNA) {
-  return {
-    character: psychology.motionCharacter.includes("cinematic") ? "cinematic" : psychology.motionCharacter.includes("kinetic") ? "kinetic" : psychology.motionCharacter.includes("tactile") ? "tactile" : "ambient",
-    primaryDirection: layoutDNA.dominantAxis === "diagonal" ? "diagonal" : layoutDNA.dominantAxis === "radial" ? "spiral" : layoutDNA.dominantAxis === "vertical" ? "ascending" : "horizontal",
-    defaultDuration: psychology.motionCharacter === "kinetic-bounce" ? 900 : 1200,
-    defaultEasing: psychology.motionCharacter === "ambient-breathing" ? "ease-in-out" : "ease-out",
-    parallaxDepth: layoutDNA.depthBehavior.includes("immersive") ? "aggressive" : "subtle",
-    hoverBehavior: psychology.motionCharacter === "tactile-feedback" ? "pronounced" : "subtle",
-    staggerPattern: psychology.pagePacing === "fast-kinetic" ? "offset" : "wave",
-    colorAnimation: "subtle",
-    compositionMotion: {
-      "establish-authority": { enterAnimation: "reveal-up" },
-      "prove-credibility": { enterAnimation: "fade-layer" },
-      "showcase-work": { enterAnimation: "slide-in" },
-      "build-emotion": { enterAnimation: "reveal-layer" },
-      "generate-desire": { enterAnimation: "overscroll" },
-      "explain-process": { enterAnimation: "scale-in" },
-      "facilitate-action": { enterAnimation: "pop-in" },
-      "close-conversion": { enterAnimation: "cinematic-reveal" }
-    }
-  };
-}
-function buildCompositionSystems(plan, layoutDNA, typography) {
-  return plan.sections.map((section) => {
-    const preferredRenderSystem = layoutDNA.imageWeighting === "images-dominant" ? "css-grid" : "css-grid";
-    const overlapBehavior = section.layoutMode === "overlap-layer" ? "immersive" : section.layoutMode === "staggered-grid" ? "subtle" : "none";
-    return {
-      engineType: section.layoutMode === "split-offset" ? "scan-path" : section.layoutMode === "staggered-grid" ? "density" : section.layoutMode === "overlap-layer" ? "overlap" : "hierarchy orchestration",
-      gridColumns: layoutDNA.gridSystem.includes("12") ? 12 : layoutDNA.gridSystem.includes("6") ? 6 : "asymmetric",
-      overlapBehavior,
-      gridTemplate: section.layoutMode === "staggered-grid" ? "repeat(12, minmax(0,1fr))" : section.layoutMode === "split-offset" ? "1.1fr 0.9fr" : "1fr",
-      spacingSystem: {
-        container: typography.lineCompressionRatio > 1.7 ? "clamp(4rem, 8vw, 10rem)" : "clamp(3rem, 6vw, 7rem)",
-        panel: section.span === "full" ? "clamp(2rem, 4vw, 5rem)" : "clamp(1.4rem, 3vw, 4rem)"
-      },
-      responsiveBehavior: [
-        { breakpoint: "1200px", gridColumns: 12, spacingScale: 1 },
-        { breakpoint: "900px", gridColumns: 1, spacingScale: 1.1 }
-      ],
-      preferredRenderSystem
-    };
-  });
-}
-function buildNarrativeCompositions(plan, business, intelligence, layoutDNA, images, typography, motion) {
-  return plan.sections.map((section, index) => {
-    const contentType = section.type === "hero" ? "hero" : section.type === "gallery" ? "showcase" : section.type === "testimonials" ? "proof" : section.type === "features" ? "explain" : section.type === "cta" ? "interaction" : "pause";
-    const purpose = section.type === "hero" ? "establish-authority" : section.type === "gallery" ? "showcase-work" : section.type === "testimonials" ? "prove-credibility" : section.type === "features" ? "explain-process" : section.type === "cta" ? "facilitate-action" : section.type === "faq" ? "explain-process" : "close-conversion";
-    const visualBehavior = section.layoutMode === "split-offset" ? "editorial-asymmetry" : section.layoutMode === "staggered-grid" ? "kinetic-stagger" : section.layoutMode === "overlap-layer" ? "immersive-overlap" : "intimate-paired";
-    const scanPattern = layoutDNA.scanPath === "diagonal-ascending" ? "diagonal-flow" : layoutDNA.scanPath === "vertical-stagger" ? "vertical" : "horizontal";
-    const densityMode = section.density === "airy" ? "sparse-breathing" : section.density === "tight" ? "dense" : "balanced";
-    const geometrySystem = section.layoutMode === "staggered-grid" ? "grid-overlay" : section.layoutMode === "overlap-layer" ? "overlap-plane" : section.layoutMode === "split-offset" ? "organic-flow" : "stack-layer";
-    const imageSet = images.slice(index, index + 2);
-    return {
-      id: `composition-${index + 1}`,
-      narrativePurpose: purpose,
-      visualBehavior,
-      scanPattern,
-      densityMode,
-      geometrySystem,
-      contentType,
-      viewportRatio: section.type === "hero" ? 1.05 : 0.65,
-      images: imageSet.length ? imageSet : images.slice(0, 1),
-      heading: section.type === "hero" ? business.name : section.type === "gallery" ? `A cinematic view of ${business.category}` : section.type === "testimonials" ? `Stories from real customers` : section.type === "features" ? `How ${business.name} delivers results` : section.type === "cta" ? `Make your next move` : `Connect with ${business.name}`,
-      description: section.type === "hero" ? `A crafted website direction for ${business.category} in ${business.address || "your area"}.` : section.type === "gallery" ? `Visual storytelling tailored to your business imagery.` : section.type === "testimonials" ? `Proof that speaks with chosen, specific customer outcomes.` : section.type === "features" ? `Unique service pillars designed for ${business.category}.` : section.type === "cta" ? `A decisive prompt that helps visitors move forward.` : `Clear contact and next-step guidance for your audience.`,
-      actions: section.type === "cta" ? [
-        {
-          label: "Start the conversation",
-          href: "#contact",
-          style: "primary"
-        }
-      ] : section.type === "hero" ? [
-        {
-          label: "Book a consultation",
-          href: "#contact",
-          style: "primary"
-        },
-        {
-          label: "View the work",
-          href: "#gallery",
-          style: "secondary"
-        }
-      ] : [],
-      proofElements: section.type === "testimonials" ? [
-        {
-          type: "testimonial",
-          content: "Exceptional service and lasting results.",
-          author: "Verified client"
-        }
-      ] : section.type === "features" ? [{ type: "stat", content: "4.9/5 average client rating" }] : [],
-      motionLanguage: {
-        entryTrigger: section.type === "cta" ? "on-hover" : "on-scroll",
-        entryType: section.type === "hero" ? "reveal" : section.type === "gallery" ? "slide" : "fade",
-        internalMotion: section.type === "gallery" ? "kinetic" : "subtle"
-      },
-      styling: {
-        backgroundColor: index % 2 === 0 ? "#fff" : "#f7f5f1",
-        textColor: "#111",
-        accentColor: "#2f2b26",
-        typographySize: section.type === "hero" ? "large" : "medium",
-        typographyWeight: section.type === "hero" ? "contrast" : "regular"
-      }
-    };
-  });
-}
-function buildWebsiteFingerprint(id, compositions, layoutDNA, typography, motion, color, industry, conversionIntent) {
-  return generateWebsiteFingerprint(
-    id,
-    compositions.map((c) => c.narrativePurpose),
-    layoutDNA.spacingRhythm,
-    `${typography.hierarchyRole}-${typography.scanGuidance}-${typography.emotionalPacing}`,
-    layoutDNA.gridSystem,
-    compositions.map((c) => `${c.geometrySystem}-${c.visualBehavior}`).join("|"),
-    0,
-    color,
-    industry,
-    conversionIntent
-  );
-}
-function renderCompositionHtml(schema, tokens) {
-  const layoutDNA = schema.layoutDNA;
-  const compositions = schema.narrativeCompositions || [];
-  const rootVars = `
-		--bg:${tokens.palette.background};
-		--surface:${tokens.palette.surface};
-		--primary:${tokens.palette.primary};
-		--accent:${tokens.palette.accent};
-		--text:${tokens.palette.text};
-		--muted:${tokens.palette.muted};
-		--outline:${tokens.palette.outline};
-		--hero:${tokens.typography.scaleHero};
-		--h2:${tokens.typography.scaleH2};
-		--body:${tokens.typography.scaleBody};
-		--sectionY:${tokens.spacing.sectionY};
-		--sectionYTight:${tokens.spacing.sectionYTight};
-		--gutter:${tokens.spacing.gutter};
-		--cardPad:${tokens.spacing.cardPad};
-		--motion-ease:${tokens.motion.ease};
-		--asymmetry:${layoutDNA?.asymmetryLevel ?? 60};
-		--scan:${layoutDNA?.scanPath ?? "diagonal-ascending"};
-		--tempo:${layoutDNA?.visualTempo ?? "steady-editorial"};
-		--depth:${layoutDNA?.depthBehavior ?? "layered-depth"};
-		--image-weight:${layoutDNA?.imageWeighting ?? "images-supporting"};
-	`;
-  const compositionHtml = compositions.map((comp) => {
-    const images = comp.images.map(
-      (img, idx) => `<div class="composition-image image-${idx + 1}" style="background-image:url('${img.src}');"></div>`
-    ).join("");
-    const actions = (comp.actions || []).map(
-      (action) => `<a class="composition-cta cta-${action.style}" href="${action.href}">${action.label}</a>`
-    ).join("");
-    return `<article class="composition composition-${comp.geometrySystem} ${comp.visualBehavior} density-${comp.densityMode}" data-scan="${comp.scanPattern}">
-				<div class="composition-shell">
-					<div class="composition-text">
-						<span class="composition-purpose">${comp.narrativePurpose.replace(/-/g, " ")}</span>
-						<h2>${comp.heading || ""}</h2>
-						<p>${comp.description || ""}</p>
-						<div class="composition-actions">${actions}</div>
-						<div class="composition-proof">${(comp.proofElements || []).map(
-      (proof) => `<span class="proof-item">${proof.content}</span>`
-    ).join("")}</div>
-					</div>
-					<div class="composition-media">${images}</div>
-				</div>
-			</article>`;
-  }).join("");
-  const css = `
-		:root { ${rootVars} }
-		* { box-sizing: border-box; }
-		body { margin:0; font-family:${tokens.typography.body}, ui-sans-serif, system-ui; background:var(--bg); color:var(--text); line-height:1.5; }
-		main { overflow:hidden; }
-		.page-grid { display:grid; gap:clamp(3rem, 6vw, 7rem); padding:clamp(2rem, 4vw, 4rem); }
-		.composition { position:relative; overflow:hidden; min-height:clamp(55vh, 70vh, 95vh); }
-		.composition-shell { display:grid; gap:clamp(1.6rem, 3vw, 3rem); grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items:center; }
-		.composition-grid-overlay { grid-template-columns: 1.1fr .9fr; }
-		.composition-overlap-plane { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
-		.composition-stack-layer { grid-template-columns: 1fr; }
-		.composition-organic-flow { grid-template-columns: 1.2fr .8fr; }
-		.composition-text { position:relative; z-index:2; padding:clamp(2rem, 4vw, 5rem); background:rgba(255,255,255,0.92); backdrop-filter:blur(12px); border-radius:24px; box-shadow:0 30px 90px rgba(0,0,0,0.08); }
-		.composition-purpose { display:inline-block; margin-bottom:1rem; text-transform:uppercase; letter-spacing:.22em; font-size:.8rem; color:var(--accent); }
-		.composition-text h2 { font-size:clamp(2.4rem, 6vw, 5rem); line-height:0.95; margin:0 0 1rem; }
-		.composition-text p { max-width: 60ch; color:var(--muted); }
-		.composition-actions { display:flex; flex-wrap:wrap; gap:1rem; margin-top:1.8rem; }
-		.composition-cta { text-decoration:none; padding:.95rem 1.4rem; border-radius:999px; font-weight:700; transition:transform .3s ease; }
-		.cta-primary { background:var(--primary); color:#fff; }
-		.cta-secondary { background:transparent; border:1px solid var(--outline); color:var(--text); }
-		.composition-media { position:relative; display:grid; gap:1rem; grid-template-columns:1fr; }
-		.composition-image { min-height:320px; border-radius:28px; background-size:cover; background-position:center; box-shadow:0 32px 100px rgba(0,0,0,0.14); transform:translateY(0); }
-		.composition-overlap-plane .composition-image:nth-child(1) { grid-column:1; grid-row:1; transform:translateY(0); }
-		.composition-overlap-plane .composition-image:nth-child(2) { grid-column:1 / -1; grid-row:1; transform:translate(12%, 18%); z-index:1; opacity:.96; }
-		.composition-organc-flow .composition-image, .composition-organic-flow .composition-image { border-radius:24px; }
-		.composition-kinetic-stagger .composition-image { transition:transform .6s ease; }
-		.composition-kinetic-stagger:hover .composition-image { transform:translateY(-6px); }
-		.composition-proof .proof-item { display:inline-flex; margin-top:1rem; padding:.8rem 1rem; background:rgba(255,255,255,0.85); border:1px solid var(--outline); border-radius:18px; }
-		@media (max-width: 980px) {
-			.composition-shell { grid-template-columns:1fr; }
-			.composition-text { padding:2rem; }
-			.composition-image { min-height:240px; }
-		}
-	`;
-  return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${schema.seo.title}</title><style>${css}</style></head><body><main class="page-grid">${compositionHtml}</main></body></html>`;
-}
-function createSchemaFromPlan(business, plan, strategy, moodboard, tokens, layoutDNA, industryPsychology, narrativeCompositions, compositionSystems, imageIntelligence, typographyBehavior, motionLanguage, entropy, fingerprint) {
-  const siteId = `${business.id || "site"}-${Date.now()}`;
-  const slug = (business.name || "site").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-  const photos = (business.photos || []).filter(Boolean);
-  const heroPhoto = photos[0] || "";
-  const sections = plan.sections.map((section, index) => {
-    const id = `${section.type}-${index + 1}`;
-    const composition = {
-      sectionType: section.layoutMode,
-      layoutBehavior: section.span,
-      visualDepth: section.visualTension,
-      motionStyle: strategy.motionLanguage,
-      imageTreatment: moodboard.imageTreatmentSystem,
-      spacingMode: section.density,
-      themeIntensity: plan.depthBias > 65 ? "dramatic" : "balanced",
-      hierarchyWeight: section.type === "hero" ? "dominant" : section.type === "cta" ? "supporting" : "breathing"
-    };
-    if (section.type === "hero") {
-      const c = (business.category || "").toLowerCase();
-      const primaryLabel = plan.conversionIntent === "bookings" || plan.conversionIntent === "walk-ins" ? "Book Now" : plan.conversionIntent === "consultations" ? "Schedule a Consultation" : plan.conversionIntent === "commerce" ? "Shop Now" : "Get Started";
-      const secondaryLabel = photos.length > 1 ? "View Our Work" : "Learn More";
-      const secondaryHref = photos.length > 1 ? "#gallery" : "#features";
-      return {
-        id,
-        type: "hero",
-        layout: plan.heroMode === "immersive" ? "hero-immersive" : "hero-split",
-        variant: plan.heroMode,
-        composition,
-        headline: `${business.name}`,
-        subheadline: c.includes("law") ? `${business.name} \u2014 Legal counsel for ${business.address || "your community"}.` : c.includes("restaurant") ? `${business.category} in ${business.address || "your neighborhood"}. Reserve your table.` : c.includes("salon") ? `Premium ${business.category} experiences in ${business.address || "your area"}.` : c.includes("gym") ? `Your fitness journey starts here \u2014 ${business.address || "right in your neighborhood"}.` : `${business.category} in ${business.address || "your local market"}, designed for results.`,
-        ctaPrimary: { label: primaryLabel, href: "#contact" },
-        ctaSecondary: { label: secondaryLabel, href: secondaryHref },
-        badges: [business.category || "Local Service", "Custom Crafted"],
-        media: {
-          type: "image",
-          src: heroPhoto,
-          alt: `${business.name} hero`
-        }
-      };
-    }
-    if (section.type === "features") {
-      const c = (business.category || "").toLowerCase();
-      const featureTitle = c.includes("law") ? "Our Approach" : c.includes("restaurant") || c.includes("cafe") ? "The Experience" : c.includes("fitness") || c.includes("gym") ? "What We Offer" : c.includes("salon") || c.includes("spa") ? "Our Services" : c.includes("consulting") || c.includes("agency") ? "Our Expertise" : "What Sets Us Apart";
-      const featureItems = c.includes("law") ? [
-        {
-          title: "Strategic Counsel",
-          description: "Decades of legal expertise guiding complex matters to resolution."
-        },
-        {
-          title: "Local Authority",
-          description: "Deep roots in this community with trusted relationships."
-        },
-        {
-          title: "Results-Focused",
-          description: "Every case pursued with clarity and tenacity."
-        }
-      ] : c.includes("restaurant") || c.includes("cafe") ? [
-        {
-          title: "Sourced Thoughtfully",
-          description: "Local ingredients, seasonal menus, authentic preparation."
-        },
-        {
-          title: "Atmosphere Matters",
-          description: "Spaces designed for connection and comfort."
-        },
-        {
-          title: "Your Return",
-          description: "Built on regulars and relationship, not churn."
-        }
-      ] : c.includes("fitness") || c.includes("gym") ? [
-        {
-          title: "Real Programming",
-          description: "Expert coaching and programming tailored to your level."
-        },
-        {
-          title: "Community-Driven",
-          description: "A place where you belong, not just another gym."
-        },
-        {
-          title: "Results You'll See",
-          description: "Structured progression and measurable wins."
-        }
-      ] : [
-        {
-          title: "Expertise You Can Trust",
-          description: "Years of focused experience in your category."
-        },
-        {
-          title: "Local & Available",
-          description: "Here when you need us, responsive to your schedule."
-        },
-        {
-          title: "Your Success Is Ours",
-          description: "We're invested in your goals and outcomes."
-        }
-      ];
-      return {
-        id,
-        type: "features",
-        layout: "alternating-grid",
-        variant: section.layoutMode,
-        composition,
-        title: featureTitle,
-        items: featureItems
-      };
-    }
-    if (section.type === "gallery") {
-      const gallery = photos.slice(0, 6).map((src, i) => ({
-        src,
-        alt: `${business.name} image ${i + 1}`
-      }));
-      const c = (business.category || "").toLowerCase();
-      const galleryTitle = c.includes("restaurant") || c.includes("cafe") ? "The Atmosphere" : c.includes("salon") || c.includes("spa") ? "Your Transformation" : c.includes("fitness") || c.includes("gym") ? "The Journey" : "Our Portfolio";
-      return {
-        id,
-        type: "gallery",
-        layout: "asymmetrical",
-        variant: section.layoutMode,
-        composition,
-        title: galleryTitle,
-        items: gallery
-      };
-    }
-    if (section.type === "testimonials") {
-      const c = (business.category || "").toLowerCase();
-      const testimonialTitle = c.includes("law") ? "Client Success" : c.includes("fitness") || c.includes("gym") ? "Transformation Stories" : c.includes("restaurant") || c.includes("cafe") ? "Guest Stories" : c.includes("salon") || c.includes("spa") ? "Client Results" : "Client Experiences";
-      return {
-        id,
-        type: "testimonials",
-        layout: "split",
-        variant: section.layoutMode,
-        composition,
-        title: testimonialTitle,
-        items: [
-          {
-            quote: "The experience exceeded my expectations and I'm recommending them to everyone.",
-            author: "Real Client",
-            role: "Trust-Based"
-          },
-          {
-            quote: "Professional, attentive, and genuinely committed to the results.",
-            author: "Satisfied Client",
-            role: "Verified"
-          }
-        ]
-      };
-    }
-    if (section.type === "faq") {
-      return {
-        id,
-        type: "faq",
-        layout: "faq-accordion",
-        variant: section.layoutMode,
-        composition,
-        title: "Questions",
-        items: [
-          {
-            question: "How fast can we launch?",
-            answer: "Most local projects can go live in days with approved content."
-          },
-          {
-            question: "Can we update content after launch?",
-            answer: "Yes, editing workflows are designed for non-technical teams."
-          }
-        ]
-      };
-    }
-    if (section.type === "cta") {
-      return {
-        id,
-        type: "cta",
-        layout: "cta-split",
-        variant: section.layoutMode,
-        composition,
-        title: "Let\u2019s Build The Better Version",
-        body: "Schedule a strategy call and get a premium website direction tailored to your market.",
-        buttonLabel: "Start Now",
-        buttonHref: "#contact"
-      };
-    }
-    return {
-      id,
-      type: "contact",
-      layout: "contact-form",
-      variant: section.layoutMode,
-      composition,
-      title: "Contact",
-      showEmail: true,
-      showPhone: true,
-      showMap: false
-    };
-  });
-  return {
-    schemaVersion: "1.0",
-    meta: {
-      siteId,
-      businessId: business.id,
-      slug,
-      version: 2,
-      target: "wordpress"
-    },
-    layoutDNA,
-    visualPsychology: industryPsychology,
-    imageIntelligence,
-    typographyBehavior,
-    motionLanguage,
-    narrativeCompositions,
-    compositionSystems,
-    entropyScore: entropy,
-    fingerprint,
-    theme: {
-      name: `Studio ${business.category || "Modern"}`,
-      brandDNA: {
-        personality: "editorial",
-        visualMood: "modern-authority",
-        ctaEnergy: "inviting",
-        spacingDensity: "balanced",
-        imageStyle: "cinematic",
-        typographyMood: "editorial",
-        iconStyle: "outline"
-      },
-      designDNA: {
-        spacingPersonality: "balanced",
-        compositionAggression: plan.asymmetryBias,
-        hierarchyIntensity: 82,
-        motionEnergy: 54,
-        visualDensity: 68,
-        asymmetryLevel: plan.asymmetryBias,
-        atmosphereIntensity: plan.depthBias,
-        typographyDominance: "cinematic-oversized",
-        imageWeight: 72,
-        luxuryScore: 70,
-        cinematicScore: 65,
-        brutalismScore: 20,
-        editorialScore: 78,
-        softnessScore: 45,
-        visualAtmosphere: "architectural-minimalism"
-      },
-      palette: tokens.palette,
-      typography: {
-        heading: tokens.typography.heading,
-        body: tokens.typography.body,
-        headingFont: tokens.typography.heading,
-        bodyFont: tokens.typography.body
-      },
-      tokens: {
-        radius: "soft",
-        shadow: "premium",
-        surface: "glass",
-        animation: "dynamic"
-      }
-    },
-    brand: {
-      businessName: business.name,
-      category: business.category,
-      address: business.address,
-      phone: business.phoneNumber,
-      email: business.email,
-      websiteUri: business.websiteUri,
-      logo: business.logo
-    },
-    seo: {
-      title: `${business.name} | ${business.category}`,
-      description: `${business.name} in ${business.address || "your area"} with a premium, conversion-focused digital experience.`,
-      keywords: [business.name, business.category, "premium", "local"].filter(
-        Boolean
-      )
-    },
-    sections,
-    _validation: {
-      repairs: [],
-      validatedAt: (/* @__PURE__ */ new Date()).toISOString()
-    }
-  };
-}
-function buildVisualTokens(business, seed) {
-  const preset = industryPreset(business.category || "");
-  const scaleHero = pick(seed, [
-    "clamp(3.2rem, 8.5vw, 8rem)",
-    "clamp(3rem, 7.2vw, 7rem)"
-  ]);
-  return {
-    palette: preset.palette,
-    typography: {
-      heading: preset.typography.heading,
-      body: preset.typography.body,
-      scaleHero,
-      scaleH2: "clamp(1.8rem, 3.2vw, 3.4rem)",
-      scaleBody: "clamp(1rem, 1.2vw, 1.125rem)"
-    },
-    spacing: {
-      sectionY: "clamp(4rem, 8vw, 9rem)",
-      sectionYTight: "clamp(2.5rem, 5vw, 5rem)",
-      gutter: "clamp(1rem, 2vw, 2rem)",
-      cardPad: "clamp(1rem, 2vw, 1.75rem)"
-    },
-    motion: {
-      revealDuration: "700ms",
-      ease: "cubic-bezier(0.22,1,0.36,1)"
-    }
-  };
-}
-async function maybeCaptureScreenshotBase64(html) {
-  try {
-    const dynamicImport = new Function(
-      "moduleName",
-      "return import(moduleName)"
-    );
-    const playwright = await dynamicImport("playwright");
-    const browser = await playwright.chromium.launch({ headless: true });
-    const page = await browser.newPage({
-      viewport: { width: 1440, height: 2200 }
-    });
-    await page.setContent(html, { waitUntil: "networkidle" });
-    const png = await page.screenshot({ fullPage: true, type: "png" });
-    await browser.close();
-    return Buffer.from(png).toString("base64");
-  } catch {
-    return null;
-  }
-}
-function applyCritiqueRefinements(tokens, critique) {
-  if (critique.hierarchyStrength < 75) {
-    tokens.typography.scaleHero = "clamp(3.6rem, 9vw, 8.4rem)";
-  }
-  if (critique.whitespaceBalance < 70) {
-    tokens.spacing.sectionY = "clamp(3.3rem, 7vw, 7rem)";
-    tokens.spacing.cardPad = "clamp(.9rem,1.8vw,1.4rem)";
-  }
-  if (critique.ctaProminence < 75) {
-    tokens.palette.primary = tokens.palette.accent;
-  }
-}
-async function generateWebsiteWithVisualIntelligence(business, options) {
-  const seed = hashSeed(`${business.id}-${business.name}-${business.category}`);
-  options.logStderr(
-    `[VisualPipeline] Start seed=${seed} business=${business.name}`
-  );
-  traceLog(options, "BUSINESS_INPUT", "business_full_payload", business);
-  traceLog(
-    options,
-    "BUSINESS_INPUT",
-    "business_category",
-    business.category || null
-  );
-  traceLog(options, "BUSINESS_INPUT", "business_photos", business.photos || []);
-  traceLog(options, "BUSINESS_INPUT", "business_logo", business.logo || null);
-  const intelligence = buildBusinessIntelligence(business);
-  const strategy = await buildBrandStrategy(business, intelligence, options);
-  const moodboard = await buildVisualMoodboard(business, strategy, options);
-  const compositionPlan = buildCompositionPlan(business, intelligence, seed);
-  const tokens = buildVisualTokens(business, seed);
-  const industryPsychology = await generateIndustryVisualPsychology(
-    {
-      business: {
-        name: business.name,
-        category: business.category || "",
-        address: business.address
-      },
-      conversionIntent: compositionPlan.conversionIntent
-    },
-    options
-  );
-  const layoutDNA = await generateLayoutDNA(
-    {
-      business: {
-        name: business.name,
-        category: business.category || ""
-      },
-      industryPsychology,
-      conversationIntent: compositionPlan.conversionIntent
-    },
-    options
-  );
-  const typographyBehavior = buildTypographyBehavior(
-    industryPsychology,
-    layoutDNA
-  );
-  const motionLanguage = buildMotionLanguage(industryPsychology, layoutDNA);
-  const imageIntelligence = classifyImages(
-    business.photos || [],
-    business,
-    business.category || ""
-  );
-  const narrativeCompositions = buildNarrativeCompositions(
-    compositionPlan,
-    business,
-    intelligence,
-    layoutDNA,
-    imageIntelligence,
-    typographyBehavior,
-    motionLanguage
-  );
-  const compositionSystems = buildCompositionSystems(
-    compositionPlan,
-    layoutDNA,
-    typographyBehavior
-  );
-  const fingerprint = buildWebsiteFingerprint(
-    `${business.id || "site"}-${Date.now()}`,
-    narrativeCompositions,
-    layoutDNA,
-    typographyBehavior,
-    motionLanguage,
-    tokens.palette.primary,
-    business.category || "unknown",
-    compositionPlan.conversionIntent || "walk-ins"
-  );
-  const initialSchema = createSchemaFromPlan(
-    business,
-    compositionPlan,
-    strategy,
-    moodboard,
-    tokens,
-    layoutDNA,
-    industryPsychology,
-    narrativeCompositions,
-    compositionSystems,
-    imageIntelligence,
-    typographyBehavior,
-    motionLanguage,
-    {
-      overallScore: 0,
-      heroUniqueness: 0,
-      typographyDiversity: 0,
-      spacingDiversity: 0,
-      compositionDiversity: 0,
-      gridDiversity: 0,
-      ctaDiversity: 0,
-      templateSimilarityScore: 0,
-      risks: [],
-      lowEntropyCompositions: []
-    },
-    fingerprint
-  );
-  let schema = initialSchema;
-  traceLog(options, "SCHEMA_GENERATION", "schema_generated", schema);
-  try {
-    const sectionsMeta = schema.sections.map((s) => ({
-      sectionType: s.type,
-      layoutBehavior: s.composition?.sectionType || s.layout || null,
-      visualDepth: s.composition?.visualDepth || null,
-      motionStyle: s.composition?.motionStyle || null,
-      spacingMode: s.composition?.spacingMode || null,
-      hierarchyWeight: s.composition?.hierarchyWeight || null,
-      imageTreatment: s.composition?.imageTreatment || null
-    }));
-    traceLog(options, "SCHEMA_GENERATION", "sections_meta", sectionsMeta);
-  } catch (e) {
-    traceLog(options, "SCHEMA_GENERATION", "sections_meta_error", String(e));
-  }
-  let html = renderCompositionHtml(schema, tokens);
-  let lastCritique = null;
-  traceLog(options, "HTML_GENERATION", "html_generated_initial", html);
-  try {
-    const classNames = Array.from(
-      new Set(
-        Array.from(html.matchAll(/class=\"([^\"]+)\"/g)).flatMap(
-          (m) => (m[1] || "").split(/\s+/)
-        )
-      )
-    ).filter(Boolean);
-    const spacingValues = Array.from(
-      new Set(
-        Array.from(
-          html.matchAll(/clamp\([^\)]+\)|\b\d+(?:px|rem|em|vw|vh)\b/g)
-        ).map((m) => m[0])
-      )
-    );
-    const radiusValues = Array.from(
-      new Set(
-        Array.from(html.matchAll(/border-radius:\s*([^;\}]+)/g)).map(
-          (m) => m[1]
-        )
-      )
-    );
-    const shadowValues = Array.from(
-      new Set(
-        Array.from(html.matchAll(/box-shadow:\s*([^;\}]+)/g)).map((m) => m[1])
-      )
-    );
-    const gradients = Array.from(
-      new Set(
-        Array.from(
-          html.matchAll(/linear-gradient\([^\)]+\)|radial-gradient\([^\)]+\)/g)
-        ).map((m) => m[0])
-      )
-    );
-    const repeatedStructures = classNames.filter((cn) => html.split(cn).length > 3).slice(0, 50);
-    const heroPatterns = classNames.filter((cn) => /hero/i.test(cn));
-    const ctaPatterns = classNames.filter((cn) => /cta|btn|action/i.test(cn));
-    traceLog(options, "HTML_GENERATION", "html_analysis", {
-      classNames,
-      spacingValues,
-      radiusValues,
-      shadowValues,
-      gradients,
-      repeatedStructures,
-      heroPatterns,
-      ctaPatterns
-    });
-  } catch (e) {
-    traceLog(options, "HTML_GENERATION", "html_analysis_error", String(e));
-  }
-  const tokensBeforeCritique = JSON.parse(JSON.stringify(tokens));
-  for (let i = 1; i <= 2; i++) {
-    traceLog(options, "CRITIQUE_LOOP", `iteration_${i}_pre`, {
-      htmlLength: html.length,
-      tokens: tokensBeforeCritique
-    });
-    try {
-      const screenshot = await maybeCaptureScreenshotBase64(html);
-      if (screenshot)
-        traceLog(options, "CRITIQUE_LOOP", `screenshot_iter_${i}`, screenshot);
-      const prompt = `You are a Visual Quality Critic. Return strict JSON with scores 0-100 for whitespaceBalance, hierarchyStrength, compositionUniqueness, imageRhythm, ctaProminence, premiumFeel and arrays issues, refinementActions. Iteration=${i}. Business=${schema.brand.businessName}, category=${schema.brand.category}.`;
-      traceLog(options, "CRITIQUE_LOOP", `critique_prompt_iter_${i}`, prompt);
-      const raw = await options.llmJson(prompt, `visual-critique-iter-${i}`);
-      traceLog(options, "CRITIQUE_LOOP", `critique_raw_iter_${i}`, raw);
-      let parsedCritique = null;
-      try {
-        parsedCritique = JSON.parse(raw);
-        traceLog(
-          options,
-          "CRITIQUE_LOOP",
-          `critique_parsed_iter_${i}`,
-          parsedCritique
-        );
-      } catch (e) {
-        traceLog(
-          options,
-          "CRITIQUE_LOOP",
-          `critique_parse_error_iter_${i}`,
-          String(e)
-        );
-      }
-      if (parsedCritique) {
-        lastCritique = parsedCritique;
-        const before = JSON.parse(JSON.stringify(tokens));
-        applyCritiqueRefinements(tokens, parsedCritique);
-        const after = JSON.parse(JSON.stringify(tokens));
-        traceLog(options, "CRITIQUE_LOOP", `tokens_before_after_iter_${i}`, {
-          before,
-          after
-        });
-      }
-    } catch (e) {
-      traceLog(
-        options,
-        "CRITIQUE_LOOP",
-        `critique_exception_iter_${i}`,
-        String(e)
-      );
-    }
-    html = renderCompositionHtml(schema, tokens);
-    traceLog(options, "CRITIQUE_LOOP", `html_after_iter_${i}`, html);
-  }
-  try {
-    const finalHtml = html;
-    const tokenTrace = { before: tokensBeforeCritique, after: tokens };
-    for (const key of Object.keys(tokens)) {
-      tokenTrace.after[key] = tokens[key];
-      try {
-        const asString = JSON.stringify(tokens[key]);
-        tokenTrace.after[key + "_usedInHtml"] = finalHtml.includes(asString) || finalHtml.includes(String(tokens[key]));
-      } catch (e) {
-        tokenTrace.after[key + "_usedInHtml"] = false;
-      }
-    }
-    traceLog(options, "DESIGN_TOKEN_TRACE", "token_trace_summary", tokenTrace);
-  } catch (e) {
-    traceLog(options, "DESIGN_TOKEN_TRACE", "error", String(e));
-  }
-  try {
-    const repeats = {};
-    const heroCount = schema.sections.filter((s) => s.type === "hero").length;
-    repeats.repeated_hero_count = heroCount;
-    const ctaCount = schema.sections.filter((s) => s.type === "cta").length;
-    repeats.repeated_cta_count = ctaCount;
-    const layoutCounts = {};
-    schema.sections.forEach((s) => {
-      const layout = (s.layout || s.variant || "standard").toString();
-      layoutCounts[layout] = (layoutCounts[layout] || 0) + 1;
-    });
-    repeats.layoutCounts = layoutCounts;
-    repeats.spacingPatterns = tokens.spacing;
-    repeats.typography = tokens.typography;
-    traceLog(options, "REPETITION_DETECTION", "repetition_report", repeats);
-  } catch (e) {
-    traceLog(options, "REPETITION_DETECTION", "error", String(e));
-  }
-  schema._wordpressHtml = html;
-  schema._renderSource = "visual-intelligence-pipeline";
-  schema._pipeline = {
-    intelligence,
-    strategy,
-    moodboard,
-    compositionPlan,
-    critique: lastCritique,
-    tokens
-  };
-  if (options.debugSession) {
-    options.persistGenerationDebugFile(
-      options.debugSession,
-      "00-business-intelligence.json",
-      intelligence
-    );
-    options.persistGenerationDebugFile(
-      options.debugSession,
-      "00-brand-strategy.json",
-      strategy
-    );
-    options.persistGenerationDebugFile(
-      options.debugSession,
-      "00-visual-moodboard.json",
-      moodboard
-    );
-    options.persistGenerationDebugFile(
-      options.debugSession,
-      "00-layout-composition-plan.json",
-      compositionPlan
-    );
-    options.persistGenerationDebugFile(
-      options.debugSession,
-      "00-visual-tokens.json",
-      tokens
-    );
-    options.persistGenerationDebugFile(
-      options.debugSession,
-      "00-critique-loop.json",
-      lastCritique || {}
-    );
-    options.persistGenerationDebugFile(
-      options.debugSession,
-      "05c-wordpress-html-final.html",
-      html
-    );
-    try {
-      const uniquenessCheck = {
-        sectionSequence: schema.sections.map((s) => s.type).join(" \u2192 "),
-        sectionCount: schema.sections.length,
-        heroMode: schema._pipeline?.compositionPlan?.heroMode,
-        asymmetryBias: schema._pipeline?.compositionPlan?.asymmetryBias,
-        depthBias: schema._pipeline?.compositionPlan?.depthBias
-      };
-      traceLog(
-        options,
-        "UNIQUENESS_CHECK",
-        "composition_summary",
-        uniquenessCheck
-      );
-    } catch (e) {
-      traceLog(options, "UNIQUENESS_CHECK", "error", String(e));
-    }
-  }
-  options.logStderr(
-    `[VisualPipeline] Completed with renderSource=visual-intelligence-pipeline`
-  );
-  return schema;
-}
-var init_visual_intelligence_pipeline = __esm({
-  "src/lib/visual-intelligence-pipeline.ts"() {
-    init_industry_psychology_engine();
-    init_layout_dna_engine();
-    init_website_memory_engine();
-    init_composition_renderer();
   }
 });
 
@@ -2899,43 +1585,234 @@ async function generateWebsiteContent(business, options) {
   }
   try {
     options.logStderr(
-      "[Visual Pipeline] Starting multi-stage visual intelligence generation..."
+      "[Gemini] Running direct deterministic homepage generation..."
     );
-    const { generateWebsiteWithVisualIntelligence: generateWebsiteWithVisualIntelligence2 } = await Promise.resolve().then(() => (init_visual_intelligence_pipeline(), visual_intelligence_pipeline_exports));
-    const schema = await generateWebsiteWithVisualIntelligence2(business, {
+    const { generateHomepageViaDirectVertexPrompt: generateHomepageViaDirectVertexPrompt2 } = await Promise.resolve().then(() => (init_direct_vertex_homepage_generation(), direct_vertex_homepage_generation_exports));
+    return await generateHomepageViaDirectVertexPrompt2(business, {
+      debugLog: options.logStderr,
       debugSession: options.debugSession,
-      logStderr: options.logStderr,
-      persistGenerationDebugFile: options.persistGenerationDebugFile,
-      appendGenerationDebugError: options.appendGenerationDebugError,
-      llmJson: async (promptOrContents, contextLabel) => {
-        return generateWithFallback(
-          promptOrContents,
-          { temperature: 0.65, responseMimeType: "application/json" },
-          { ...options, contextLabel }
-        );
-      }
+      persistFile: (filename, content) => {
+        if (options.persistGenerationDebugFile && options.debugSession) {
+          options.persistGenerationDebugFile(options.debugSession, filename, content);
+        }
+      },
+      throttleGemini: options.throttleGemini
     });
+  } catch (error) {
     options.logStderr(
-      "[Visual Pipeline] Success. Using composition-first render output."
+      `[Gemini] Direct homepage generation failed. Error: ${error instanceof Error ? error.message : String(error)}`
     );
-    return schema;
-  } catch (visualPipelineError) {
-    options.logStderr(
-      `[Visual Pipeline] Failed. Falling back to legacy pipeline. Error: ${visualPipelineError instanceof Error ? visualPipelineError.message : String(visualPipelineError)}`
-    );
-    if (options.debugSession) {
+    if (options.debugSession && options.appendGenerationDebugError) {
       options.appendGenerationDebugError(
         options.debugSession,
-        `visual_pipeline_failed: ${visualPipelineError instanceof Error ? visualPipelineError.message : String(visualPipelineError)}`
+        `generation_failed: ${error instanceof Error ? error.message : String(error)}`
       );
     }
-    return generateWebsiteContentLegacy(business, options);
+    throw error;
   }
 }
 var API_URL;
 var init_gemini = __esm({
   "src/lib/gemini.ts"() {
     API_URL = process.env?.VITE_API_URL || "http://localhost:5001";
+  }
+});
+
+// src/lib/direct-vertex-homepage-generation.ts
+var direct_vertex_homepage_generation_exports = {};
+__export(direct_vertex_homepage_generation_exports, {
+  buildHomepageGenerationRequest: () => buildHomepageGenerationRequest,
+  default: () => direct_vertex_homepage_generation_default,
+  generateHomepageViaDirectVertexPrompt: () => generateHomepageViaDirectVertexPrompt
+});
+function collectBusinessImages(business) {
+  const sources = [];
+  if (Array.isArray(business.photos)) {
+    sources.push(...business.photos);
+  }
+  if (Array.isArray(business.imageSuggestions)) {
+    sources.push(...business.imageSuggestions);
+  }
+  if (business.logo) {
+    sources.push(business.logo);
+  }
+  return sources;
+}
+function buildHomepageGenerationRequest(business) {
+  const images = collectBusinessImages(business);
+  const [hero, service1, service2, ...gallery] = images;
+  return {
+    business_name: business.name || "Untitled Business",
+    business_category: business.category || business.businessType || "Local Service",
+    short_tagline: business.tagline || business.shortTagline || `${business.category || "Service"} in ${business.neighborhood || business.city || "Your Area"}`,
+    one_sentence_summary: business.summary || business.oneSentenceSummary || `Trusted ${business.category || "service provider"} serving the ${business.neighborhood || business.city || "local"} community.`,
+    primary_cta_text: business.cta_primary_text || "Get Started Today",
+    primary_cta_url: business.cta_primary_url || business.websiteUri || "#contact",
+    secondary_cta_text: business.cta_secondary_text || "Learn More",
+    secondary_cta_url: business.cta_secondary_url || business.websiteUri || "#services",
+    phone: business.phoneNumber || business.phone || "Contact for availability",
+    address: business.address || business.location || "See directions on map",
+    maps_url: business.mapsUrl || `https://maps.google.com/?q=${encodeURIComponent(business.name || "location")}`,
+    hours: business.hours || business.businessHours || "Call for hours of operation",
+    services: business.services && Array.isArray(business.services) ? business.services.slice(0, 5).map((s) => ({
+      title: typeof s === "string" ? s : s.title || s.name || "Service",
+      short_description: typeof s === "string" ? `Professional ${s} service` : s.description || s.short_description || `Professional ${s.title} service`,
+      image_url: s.image_url || s.photo || service1
+    })) : [],
+    categories: business.categories || [business.category],
+    reviews: business.reviews && Array.isArray(business.reviews) ? business.reviews.slice(0, 6).map((r) => ({
+      author: r.author || r.reviewerName || "Customer",
+      rating: r.rating || r.stars || 5,
+      text: r.text || r.review || r.comment || "Excellent service and highly recommended",
+      date: r.date || r.reviewDate
+    })) : [],
+    images: {
+      hero,
+      service1,
+      service2,
+      gallery: gallery || []
+    },
+    colors: {
+      primary: business.brandColor || business.primaryColor || business.color || "#0066cc",
+      accent: business.accentColor || business.highlightColor || "#ff6600",
+      neutral: business.neutralColor || "#f5f5f5"
+    },
+    logo_url: business.logo,
+    local_context: `${business.neighborhood || business.area || business.city || "Local area"}, serving the ${business.city || "community"}`,
+    competitors: business.competitors,
+    trust_logos: business.trustLogos
+  };
+}
+async function callVertexHomepageGeneration(prompt, request, debugLog, options) {
+  const log = debugLog || ((msg) => console.error(msg));
+  log(`[Vertex] Calling unified homepage generation via generateWithFallback...`);
+  log(`[Vertex] Business: ${request.business_name}`);
+  log(`[Vertex] Category: ${request.business_category}`);
+  try {
+    const { generateWithFallback: generateWithFallback2 } = await Promise.resolve().then(() => (init_gemini(), gemini_exports));
+    const responseText = await generateWithFallback2(
+      [
+        {
+          role: "user",
+          parts: [
+            { text: prompt },
+            { text: `
+
+Business Context (JSON):
+${JSON.stringify(request, null, 2)}` }
+          ]
+        }
+      ],
+      {
+        temperature: 0.1,
+        responseMimeType: "application/json"
+      },
+      {
+        logStderr: log,
+        debugSession: options?.debugSession,
+        throttleGemini: options?.throttleGemini || (async () => {
+        }),
+        persistGenerationDebugFile: options?.persistFile ? (session, filename, content) => options.persistFile(filename, content) : void 0,
+        contextLabel: "direct-vertex-prompt"
+      }
+    );
+    if (!responseText) {
+      throw new Error("Vertex returned empty response");
+    }
+    log(`[Vertex] Response received (${responseText.length} characters)`);
+    let jsonString = responseText.trim();
+    if (jsonString.startsWith("```")) {
+      jsonString = jsonString.replace(/^```[a-zA-Z]*\n/, "").replace(/\n```$/, "");
+    }
+    const parsed = JSON.parse(jsonString);
+    if (!parsed.html || !parsed.css || !Array.isArray(parsed.assets)) {
+      throw new Error(
+        "Invalid response structure: missing html, css, or assets"
+      );
+    }
+    log(`[Vertex] Parsed response successfully`);
+    log(
+      `[Vertex] Generated HTML (${parsed.html.length} chars), CSS (${parsed.css.length} chars)`
+    );
+    return parsed;
+  } catch (error) {
+    log(
+      `[Vertex] Generation failed: ${error instanceof Error ? error.message : String(error)}`
+    );
+    throw error;
+  }
+}
+function wrapForWordPress(homepageResult) {
+  const cssBlock = `<!-- wp:html -->
+<style>
+${homepageResult.css}
+</style>
+<!-- /wp:html -->`;
+  const htmlBlock = `<!-- wp:group {"layout":{"type":"constrained"}} -->
+<div class="wp-block-group">
+${homepageResult.html}
+</div>
+<!-- /wp:group -->`;
+  return `${cssBlock}
+
+${htmlBlock}`;
+}
+async function generateHomepageViaDirectVertexPrompt(business, options) {
+  const log = options?.debugLog || ((msg) => console.error(msg));
+  const persist = options?.persistFile || ((filename, content) => {
+  });
+  try {
+    const request = buildHomepageGenerationRequest(business);
+    persist("01-homepage-generation-request.json", request);
+    log(`[DirectVertex] Starting deterministic homepage generation...`);
+    const response = await callVertexHomepageGeneration(
+      VERTEX_HOMEPAGE_GENERATION_PROMPT,
+      request,
+      log,
+      options
+    );
+    persist("02-vertex-response.json", response);
+    const wpSafeHtml = wrapForWordPress(response);
+    persist("03-wordpress-wrapped.html", wpSafeHtml);
+    const schema = {
+      id: business.id || `homepage-${Date.now()}`,
+      businessId: business.id,
+      businessName: business.name || "Untitled",
+      theme: {
+        primaryColor: request.colors?.primary || "#0066cc",
+        accentColor: request.colors?.accent || "#ff6600",
+        neutralColor: request.colors?.neutral || "#f5f5f5",
+        name: "modern-agency",
+        mode: "light"
+      },
+      sections: [],
+      createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+      // Store the generated HTML/CSS for WordPress rendering
+      _wordpressHtml: wpSafeHtml,
+      _renderSource: "direct-vertex-prompt",
+      _generatedHomepage: response
+    };
+    persist("04-minimal-schema.json", schema);
+    log(`[DirectVertex] Homepage generation complete`);
+    return schema;
+  } catch (error) {
+    log(
+      `[DirectVertex] Failed: ${error instanceof Error ? error.message : String(error)}`
+    );
+    throw error;
+  }
+}
+var GENAI_KEY, direct_vertex_homepage_generation_default;
+var init_direct_vertex_homepage_generation = __esm({
+  "src/lib/direct-vertex-homepage-generation.ts"() {
+    init_vertex_homepage_generation_prompt();
+    GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
+    direct_vertex_homepage_generation_default = {
+      generateHomepageViaDirectVertexPrompt,
+      buildHomepageGenerationRequest,
+      callVertexHomepageGeneration,
+      wrapForWordPress
+    };
   }
 });
 
@@ -4618,457 +3495,7 @@ async function pollQueue() {
 
 // server.ts
 init_premium_site_builder();
-
-// src/lib/vertex-homepage-generation-prompt.ts
-var VERTEX_HOMEPAGE_GENERATION_PROMPT = `You are a professional agency web design engine specializing in modern local business websites built for WordPress.
-
-Your task: using ONLY the full business context provided in the input variables below, generate ONE final production-ready WordPress-safe homepage as a JSON object with exactly these keys: "html", "css", "assets", "notes". Return ONLY valid JSON. No other text.
-
-============================================
-INPUT VARIABLES (provided by caller)
-============================================
-- business_name (string)
-- business_category (string)
-- short_tagline (string)
-- one_sentence_summary (string)
-- primary_cta_text (string)
-- primary_cta_url (string)
-- secondary_cta_text (string)
-- secondary_cta_url (string)
-- phone (string)
-- address (string)
-- maps_url (string)
-- hours (string or array)
-- services (array of {title, short_description, image_url})
-- categories (array of strings)
-- reviews (array of {author, rating (1-5), text, date})
-- images (object with keys: hero, service1, service2, gallery[]; each value is absolute URL)
-- colors (object: primary, accent, neutral - optional)
-- logo_url (string - optional)
-- local_context (string - neighborhood/city/region)
-- competitors (array - optional)
-- trust_logos (array of {name, url} - optional)
-
-============================================
-OUTPUT FORMAT (REQUIRED)
-============================================
-Return a JSON object with exactly these keys:
-
-{
-  "html": "...",     // HTML fragment only (no <html>/<head>/<body> tags)
-  "css": "...",       // Full CSS stylesheet string (no <link> tags, scoped under .ds-homepage)
-  "assets": [...],    // Array of image objects used
-  "notes": "..."      // Brief fallback decisions
-}
-
-============================================
-HTML REQUIREMENTS
-============================================
-
-Structure:
-- Wrap entire HTML in a single top-level container with class "ds-homepage"
-- Use semantic HTML: <header>, <main>, <section>, <footer>
-- Do NOT include <html>, <head>, or <body> tags
-- Build a REAL business homepage with:
-  * ONE dominant hero section (strongest image + emotional headline + 1 primary CTA)
-  * Clear business introduction (what they do)
-  * Services section (with real service descriptions from input)
-  * Trust/proof section (at least two real review excerpts)
-  * Gallery or supporting imagery section
-  * Contact/location block with tel: and maps_url links
-
-Copy & Tone:
-- MUST be business-specific, derived from input context
-- MUST sound like a real local business (human, trustworthy, practical)
-- MUST avoid generic AI phrases: "premium solutions", "elevate", "transform", "cutting-edge", "innovative", "elevate your experience"
-- Use concrete service descriptions from the services array
-- Use locality signals from local_context or address
-- Use at least TWO real review excerpts from the reviews array
-- Copy should immediately communicate: what they do, why they're trustworthy, what services they offer, how to contact them
-
-Image Usage (CRITICAL):
-- Identify the STRONGEST provided image and use it as the hero image (dominant visual focal point)
-- Use remaining images only as supporting visuals (services, gallery)
-- Do NOT treat all images equally or use random image placement
-- If images are weak or missing, state fallback in "notes" and prefer typographic hero with solid accent background
-- Include alt text derived from business name and service context
-
-Imagery Specifics:
-- Use only provided image URLs (do not invent external images)
-- For hero: use colors.primary or colors.accent as overlay if needed for contrast
-- For gallery: arrange remaining images with clear visual hierarchy
-- If image URL missing: document in notes and use fallback solid color
-
-Accessibility:
-- Ensure body text has WCAG AA color contrast
-- Provide accessible labels for all CTAs
-- Include proper alt text for all images
-- Use semantic HTML for structure
-
-WordPress Safety (CRITICAL):
-- Do NOT include <script> tags or inline JavaScript code
-- Do NOT include event handlers (onclick, onload, etc.)
-- Do NOT rely on external JS libraries
-- Use CSS-only animations and transitions
-- Use anchor links and tel: links for interactivity
-- Avoid fragile absolute positioning; use flexbox/grid
-- Ensure selectors work if Gutenberg wraps the DOM
-
-============================================
-CSS REQUIREMENTS
-============================================
-
-Scope & Structure:
-- Scope ALL CSS under .ds-homepage selectors (no global rules)
-- Single stylesheet string (no @import, no external fonts, no <link> tags)
-- Use semantic, scoped class names
-- Keep CSS compact (~600-800 lines max)
-
-Responsive Design:
-- Mobile-first approach
-- Provide breakpoints for tablet (640px+) and desktop (1024px+)
-- Use modern CSS: flexbox, grid, clamp(), min(), max()
-- Use percent widths and clamp() for fluid scaling
-- Test that layout doesn't break when wrapped by Gutenberg
-
-Visual Design:
-- Strong spacing rhythm and hierarchy
-- Restrained, modern styling
-- Layered sections with clear visual separation
-- Use system font stack (no external font links)
-- Subtle animations only (use prefers-reduced-motion support)
-
-Effects & Styling:
-- Avoid: fragile absolute positioning, excessive glassmorphism, excessive gradients, unnecessary animation systems
-- Use: stable flexbox/grid, clean spacing, readable typography, restrained effects
-- Prefer solid backgrounds and clear contrast over decorative overlays
-
-Animations:
-- Keep animations subtle (fade, slide, scale)
-- Use CSS transforms and opacity only (GPU-friendly)
-- Include prefers-reduced-motion: reduce support
-- Avoid heavy keyframe animations
-
-============================================
-ASSETS ARRAY
-============================================
-
-Return array of image objects actually used:
-[
-  {
-    "role": "hero" | "service" | "gallery" | "logo",
-    "url": "absolute URL",
-    "width": number or null,
-    "height": number or null,
-    "alt": "derived alt text"
-  },
-  ...
-]
-
-Only include images that appear in the HTML.
-If image is missing, document in "notes" instead.
-
-============================================
-IMPORTANT DESIGN RULES
-============================================
-
-Homepage Must Resemble:
-- A professionally designed modern local business website built by a real agency
-- NOT: an AI experiment, composition demo, cinematic prototype, or design showcase
-
-Prioritize:
-- Clarity
-- Trust and credibility
-- Services and offerings
-- Contact intent
-- Business authenticity
-
-Avoid:
-- Repetitive left/right split sections
-- Equal-weight sections (no visual hierarchy)
-- Endless cards or lists
-- SaaS startup templates
-- FAQ spam
-- Abstract editorial experiments
-- Design flourishes that don't serve the business
-
-Visual Hierarchy:
-- One DOMINANT hero section
-- One strong focal image
-- One clear primary CTA
-- Supporting sections with decreasing visual intensity
-- Strong spacing and typographic hierarchy
-
-Section Structure (Recommended):
-1. Hero: image + headline + subheading + primary CTA
-2. Intro/Why Us: 1-2 sentences about the business
-3. Services: 3-5 key services with descriptions (no repetitive cards)
-4. Trust/Proof: 2-3 review quotes + ratings + maybe logos if provided
-5. Gallery: 4-6 supporting images (clean grid)
-6. CTA: one more conversion moment
-7. Contact/Location: phone + address + maps link + hours
-
-Avoid Patterns:
-- Do NOT generate 10+ equal-weight cards
-- Do NOT create repeated left-image / right-text sections
-- Do NOT generate generic startup FAQ sections
-- Do NOT use abstract section titles like "Discover", "Elevate", "Transform"
-- Do NOT add unnecessary complexity
-
-Copy Constraints:
-- Real business language only
-- No marketing clich\xE9s
-- Grounded, practical, trustworthy tone
-- Services should reflect the actual business category
-- CTAs should be clear and action-oriented
-
-============================================
-WORDPRESS INTEGRATION
-============================================
-
-The output must work with the existing WordPress render/deploy flow:
-- HTML will be inserted into WordPress post content
-- CSS will be scoped and injected via wp:html blocks
-- Gutenberg may wrap or add additional div/block containers
-- Output must survive DOM wrapping and style injection
-
-Guardrails:
-- No script dependencies
-- No inline event handlers
-- CSS scoped to prevent theme conflicts
-- Use standard, well-supported CSS (avoid cutting-edge features)
-- Responsive layout that works with common WP constraints
-
-============================================
-DETERMINISM & OUTPUT
-============================================
-
-Generation Settings (caller will apply):
-- Temperature: 0.1 (for consistency)
-- Top_p: 0.95
-- Max tokens: 6000
-- Stop: none (parse JSON output)
-
-Output:
-- MUST be valid JSON only
-- MUST contain exactly 4 keys: html, css, assets, notes
-- MUST NOT include any explanatory text, markdown, or code fences
-- MUST be parseable and ready for immediate injection into the pipeline
-
-Final Quality Gate:
-The homepage should feel like:
-\u2713 A real professionally built WordPress business homepage
-\u2713 Something a customer would be proud to see as their new site
-\u2713 Immediately clear what the business does and how to contact them
-
-NOT:
-\u2717 An AI experiment
-\u2717 A design showcase
-\u2717 An architectural prototype
-\u2717 An experimental rendering system demo
-\u2717 A composition or art direction study
-
-If you cannot generate perfect output for any reason, prefer clarity and simplicity over ambitious but fragile design.
-`;
-
-// src/lib/direct-vertex-homepage-generation.ts
-var GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
-function collectBusinessImages(business) {
-  const sources = [];
-  if (Array.isArray(business.photos)) {
-    sources.push(...business.photos);
-  }
-  if (Array.isArray(business.imageSuggestions)) {
-    sources.push(...business.imageSuggestions);
-  }
-  if (business.logo) {
-    sources.push(business.logo);
-  }
-  return sources;
-}
-function buildHomepageGenerationRequest(business) {
-  const images = collectBusinessImages(business);
-  const [hero, service1, service2, ...gallery] = images;
-  return {
-    business_name: business.name || "Untitled Business",
-    business_category: business.category || business.businessType || "Local Service",
-    short_tagline: business.tagline || business.shortTagline || `${business.category || "Service"} in ${business.neighborhood || business.city || "Your Area"}`,
-    one_sentence_summary: business.summary || business.oneSentenceSummary || `Trusted ${business.category || "service provider"} serving the ${business.neighborhood || business.city || "local"} community.`,
-    primary_cta_text: business.cta_primary_text || "Get Started Today",
-    primary_cta_url: business.cta_primary_url || business.websiteUri || "#contact",
-    secondary_cta_text: business.cta_secondary_text || "Learn More",
-    secondary_cta_url: business.cta_secondary_url || business.websiteUri || "#services",
-    phone: business.phoneNumber || business.phone || "Contact for availability",
-    address: business.address || business.location || "See directions on map",
-    maps_url: business.mapsUrl || `https://maps.google.com/?q=${encodeURIComponent(business.name || "location")}`,
-    hours: business.hours || business.businessHours || "Call for hours of operation",
-    services: business.services && Array.isArray(business.services) ? business.services.slice(0, 5).map((s) => ({
-      title: typeof s === "string" ? s : s.title || s.name || "Service",
-      short_description: typeof s === "string" ? `Professional ${s} service` : s.description || s.short_description || `Professional ${s.title} service`,
-      image_url: s.image_url || s.photo || service1
-    })) : [],
-    categories: business.categories || [business.category],
-    reviews: business.reviews && Array.isArray(business.reviews) ? business.reviews.slice(0, 6).map((r) => ({
-      author: r.author || r.reviewerName || "Customer",
-      rating: r.rating || r.stars || 5,
-      text: r.text || r.review || r.comment || "Excellent service and highly recommended",
-      date: r.date || r.reviewDate
-    })) : [],
-    images: {
-      hero,
-      service1,
-      service2,
-      gallery: gallery || []
-    },
-    colors: {
-      primary: business.brandColor || business.primaryColor || business.color || "#0066cc",
-      accent: business.accentColor || business.highlightColor || "#ff6600",
-      neutral: business.neutralColor || "#f5f5f5"
-    },
-    logo_url: business.logo,
-    local_context: `${business.neighborhood || business.area || business.city || "Local area"}, serving the ${business.city || "community"}`,
-    competitors: business.competitors,
-    trust_logos: business.trustLogos
-  };
-}
-async function callVertexHomepageGeneration(prompt, request, debugLog) {
-  const log = debugLog || ((msg) => console.error(msg));
-  const apiKey = GENAI_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_CLOUD_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      "Gemini API key not found. Set GEMINI_API_KEY or GENAI_KEY environment variable."
-    );
-  }
-  const restUrl = process.env.GEMINI_REST_URL || "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
-  const url = `${restUrl}${restUrl.includes("?") ? "&" : "?"}key=${apiKey}`;
-  log(`[Vertex] Calling homepage generation endpoint...`);
-  log(`[Vertex] Business: ${request.business_name}`);
-  log(`[Vertex] Category: ${request.business_category}`);
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt
-              },
-              {
-                text: `
-
-Business Context (JSON):
-${JSON.stringify(request, null, 2)}`
-              }
-            ]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.1,
-          // Deterministic
-          topP: 0.95,
-          maxOutputTokens: 6e3,
-          stopSequences: []
-        }
-      })
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Vertex API error ${response.status}: ${errorText.slice(0, 500)}`
-      );
-    }
-    const data = await response.json();
-    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    if (!responseText) {
-      throw new Error("Vertex returned empty response");
-    }
-    log(`[Vertex] Response received (${responseText.length} characters)`);
-    let jsonString = responseText;
-    const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) {
-      jsonString = jsonMatch[1];
-    }
-    const parsed = JSON.parse(jsonString);
-    if (!parsed.html || !parsed.css || !Array.isArray(parsed.assets)) {
-      throw new Error(
-        "Invalid response structure: missing html, css, or assets"
-      );
-    }
-    log(`[Vertex] Parsed response successfully`);
-    log(
-      `[Vertex] Generated HTML (${parsed.html.length} chars), CSS (${parsed.css.length} chars)`
-    );
-    return parsed;
-  } catch (error) {
-    log(
-      `[Vertex] Generation failed: ${error instanceof Error ? error.message : String(error)}`
-    );
-    throw error;
-  }
-}
-function wrapForWordPress(homepageResult) {
-  const cssBlock = `<!-- wp:html -->
-<style>
-${homepageResult.css}
-</style>
-<!-- /wp:html -->`;
-  const htmlBlock = `<!-- wp:group {"layout":{"type":"constrained"}} -->
-<div class="wp-block-group">
-${homepageResult.html}
-</div>
-<!-- /wp:group -->`;
-  return `${cssBlock}
-
-${htmlBlock}`;
-}
-async function generateHomepageViaDirectVertexPrompt(business, options) {
-  const log = options?.debugLog || ((msg) => console.error(msg));
-  const persist = options?.persistFile || ((filename, content) => {
-  });
-  try {
-    const request = buildHomepageGenerationRequest(business);
-    persist("01-homepage-generation-request.json", request);
-    log(`[DirectVertex] Starting deterministic homepage generation...`);
-    const response = await callVertexHomepageGeneration(
-      VERTEX_HOMEPAGE_GENERATION_PROMPT,
-      request,
-      log
-    );
-    persist("02-vertex-response.json", response);
-    const wpSafeHtml = wrapForWordPress(response);
-    persist("03-wordpress-wrapped.html", wpSafeHtml);
-    const schema = {
-      id: business.id || `homepage-${Date.now()}`,
-      businessId: business.id,
-      businessName: business.name || "Untitled",
-      theme: {
-        primaryColor: request.colors?.primary || "#0066cc",
-        accentColor: request.colors?.accent || "#ff6600",
-        neutralColor: request.colors?.neutral || "#f5f5f5",
-        name: "modern-agency",
-        mode: "light"
-      },
-      sections: [],
-      createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-      // Store the generated HTML/CSS for WordPress rendering
-      _wordpressHtml: wpSafeHtml,
-      _renderSource: "direct-vertex-prompt",
-      _generatedHomepage: response
-    };
-    persist("04-minimal-schema.json", schema);
-    log(`[DirectVertex] Homepage generation complete`);
-    return schema;
-  } catch (error) {
-    log(
-      `[DirectVertex] Failed: ${error instanceof Error ? error.message : String(error)}`
-    );
-    throw error;
-  }
-}
-
-// server.ts
+init_direct_vertex_homepage_generation();
 fs3.writeSync(
   2,
   `[BOOT] Server process starting at ${(/* @__PURE__ */ new Date()).toISOString()}
@@ -6000,7 +4427,7 @@ function parseWebsiteSchemaOutput(rawText, business, debugSession) {
     return null;
   }
 }
-function hashSeed2(input) {
+function hashSeed(input) {
   let hash = 0;
   for (let i = 0; i < input.length; i++) {
     hash = hash * 31 + input.charCodeAt(i) | 0;
@@ -6085,7 +4512,7 @@ function buildSectionOrderPattern(category, seed) {
   return pickBySeed(patterns, seed + 41);
 }
 function ensureNonTemplateCopy(schema, business) {
-  const seed = hashSeed2(
+  const seed = hashSeed(
     `${business.id || business.name || "lead"}-${business.category || "category"}`
   );
   const categoryLabel = business.category || schema.brand.category || "local business";
@@ -6946,7 +5373,7 @@ function buildCategorySpecificFaqs(category, businessName, seed) {
 function createFallbackWebsiteSchema(business) {
   const siteName = business.name || "Demo Business";
   const categoryLabel = business.category || "local business";
-  const copySeed = hashSeed2(`${business.id || siteName}-${categoryLabel}`);
+  const copySeed = hashSeed(`${business.id || siteName}-${categoryLabel}`);
   const design = pickDesignProfile(business.category || "", copySeed);
   const imagePool = collectBusinessImages2(business);
   const layoutVariant = pickBySeed(
@@ -7799,7 +6226,8 @@ app.post("/api/generate-v2", async (req, res) => {
       debugSession,
       persistFile: (filename, content) => {
         persistGenerationDebugFile(debugSession, filename, content);
-      }
+      },
+      throttleGemini: () => throttleGemini()
     });
     logStderr(
       `[GenerateV2] complete traceId=${debugSession.traceId} renderSource=direct-vertex-prompt`
