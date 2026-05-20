@@ -133,8 +133,13 @@ Responsive Design & Sticky Navigation:
 - Mobile-first approach.
 - Provide breakpoints for tablet (640px+) and desktop (1024px+).
 - Use modern CSS: flexbox, grid, clamp(), min(), max() for fluid scaling.
-- Header styling must be sticky:
-  '.ds-header { position: sticky; top: 0; background: #ffffff; z-index: 1000; box-shadow: 0 2px 15px rgba(0,0,0,0.05); transition: background-color 0.3s ease; }'
+- MODERN STICKY HEADER (GLASSMORPHISM): The header styling must feel extremely premium, using a frosted-glass blur effect:
+  '.ds-header { position: sticky; top: 0; z-index: 1000; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px) saturate(180%); -webkit-backdrop-filter: blur(12px) saturate(180%); border-bottom: 1px solid rgba(0, 0, 0, 0.06); box-shadow: 0 4px 30px rgba(0,0,0,0.03); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); padding: 1.25rem 0; }'
+- NAV LINK HOVER EFFECT (SLIDING UNDERLINE): Navigation links must have a modern sliding underline on hover. Design it like:
+  '.ds-nav-link { position: relative; padding: 0.5rem 0; font-weight: 500; color: rgba(15, 23, 42, 0.8); transition: color 0.3s ease; }'
+  '.ds-nav-link::after { content: ""; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: var(--ds-primary); transform: scaleX(0); transform-origin: right; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }'
+  '.ds-nav-link:hover { color: var(--ds-primary); }'
+  '.ds-nav-link:hover::after { transform: scaleX(1); transform-origin: left; }'
 - Pure CSS Mobile Hamburger Hack:
   - Hide '.ds-mobile-menu-toggle' with 'display: none;'.
   - On mobile, display '.ds-mobile-menu-label' styled as a clean hamburger (3 lines or neat layout).
@@ -157,8 +162,14 @@ Hero Refinement:
 
 Lightweight Interaction & Animations:
 - Subtle transitions: '.ds-homepage * { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }'
-- Hover Lift: Lift buttons and cards slightly: 'transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.06);' on hover.
-- Image Zoom: Wrap images in containers with 'overflow: hidden; border-radius: inherit;' and scale image on hover: 'transform: scale(1.04);'.
+- ENTRANCE FADE-IN & SLIDE-UP ANIMATIONS: Implement a keyframe animation to make the elements animate in beautifully on page load. Define:
+  '@keyframes dsFadeInUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }'
+  Apply this keyframe animation to hero content title/p/actions (with staggered animation-delays like '0.1s', '0.2s', '0.3s' using 'animation: dsFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;'), intro headers, services cards, and testimonial blocks.
+- PREMIUM FLOATING BACKGROUND GRADIENTS: To make the page look like a high-end modern custom-designed website, add one or two subtle floating background glow circles (using a slow CSS float keyframe animation with low opacity brand colors):
+  '@keyframes dsFloat { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(4%, 4%) scale(1.05); } 100% { transform: translate(0, 0) scale(1); } }'
+  and apply it to soft blurred absolute-positioned circles with 'pointer-events: none; z-index: 1; filter: blur(80px); opacity: 0.1;'.
+- Hover Lift: Lift buttons and cards slightly: 'transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.08);' on hover.
+- Image Zoom: Wrap images in containers with 'overflow: hidden; border-radius: inherit;' and scale image on hover: 'transform: scale(1.05);'.
 - Accessibility support: '@media (prefers-reduced-motion: reduce) { .ds-homepage * { transition: none !important; transform: none !important; animation: none !important; } }'
 
 ============================================
