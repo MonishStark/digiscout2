@@ -4221,40 +4221,90 @@ Rules for your responses:
 			Connection: "keep-alive",
 		});
 
-		// 7. Generate content from Gemini (try SDK first, fallback to REST API)
+		// 7. Generate content from Gemini (try Vertex AI first, then SDK, then REST fallback)
 		let fullResponseText = "";
 		let fallbackUsed = false;
 
-		const genAI = await getSDKGenAI();
-		if (genAI) {
+		const googleCloudApiKey = process.env.GOOGLE_CLOUD_API_KEY;
+		if (googleCloudApiKey) {
 			try {
-				console.log(
-					"[AI Chat] Attempting SDK generation with gemini-3.1-pro-preview...",
-				);
+				console.log("[AI Chat] Attempting primary Vertex AI generation...");
+				const apiEndpoint = process.env.VERTEX_API_ENDPOINT || "aiplatform.googleapis.com";
+				const modelId = "gemini-3.1-pro-preview";
+				const generateContentApi = "generateContent";
+				const vertexUrl = `https://${apiEndpoint}/v1/publishers/google/models/${modelId}:${generateContentApi}?key=${googleCloudApiKey}`;
+
 				await throttleGemini();
-				const result = await genAI.models.generateContent({
-					model: "gemini-3.1-pro-preview",
+				const vertexPayload = {
 					contents: chatContents,
-					config: {
-						systemInstruction: systemPrompt,
-						tools: [{ googleSearch: {} }] as any,
+					systemInstruction: {
+						parts: [{ text: systemPrompt }]
 					},
+					generationConfig: {
+						temperature: 0.2
+					},
+					tools: [{ googleSearch: {} }]
+				};
+
+				const res = await fetch(vertexUrl, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(vertexPayload)
 				});
 
-				fullResponseText = result.text || "";
-			} catch (sdkError) {
-				console.warn(
-					"[AI Chat] SDK generation failed, falling back to REST:",
-					sdkError,
-				);
+				if (res.ok) {
+					const data = await res.json() as any;
+					const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+					if (text) {
+						fullResponseText = text;
+						console.log("[AI Chat] Vertex AI generation succeeded!");
+					} else {
+						throw new Error("Vertex response contents parts were empty");
+					}
+				} else {
+					const errText = await res.text().catch(() => "");
+					throw new Error(`Vertex REST failed with status ${res.status}: ${errText}`);
+				}
+			} catch (vertexError) {
+				console.warn("[AI Chat] Vertex AI generation failed, falling back to Public Gemini SDK:", vertexError);
 				fallbackUsed = true;
 			}
 		} else {
-			console.log("[AI Chat] SDK not available, falling back to REST");
 			fallbackUsed = true;
 		}
 
 		if (fallbackUsed || !fullResponseText) {
+			const genAI = await getSDKGenAI();
+			if (genAI) {
+				try {
+					console.log(
+						"[AI Chat] Attempting SDK generation with gemini-3.1-pro-preview...",
+					);
+					await throttleGemini();
+					const result = await genAI.models.generateContent({
+						model: "gemini-3.1-pro-preview",
+						contents: chatContents,
+						config: {
+							systemInstruction: systemPrompt,
+							tools: [{ googleSearch: {} }] as any,
+						},
+					});
+
+					fullResponseText = result.text || "";
+				} catch (sdkError) {
+					console.warn(
+						"[AI Chat] SDK generation failed, falling back to REST:",
+						sdkError,
+					);
+					fallbackUsed = true;
+				}
+			} else {
+				console.log("[AI Chat] SDK not available, falling back to REST");
+				fallbackUsed = true;
+			}
+		}
+
+		if (!fullResponseText) {
 			console.log(
 				"[AI Chat] Attempting REST generation with gemini-flash-latest...",
 			);
