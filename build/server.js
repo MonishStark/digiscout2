@@ -1036,9 +1036,14 @@ __export(gemini_exports, {
 });
 async function generateWebsite(business) {
   try {
+    const token = localStorage.getItem("ds_token");
+    const headers = { "Content-Type": "application/json" };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
     const resp = await fetch(`${API_URL}/api/generate`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(business)
     });
     if (!resp.ok) {
@@ -1073,8 +1078,14 @@ We created a prototype website at ${websiteUrl}.`;
 }
 async function fetchLeadAIChatHistory(leadId) {
   try {
+    const token = localStorage.getItem("ds_token");
+    const headers = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
     const resp = await fetch(
-      `${API_URL}/api/business-ai-chat/${encodeURIComponent(leadId)}`
+      `${API_URL}/api/business-ai-chat/${encodeURIComponent(leadId)}`,
+      { headers }
     );
     if (!resp.ok) {
       throw new Error("Failed to fetch chat history");
@@ -1087,9 +1098,14 @@ async function fetchLeadAIChatHistory(leadId) {
   }
 }
 async function askBusinessAIChatStream(leadId, businessContext, messages, onChunk, signal) {
+  const token = localStorage.getItem("ds_token");
+  const headers = { "Content-Type": "application/json" };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
   const resp = await fetch(`${API_URL}/api/business-ai-chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ leadId, businessContext, messages }),
     signal
   });
@@ -2150,8 +2166,8 @@ var env_default = process.env;
 import crypto2 from "crypto";
 import cors from "cors";
 import express from "express";
-import fs3 from "fs";
-import path3, { dirname } from "path";
+import fs4 from "fs";
+import path4, { dirname } from "path";
 import { fileURLToPath as fileURLToPath2 } from "url";
 
 // src/lib/callhippo-service.ts
@@ -2450,6 +2466,45 @@ async function initializeDatabase() {
 				INDEX idx_lead_conv (lead_id, conversation_id)
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 		`);
+    await pool.query(`
+			CREATE TABLE IF NOT EXISTS users (
+				id VARCHAR(255) PRIMARY KEY,
+				name VARCHAR(255) NOT NULL,
+				email VARCHAR(255) NOT NULL UNIQUE,
+				password_hash VARCHAR(255) NOT NULL,
+				is_verified BOOLEAN DEFAULT FALSE,
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+		`);
+    await pool.query(`
+			CREATE TABLE IF NOT EXISTS otp_verifications (
+				id INT AUTO_INCREMENT PRIMARY KEY,
+				email VARCHAR(255) NOT NULL,
+				otp_code VARCHAR(10) NOT NULL,
+				expires_at DATETIME NOT NULL,
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				INDEX idx_email_otp (email, otp_code)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+		`);
+    await pool.query(`
+			CREATE TABLE IF NOT EXISTS password_resets (
+				id INT AUTO_INCREMENT PRIMARY KEY,
+				email VARCHAR(255) NOT NULL,
+				token VARCHAR(255) NOT NULL UNIQUE,
+				expires_at DATETIME NOT NULL,
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				INDEX idx_token (token)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+		`);
+    try {
+      await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN user_id VARCHAR(255) NULL AFTER id`);
+    } catch (e) {
+    }
+    try {
+      await pool.query(`ALTER TABLE provisioning_jobs ADD INDEX idx_user_id (user_id)`);
+    } catch (e) {
+    }
     try {
       await pool.query(`ALTER TABLE isolated_deployments ADD COLUMN website_schema JSON NULL AFTER encrypted_admin_password`);
     } catch (e) {
@@ -3576,14 +3631,137 @@ async function pollQueue() {
 
 // server.ts
 init_direct_vertex_homepage_generation();
-fs3.writeSync(
+
+// src/lib/mailer.ts
+import nodemailer from "nodemailer";
+import fs3 from "fs";
+import path3 from "path";
+function logEmailLocally(to, subject, body) {
+  const logDir = path3.join(process.cwd(), ".debug-generation");
+  if (!fs3.existsSync(logDir)) {
+    fs3.mkdirSync(logDir, { recursive: true });
+  }
+  const logPath = path3.join(logDir, "sent_emails.log");
+  const entry = `[${(/* @__PURE__ */ new Date()).toISOString()}] To: ${to}
+Subject: ${subject}
+Body:
+${body}
+==================================================
+
+`;
+  fs3.appendFileSync(logPath, entry, "utf8");
+  console.log(`[Mailer] Simulated email saved to ${logPath}`);
+  console.log(`[Mailer] --- simulated email to ${to} ---`);
+  console.log(`Subject: ${subject}`);
+  console.log(body);
+  console.log(`[Mailer] ---------------------------------`);
+}
+async function sendEmail({
+  to,
+  subject,
+  text,
+  html
+}) {
+  const host = process.env.SMTP_HOST;
+  const port = parseInt(process.env.SMTP_PORT || "587", 10);
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const from = process.env.SMTP_FROM || `"DigitalScout" <noreply@digiscout.online>`;
+  if (!host || !user || !pass) {
+    console.warn(`[Mailer] SMTP credentials missing in env. Simulating email send.`);
+    logEmailLocally(to, subject, text || html || "");
+    return { success: true, simulated: true };
+  }
+  try {
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      // true for 465, false for other ports
+      auth: {
+        user,
+        pass
+      }
+    });
+    const info = await transporter.sendMail({
+      from,
+      to,
+      subject,
+      text,
+      html: html || text
+    });
+    console.log(`[Mailer] Email sent: ${info.messageId}`);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error(`[Mailer] Failed to send email via SMTP:`, error);
+    logEmailLocally(to, subject, text || html || "");
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+async function sendOTPEmail(email, otp) {
+  const subject = `Your DigitalScout Verification Code: ${otp}`;
+  const text = `Hello,
+
+Your verification code is: ${otp}
+
+Please enter this code on the verification screen to complete your registration. This code will expire in 15 minutes.
+
+Best regards,
+The DigitalScout Team`;
+  const html = `
+<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+	<h2 style="color: #6366f1; margin-bottom: 24px;">Verify Your Email Address</h2>
+	<p>Hello,</p>
+	<p>Thank you for signing up with DigitalScout! To complete your registration, please use the following verification code:</p>
+	<div style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #1e1b4b; background-color: #f1f5f9; padding: 16px; border-radius: 8px; text-align: center; margin: 24px 0;">
+		${otp}
+	</div>
+	<p style="color: #64748b; font-size: 14px;">This code will expire in 15 minutes. If you did not request this email, you can safely ignore it.</p>
+	<hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+	<p style="color: #94a3b8; font-size: 12px;">\xA9 ${(/* @__PURE__ */ new Date()).getFullYear()} DigitalScout. All rights reserved.</p>
+</div>
+	`;
+  return sendEmail({ to: email, subject, text, html });
+}
+async function sendResetPasswordEmail(email, resetLink) {
+  const subject = `Reset Your DigitalScout Password`;
+  const text = `Hello,
+
+We received a request to reset your password. You can reset it using the following link:
+
+${resetLink}
+
+This link will expire in 1 hour. If you did not request this, please ignore this email.
+
+Best regards,
+The DigitalScout Team`;
+  const html = `
+<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+	<h2 style="color: #6366f1; margin-bottom: 24px;">Reset Your Password</h2>
+	<p>Hello,</p>
+	<p>We received a request to reset your password for your DigitalScout account. Click the button below to reset it:</p>
+	<div style="text-align: center; margin: 32px 0;">
+		<a href="${resetLink}" style="background-color: #6366f1; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Reset Password</a>
+	</div>
+	<p>Or copy and paste this URL into your browser:</p>
+	<p style="word-break: break-all; color: #6366f1; font-size: 14px;">${resetLink}</p>
+	<p style="color: #64748b; font-size: 14px; margin-top: 24px;">This link will expire in 1 hour. If you did not request this, you can safely ignore this email.</p>
+	<hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+	<p style="color: #94a3b8; font-size: 12px;">\xA9 ${(/* @__PURE__ */ new Date()).getFullYear()} DigitalScout. All rights reserved.</p>
+</div>
+	`;
+  return sendEmail({ to: email, subject, text, html });
+}
+
+// server.ts
+fs4.writeSync(
   2,
   `[BOOT] Server process starting at ${(/* @__PURE__ */ new Date()).toISOString()}
 `
 );
-fs3.writeSync(2, `[BOOT] CWD: ${process.cwd()}
+fs4.writeSync(2, `[BOOT] CWD: ${process.cwd()}
 `);
-fs3.writeSync(2, `[BOOT] DB_USER: ${process.env.DB_USER || "NOT SET"}
+fs4.writeSync(2, `[BOOT] DB_USER: ${process.env.DB_USER || "NOT SET"}
 `);
 var __filename2 = fileURLToPath2(import.meta.url);
 var __dirname2 = dirname(__filename2);
@@ -3591,7 +3769,7 @@ var GoogleGenerativeAI = null;
 var app = express();
 var PORT = process.env.PORT || 5001;
 var logStderr = (message) => {
-  fs3.writeSync(2, `${message}
+  fs4.writeSync(2, `${message}
 `);
 };
 var lastGeminiCallTime = 0;
@@ -3622,10 +3800,310 @@ app.use(
   })
 );
 app.use(express.json({ limit: "50mb" }));
+var JWT_SECRET = process.env.ENCRYPTION_KEY || "default-secret-key-12345";
+function hashPassword(password) {
+  const salt = crypto2.randomBytes(16).toString("hex");
+  const hash = crypto2.scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${hash}`;
+}
+function verifyPassword(password, storedHash) {
+  try {
+    const [salt, hash] = storedHash.split(":");
+    if (!salt || !hash) return false;
+    const verifyHash = crypto2.scryptSync(password, salt, 64).toString("hex");
+    return crypto2.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(verifyHash, "hex"));
+  } catch {
+    return false;
+  }
+}
+function generateToken(payload) {
+  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+  const body = Buffer.from(JSON.stringify({ ...payload, exp: Math.floor(Date.now() / 1e3) + 7 * 24 * 60 * 60 })).toString("base64url");
+  const signature = crypto2.createHmac("sha256", JWT_SECRET).update(`${header}.${body}`).digest("base64url");
+  return `${header}.${body}.${signature}`;
+}
+function verifyToken(token) {
+  try {
+    const [header, body, signature] = token.split(".");
+    if (!header || !body || !signature) return null;
+    const expectedSignature = crypto2.createHmac("sha256", JWT_SECRET).update(`${header}.${body}`).digest("base64url");
+    if (signature !== expectedSignature) return null;
+    const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+    if (payload.exp && Date.now() / 1e3 > payload.exp) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+async function authenticateToken(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (!token) {
+    return res.status(401).json({ error: "Access token required" });
+  }
+  const decoded = verifyToken(token);
+  if (!decoded) {
+    return res.status(403).json({ error: "Invalid or expired token" });
+  }
+  try {
+    const [users] = await pool.query(
+      "SELECT id, name, email, is_verified FROM users WHERE id = ? LIMIT 1",
+      [decoded.userId]
+    );
+    if (!users || users.length === 0) {
+      return res.status(403).json({ error: "User not found" });
+    }
+    if (!users[0].is_verified) {
+      return res.status(403).json({ error: "User email not verified" });
+    }
+    req.user = {
+      id: users[0].id,
+      name: users[0].name,
+      email: users[0].email
+    };
+    next();
+  } catch (error) {
+    return res.status(500).json({ error: "Authentication failed" });
+  }
+}
 app.get("/", (req, res) => {
   res.send("DigitalScout API Running");
 });
-var DEBUG_ROOT_DIR2 = path3.join(process.cwd(), ".debug-generation");
+app.post("/api/auth/register", async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "Missing required fields: name, email, password" });
+    }
+    const [existing] = await pool.query(
+      "SELECT id, is_verified FROM users WHERE email = ? LIMIT 1",
+      [email]
+    );
+    let userId = crypto2.randomUUID();
+    const passwordHash = hashPassword(password);
+    if (existing && existing.length > 0) {
+      if (existing[0].is_verified) {
+        return res.status(400).json({ error: "Email already registered" });
+      }
+      userId = existing[0].id;
+      await pool.query(
+        "UPDATE users SET name = ?, password_hash = ? WHERE id = ?",
+        [name, passwordHash, userId]
+      );
+    } else {
+      await pool.query(
+        "INSERT INTO users (id, name, email, password_hash, is_verified) VALUES (?, ?, ?, ?, 0)",
+        [userId, name, email, passwordHash]
+      );
+    }
+    const otp = Math.floor(1e5 + Math.random() * 9e5).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1e3);
+    await pool.query("DELETE FROM otp_verifications WHERE email = ?", [email]);
+    await pool.query(
+      "INSERT INTO otp_verifications (email, otp_code, expires_at) VALUES (?, ?, ?)",
+      [email, otp, expiresAt]
+    );
+    await sendOTPEmail(email, otp);
+    return res.json({ success: true, message: "OTP sent to email" });
+  } catch (error) {
+    console.error("[Register] Error:", error);
+    return res.status(500).json({ error: "Failed to register user" });
+  }
+});
+app.post("/api/auth/verify-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ error: "Missing email or otp" });
+    }
+    const [verifications] = await pool.query(
+      "SELECT id FROM otp_verifications WHERE email = ? AND otp_code = ? AND expires_at > NOW() LIMIT 1",
+      [email, otp]
+    );
+    if (!verifications || verifications.length === 0) {
+      return res.status(400).json({ error: "Invalid or expired verification code" });
+    }
+    await pool.query(
+      "UPDATE users SET is_verified = 1 WHERE email = ?",
+      [email]
+    );
+    await pool.query("DELETE FROM otp_verifications WHERE email = ?", [email]);
+    const [users] = await pool.query(
+      "SELECT id, name, email FROM users WHERE email = ? LIMIT 1",
+      [email]
+    );
+    const user = users[0];
+    const token = generateToken({ userId: user.id });
+    return res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email
+      }
+    });
+  } catch (error) {
+    console.error("[Verify OTP] Error:", error);
+    return res.status(500).json({ error: "Failed to verify code" });
+  }
+});
+app.post("/api/auth/resend-otp", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "Missing email" });
+    }
+    const [users] = await pool.query(
+      "SELECT id, is_verified FROM users WHERE email = ? LIMIT 1",
+      [email]
+    );
+    if (!users || users.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    if (users[0].is_verified) {
+      return res.status(400).json({ error: "Email is already verified" });
+    }
+    const otp = Math.floor(1e5 + Math.random() * 9e5).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1e3);
+    await pool.query("DELETE FROM otp_verifications WHERE email = ?", [email]);
+    await pool.query(
+      "INSERT INTO otp_verifications (email, otp_code, expires_at) VALUES (?, ?, ?)",
+      [email, otp, expiresAt]
+    );
+    await sendOTPEmail(email, otp);
+    return res.json({ success: true, message: "OTP resent successfully" });
+  } catch (error) {
+    console.error("[Resend OTP] Error:", error);
+    return res.status(500).json({ error: "Failed to resend code" });
+  }
+});
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "Missing email or password" });
+    }
+    const [users] = await pool.query(
+      "SELECT id, name, email, password_hash, is_verified FROM users WHERE email = ? LIMIT 1",
+      [email]
+    );
+    if (!users || users.length === 0) {
+      return res.status(400).json({ error: "Invalid email or password" });
+    }
+    const user = users[0];
+    if (!user.is_verified) {
+      return res.status(403).json({
+        status: "unverified",
+        error: "Please verify your email address to log in.",
+        email: user.email
+      });
+    }
+    const isMatch = verifyPassword(password, user.password_hash);
+    if (!isMatch) {
+      return res.status(400).json({ error: "Invalid email or password" });
+    }
+    const token = generateToken({ userId: user.id });
+    return res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email
+      }
+    });
+  } catch (error) {
+    console.error("[Login] Error:", error);
+    return res.status(500).json({ error: "Failed to log in" });
+  }
+});
+app.post("/api/auth/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "Missing email" });
+    }
+    const [users] = await pool.query(
+      "SELECT id, name FROM users WHERE email = ? LIMIT 1",
+      [email]
+    );
+    if (!users || users.length === 0) {
+      return res.json({ success: true, message: "If this email is registered, a password reset link has been sent" });
+    }
+    const token = crypto2.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1e3);
+    await pool.query("DELETE FROM password_resets WHERE email = ?", [email]);
+    await pool.query(
+      "INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)",
+      [email, token, expiresAt]
+    );
+    const origin = req.headers.origin || "http://localhost:3000";
+    const resetLink = `${origin}/?reset_token=${token}`;
+    await sendResetPasswordEmail(email, resetLink);
+    return res.json({ success: true, message: "If this email is registered, a password reset link has been sent" });
+  } catch (error) {
+    console.error("[Forgot Password] Error:", error);
+    return res.status(500).json({ error: "Failed to generate password reset request" });
+  }
+});
+app.post("/api/auth/reset-password", async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) {
+      return res.status(400).json({ error: "Missing token or password" });
+    }
+    const [resets] = await pool.query(
+      "SELECT email FROM password_resets WHERE token = ? AND expires_at > NOW() LIMIT 1",
+      [token]
+    );
+    if (!resets || resets.length === 0) {
+      return res.status(400).json({ error: "Invalid or expired password reset token" });
+    }
+    const email = resets[0].email;
+    const passwordHash = hashPassword(password);
+    await pool.query(
+      "UPDATE users SET password_hash = ? WHERE email = ?",
+      [passwordHash, email]
+    );
+    await pool.query("DELETE FROM password_resets WHERE token = ?", [token]);
+    return res.json({ success: true, message: "Password updated successfully" });
+  } catch (error) {
+    console.error("[Reset Password] Error:", error);
+    return res.status(500).json({ error: "Failed to reset password" });
+  }
+});
+app.get("/api/auth/me", async (req, res) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (!token) {
+    return res.status(401).json({ error: "Access token required" });
+  }
+  const decoded = verifyToken(token);
+  if (!decoded) {
+    return res.status(403).json({ error: "Invalid or expired token" });
+  }
+  try {
+    const [users] = await pool.query(
+      "SELECT id, name, email, is_verified FROM users WHERE id = ? LIMIT 1",
+      [decoded.userId]
+    );
+    if (!users || users.length === 0 || !users[0].is_verified) {
+      return res.status(403).json({ error: "User not found or unverified" });
+    }
+    return res.json({
+      success: true,
+      user: {
+        id: users[0].id,
+        name: users[0].name,
+        email: users[0].email
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ error: "Database query failed" });
+  }
+});
+var DEBUG_ROOT_DIR2 = path4.join(process.cwd(), ".debug-generation");
 var generationDebugSessions = /* @__PURE__ */ new Map();
 function slugifyDebugSegment(value) {
   return (value || "generation").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -3640,14 +4118,14 @@ function createGenerationTraceId(business) {
 function createGenerationDebugSession(business) {
   const traceId = createGenerationTraceId(business);
   let folderName = traceId;
-  let folderPath = path3.join(DEBUG_ROOT_DIR2, folderName);
+  let folderPath = path4.join(DEBUG_ROOT_DIR2, folderName);
   let suffix = 2;
-  while (fs3.existsSync(folderPath)) {
+  while (fs4.existsSync(folderPath)) {
     folderName = `${traceId}-${suffix}`;
-    folderPath = path3.join(DEBUG_ROOT_DIR2, folderName);
+    folderPath = path4.join(DEBUG_ROOT_DIR2, folderName);
     suffix += 1;
   }
-  fs3.mkdirSync(folderPath, { recursive: true });
+  fs4.mkdirSync(folderPath, { recursive: true });
   const session = {
     traceId,
     folderName,
@@ -3673,15 +4151,15 @@ function formatDebugPayload(content) {
   return JSON.stringify(content, null, 2);
 }
 function persistGenerationDebugFile(session, fileName, content, append = false) {
-  fs3.mkdirSync(session.folderPath, { recursive: true });
-  const targetPath = path3.join(session.folderPath, fileName);
+  fs4.mkdirSync(session.folderPath, { recursive: true });
+  const targetPath = path4.join(session.folderPath, fileName);
   const payload = formatDebugPayload(content);
-  if (append && fs3.existsSync(targetPath)) {
-    fs3.appendFileSync(targetPath, `${payload}
+  if (append && fs4.existsSync(targetPath)) {
+    fs4.appendFileSync(targetPath, `${payload}
 `, "utf8");
     return;
   }
-  fs3.writeFileSync(targetPath, payload, "utf8");
+  fs4.writeFileSync(targetPath, payload, "utf8");
 }
 function getLatestApiKeyFromDisk(keyName = "GEMINI_API_KEY") {
   const key = process.env.GOOGLE_CLOUD_API_KEY || process.env.GEMINI_API_KEY;
@@ -3890,7 +4368,7 @@ Return only valid JSON in this exact shape:
     notes: lastError instanceof Error ? lastError.message : "Lead qualification failed."
   };
 }
-app.post("/api/generate", async (req, res) => {
+app.post("/api/generate", authenticateToken, async (req, res) => {
   try {
     const business = req.body;
     if (!business || !business.name) {
@@ -3966,7 +4444,7 @@ app.get(
     return res.json(session);
   }
 );
-app.post("/api/generate-v2", async (req, res) => {
+app.post("/api/generate-v2", authenticateToken, async (req, res) => {
   try {
     const business = req.body;
     if (!business || !business.name) {
@@ -4257,6 +4735,7 @@ app.post(
 );
 app.post(
   "/api/wordpress/provision-site",
+  authenticateToken,
   async (req, res) => {
     try {
       const { projectId, business, websiteSchema, provisioningPlan, status } = req.body;
@@ -4283,12 +4762,12 @@ app.post(
       if (existing && existing.length > 0) {
         activeJobId = existing[0].id;
         await pool.query(
-          `UPDATE provisioning_jobs SET website_schema = ?, status = ?, trace_id = ?, updated_at = NOW() WHERE project_id = ?`,
-          [JSON.stringify(websiteSchema), targetStatus, traceId, projectId]
+          `UPDATE provisioning_jobs SET website_schema = ?, status = ?, trace_id = ?, updated_at = NOW(), user_id = ? WHERE project_id = ?`,
+          [JSON.stringify(websiteSchema), targetStatus, traceId, req.user.id, projectId]
         );
       } else {
         await pool.query(
-          `INSERT INTO provisioning_jobs (id, project_id, business_name, website_schema, status, trace_id, is_preview, preview_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO provisioning_jobs (id, project_id, business_name, website_schema, status, trace_id, is_preview, preview_expires_at, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             jobId,
             projectId,
@@ -4297,7 +4776,8 @@ app.post(
             targetStatus,
             traceId,
             isPreview,
-            previewExpiresAt
+            previewExpiresAt,
+            req.user.id
           ]
         );
       }
@@ -4314,15 +4794,15 @@ app.post(
     }
   }
 );
-app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
+app.get("/api/wordpress/site-status/:projectId", authenticateToken, async (req, res) => {
   const { projectId } = req.params;
   try {
     const [rows] = await pool.query(
       `SELECT status, logs, subdomain, subdomain_url, wp_admin_url, ssl_status, wp_admin_user, wp_admin_pass_encrypted 
 			 FROM provisioning_jobs 
 			 LEFT JOIN isolated_deployments ON provisioning_jobs.project_id = isolated_deployments.project_id
-			 WHERE provisioning_jobs.project_id = ? ORDER BY provisioning_jobs.created_at DESC LIMIT 1`,
-      [projectId]
+			 WHERE provisioning_jobs.project_id = ? AND provisioning_jobs.user_id = ? ORDER BY provisioning_jobs.created_at DESC LIMIT 1`,
+      [projectId, req.user.id]
     );
     if (!rows || rows.length === 0) {
       return res.status(404).json({ error: "Job not found" });
@@ -4369,15 +4849,15 @@ app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
 app.get("/api/generate/replay/:traceId", async (req, res) => {
   const { traceId } = req.params;
   try {
-    const inputPath = path3.join(
+    const inputPath = path4.join(
       DEBUG_ROOT_DIR2,
       traceId,
       "06-renderer-input.json"
     );
-    if (!fs3.existsSync(inputPath)) {
+    if (!fs4.existsSync(inputPath)) {
       return res.status(404).json({ error: "Trace not found or missing renderer input" });
     }
-    const schemaContent = fs3.readFileSync(inputPath, "utf-8");
+    const schemaContent = fs4.readFileSync(inputPath, "utf-8");
     const rawSchema = JSON.parse(schemaContent);
     const { validateWebsiteSchema: validateWebsiteSchema2 } = await Promise.resolve().then(() => (init_website_schema_validator(), website_schema_validator_exports));
     const { schemaToGutenbergBlocks: schemaToGutenbergBlocks2 } = await Promise.resolve().then(() => (init_wordpress(), wordpress_exports));
@@ -4394,11 +4874,18 @@ app.get("/api/generate/replay/:traceId", async (req, res) => {
     });
   }
 });
-app.delete("/api/wordpress/site/:projectId", async (req, res) => {
+app.delete("/api/wordpress/site/:projectId", authenticateToken, async (req, res) => {
   try {
     const { projectId } = req.params;
     if (!projectId) {
       return res.status(400).json({ error: "Missing projectId" });
+    }
+    const [rows] = await pool.query(
+      `SELECT id FROM provisioning_jobs WHERE project_id = ? AND user_id = ? LIMIT 1`,
+      [projectId, req.user.id]
+    );
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ error: "Project not found or unauthorized" });
     }
     await deleteProvisionedWordPressSite(projectId);
     return res.json({
@@ -4411,7 +4898,7 @@ app.delete("/api/wordpress/site/:projectId", async (req, res) => {
     });
   }
 });
-app.get("/api/leads", async (req, res) => {
+app.get("/api/leads", authenticateToken, async (req, res) => {
   try {
     const [rows] = await pool.query(
       `SELECT 
@@ -4427,7 +4914,9 @@ app.get("/api/leads", async (req, res) => {
 				idp.ssl_status as sslStatus
 			 FROM provisioning_jobs pj
 			 LEFT JOIN isolated_deployments idp ON pj.project_id = idp.project_id
-			 ORDER BY pj.created_at DESC`
+			 WHERE pj.user_id = ?
+			 ORDER BY pj.created_at DESC`,
+      [req.user.id]
     );
     const leads = rows.map((row) => {
       let rawPassword = null;

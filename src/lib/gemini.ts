@@ -16,9 +16,14 @@ export async function generateWebsite(
 	business: Business,
 ): Promise<GeneratedWebsiteResult> {
 	try {
+		const token = localStorage.getItem("ds_token");
+		const headers: Record<string, string> = { "Content-Type": "application/json" };
+		if (token) {
+			headers["Authorization"] = `Bearer ${token}`;
+		}
 		const resp = await fetch(`${API_URL}/api/generate`, {
 			method: "POST",
-			headers: { "Content-Type": "application/json" },
+			headers,
 			body: JSON.stringify(business),
 		});
 
@@ -71,8 +76,14 @@ export async function fetchLeadAIChatHistory(
 	leadId: string,
 ): Promise<AIChatMessage[]> {
 	try {
+		const token = localStorage.getItem("ds_token");
+		const headers: Record<string, string> = {};
+		if (token) {
+			headers["Authorization"] = `Bearer ${token}`;
+		}
 		const resp = await fetch(
 			`${API_URL}/api/business-ai-chat/${encodeURIComponent(leadId)}`,
+			{ headers }
 		);
 		if (!resp.ok) {
 			throw new Error("Failed to fetch chat history");
@@ -92,9 +103,14 @@ export async function askBusinessAIChatStream(
 	onChunk: (chunk: string) => void,
 	signal?: AbortSignal,
 ): Promise<void> {
+	const token = localStorage.getItem("ds_token");
+	const headers: Record<string, string> = { "Content-Type": "application/json" };
+	if (token) {
+		headers["Authorization"] = `Bearer ${token}`;
+	}
 	const resp = await fetch(`${API_URL}/api/business-ai-chat`, {
 		method: "POST",
-		headers: { "Content-Type": "application/json" },
+		headers,
 		body: JSON.stringify({ leadId, businessContext, messages }),
 		signal,
 	});

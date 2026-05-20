@@ -41,11 +41,17 @@ export async function provisionWordPressSite(
 		},
 	);
 
+	const token = localStorage.getItem("ds_token");
+	const headers: Record<string, string> = {
+		"Content-Type": "application/json",
+	};
+	if (token) {
+		headers["Authorization"] = `Bearer ${token}`;
+	}
+
 	const response = await fetch(`${API_URL}/api/wordpress/provision-site`, {
 		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
+		headers,
 		body: JSON.stringify({
 			projectId: request.projectId,
 			business: request.business,
@@ -68,8 +74,15 @@ export async function provisionWordPressSite(
 export async function deleteProvisionedWordPressSite(
 	projectId: number | string,
 ): Promise<void> {
+	const token = localStorage.getItem("ds_token");
+	const headers: Record<string, string> = {};
+	if (token) {
+		headers["Authorization"] = `Bearer ${token}`;
+	}
+
 	const response = await fetch(`${API_URL}/api/wordpress/site/${projectId}`, {
 		method: "DELETE",
+		headers,
 	});
 
 	if (!response.ok) {

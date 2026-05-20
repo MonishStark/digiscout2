@@ -128,6 +128,51 @@ export async function initializeDatabase() {
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 		`);
 
+		// Create users table
+		await pool.query(`
+			CREATE TABLE IF NOT EXISTS users (
+				id VARCHAR(255) PRIMARY KEY,
+				name VARCHAR(255) NOT NULL,
+				email VARCHAR(255) NOT NULL UNIQUE,
+				password_hash VARCHAR(255) NOT NULL,
+				is_verified BOOLEAN DEFAULT FALSE,
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+		`);
+
+		// Create otp_verifications table
+		await pool.query(`
+			CREATE TABLE IF NOT EXISTS otp_verifications (
+				id INT AUTO_INCREMENT PRIMARY KEY,
+				email VARCHAR(255) NOT NULL,
+				otp_code VARCHAR(10) NOT NULL,
+				expires_at DATETIME NOT NULL,
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				INDEX idx_email_otp (email, otp_code)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+		`);
+
+		// Create password_resets table
+		await pool.query(`
+			CREATE TABLE IF NOT EXISTS password_resets (
+				id INT AUTO_INCREMENT PRIMARY KEY,
+				email VARCHAR(255) NOT NULL,
+				token VARCHAR(255) NOT NULL UNIQUE,
+				expires_at DATETIME NOT NULL,
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				INDEX idx_token (token)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+		`);
+
+		// Migration: Add user_id column to provisioning_jobs
+		try {
+			await pool.query(`ALTER TABLE provisioning_jobs ADD COLUMN user_id VARCHAR(255) NULL AFTER id`);
+		} catch (e) {}
+		try {
+			await pool.query(`ALTER TABLE provisioning_jobs ADD INDEX idx_user_id (user_id)`);
+		} catch (e) {}
+
 		try {
 			await pool.query(`ALTER TABLE isolated_deployments ADD COLUMN website_schema JSON NULL AFTER encrypted_admin_password`);
 		} catch (e) {}

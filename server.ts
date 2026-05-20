@@ -42,6 +42,7 @@ import { startProvisioningWorker } from "./src/lib/provisioning-worker";
 import { deleteProvisionedWordPressSite } from "./src/lib/provisioning-engine";
 import { buildPremiumPageContent } from "./src/lib/premium-site-builder";
 import { generateHomepageViaDirectVertexPrompt } from "./src/lib/direct-vertex-homepage-generation";
+import { sendOTPEmail, sendResetPasswordEmail } from "./src/lib/mailer";
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -82,8 +83,399 @@ app.use(
 );
 app.use(express.json({ limit: "50mb" }));
 
+const JWT_SECRET = process.env.ENCRYPTION_KEY || "default-secret-key-12345";
+
+function hashPassword(password: string): string {
+	const salt = crypto.randomBytes(16).toString("hex");
+	const hash = crypto.scryptSync(password, salt, 64).toString("hex");
+	return `${salt}:${hash}`;
+}
+
+function verifyPassword(password: string, storedHash: string): boolean {
+	try {
+		const [salt, hash] = storedHash.split(":");
+		if (!salt || !hash) return false;
+		const verifyHash = crypto.scryptSync(password, salt, 64).toString("hex");
+		return crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(verifyHash, "hex"));
+	} catch {
+		return false;
+	}
+}
+
+function generateToken(payload: { userId: string }): string {
+	const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+	const body = Buffer.from(JSON.stringify({ ...payload, exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60 })).toString("base64url");
+	const signature = crypto.createHmac("sha256", JWT_SECRET).update(`${header}.${body}`).digest("base64url");
+	return `${header}.${body}.${signature}`;
+}
+
+function verifyToken(token: string): { userId: string } | null {
+	try {
+		const [header, body, signature] = token.split(".");
+		if (!header || !body || !signature) return null;
+		const expectedSignature = crypto.createHmac("sha256", JWT_SECRET).update(`${header}.${body}`).digest("base64url");
+		if (signature !== expectedSignature) return null;
+		const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+		if (payload.exp && Date.now() / 1000 > payload.exp) return null;
+		return payload;
+	} catch {
+		return null;
+	}
+}
+
+interface AuthenticatedRequest extends Request {
+	user?: {
+		id: string;
+		email: string;
+		name: string;
+	};
+}
+
+async function authenticateToken(req: Request, res: Response, next: any) {
+	const authHeader = req.headers["authorization"];
+	const token = authHeader && authHeader.split(" ")[1];
+
+	if (!token) {
+		return res.status(401).json({ error: "Access token required" });
+	}
+
+	const decoded = verifyToken(token);
+	if (!decoded) {
+		return res.status(403).json({ error: "Invalid or expired token" });
+	}
+
+	try {
+		const [users]: any = await pool.query(
+			"SELECT id, name, email, is_verified FROM users WHERE id = ? LIMIT 1",
+			[decoded.userId]
+		);
+
+		if (!users || users.length === 0) {
+			return res.status(403).json({ error: "User not found" });
+		}
+		
+		if (!users[0].is_verified) {
+			return res.status(403).json({ error: "User email not verified" });
+		}
+
+		(req as any).user = {
+			id: users[0].id,
+			name: users[0].name,
+			email: users[0].email,
+		};
+		next();
+	} catch (error) {
+		return res.status(500).json({ error: "Authentication failed" });
+	}
+}
+
 app.get("/", (req, res) => {
 	res.send("DigitalScout API Running");
+});
+
+// Authentication Routes
+app.post("/api/auth/register", async (req, res) => {
+	try {
+		const { name, email, password } = req.body;
+		if (!name || !email || !password) {
+			return res.status(400).json({ error: "Missing required fields: name, email, password" });
+		}
+
+		// Check if user already exists
+		const [existing]: any = await pool.query(
+			"SELECT id, is_verified FROM users WHERE email = ? LIMIT 1",
+			[email]
+		);
+
+		let userId = crypto.randomUUID();
+		const passwordHash = hashPassword(password);
+
+		if (existing && existing.length > 0) {
+			if (existing[0].is_verified) {
+				return res.status(400).json({ error: "Email already registered" });
+			}
+			// Overwrite unverified account details
+			userId = existing[0].id;
+			await pool.query(
+				"UPDATE users SET name = ?, password_hash = ? WHERE id = ?",
+				[name, passwordHash, userId]
+			);
+		} else {
+			await pool.query(
+				"INSERT INTO users (id, name, email, password_hash, is_verified) VALUES (?, ?, ?, ?, 0)",
+				[userId, name, email, passwordHash]
+			);
+		}
+
+		// Generate a 6-digit OTP code
+		const otp = Math.floor(100000 + Math.random() * 900000).toString();
+		const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+		// Clear previous OTPs for this email
+		await pool.query("DELETE FROM otp_verifications WHERE email = ?", [email]);
+		
+		// Insert new OTP
+		await pool.query(
+			"INSERT INTO otp_verifications (email, otp_code, expires_at) VALUES (?, ?, ?)",
+			[email, otp, expiresAt]
+		);
+
+		// Send email
+		await sendOTPEmail(email, otp);
+
+		return res.json({ success: true, message: "OTP sent to email" });
+	} catch (error) {
+		console.error("[Register] Error:", error);
+		return res.status(500).json({ error: "Failed to register user" });
+	}
+});
+
+app.post("/api/auth/verify-otp", async (req, res) => {
+	try {
+		const { email, otp } = req.body;
+		if (!email || !otp) {
+			return res.status(400).json({ error: "Missing email or otp" });
+		}
+
+		// Find OTP verification record
+		const [verifications]: any = await pool.query(
+			"SELECT id FROM otp_verifications WHERE email = ? AND otp_code = ? AND expires_at > NOW() LIMIT 1",
+			[email, otp]
+		);
+
+		if (!verifications || verifications.length === 0) {
+			return res.status(400).json({ error: "Invalid or expired verification code" });
+		}
+
+		// Mark user as verified
+		await pool.query(
+			"UPDATE users SET is_verified = 1 WHERE email = ?",
+			[email]
+		);
+
+		// Clean up OTP verifications
+		await pool.query("DELETE FROM otp_verifications WHERE email = ?", [email]);
+
+		// Find verified user details
+		const [users]: any = await pool.query(
+			"SELECT id, name, email FROM users WHERE email = ? LIMIT 1",
+			[email]
+		);
+
+		const user = users[0];
+		const token = generateToken({ userId: user.id });
+
+		return res.json({
+			success: true,
+			token,
+			user: {
+				id: user.id,
+				name: user.name,
+				email: user.email
+			}
+		});
+	} catch (error) {
+		console.error("[Verify OTP] Error:", error);
+		return res.status(500).json({ error: "Failed to verify code" });
+	}
+});
+
+app.post("/api/auth/resend-otp", async (req, res) => {
+	try {
+		const { email } = req.body;
+		if (!email) {
+			return res.status(400).json({ error: "Missing email" });
+		}
+
+		const [users]: any = await pool.query(
+			"SELECT id, is_verified FROM users WHERE email = ? LIMIT 1",
+			[email]
+		);
+
+		if (!users || users.length === 0) {
+			return res.status(404).json({ error: "User not found" });
+		}
+
+		if (users[0].is_verified) {
+			return res.status(400).json({ error: "Email is already verified" });
+		}
+
+		const otp = Math.floor(100000 + Math.random() * 900000).toString();
+		const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+		await pool.query("DELETE FROM otp_verifications WHERE email = ?", [email]);
+		await pool.query(
+			"INSERT INTO otp_verifications (email, otp_code, expires_at) VALUES (?, ?, ?)",
+			[email, otp, expiresAt]
+		);
+
+		await sendOTPEmail(email, otp);
+
+		return res.json({ success: true, message: "OTP resent successfully" });
+	} catch (error) {
+		console.error("[Resend OTP] Error:", error);
+		return res.status(500).json({ error: "Failed to resend code" });
+	}
+});
+
+app.post("/api/auth/login", async (req, res) => {
+	try {
+		const { email, password } = req.body;
+		if (!email || !password) {
+			return res.status(400).json({ error: "Missing email or password" });
+		}
+
+		const [users]: any = await pool.query(
+			"SELECT id, name, email, password_hash, is_verified FROM users WHERE email = ? LIMIT 1",
+			[email]
+		);
+
+		if (!users || users.length === 0) {
+			return res.status(400).json({ error: "Invalid email or password" });
+		}
+
+		const user = users[0];
+		
+		// If user exists but is not verified, require OTP verification first
+		if (!user.is_verified) {
+			return res.status(403).json({
+				status: "unverified",
+				error: "Please verify your email address to log in.",
+				email: user.email
+			});
+		}
+
+		const isMatch = verifyPassword(password, user.password_hash);
+		if (!isMatch) {
+			return res.status(400).json({ error: "Invalid email or password" });
+		}
+
+		const token = generateToken({ userId: user.id });
+
+		return res.json({
+			success: true,
+			token,
+			user: {
+				id: user.id,
+				name: user.name,
+				email: user.email
+			}
+		});
+	} catch (error) {
+		console.error("[Login] Error:", error);
+		return res.status(500).json({ error: "Failed to log in" });
+	}
+});
+
+app.post("/api/auth/forgot-password", async (req, res) => {
+	try {
+		const { email } = req.body;
+		if (!email) {
+			return res.status(400).json({ error: "Missing email" });
+		}
+
+		const [users]: any = await pool.query(
+			"SELECT id, name FROM users WHERE email = ? LIMIT 1",
+			[email]
+		);
+
+		// Always return success even if user not found to prevent user enumeration
+		if (!users || users.length === 0) {
+			return res.json({ success: true, message: "If this email is registered, a password reset link has been sent" });
+		}
+
+		const token = crypto.randomBytes(32).toString("hex");
+		const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+		await pool.query("DELETE FROM password_resets WHERE email = ?", [email]);
+		await pool.query(
+			"INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)",
+			[email, token, expiresAt]
+		);
+
+		// Construct reset link using origin header
+		const origin = req.headers.origin || "http://localhost:3000";
+		const resetLink = `${origin}/?reset_token=${token}`;
+
+		await sendResetPasswordEmail(email, resetLink);
+
+		return res.json({ success: true, message: "If this email is registered, a password reset link has been sent" });
+	} catch (error) {
+		console.error("[Forgot Password] Error:", error);
+		return res.status(500).json({ error: "Failed to generate password reset request" });
+	}
+});
+
+app.post("/api/auth/reset-password", async (req, res) => {
+	try {
+		const { token, password } = req.body;
+		if (!token || !password) {
+			return res.status(400).json({ error: "Missing token or password" });
+		}
+
+		// Find token
+		const [resets]: any = await pool.query(
+			"SELECT email FROM password_resets WHERE token = ? AND expires_at > NOW() LIMIT 1",
+			[token]
+		);
+
+		if (!resets || resets.length === 0) {
+			return res.status(400).json({ error: "Invalid or expired password reset token" });
+		}
+
+		const email = resets[0].email;
+		const passwordHash = hashPassword(password);
+
+		// Update password
+		await pool.query(
+			"UPDATE users SET password_hash = ? WHERE email = ?",
+			[passwordHash, email]
+		);
+
+		// Clean up reset token
+		await pool.query("DELETE FROM password_resets WHERE token = ?", [token]);
+
+		return res.json({ success: true, message: "Password updated successfully" });
+	} catch (error) {
+		console.error("[Reset Password] Error:", error);
+		return res.status(500).json({ error: "Failed to reset password" });
+	}
+});
+
+app.get("/api/auth/me", async (req, res) => {
+	const authHeader = req.headers["authorization"];
+	const token = authHeader && authHeader.split(" ")[1];
+
+	if (!token) {
+		return res.status(401).json({ error: "Access token required" });
+	}
+
+	const decoded = verifyToken(token);
+	if (!decoded) {
+		return res.status(403).json({ error: "Invalid or expired token" });
+	}
+
+	try {
+		const [users]: any = await pool.query(
+			"SELECT id, name, email, is_verified FROM users WHERE id = ? LIMIT 1",
+			[decoded.userId]
+		);
+
+		if (!users || users.length === 0 || !users[0].is_verified) {
+			return res.status(403).json({ error: "User not found or unverified" });
+		}
+
+		return res.json({
+			success: true,
+			user: {
+				id: users[0].id,
+				name: users[0].name,
+				email: users[0].email
+			}
+		});
+	} catch (error) {
+		return res.status(500).json({ error: "Database query failed" });
+	}
 });
 
 type DebugStageName =
@@ -2879,7 +3271,7 @@ function ensureSchemaMetadata(
 	return safeSchema as WebsiteSchema;
 }
 
-app.post("/api/generate", async (req: Request, res: Response) => {
+app.post("/api/generate", authenticateToken, async (req: any, res: Response) => {
 	try {
 		const business = req.body;
 		if (!business || !business.name) {
@@ -2976,7 +3368,7 @@ app.get(
  * Simplified deterministic homepage generation using direct Vertex prompt
  * Uses: Business Context → Single Vertex Prompt → Final HTML/CSS → WordPress rendering
  */
-app.post("/api/generate-v2", async (req: Request, res: Response) => {
+app.post("/api/generate-v2", authenticateToken, async (req: any, res: Response) => {
 	try {
 		const business = req.body;
 		if (!business || !business.name) {
@@ -3344,8 +3736,9 @@ app.post(
 
 app.post(
 	"/api/wordpress/provision-site",
+	authenticateToken,
 	async (
-		req: Request<{}, {}, ProvisionWordPressSiteRequest & { status?: string }>,
+		req: any,
 		res: Response,
 	) => {
 		try {
@@ -3386,12 +3779,12 @@ app.post(
 			if (existing && existing.length > 0) {
 				activeJobId = existing[0].id;
 				await pool.query(
-					`UPDATE provisioning_jobs SET website_schema = ?, status = ?, trace_id = ?, updated_at = NOW() WHERE project_id = ?`,
-					[JSON.stringify(websiteSchema), targetStatus, traceId, projectId],
+					`UPDATE provisioning_jobs SET website_schema = ?, status = ?, trace_id = ?, updated_at = NOW(), user_id = ? WHERE project_id = ?`,
+					[JSON.stringify(websiteSchema), targetStatus, traceId, req.user.id, projectId],
 				);
 			} else {
 				await pool.query(
-					`INSERT INTO provisioning_jobs (id, project_id, business_name, website_schema, status, trace_id, is_preview, preview_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+					`INSERT INTO provisioning_jobs (id, project_id, business_name, website_schema, status, trace_id, is_preview, preview_expires_at, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 					[
 						jobId,
 						projectId,
@@ -3401,6 +3794,7 @@ app.post(
 						traceId,
 						isPreview,
 						previewExpiresAt,
+						req.user.id
 					],
 				);
 			}
@@ -3424,15 +3818,15 @@ app.post(
 	},
 );
 
-app.get("/api/wordpress/site-status/:projectId", async (req, res) => {
+app.get("/api/wordpress/site-status/:projectId", authenticateToken, async (req: any, res) => {
 	const { projectId } = req.params;
 	try {
 		const [rows]: any = await pool.query(
 			`SELECT status, logs, subdomain, subdomain_url, wp_admin_url, ssl_status, wp_admin_user, wp_admin_pass_encrypted 
 			 FROM provisioning_jobs 
 			 LEFT JOIN isolated_deployments ON provisioning_jobs.project_id = isolated_deployments.project_id
-			 WHERE provisioning_jobs.project_id = ? ORDER BY provisioning_jobs.created_at DESC LIMIT 1`,
-			[projectId],
+			 WHERE provisioning_jobs.project_id = ? AND provisioning_jobs.user_id = ? ORDER BY provisioning_jobs.created_at DESC LIMIT 1`,
+			[projectId, req.user.id],
 		);
 
 		if (!rows || rows.length === 0) {
@@ -3529,11 +3923,20 @@ app.get("/api/generate/replay/:traceId", async (req, res) => {
 	}
 });
 
-app.delete("/api/wordpress/site/:projectId", async (req, res) => {
+app.delete("/api/wordpress/site/:projectId", authenticateToken, async (req: any, res) => {
 	try {
 		const { projectId } = req.params;
 		if (!projectId) {
 			return res.status(400).json({ error: "Missing projectId" });
+		}
+
+		// Verify project belongs to user
+		const [rows]: any = await pool.query(
+			`SELECT id FROM provisioning_jobs WHERE project_id = ? AND user_id = ? LIMIT 1`,
+			[projectId, req.user.id]
+		);
+		if (!rows || rows.length === 0) {
+			return res.status(404).json({ error: "Project not found or unauthorized" });
 		}
 
 		await deleteProvisionedWordPressSite(projectId);
@@ -3551,7 +3954,7 @@ app.delete("/api/wordpress/site/:projectId", async (req, res) => {
 	}
 });
 
-app.get("/api/leads", async (req, res) => {
+app.get("/api/leads", authenticateToken, async (req: any, res) => {
 	try {
 		const [rows]: any = await pool.query(
 			`SELECT 
@@ -3567,7 +3970,9 @@ app.get("/api/leads", async (req, res) => {
 				idp.ssl_status as sslStatus
 			 FROM provisioning_jobs pj
 			 LEFT JOIN isolated_deployments idp ON pj.project_id = idp.project_id
+			 WHERE pj.user_id = ?
 			 ORDER BY pj.created_at DESC`,
+			[req.user.id]
 		);
 
 		const leads = rows.map((row: any) => {

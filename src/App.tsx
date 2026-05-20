@@ -7,6 +7,7 @@ import { Business, WebsiteProject } from "./types";
 import Sidebar from "./components/Sidebar";
 import MapArea from "./components/MapArea";
 import DeploymentsView from "./components/DeploymentsView";
+import { AuthView } from "./components/AuthView";
 
 const API_KEY =
 	process.env.GOOGLE_MAPS_PLATFORM_KEY ||
@@ -25,11 +26,71 @@ export default function App() {
 		"discover",
 	);
 
+	// Authentication state
+	const [user, setUser] = useState<{ id: string; name: string; email: string } | null>(null);
+	const [token, setToken] = useState<string | null>(null);
+	const [checkingAuth, setCheckingAuth] = useState(true);
+	const [resetToken, setResetToken] = useState<string | null>(null);
+
+	// Check for password reset token in URL parameters
 	useEffect(() => {
-		const fetchLeads = async () => {
+		const params = new URLSearchParams(window.location.search);
+		const tokenVal = params.get("reset_token");
+		if (tokenVal) {
+			setResetToken(tokenVal);
+			// Clean URL query parameter so it doesn't linger
+			const newUrl = window.location.pathname;
+			window.history.replaceState({}, document.title, newUrl);
+		}
+	}, []);
+
+	// Verify active session on startup
+	useEffect(() => {
+		const storedToken = localStorage.getItem("ds_token");
+		if (!storedToken) {
+			setCheckingAuth(false);
+			return;
+		}
+
+		const verifyUser = async () => {
 			const API_URL = ((import.meta as any).env?.VITE_API_URL as string | undefined) || "http://localhost:5001";
 			try {
-				const response = await fetch(`${API_URL}/api/leads`);
+				const response = await fetch(`${API_URL}/api/auth/me`, {
+					headers: {
+						Authorization: `Bearer ${storedToken}`,
+					},
+				});
+				if (response.ok) {
+					const data = await response.json();
+					if (data.success && data.user) {
+						setUser(data.user);
+						setToken(storedToken);
+					} else {
+						localStorage.removeItem("ds_token");
+					}
+				} else {
+					localStorage.removeItem("ds_token");
+				}
+			} catch (error) {
+				console.error("Auth verification failed:", error);
+			} finally {
+				setCheckingAuth(false);
+			}
+		};
+		verifyUser();
+	}, []);
+
+	// Fetch leads scoped by active session
+	useEffect(() => {
+		const fetchLeads = async () => {
+			if (!token) return;
+			const API_URL = ((import.meta as any).env?.VITE_API_URL as string | undefined) || "http://localhost:5001";
+			try {
+				const response = await fetch(`${API_URL}/api/leads`, {
+					headers: {
+						Authorization: `Bearer ${token}`,
+					},
+				});
 				if (response.ok) {
 					const data = await response.json();
 					setProjects(data);
@@ -39,14 +100,40 @@ export default function App() {
 			}
 		};
 
-		fetchLeads();
-	}, []);
+		if (user && token) {
+			fetchLeads();
+		}
+	}, [token, activePage, user]);
 
 	useEffect(() => {
 		if (selectedBusiness) {
 			setActivePage("discover");
 		}
 	}, [selectedBusiness]);
+
+	if (checkingAuth) {
+		return (
+			<div className='flex h-screen items-center justify-center bg-[#0f172a] font-sans text-slate-200'>
+				<div className='text-center'>
+					<div className='mb-4 h-12 w-12 animate-spin rounded-full border-4 border-violet-500 border-t-transparent mx-auto' />
+					<p className='text-slate-400 font-medium'>Loading DigitalScout...</p>
+				</div>
+			</div>
+		);
+	}
+
+	if (!user) {
+		return (
+			<AuthView
+				onAuthSuccess={(u, t) => {
+					setUser(u);
+					setToken(t);
+				}}
+				initialResetToken={resetToken}
+				onClearResetToken={() => setResetToken(null)}
+			/>
+		);
+	}
 
 	if (!hasValidKey) {
 		return (
@@ -124,9 +211,26 @@ export default function App() {
 							</button>
 						</div>
 						<div className='flex items-center gap-4'>
-							<div className='flex h-8 w-8 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-[10px] font-bold text-violet-700'>
-								DS
+							<div className='flex items-center gap-2'>
+								<div className='flex h-8 w-8 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-[10px] font-bold text-violet-700'>
+									{user.name ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) : "DS"}
+								</div>
+								<div className='hidden flex-col text-left md:flex'>
+									<span className='text-xs font-semibold text-slate-700'>{user.name}</span>
+									<span className='text-[10px] text-slate-400'>{user.email}</span>
+								</div>
 							</div>
+							<button
+								onClick={() => {
+									localStorage.removeItem("ds_token");
+									setUser(null);
+									setToken(null);
+									setProjects([]);
+								}}
+								className='rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-800'
+							>
+								Sign Out
+							</button>
 						</div>
 					</nav>
 
