@@ -94,14 +94,14 @@ export function buildHomepageGenerationRequest(
 		reviews:
 			business.reviews && Array.isArray(business.reviews)
 				? business.reviews.slice(0, 6).map((r: any) => ({
-						author: r.author || r.reviewerName || "Customer",
+						author: r.author || r.author_name || r.authorName || r.reviewerName || "Customer",
 						rating: r.rating || r.stars || 5,
 						text:
 							r.text ||
 							r.review ||
 							r.comment ||
 							"Excellent service and highly recommended",
-						date: r.date || r.reviewDate,
+						date: r.date || r.reviewDate || r.relative_time_description || (r.time ? new Date(r.time * 1000).toLocaleDateString() : undefined),
 					}))
 				: [],
 		images: {
@@ -217,7 +217,7 @@ function wrapForWordPress(homepageResult: HomepageGenerationResponse): string {
 	const cssBlock = `<!-- wp:html -->\n<style>\n${homepageResult.css}\n</style>\n<!-- /wp:html -->`;
 
 	// Wrap HTML in wp:group block for better Gutenberg compatibility
-	const htmlBlock = `<!-- wp:group {"layout":{"type":"constrained"}} -->\n<div class="wp-block-group">\n${homepageResult.html}\n</div>\n<!-- /wp:group -->`;
+	const htmlBlock = `<!-- wp:group {"align":"full","layout":{"type":"constrained"}} -->\n<div class="wp-block-group alignfull">\n${homepageResult.html}\n</div>\n<!-- /wp:group -->`;
 
 	return `${cssBlock}\n\n${htmlBlock}`;
 }

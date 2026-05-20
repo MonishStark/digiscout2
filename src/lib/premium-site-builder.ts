@@ -25,8 +25,8 @@ export function buildPremiumPageContent(schema: any): string {
 	}
 	// Use the simplified direct homepage renderer for production-ready business pages.
 	const result = renderBusinessHomepage(schema);
-	// Inject CSS via a wp:html block (safe) and wrap the content in a constrained group
+	// Inject CSS via a wp:html block (safe) and wrap the content in a container
 	const cssBlock = `<!-- wp:html -->\n<style>\n${result.css}\n</style>\n<!-- /wp:html -->`;
-	const wrappedHtml = `<!-- wp:group {"layout":{"type":"constrained"}} -->\n<div class="wp-block-group">\n${result.html}\n</div>\n<!-- /wp:group -->`;
+	const wrappedHtml = `<!-- wp:group {"align":"full","layout":{"type":"constrained"}} -->\n<div class="wp-block-group alignfull">\n${result.html}\n</div>\n<!-- /wp:group -->`;
 	return `${cssBlock}\n\n${wrappedHtml}`;
 }

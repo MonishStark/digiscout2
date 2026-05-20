@@ -84,7 +84,7 @@ Copy & Tone:
 - MUST avoid generic AI phrases: "premium solutions", "elevate", "transform", "cutting-edge", "innovative", "elevate your experience".
 - Use concrete service descriptions from the services array.
 - Use locality signals from local_context or address.
-- Use at least TWO real review excerpts from the reviews array.
+- USE REAL REVIEWS (CRITICAL): You MUST extract and display actual review excerpts from the reviews array (incorporating real author name, star rating, comment text, and date). Do NOT invent fake reviews, fake client names, or generic dates under any circumstances. If real reviews are provided in the context, render them exactly.
 - Copy should immediately communicate: what they do, why they're trustworthy, what services they offer, how to contact them.
 
 Image Usage (CRITICAL):
@@ -120,7 +120,11 @@ CSS REQUIREMENTS
 ============================================
 
 Scope & Structure:
-- Scope ALL CSS under .ds-homepage selectors (no global rules).
+- Scope ALL CSS under .ds-homepage selectors (no global rules), EXCEPT for hiding the default WordPress headers/page titles.
+- FULL WIDTH SCREEN BREAKOUT (CRITICAL): To ensure the homepage spans the full viewport width and is not constrained to a narrow centered column by the WordPress theme layout, you MUST include this rule at the beginning of the CSS:
+  '.ds-homepage { width: 100vw !important; max-width: 100vw !important; position: relative !important; left: 50% !important; right: 50% !important; margin-left: -50vw !important; margin-right: -50vw !important; box-sizing: border-box !important; overflow-x: hidden !important; }'
+- HIDE THEME CHROME (CRITICAL): To prevent the WordPress theme from displaying the default site title or the page title (like "San Francisco Water Restoration Service" or "Home") on top of our generated header, you MUST hide them using this CSS:
+  '.entry-title, .entry-header, .post-title, .page-title, .wp-block-post-title, .site-header, #masthead, .site-branding, .header-footer-group, .theme-header, .custom-header, .nav-container { display: none !important; }'
 - Single stylesheet string (no @import, no external fonts, no <link> tags).
 - Use semantic, scoped class names.
 - Keep CSS compact (~600-800 lines max).
@@ -139,10 +143,12 @@ Responsive Design & Sticky Navigation:
   - On desktop ('@media (min-width: 768px)'), hide '.ds-mobile-menu-label' and display '.ds-nav' as a flex row.
 
 Visual Design & Polish:
-- Spacing: Use 'clamp()' to scale padding fluidly (e.g. 'padding: clamp(4rem, 10vw, 8rem) 0;' for sections). This gives the page breathing room.
+- Spacing: Use 'clamp()' to scale padding fluidly (e.g. 'padding: clamp(4.5rem, 10vw, 8rem) 0;' for sections). This gives the page breathing room.
 - Spacing Rhythm: Use different background colors (white '#ffffff', soft light grey/blue '#f8fafc' or '#f1f5f9', and dark saturated brand background for specific highlighted blocks like Reviews or CTA) to break up the boxed template feel.
-- Typography: Use strong hierarchy with '-0.02em' letter-spacing on bold headings.
-- Cards/Containers: Use consistent '10px' to '12px' border-radius, thin borders ('1px solid rgba(0, 0, 0, 0.08)') and soft layered shadows: 'box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03), 0 2px 4px -1px rgba(0,0,0,0.02);'.
+- Typography: Use strong hierarchy with '-0.03em' letter-spacing and compact line-height (1.1 to 1.25) on bold headings.
+- Cards/Containers: Use modern styled containers with '12px' to '16px' border-radius, thin border lines ('1px solid rgba(0, 0, 0, 0.06)'), and premium layered shadows ('box-shadow: 0 10px 30px rgba(0,0,0,0.03), 0 1px 3px rgba(0,0,0,0.02);').
+- CTA Buttons: Refine CTA button styles. Use linear gradients for backgrounds (e.g., 'linear-gradient(135deg, var(--ds-primary), var(--ds-primary-dark))'), smooth transition offsets, and distinct active/focus/hover states with slight zoom or scale up.
+- Spacing & Rhythm: Ensure no containers are boxy. Make margins/paddings asymmetric where appropriate (e.g., a left-aligned hero section text with empty right side on desktop, etc.).
 
 Hero Refinement:
 - Hero section must feel large, immersive and dominant (min-height '65vh' to '80vh' on desktop).
