@@ -317,6 +317,43 @@ export default function Sidebar({
 	}, [city]);
 	const filteredBusinesses = businesses;
 
+	async function searchAllBusinesses(request: any) {
+		const collected: any[] = [];
+		let nextPageToken: string | undefined;
+
+		do {
+			const pageRequest = {
+				...request,
+				maxResultCount: request.maxResultCount ?? 20,
+				...(nextPageToken ? { pageToken: nextPageToken } : {}),
+			};
+
+			const response = await placesLib.Place.searchByText(pageRequest);
+			const pagePlaces = response?.places || [];
+			collected.push(...pagePlaces);
+			nextPageToken = response?.nextPageToken || response?.next_page_token;
+
+			// Google Places pagination tokens need a short delay before reuse.
+			if (nextPageToken) {
+				await new Promise((resolve) => setTimeout(resolve, 2000));
+			}
+		} while (nextPageToken);
+
+		const deduped = new Map<string, any>();
+		for (const place of collected) {
+			const key = String(
+				place.id ||
+					place.place_id ||
+					`${place.displayName?.text || place.name || ""}-${place.formattedAddress || place.formatted_address || ""}`,
+			);
+			if (!deduped.has(key)) {
+				deduped.set(key, place);
+			}
+		}
+
+		return Array.from(deduped.values());
+	}
+
 	const handleSearch = async (overrideCategory?: string) => {
 		const searchCategory =
 			typeof overrideCategory === "string" && overrideCategory.length > 0
@@ -361,7 +398,7 @@ export default function Sidebar({
 				maxResultCount: 20,
 			};
 
-			const { places } = await placesLib.Place.searchByText(request);
+			const places = await searchAllBusinesses(request);
 
 			if (!places) {
 				setBusinesses([]);
