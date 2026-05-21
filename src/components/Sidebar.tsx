@@ -405,7 +405,7 @@ export default function Sidebar({
 			<Tabs
 				value={activeTab}
 				onValueChange={setActiveTab}
-				className='flex-1 flex flex-col'>
+				className='flex-1 flex flex-col min-h-0 overflow-hidden'>
 				<div className='px-6 py-2 border-b border-slate-200'>
 					<TabsList className='grid w-full grid-cols-2 bg-slate-100 border border-slate-200 rounded-xl p-1'>
 						<TabsTrigger
@@ -553,7 +553,7 @@ export default function Sidebar({
 
 				<TabsContent
 					value='results'
-					className='flex-1 mt-0 flex flex-col overflow-hidden'>
+					className='flex-1 min-h-0 mt-0 flex flex-col overflow-hidden'>
 					{businesses.length === 0 ? (
 						<div className='flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-500'>
 							<Building className='w-12 h-12 mb-4 opacity-20' />
