@@ -229,6 +229,20 @@ function sortCandidates(records: CandidateRecord[]): Business[] {
 		.map((record) => record.business);
 }
 
+function uniqueDisplayNamesFromBusinesses(businesses: Business[]): string[] {
+	const seen = new Set<string>();
+	const names: string[] = [];
+
+	for (const business of businesses) {
+		const displayName = String(business.name || "").trim();
+		if (!displayName || seen.has(displayName)) continue;
+		seen.add(displayName);
+		names.push(displayName);
+	}
+
+	return names;
+}
+
 function mergeBusinessCandidates(
 	records: Map<string, CandidateRecord>,
 	index: Map<string, string>,
@@ -350,6 +364,12 @@ export async function searchBusinessesExpanded({
 				coordinates,
 			);
 			log(`[Search] query complete: ${query} -> ${places.length} raw results`);
+			const keywordDisplayNames = uniqueDisplayNamesFromBusinesses(
+				places.map((place) => toBusiness(place, category)),
+			);
+			log(
+				`[Search] query displayNames for ${query}: ${keywordDisplayNames.join(" | ") || "<none>"}`,
+			);
 
 			for (const place of places) {
 				const business = toBusiness(place, category);
@@ -362,9 +382,9 @@ export async function searchBusinessesExpanded({
 
 	const finalBusinesses = sortCandidates(Array.from(records.values()));
 	log(
-		`[Search] final unique displayNames (${finalBusinesses.length}): ${finalBusinesses
-			.map((business) => business.name)
-			.join(" | ")}`,
+		`[Search] final unique displayNames (${finalBusinesses.length}): ${uniqueDisplayNamesFromBusinesses(
+			finalBusinesses,
+		).join(" | ")}`,
 	);
 	onProgress?.(finalBusinesses);
 	return finalBusinesses;

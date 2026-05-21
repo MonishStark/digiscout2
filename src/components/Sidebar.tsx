@@ -367,11 +367,6 @@ export default function Sidebar({
 				websiteMissingCandidates.length > 0
 					? websiteMissingCandidates
 					: parsedBusinesses;
-
-			// If we are auto-fetching from a category selection, limit to top 6 as requested
-			if (overrideCategory) {
-				candidatesToQualify = candidatesToQualify.slice(0, 6);
-			}
 			const enrichedBusinesses =
 				await enrichBusinessContacts(candidatesToQualify);
 			const qualifiedBusinesses = await qualifyLeads(
