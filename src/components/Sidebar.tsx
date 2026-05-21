@@ -132,6 +132,7 @@ export default function Sidebar({
 	const [city, setCity] = useState("");
 	const [category, setCategory] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
+	const [loadingProgress, setLoadingProgress] = useState("");
 	const [error, setError] = useState<string | null>(null);
 
 	const [suggestions, setSuggestions] = useState<
@@ -374,20 +375,36 @@ export default function Sidebar({
 					: parsedBusinesses;
 			const enrichedBusinesses =
 				await enrichBusinessContacts(candidatesToQualify);
-			const qualifiedBusinesses = await qualifyLeads(
-				enrichedBusinesses,
-				city,
-				searchCategory,
-			);
 
-			const finalBusinesses = qualifiedBusinesses.map(sanitizeBusiness);
-			setBusinesses(finalBusinesses);
+			setBusinesses([]);
 			setActiveTab("results");
+
+			const batchSize = 4;
+			const totalBatches = Math.ceil(enrichedBusinesses.length / batchSize);
+
+			for (let i = 0; i < enrichedBusinesses.length; i += batchSize) {
+				const currentBatchNum = Math.floor(i / batchSize) + 1;
+				setLoadingProgress(`Qualifying: Lead ${i + 1}-${Math.min(i + batchSize, enrichedBusinesses.length)} of ${enrichedBusinesses.length}...`);
+
+				const batch = enrichedBusinesses.slice(i, i + batchSize);
+				try {
+					const qualifiedBatch = await qualifyLeads(batch, city, searchCategory);
+					const sanitizedBatch = qualifiedBatch.map(sanitizeBusiness);
+					setBusinesses((prev) => {
+						const existingIds = new Set(prev.map((b) => b.id));
+						const newLeads = sanitizedBatch.filter((b) => !existingIds.has(b.id));
+						return [...prev, ...newLeads];
+					});
+				} catch (batchErr) {
+					console.error(`[Search] Qualification failed for batch ${currentBatchNum}:`, batchErr);
+				}
+			}
 		} catch (err: any) {
 			console.error(err);
 			setError(err?.message || "An error occurred during search.");
 		} finally {
 			setIsLoading(false);
+			setLoadingProgress("");
 		}
 	};
 
@@ -530,7 +547,7 @@ export default function Sidebar({
 								{isLoading ? (
 									<span className='flex items-center gap-2'>
 										<Activity className='w-4 h-4 animate-spin' />
-										Scanning...
+										{loadingProgress || "Scanning..."}
 									</span>
 								) : (
 									<span className='flex items-center gap-2'>
