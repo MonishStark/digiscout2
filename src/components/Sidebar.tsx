@@ -362,9 +362,7 @@ export default function Sidebar({
 						.filter(Boolean),
 				),
 			);
-			console.log(
-				`[Search] pre-filter unique displayNames (${rawDisplayNames.length}): ${rawDisplayNames.join(" | ")}`,
-			);
+
 
 			const websiteMissingCandidates = parsedBusinesses.filter(
 				(b) => !b.websiteUri,

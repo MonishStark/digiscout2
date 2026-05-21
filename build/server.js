@@ -3774,16 +3774,10 @@ async function fetchVertexKeywords(category, city, attempt) {
       throw new Error("Vertex returned an empty keyword payload");
     }
     const parsed = extractJsonArray(text);
-    console.log(
-      `[Vertex] raw keywords for "${category}" in "${city}": ${JSON.stringify(parsed)}`
-    );
     const keywords = sanitizeKeywords(parsed, category, city);
     if (keywords.length === 0) {
       throw new Error("Vertex returned no valid keywords");
     }
-    console.log(
-      `[Vertex] sanitized keywords for "${category}" in "${city}": ${JSON.stringify(keywords)}`
-    );
     return { keywords, rawKeywords: parsed };
   } finally {
     clearTimeout(timeoutId);

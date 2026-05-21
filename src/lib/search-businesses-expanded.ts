@@ -169,10 +169,6 @@ async function fetchExpandedKeywords(
 	const rawKeywords = Array.isArray(data?.rawKeywords) ? data.rawKeywords : [];
 	const keywords = Array.isArray(data?.keywords) ? data.keywords : [];
 
-	// Log as arrays so they are easy to inspect in the console
-	console.log(`[Search] raw Vertex keywords for "${category}" in "${city}":`, rawKeywords);
-	console.log(`[Search] sanitized Vertex keywords for "${category}" in "${city}":`, keywords);
-
 	const cleaned = keywords
 		.filter((keyword: unknown) => typeof keyword === "string")
 		.map((keyword: string) => keyword.trim())
@@ -204,10 +200,6 @@ async function searchAllPagesForQuery(
 		const pagePlaces = response?.places || [];
 		collected.push(...pagePlaces);
 		nextPageToken = response?.nextPageToken || response?.next_page_token;
-		console.log(
-			`[Search] page ${pageNumber} for ${query}: ${pagePlaces.length} results, nextPageToken=${nextPageToken ? "yes" : "no"}`,
-		);
-
 		if (nextPageToken) {
 			await new Promise((resolve) => setTimeout(resolve, 2000));
 		}
@@ -362,31 +354,21 @@ export async function searchBusinessesExpanded({
 		).values(),
 	);
 
-	log(
-		`[Search] semantic keywords for "${category}" in "${city}": ${searchTerms.join(" | ")}`,
-	);
+	console.log("Vertex keywords", searchTerms);
 
 	await runWithConcurrency(
 		searchTerms,
 		Math.max(1, Math.min(concurrencyLimit, 6)),
 		async (keyword) => {
 			const query = `${keyword} in ${city}`;
-			log(`[Search] running Places query: ${query}`);
 			const places = await searchAllPagesForQuery(
 				placesLib,
 				query,
 				coordinates,
 			);
-			log(`[Search] query complete: ${query} -> ${places.length} raw results`);
 			const keywordDisplayNames = uniqueDisplayNamesFromBusinesses(
 				places.map((place) => toBusiness(place, category)),
 			);
-			log(
-				`[Search] query displayNames for ${query}: ${keywordDisplayNames.join(" | ") || "<none>"}`,
-			);
-			// Also print as an array for easier inspection
-			console.log(`[Search] query displayNames array for ${query}:`, keywordDisplayNames);
-
 			for (const place of places) {
 				const business = toBusiness(place, category);
 				mergeBusinessCandidates(records, index, business, keyword);
@@ -398,9 +380,7 @@ export async function searchBusinessesExpanded({
 
 	const finalBusinesses = sortCandidates(Array.from(records.values()));
 	const finalNames = uniqueDisplayNamesFromBusinesses(finalBusinesses);
-	log(`[Search] final unique displayNames (${finalBusinesses.length}): ${finalNames.join(" | ")}`);
-	// Also print as an array so you can see the full combined list in the console
-	console.log(`[Search] final unique displayNames array:`, finalNames);
+	console.log("Combined search displaynames", finalNames);
 	onProgress?.(finalBusinesses);
 	return finalBusinesses;
 }
