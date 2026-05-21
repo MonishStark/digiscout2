@@ -26,6 +26,7 @@ interface SearchBusinessesExpandedOptions {
 	coordinates: google.maps.LatLng | google.maps.LatLngLiteral;
 	placesLib: typeof google.maps.places;
 	onProgress?: (businesses: Business[]) => void;
+	onLog?: (message: string) => void;
 	concurrencyLimit?: number;
 }
 
@@ -300,11 +301,14 @@ export async function searchBusinessesExpanded({
 	coordinates,
 	placesLib,
 	onProgress,
+	onLog,
 	concurrencyLimit = 4,
 }: SearchBusinessesExpandedOptions): Promise<Business[]> {
 	if (!placesLib) {
 		throw new Error("Google Places library is unavailable");
 	}
+
+	const log = onLog || ((message: string) => console.log(message));
 
 	const records = new Map<string, CandidateRecord>();
 	const index = new Map<string, string>();
@@ -330,16 +334,22 @@ export async function searchBusinessesExpanded({
 		).values(),
 	);
 
+	log(
+		`[Search] semantic keywords for "${category}" in "${city}": ${searchTerms.join(" | ")}`,
+	);
+
 	await runWithConcurrency(
 		searchTerms,
 		Math.max(1, Math.min(concurrencyLimit, 6)),
 		async (keyword) => {
 			const query = `${keyword} in ${city}`;
+			log(`[Search] running Places query: ${query}`);
 			const places = await searchAllPagesForQuery(
 				placesLib,
 				query,
 				coordinates,
 			);
+			log(`[Search] query complete: ${query} -> ${places.length} raw results`);
 
 			for (const place of places) {
 				const business = toBusiness(place, category);
@@ -351,6 +361,11 @@ export async function searchBusinessesExpanded({
 	);
 
 	const finalBusinesses = sortCandidates(Array.from(records.values()));
+	log(
+		`[Search] final unique displayNames (${finalBusinesses.length}): ${finalBusinesses
+			.map((business) => business.name)
+			.join(" | ")}`,
+	);
 	onProgress?.(finalBusinesses);
 	return finalBusinesses;
 }
