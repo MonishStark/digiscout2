@@ -18,6 +18,7 @@ const inflightRequests = new Map<
 export interface SearchKeywordExpansionResult {
 	keywords: string[];
 	rawKeywords: unknown[];
+	rawText?: string;
 }
 
 const GEO_TERMS = new Set([
@@ -201,7 +202,7 @@ async function fetchVertexKeywords(
 			throw new Error("Vertex returned no valid keywords");
 		}
 
-		return { keywords, rawKeywords: parsed };
+		return { keywords, rawKeywords: parsed, rawText: text };
 	} finally {
 		clearTimeout(timeoutId);
 	}
@@ -215,7 +216,7 @@ export async function generateSearchKeywords(
 	const cacheKey = normalizedCategory;
 	const cached = keywordCache.get(cacheKey);
 	if (cached && cached.expiresAt > Date.now()) {
-		return { keywords: cached.keywords, rawKeywords: cached.keywords };
+		return { keywords: cached.keywords, rawKeywords: cached.keywords, rawText: "" };
 	}
 
 	const existing = inflightRequests.get(cacheKey);
@@ -246,7 +247,7 @@ export async function generateSearchKeywords(
 
 		const fallback = [category].filter(Boolean);
 		if (fallback.length > 0) {
-			return { keywords: fallback, rawKeywords: fallback };
+			return { keywords: fallback, rawKeywords: fallback, rawText: "" };
 		}
 
 		throw lastError instanceof Error

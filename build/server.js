@@ -3785,7 +3785,7 @@ ${text}
     if (keywords.length === 0) {
       throw new Error("Vertex returned no valid keywords");
     }
-    return { keywords, rawKeywords: parsed };
+    return { keywords, rawKeywords: parsed, rawText: text };
   } finally {
     clearTimeout(timeoutId);
   }
@@ -3795,7 +3795,7 @@ async function generateSearchKeywords(category, city) {
   const cacheKey = normalizedCategory;
   const cached = keywordCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
-    return { keywords: cached.keywords, rawKeywords: cached.keywords };
+    return { keywords: cached.keywords, rawKeywords: cached.keywords, rawText: "" };
   }
   const existing = inflightRequests.get(cacheKey);
   if (existing) {
@@ -3823,7 +3823,7 @@ async function generateSearchKeywords(category, city) {
     }
     const fallback = [category].filter(Boolean);
     if (fallback.length > 0) {
-      return { keywords: fallback, rawKeywords: fallback };
+      return { keywords: fallback, rawKeywords: fallback, rawText: "" };
     }
     throw lastError instanceof Error ? lastError : new Error("Failed to generate search keywords");
   })();
@@ -4656,11 +4656,11 @@ app.post(
       if (!category || !city) {
         return res.status(400).json({ error: "Missing category or city" });
       }
-      const { keywords, rawKeywords } = await generateSearchKeywords(
+      const { keywords, rawKeywords, rawText } = await generateSearchKeywords(
         category,
         city
       );
-      return res.json({ keywords, rawKeywords });
+      return res.json({ keywords, rawKeywords, rawText });
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       return res.status(500).json({ error: `Keyword expansion failed: ${errorMsg}` });

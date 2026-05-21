@@ -144,7 +144,7 @@ function runWithConcurrency<T, R>(
 async function fetchExpandedKeywords(
 	category: string,
 	city: string,
-): Promise<{ keywords: string[]; rawKeywords: unknown[] }> {
+): Promise<{ keywords: string[]; rawKeywords: unknown[]; rawText?: string }> {
 	const token = localStorage.getItem("ds_token");
 	const headers: Record<string, string> = {
 		"Content-Type": "application/json",
@@ -168,6 +168,8 @@ async function fetchExpandedKeywords(
 	const data = await response.json();
 	const rawKeywords = Array.isArray(data?.rawKeywords) ? data.rawKeywords : [];
 	const keywords = Array.isArray(data?.keywords) ? data.keywords : [];
+
+	console.log(`\n\n=== [Vertex] RAW TEXT RESPONSE ===\n${data?.rawText || "No raw text available"}\n==================================\n\n`);
 
 	const cleaned = keywords
 		.filter((keyword: unknown) => typeof keyword === "string")
