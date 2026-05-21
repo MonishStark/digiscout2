@@ -347,10 +347,6 @@ export default function Sidebar({
 				city,
 				coordinates: location,
 				placesLib,
-				onProgress: (partialBusinesses) => {
-					setBusinesses(partialBusinesses.map(sanitizeBusiness));
-					setActiveTab("results");
-				},
 			});
 
 			if (!parsedBusinesses || parsedBusinesses.length === 0) {
@@ -358,6 +354,17 @@ export default function Sidebar({
 				setActiveTab("results");
 				return;
 			}
+
+			const rawDisplayNames = Array.from(
+				new Set(
+					parsedBusinesses
+						.map((business) => String(business.name || "").trim())
+						.filter(Boolean),
+				),
+			);
+			console.log(
+				`[Search] pre-filter unique displayNames (${rawDisplayNames.length}): ${rawDisplayNames.join(" | ")}`,
+			);
 
 			const websiteMissingCandidates = parsedBusinesses.filter(
 				(b) => !b.websiteUri,
