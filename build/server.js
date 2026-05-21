@@ -3735,7 +3735,7 @@ async function fetchVertexKeywords(category, city, attempt) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const url = `https://${VERTEX_API_ENDPOINT}/v1beta/models/${MODEL_ID}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const url = `https://${VERTEX_API_ENDPOINT}/v1/publishers/google/models/${MODEL_ID}:streamGenerateContent?key=${encodeURIComponent(apiKey)}`;
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
