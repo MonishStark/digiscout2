@@ -144,7 +144,7 @@ function runWithConcurrency<T, R>(
 async function fetchExpandedKeywords(
 	category: string,
 	city: string,
-): Promise<string[]> {
+): Promise<{ keywords: string[]; rawKeywords: unknown[] }> {
 	const token = localStorage.getItem("ds_token");
 	const headers: Record<string, string> = {
 		"Content-Type": "application/json",
@@ -166,21 +166,19 @@ async function fetchExpandedKeywords(
 	}
 
 	const data = await response.json();
-	if (Array.isArray(data?.rawKeywords)) {
-		console.log(
-			`[Search] raw Vertex keywords for "${category}" in "${city}": ${JSON.stringify(data.rawKeywords)}`,
-		);
-	}
-	if (Array.isArray(data?.keywords)) {
-		console.log(
-			`[Search] sanitized Vertex keywords for "${category}" in "${city}": ${JSON.stringify(data.keywords)}`,
-		);
-	}
+	const rawKeywords = Array.isArray(data?.rawKeywords) ? data.rawKeywords : [];
 	const keywords = Array.isArray(data?.keywords) ? data.keywords : [];
-	return keywords
+
+	// Log as arrays so they are easy to inspect in the console
+	console.log(`[Search] raw Vertex keywords for "${category}" in "${city}":`, rawKeywords);
+	console.log(`[Search] sanitized Vertex keywords for "${category}" in "${city}":`, keywords);
+
+	const cleaned = keywords
 		.filter((keyword: unknown) => typeof keyword === "string")
 		.map((keyword: string) => keyword.trim())
 		.filter(Boolean);
+
+	return { keywords: cleaned, rawKeywords };
 }
 
 async function searchAllPagesForQuery(
@@ -206,7 +204,7 @@ async function searchAllPagesForQuery(
 		const pagePlaces = response?.places || [];
 		collected.push(...pagePlaces);
 		nextPageToken = response?.nextPageToken || response?.next_page_token;
-		log(
+		console.log(
 			`[Search] page ${pageNumber} for ${query}: ${pagePlaces.length} results, nextPageToken=${nextPageToken ? "yes" : "no"}`,
 		);
 
@@ -351,9 +349,10 @@ export async function searchBusinessesExpanded({
 		}
 	};
 
-	const expandedKeywords = await fetchExpandedKeywords(category, city).catch(
-		() => [category],
+	const expansionResult = await fetchExpandedKeywords(category, city).catch(
+		() => ({ keywords: [category], rawKeywords: [] }),
 	);
+	const expandedKeywords = expansionResult.keywords || [category];
 	const searchTerms = Array.from(
 		new Map(
 			[category, ...expandedKeywords]
@@ -385,6 +384,8 @@ export async function searchBusinessesExpanded({
 			log(
 				`[Search] query displayNames for ${query}: ${keywordDisplayNames.join(" | ") || "<none>"}`,
 			);
+			// Also print as an array for easier inspection
+			console.log(`[Search] query displayNames array for ${query}:`, keywordDisplayNames);
 
 			for (const place of places) {
 				const business = toBusiness(place, category);
@@ -396,11 +397,10 @@ export async function searchBusinessesExpanded({
 	);
 
 	const finalBusinesses = sortCandidates(Array.from(records.values()));
-	log(
-		`[Search] final unique displayNames (${finalBusinesses.length}): ${uniqueDisplayNamesFromBusinesses(
-			finalBusinesses,
-		).join(" | ")}`,
-	);
+	const finalNames = uniqueDisplayNamesFromBusinesses(finalBusinesses);
+	log(`[Search] final unique displayNames (${finalBusinesses.length}): ${finalNames.join(" | ")}`);
+	// Also print as an array so you can see the full combined list in the console
+	console.log(`[Search] final unique displayNames array:`, finalNames);
 	onProgress?.(finalBusinesses);
 	return finalBusinesses;
 }
