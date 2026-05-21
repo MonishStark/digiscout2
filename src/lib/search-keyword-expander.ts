@@ -1,6 +1,6 @@
 /** @format */
 
-const MODEL_ID = "gemini-3.5-flash";
+const MODEL_ID = "gemini-3.1-flash-lite";
 const VERTEX_API_ENDPOINT = "aiplatform.googleapis.com";
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 15000;
@@ -247,7 +247,8 @@ export async function generateSearchKeywords(
 
 		const fallback = [category].filter(Boolean);
 		if (fallback.length > 0) {
-			return { keywords: fallback, rawKeywords: fallback, rawText: "" };
+			const errorMsg = lastError instanceof Error ? lastError.message : String(lastError);
+			return { keywords: fallback, rawKeywords: fallback, rawText: `ERROR TRIGGERED FALLBACK: ${errorMsg}` };
 		}
 
 		throw lastError instanceof Error

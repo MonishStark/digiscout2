@@ -3635,7 +3635,7 @@ async function pollQueue() {
 init_direct_vertex_homepage_generation();
 
 // src/lib/search-keyword-expander.ts
-var MODEL_ID = "gemini-3.5-flash";
+var MODEL_ID = "gemini-3.1-flash-lite";
 var VERTEX_API_ENDPOINT = "aiplatform.googleapis.com";
 var CACHE_TTL_MS = 6 * 60 * 60 * 1e3;
 var REQUEST_TIMEOUT_MS = 15e3;
@@ -3823,7 +3823,8 @@ async function generateSearchKeywords(category, city) {
     }
     const fallback = [category].filter(Boolean);
     if (fallback.length > 0) {
-      return { keywords: fallback, rawKeywords: fallback, rawText: "" };
+      const errorMsg = lastError instanceof Error ? lastError.message : String(lastError);
+      return { keywords: fallback, rawKeywords: fallback, rawText: `ERROR TRIGGERED FALLBACK: ${errorMsg}` };
     }
     throw lastError instanceof Error ? lastError : new Error("Failed to generate search keywords");
   })();
