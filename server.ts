@@ -66,10 +66,10 @@ async function throttleGemini() {
 	await currentQueue;
 	const now = Date.now();
 	const elapsed = now - lastGeminiCallTime;
-	if (elapsed < 10000) {
-		const waitTime = 10000 - elapsed;
+	if (elapsed < 1000) {
+		const waitTime = 1000 - elapsed;
 		logStderr(
-			`[Gemini Throttle] Queue waiting ${waitTime}ms to maintain 10s gap...`,
+			`[Gemini Throttle] Queue waiting ${waitTime}ms to maintain 1s gap...`,
 		);
 		await new Promise((resolve) => setTimeout(resolve, waitTime));
 	}

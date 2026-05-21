@@ -377,14 +377,12 @@ export default function Sidebar({
 				await enrichBusinessContacts(candidatesToQualify);
 
 			setBusinesses([]);
-			setActiveTab("results");
-
 			const batchSize = 4;
 			const totalBatches = Math.ceil(enrichedBusinesses.length / batchSize);
 
 			for (let i = 0; i < enrichedBusinesses.length; i += batchSize) {
 				const currentBatchNum = Math.floor(i / batchSize) + 1;
-				setLoadingProgress(`Qualifying: Lead ${i + 1}-${Math.min(i + batchSize, enrichedBusinesses.length)} of ${enrichedBusinesses.length}...`);
+				setLoadingProgress("Qualifying Leads...");
 
 				const batch = enrichedBusinesses.slice(i, i + batchSize);
 				try {
@@ -399,6 +397,9 @@ export default function Sidebar({
 					console.error(`[Search] Qualification failed for batch ${currentBatchNum}:`, batchErr);
 				}
 			}
+
+			// Automatically shift to results tab once all listings are qualified and added
+			setActiveTab("results");
 		} catch (err: any) {
 			console.error(err);
 			setError(err?.message || "An error occurred during search.");
