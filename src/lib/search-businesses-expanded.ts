@@ -166,6 +166,16 @@ async function fetchExpandedKeywords(
 	}
 
 	const data = await response.json();
+	if (Array.isArray(data?.rawKeywords)) {
+		console.log(
+			`[Search] raw Vertex keywords for "${category}" in "${city}": ${JSON.stringify(data.rawKeywords)}`,
+		);
+	}
+	if (Array.isArray(data?.keywords)) {
+		console.log(
+			`[Search] sanitized Vertex keywords for "${category}" in "${city}": ${JSON.stringify(data.keywords)}`,
+		);
+	}
 	const keywords = Array.isArray(data?.keywords) ? data.keywords : [];
 	return keywords
 		.filter((keyword: unknown) => typeof keyword === "string")
@@ -180,8 +190,10 @@ async function searchAllPagesForQuery(
 ): Promise<any[]> {
 	const collected: any[] = [];
 	let nextPageToken: string | undefined;
+	let pageNumber = 0;
 
 	do {
+		pageNumber += 1;
 		const pageRequest: any = {
 			textQuery: query,
 			fields: DEFAULT_FIELD_SET,
@@ -194,6 +206,9 @@ async function searchAllPagesForQuery(
 		const pagePlaces = response?.places || [];
 		collected.push(...pagePlaces);
 		nextPageToken = response?.nextPageToken || response?.next_page_token;
+		log(
+			`[Search] page ${pageNumber} for ${query}: ${pagePlaces.length} results, nextPageToken=${nextPageToken ? "yes" : "no"}`,
+		);
 
 		if (nextPageToken) {
 			await new Promise((resolve) => setTimeout(resolve, 2000));

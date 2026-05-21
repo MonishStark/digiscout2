@@ -3389,8 +3389,11 @@ app.post(
 				return res.status(400).json({ error: "Missing category or city" });
 			}
 
-			const keywords = await generateSearchKeywords(category, city);
-			return res.json({ keywords });
+			const { keywords, rawKeywords } = await generateSearchKeywords(
+				category,
+				city,
+			);
+			return res.json({ keywords, rawKeywords });
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			return res

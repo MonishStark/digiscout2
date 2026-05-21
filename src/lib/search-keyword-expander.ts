@@ -10,7 +10,15 @@ const keywordCache = new Map<
 	string,
 	{ keywords: string[]; expiresAt: number }
 >();
-const inflightRequests = new Map<string, Promise<string[]>>();
+const inflightRequests = new Map<
+	string,
+	Promise<SearchKeywordExpansionResult>
+>();
+
+export interface SearchKeywordExpansionResult {
+	keywords: string[];
+	rawKeywords: unknown[];
+}
 
 const GEO_TERMS = new Set([
 	"near",
@@ -116,7 +124,7 @@ async function fetchVertexKeywords(
 	category: string,
 	city: string,
 	attempt: number,
-): Promise<string[]> {
+): Promise<SearchKeywordExpansionResult> {
 	const apiKey = process.env.GOOGLE_CLOUD_API_KEY;
 	if (!apiKey) {
 		throw new Error("GOOGLE_CLOUD_API_KEY is not configured");
@@ -197,7 +205,7 @@ async function fetchVertexKeywords(
 			`[Vertex] sanitized keywords for "${category}" in "${city}": ${JSON.stringify(keywords)}`,
 		);
 
-		return keywords;
+		return { keywords, rawKeywords: parsed };
 	} finally {
 		clearTimeout(timeoutId);
 	}
@@ -206,29 +214,30 @@ async function fetchVertexKeywords(
 export async function generateSearchKeywords(
 	category: string,
 	city: string,
-): Promise<string[]> {
+): Promise<SearchKeywordExpansionResult> {
 	const normalizedCategory = normalize(category);
 	const cacheKey = normalizedCategory;
 	const cached = keywordCache.get(cacheKey);
 	if (cached && cached.expiresAt > Date.now()) {
-		return cached.keywords;
+		return { keywords: cached.keywords, rawKeywords: cached.keywords };
 	}
 
 	const existing = inflightRequests.get(cacheKey);
 	if (existing) {
-		return existing;
+		return await existing;
 	}
 
-	const request = (async () => {
+	const request: Promise<SearchKeywordExpansionResult> = (async () => {
 		let lastError: unknown;
 		for (let attempt = 0; attempt < 3; attempt += 1) {
 			try {
-				const keywords = await fetchVertexKeywords(category, city, attempt);
+				const result = await fetchVertexKeywords(category, city, attempt);
+				const keywords = result.keywords;
 				keywordCache.set(cacheKey, {
 					keywords,
 					expiresAt: Date.now() + CACHE_TTL_MS,
 				});
-				return keywords;
+				return result;
 			} catch (error) {
 				lastError = error;
 				if (attempt < 2) {
@@ -241,7 +250,7 @@ export async function generateSearchKeywords(
 
 		const fallback = [category].filter(Boolean);
 		if (fallback.length > 0) {
-			return fallback;
+			return { keywords: fallback, rawKeywords: fallback };
 		}
 
 		throw lastError instanceof Error

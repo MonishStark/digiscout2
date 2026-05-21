@@ -3784,7 +3784,7 @@ async function fetchVertexKeywords(category, city, attempt) {
     console.log(
       `[Vertex] sanitized keywords for "${category}" in "${city}": ${JSON.stringify(keywords)}`
     );
-    return keywords;
+    return { keywords, rawKeywords: parsed };
   } finally {
     clearTimeout(timeoutId);
   }
@@ -3794,22 +3794,23 @@ async function generateSearchKeywords(category, city) {
   const cacheKey = normalizedCategory;
   const cached = keywordCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
-    return cached.keywords;
+    return { keywords: cached.keywords, rawKeywords: cached.keywords };
   }
   const existing = inflightRequests.get(cacheKey);
   if (existing) {
-    return existing;
+    return await existing;
   }
   const request = (async () => {
     let lastError;
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
-        const keywords = await fetchVertexKeywords(category, city, attempt);
+        const result = await fetchVertexKeywords(category, city, attempt);
+        const keywords = result.keywords;
         keywordCache.set(cacheKey, {
           keywords,
           expiresAt: Date.now() + CACHE_TTL_MS
         });
-        return keywords;
+        return result;
       } catch (error) {
         lastError = error;
         if (attempt < 2) {
@@ -3821,7 +3822,7 @@ async function generateSearchKeywords(category, city) {
     }
     const fallback = [category].filter(Boolean);
     if (fallback.length > 0) {
-      return fallback;
+      return { keywords: fallback, rawKeywords: fallback };
     }
     throw lastError instanceof Error ? lastError : new Error("Failed to generate search keywords");
   })();
@@ -4654,8 +4655,11 @@ app.post(
       if (!category || !city) {
         return res.status(400).json({ error: "Missing category or city" });
       }
-      const keywords = await generateSearchKeywords(category, city);
-      return res.json({ keywords });
+      const { keywords, rawKeywords } = await generateSearchKeywords(
+        category,
+        city
+      );
+      return res.json({ keywords, rawKeywords });
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       return res.status(500).json({ error: `Keyword expansion failed: ${errorMsg}` });
