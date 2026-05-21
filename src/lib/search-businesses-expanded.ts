@@ -197,6 +197,11 @@ async function searchAllPagesForQuery(
 		};
 
 		const response = await placesLib.Place.searchByText(pageRequest);
+		console.log(`\n\n=== [Maps SDK] RAW RESPONSE FOR: ${query} ===`);
+		console.log(`Total Places Returned: ${response?.places?.length || 0}`);
+		console.log(`Next Page Token Present: ${!!(response?.nextPageToken || response?.next_page_token)}`);
+		console.log(`====================================================\n\n`);
+
 		const pagePlaces = response?.places || [];
 		collected.push(...pagePlaces);
 		nextPageToken = response?.nextPageToken || response?.next_page_token;

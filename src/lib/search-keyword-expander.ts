@@ -189,6 +189,8 @@ async function fetchVertexKeywords(
 					.join("")
 			: data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
+		console.log(`\n\n=== [Vertex] RAW TEXT RESPONSE ===\n${text}\n==================================\n\n`);
+
 		if (!text) {
 			throw new Error("Vertex returned an empty keyword payload");
 		}

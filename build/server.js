@@ -3770,6 +3770,13 @@ async function fetchVertexKeywords(category, city, attempt) {
     const text = Array.isArray(data) ? data.map(
       (chunk) => chunk?.candidates?.[0]?.content?.parts?.[0]?.text || ""
     ).join("") : data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    console.log(`
+
+=== [Vertex] RAW TEXT RESPONSE ===
+${text}
+==================================
+
+`);
     if (!text) {
       throw new Error("Vertex returned an empty keyword payload");
     }
