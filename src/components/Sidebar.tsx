@@ -21,6 +21,7 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Business } from "../types";
 import { cn } from "../lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { searchBusinessesExpanded } from "../lib/search-businesses-expanded";
 
 interface SidebarProps {
 	businesses: Business[];
@@ -317,43 +318,6 @@ export default function Sidebar({
 	}, [city]);
 	const filteredBusinesses = businesses;
 
-	async function searchAllBusinesses(request: any) {
-		const collected: any[] = [];
-		let nextPageToken: string | undefined;
-
-		do {
-			const pageRequest = {
-				...request,
-				maxResultCount: request.maxResultCount ?? 20,
-				...(nextPageToken ? { pageToken: nextPageToken } : {}),
-			};
-
-			const response = await placesLib.Place.searchByText(pageRequest);
-			const pagePlaces = response?.places || [];
-			collected.push(...pagePlaces);
-			nextPageToken = response?.nextPageToken || response?.next_page_token;
-
-			// Google Places pagination tokens need a short delay before reuse.
-			if (nextPageToken) {
-				await new Promise((resolve) => setTimeout(resolve, 2000));
-			}
-		} while (nextPageToken);
-
-		const deduped = new Map<string, any>();
-		for (const place of collected) {
-			const key = String(
-				place.id ||
-					place.place_id ||
-					`${place.displayName?.text || place.name || ""}-${place.formattedAddress || place.formatted_address || ""}`,
-			);
-			if (!deduped.has(key)) {
-				deduped.set(key, place);
-			}
-		}
-
-		return Array.from(deduped.values());
-	}
-
 	const handleSearch = async (overrideCategory?: string) => {
 		const searchCategory =
 			typeof overrideCategory === "string" && overrideCategory.length > 0
@@ -378,74 +342,22 @@ export default function Sidebar({
 			map.panTo(location);
 			map.setZoom(12);
 
-			// Search Nearby
-			const request = {
-				textQuery: `${searchCategory} in ${city}`,
-				fields: [
-					"id",
-					"displayName",
-					"location",
-					"formattedAddress",
-					"rating",
-					"userRatingCount",
-					"websiteURI",
-					"nationalPhoneNumber",
-					"photos",
-					"businessStatus",
-					"reviews",
-				],
-				locationBias: location,
-				maxResultCount: 20,
-			};
+			const parsedBusinesses = await searchBusinessesExpanded({
+				category: searchCategory,
+				city,
+				coordinates: location,
+				placesLib,
+				onProgress: (partialBusinesses) => {
+					setBusinesses(partialBusinesses.map(sanitizeBusiness));
+					setActiveTab("results");
+				},
+			});
 
-			const places = await searchAllBusinesses(request);
-
-			if (!places) {
+			if (!parsedBusinesses || parsedBusinesses.length === 0) {
 				setBusinesses([]);
 				setActiveTab("results");
 				return;
 			}
-
-			// Aggressively sanitize the business data to avoid circular references (like Google Maps DOM attributions)
-			const parsedBusinesses: Business[] = places.map((p) => {
-				// displayName is an object { text: string } in the new API
-				const name =
-					p.displayName?.text ||
-					(typeof p.displayName === "string"
-						? p.displayName
-						: "Unknown Business");
-				const address = p.formattedAddress || "No address available";
-
-				return {
-					id: String(p.id || Math.random().toString(36).substr(2, 9)),
-					name: String(name),
-					category: String(searchCategory),
-					address: String(address),
-					rating: typeof p.rating === "number" ? p.rating : 0,
-					reviewCount:
-						typeof p.userRatingCount === "number" ? p.userRatingCount : 0,
-					location: {
-						lat: typeof p.location?.lat === "function" ? p.location.lat() : 0,
-						lng: typeof p.location?.lng === "function" ? p.location.lng() : 0,
-					},
-					websiteUri: p.websiteURI ? String(p.websiteURI) : undefined,
-					phoneNumber: p.nationalPhoneNumber
-						? String(p.nationalPhoneNumber)
-						: undefined,
-					photos: p.photos
-						? p.photos.map((photo) => String(photo.getURI({ maxWidth: 400 })))
-						: [],
-					isOpen: p.businessStatus === "OPERATIONAL",
-					reviews: p.reviews
-						? p.reviews.map((r: any) => ({
-								author: r.authorAttribution?.displayName || "Customer",
-								rating: r.rating || 5,
-								text: r.text?.text || (typeof r.text === "string" ? r.text : ""),
-								date: r.relativePublishTimeDescription || "",
-						  }))
-						: [],
-				};
-			});
 
 			const websiteMissingCandidates = parsedBusinesses.filter(
 				(b) => !b.websiteUri,

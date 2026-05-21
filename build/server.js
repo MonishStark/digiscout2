@@ -3634,6 +3634,199 @@ async function pollQueue() {
 // server.ts
 init_direct_vertex_homepage_generation();
 
+// src/lib/search-keyword-expander.ts
+var MODEL_ID = "gemini-3.5-flash";
+var VERTEX_API_ENDPOINT = "aiplatform.googleapis.com";
+var CACHE_TTL_MS = 6 * 60 * 60 * 1e3;
+var REQUEST_TIMEOUT_MS = 15e3;
+var MAX_KEYWORDS = 15;
+var keywordCache = /* @__PURE__ */ new Map();
+var inflightRequests = /* @__PURE__ */ new Map();
+var GEO_TERMS = /* @__PURE__ */ new Set([
+  "near",
+  "nearby",
+  "city",
+  "county",
+  "metro",
+  "metropolitan",
+  "suburb",
+  "suburban",
+  "downtown",
+  "uptown",
+  "houston",
+  "austin",
+  "dallas",
+  "san antonio",
+  "texas",
+  "tx",
+  "tx."
+]);
+function normalize(text) {
+  return text.toLowerCase().replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim();
+}
+function stripCodeFences(text) {
+  return text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+}
+function extractJsonArray(text) {
+  const cleaned = stripCodeFences(text);
+  try {
+    const parsed = JSON.parse(cleaned);
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && Array.isArray(parsed.keywords)) {
+      return parsed.keywords;
+    }
+  } catch {
+  }
+  const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
+  if (!arrayMatch) return [];
+  try {
+    const parsed = JSON.parse(arrayMatch[0]);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+function sanitizeKeywords(rawKeywords, category, city) {
+  const normalizedCategory = normalize(category);
+  const normalizedCity = normalize(city);
+  const cityTokens = normalizedCity.split(" ").filter(Boolean);
+  const filtered = /* @__PURE__ */ new Set();
+  for (const rawKeyword of rawKeywords) {
+    if (typeof rawKeyword !== "string") continue;
+    const keyword = rawKeyword.replace(/[\r\n\t]+/g, " ").replace(/^[-•*\d.\s]+/, "").trim();
+    if (!keyword) continue;
+    const normalizedKeyword = normalize(keyword);
+    if (!normalizedKeyword) continue;
+    if (normalizedKeyword.length < 3) continue;
+    if (normalizedKeyword.length > 80) continue;
+    if (normalizedKeyword === normalizedCategory) continue;
+    if (normalizedKeyword.includes(normalizedCity)) continue;
+    if (cityTokens.some((token) => token && normalizedKeyword.includes(token))) {
+      continue;
+    }
+    if ([...GEO_TERMS].some((term) => normalizedKeyword.includes(term))) {
+      continue;
+    }
+    filtered.add(keyword);
+  }
+  const deduped = Array.from(filtered.values());
+  if (!deduped.includes(category)) {
+    deduped.unshift(category);
+  }
+  return deduped.slice(0, MAX_KEYWORDS);
+}
+async function fetchVertexKeywords(category, city, attempt) {
+  const apiKey = process.env.GOOGLE_CLOUD_API_KEY;
+  if (!apiKey) {
+    throw new Error("GOOGLE_CLOUD_API_KEY is not configured");
+  }
+  const prompt = [
+    "You generate Google Places Text Search keyword expansions for local business discovery.",
+    "Return JSON only as an array of strings.",
+    "Generate 10 to 15 high-quality search phrases that are semantically related to the business category.",
+    "Include industry aliases, service synonyms, contractor variations, and closely related service phrases.",
+    "Do not include city names, suburbs, metro areas, neighborhoods, or geographic terms.",
+    "Do not include duplicates, numbering, bullets, explanations, or markdown.",
+    "Keep each phrase concise, natural, and suitable for Google Places Text Search.",
+    `Category: ${category}`,
+    `City context: ${city}`,
+    "Output only the JSON array."
+  ].join("\n");
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const url = `https://${VERTEX_API_ENDPOINT}/v1beta/models/${MODEL_ID}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 256,
+          responseMimeType: "application/json"
+        },
+        safetySettings: [
+          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "OFF" },
+          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "OFF" },
+          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "OFF" },
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "OFF" }
+        ]
+      })
+    });
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(
+        `Vertex keyword generation failed (${response.status}): ${errorText}`
+      );
+    }
+    const data = await response.json();
+    const text = Array.isArray(data) ? data.map(
+      (chunk) => chunk?.candidates?.[0]?.content?.parts?.[0]?.text || ""
+    ).join("") : data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    if (!text) {
+      throw new Error("Vertex returned an empty keyword payload");
+    }
+    const parsed = extractJsonArray(text);
+    const keywords = sanitizeKeywords(parsed, category, city);
+    if (keywords.length === 0) {
+      throw new Error("Vertex returned no valid keywords");
+    }
+    return keywords;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+async function generateSearchKeywords(category, city) {
+  const normalizedCategory = normalize(category);
+  const cacheKey = normalizedCategory;
+  const cached = keywordCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.keywords;
+  }
+  const existing = inflightRequests.get(cacheKey);
+  if (existing) {
+    return existing;
+  }
+  const request = (async () => {
+    let lastError;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const keywords = await fetchVertexKeywords(category, city, attempt);
+        keywordCache.set(cacheKey, {
+          keywords,
+          expiresAt: Date.now() + CACHE_TTL_MS
+        });
+        return keywords;
+      } catch (error) {
+        lastError = error;
+        if (attempt < 2) {
+          await new Promise(
+            (resolve) => setTimeout(resolve, 400 * (attempt + 1))
+          );
+        }
+      }
+    }
+    const fallback = [category].filter(Boolean);
+    if (fallback.length > 0) {
+      return fallback;
+    }
+    throw lastError instanceof Error ? lastError : new Error("Failed to generate search keywords");
+  })();
+  inflightRequests.set(cacheKey, request);
+  try {
+    return await request;
+  } finally {
+    inflightRequests.delete(cacheKey);
+  }
+}
+
 // src/lib/mailer.ts
 import nodemailer from "nodemailer";
 import fs3 from "fs";
@@ -3801,7 +3994,12 @@ app.use(
     origin: true,
     // reflect request origin — allows any origin with credentials
     credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization", "x-debug-generation-id", "x-debug-generation-fallback"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "x-debug-generation-id",
+      "x-debug-generation-fallback"
+    ],
     exposedHeaders: ["x-debug-generation-id", "x-debug-generation-fallback"],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
   })
@@ -3818,14 +4016,24 @@ function verifyPassword(password, storedHash) {
     const [salt, hash] = storedHash.split(":");
     if (!salt || !hash) return false;
     const verifyHash = crypto2.scryptSync(password, salt, 64).toString("hex");
-    return crypto2.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(verifyHash, "hex"));
+    return crypto2.timingSafeEqual(
+      Buffer.from(hash, "hex"),
+      Buffer.from(verifyHash, "hex")
+    );
   } catch {
     return false;
   }
 }
 function generateToken(payload) {
-  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
-  const body = Buffer.from(JSON.stringify({ ...payload, exp: Math.floor(Date.now() / 1e3) + 7 * 24 * 60 * 60 })).toString("base64url");
+  const header = Buffer.from(
+    JSON.stringify({ alg: "HS256", typ: "JWT" })
+  ).toString("base64url");
+  const body = Buffer.from(
+    JSON.stringify({
+      ...payload,
+      exp: Math.floor(Date.now() / 1e3) + 7 * 24 * 60 * 60
+    })
+  ).toString("base64url");
   const signature = crypto2.createHmac("sha256", JWT_SECRET).update(`${header}.${body}`).digest("base64url");
   return `${header}.${body}.${signature}`;
 }
@@ -3930,10 +4138,9 @@ app.post("/api/auth/verify-otp", async (req, res) => {
     if (!verifications || verifications.length === 0) {
       return res.status(400).json({ error: "Invalid or expired verification code" });
     }
-    await pool.query(
-      "UPDATE users SET is_verified = 1 WHERE email = ?",
-      [email]
-    );
+    await pool.query("UPDATE users SET is_verified = 1 WHERE email = ?", [
+      email
+    ]);
     await pool.query("DELETE FROM otp_verifications WHERE email = ?", [email]);
     const [users] = await pool.query(
       "SELECT id, name, email FROM users WHERE email = ? LIMIT 1",
@@ -4036,7 +4243,10 @@ app.post("/api/auth/forgot-password", async (req, res) => {
       [email]
     );
     if (!users || users.length === 0) {
-      return res.json({ success: true, message: "If this email is registered, a password reset link has been sent" });
+      return res.json({
+        success: true,
+        message: "If this email is registered, a password reset link has been sent"
+      });
     }
     const token = crypto2.randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 60 * 60 * 1e3);
@@ -4048,7 +4258,10 @@ app.post("/api/auth/forgot-password", async (req, res) => {
     const origin = req.headers.origin || "http://localhost:3000";
     const resetLink = `${origin}/?reset_token=${token}`;
     await sendResetPasswordEmail(email, resetLink);
-    return res.json({ success: true, message: "If this email is registered, a password reset link has been sent" });
+    return res.json({
+      success: true,
+      message: "If this email is registered, a password reset link has been sent"
+    });
   } catch (error) {
     console.error("[Forgot Password] Error:", error);
     return res.status(500).json({ error: "Failed to generate password reset request" });
@@ -4069,12 +4282,15 @@ app.post("/api/auth/reset-password", async (req, res) => {
     }
     const email = resets[0].email;
     const passwordHash = hashPassword(password);
-    await pool.query(
-      "UPDATE users SET password_hash = ? WHERE email = ?",
-      [passwordHash, email]
-    );
+    await pool.query("UPDATE users SET password_hash = ? WHERE email = ?", [
+      passwordHash,
+      email
+    ]);
     await pool.query("DELETE FROM password_resets WHERE token = ?", [token]);
-    return res.json({ success: true, message: "Password updated successfully" });
+    return res.json({
+      success: true,
+      message: "Password updated successfully"
+    });
   } catch (error) {
     console.error("[Reset Password] Error:", error);
     return res.status(500).json({ error: "Failed to reset password" });
@@ -4375,50 +4591,71 @@ Return only valid JSON in this exact shape:
     notes: lastError instanceof Error ? lastError.message : "Lead qualification failed."
   };
 }
-app.post("/api/generate", authenticateToken, async (req, res) => {
-  try {
-    const business = req.body;
-    if (!business || !business.name) {
-      return res.status(400).json({ error: "Missing business payload" });
-    }
-    const debugSession = createGenerationDebugSession(business);
-    logStderr(
-      `[Generate] start traceId=${debugSession.traceId} business=${business.name}`
-    );
-    res.setHeader("x-debug-generation-id", debugSession.traceId);
-    res.setHeader("x-debug-generation-fallback", "false");
-    if (WEBSITE_GENERATION_MODE === "template") {
-      logStderr(`[Generate] Template mode enabled - skipping generation`);
-      return res.status(422).json({
-        error: "Website creation failed: template mode is enabled."
+app.post(
+  "/api/generate",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const business = req.body;
+      if (!business || !business.name) {
+        return res.status(400).json({ error: "Missing business payload" });
+      }
+      const debugSession = createGenerationDebugSession(business);
+      logStderr(
+        `[Generate] start traceId=${debugSession.traceId} business=${business.name}`
+      );
+      res.setHeader("x-debug-generation-id", debugSession.traceId);
+      res.setHeader("x-debug-generation-fallback", "false");
+      if (WEBSITE_GENERATION_MODE === "template") {
+        logStderr(`[Generate] Template mode enabled - skipping generation`);
+        return res.status(422).json({
+          error: "Website creation failed: template mode is enabled."
+        });
+      }
+      if (!GENAI_KEY2 && !process.env.GEMINI_REST_URL) {
+        logStderr(`[Generate] Missing Gemini API configuration`);
+        return res.status(422).json({
+          error: "Website creation failed: AI configuration missing."
+        });
+      }
+      const schema = await generateHomepageViaDirectVertexPrompt(business, {
+        debugLog: (msg) => logStderr(msg),
+        debugSession,
+        persistFile: (filename, content) => {
+          persistGenerationDebugFile(debugSession, filename, content);
+        },
+        throttleGemini: () => throttleGemini()
+      });
+      logStderr(
+        `[Generate] complete traceId=${debugSession.traceId} renderSource=direct-vertex-prompt`
+      );
+      return res.json(schema);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logStderr(`[Generate] Error: ${errorMsg}`);
+      return res.status(500).json({
+        error: `Website generation failed: ${errorMsg}`
       });
     }
-    if (!GENAI_KEY2 && !process.env.GEMINI_REST_URL) {
-      logStderr(`[Generate] Missing Gemini API configuration`);
-      return res.status(422).json({
-        error: "Website creation failed: AI configuration missing."
-      });
-    }
-    const schema = await generateHomepageViaDirectVertexPrompt(business, {
-      debugLog: (msg) => logStderr(msg),
-      debugSession,
-      persistFile: (filename, content) => {
-        persistGenerationDebugFile(debugSession, filename, content);
-      },
-      throttleGemini: () => throttleGemini()
-    });
-    logStderr(
-      `[Generate] complete traceId=${debugSession.traceId} renderSource=direct-vertex-prompt`
-    );
-    return res.json(schema);
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    logStderr(`[Generate] Error: ${errorMsg}`);
-    return res.status(500).json({
-      error: `Website generation failed: ${errorMsg}`
-    });
   }
-});
+);
+app.post(
+  "/api/generate-search-keywords",
+  async (req, res) => {
+    try {
+      const category = String(req.body?.category || "").trim();
+      const city = String(req.body?.city || "").trim();
+      if (!category || !city) {
+        return res.status(400).json({ error: "Missing category or city" });
+      }
+      const keywords = await generateSearchKeywords(category, city);
+      return res.json({ keywords });
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      return res.status(500).json({ error: `Keyword expansion failed: ${errorMsg}` });
+    }
+  }
+);
 app.post(
   "/api/debug-generation/:traceId/file",
   (req, res) => {
@@ -4451,50 +4688,54 @@ app.get(
     return res.json(session);
   }
 );
-app.post("/api/generate-v2", authenticateToken, async (req, res) => {
-  try {
-    const business = req.body;
-    if (!business || !business.name) {
-      return res.status(400).json({ error: "Missing business payload" });
-    }
-    const debugSession = createGenerationDebugSession(business);
-    logStderr(
-      `[GenerateV2] start traceId=${debugSession.traceId} business=${business.name}`
-    );
-    res.setHeader("x-debug-generation-id", debugSession.traceId);
-    res.setHeader("x-debug-generation-fallback", "false");
-    if (WEBSITE_GENERATION_MODE === "template") {
-      logStderr(`[GenerateV2] Template mode enabled - skipping generation`);
-      return res.status(422).json({
-        error: "Website creation failed: template mode is enabled."
+app.post(
+  "/api/generate-v2",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const business = req.body;
+      if (!business || !business.name) {
+        return res.status(400).json({ error: "Missing business payload" });
+      }
+      const debugSession = createGenerationDebugSession(business);
+      logStderr(
+        `[GenerateV2] start traceId=${debugSession.traceId} business=${business.name}`
+      );
+      res.setHeader("x-debug-generation-id", debugSession.traceId);
+      res.setHeader("x-debug-generation-fallback", "false");
+      if (WEBSITE_GENERATION_MODE === "template") {
+        logStderr(`[GenerateV2] Template mode enabled - skipping generation`);
+        return res.status(422).json({
+          error: "Website creation failed: template mode is enabled."
+        });
+      }
+      if (!GENAI_KEY2 && !process.env.GEMINI_REST_URL) {
+        logStderr(`[GenerateV2] Missing Gemini API configuration`);
+        return res.status(422).json({
+          error: "Website creation failed: AI configuration missing."
+        });
+      }
+      const schema = await generateHomepageViaDirectVertexPrompt(business, {
+        debugLog: (msg) => logStderr(msg),
+        debugSession,
+        persistFile: (filename, content) => {
+          persistGenerationDebugFile(debugSession, filename, content);
+        },
+        throttleGemini: () => throttleGemini()
+      });
+      logStderr(
+        `[GenerateV2] complete traceId=${debugSession.traceId} renderSource=direct-vertex-prompt`
+      );
+      return res.json(schema);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logStderr(`[GenerateV2] Error: ${errorMsg}`);
+      return res.status(500).json({
+        error: `Website generation failed: ${errorMsg}`
       });
     }
-    if (!GENAI_KEY2 && !process.env.GEMINI_REST_URL) {
-      logStderr(`[GenerateV2] Missing Gemini API configuration`);
-      return res.status(422).json({
-        error: "Website creation failed: AI configuration missing."
-      });
-    }
-    const schema = await generateHomepageViaDirectVertexPrompt(business, {
-      debugLog: (msg) => logStderr(msg),
-      debugSession,
-      persistFile: (filename, content) => {
-        persistGenerationDebugFile(debugSession, filename, content);
-      },
-      throttleGemini: () => throttleGemini()
-    });
-    logStderr(
-      `[GenerateV2] complete traceId=${debugSession.traceId} renderSource=direct-vertex-prompt`
-    );
-    return res.json(schema);
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    logStderr(`[GenerateV2] Error: ${errorMsg}`);
-    return res.status(500).json({
-      error: `Website generation failed: ${errorMsg}`
-    });
   }
-});
+);
 app.post(
   "/api/deploy",
   async (req, res) => {
@@ -4770,7 +5011,13 @@ app.post(
         activeJobId = existing[0].id;
         await pool.query(
           `UPDATE provisioning_jobs SET website_schema = ?, status = ?, trace_id = ?, updated_at = NOW(), user_id = ? WHERE project_id = ?`,
-          [JSON.stringify(websiteSchema), targetStatus, traceId, req.user.id, projectId]
+          [
+            JSON.stringify(websiteSchema),
+            targetStatus,
+            traceId,
+            req.user.id,
+            projectId
+          ]
         );
       } else {
         await pool.query(
@@ -4801,58 +5048,62 @@ app.post(
     }
   }
 );
-app.get("/api/wordpress/site-status/:projectId", authenticateToken, async (req, res) => {
-  const { projectId } = req.params;
-  try {
-    const [rows] = await pool.query(
-      `SELECT status, logs, subdomain, subdomain_url, wp_admin_url, ssl_status, wp_admin_user, wp_admin_pass_encrypted 
+app.get(
+  "/api/wordpress/site-status/:projectId",
+  authenticateToken,
+  async (req, res) => {
+    const { projectId } = req.params;
+    try {
+      const [rows] = await pool.query(
+        `SELECT status, logs, subdomain, subdomain_url, wp_admin_url, ssl_status, wp_admin_user, wp_admin_pass_encrypted 
 			 FROM provisioning_jobs 
 			 LEFT JOIN isolated_deployments ON provisioning_jobs.project_id = isolated_deployments.project_id
 			 WHERE provisioning_jobs.project_id = ? AND provisioning_jobs.user_id = ? ORDER BY provisioning_jobs.created_at DESC LIMIT 1`,
-      [projectId, req.user.id]
-    );
-    if (!rows || rows.length === 0) {
-      return res.status(404).json({ error: "Job not found" });
-    }
-    const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscout.online";
-    const liveUrl = rows[0].subdomain_url || null;
-    const adminUrl = rows[0].wp_admin_url || null;
-    const effectiveStatus = rows[0].status;
-    let rawPassword = null;
-    if (effectiveStatus === "completed" && rows[0].wp_admin_pass_encrypted) {
-      try {
-        const [ivHex, encryptedHex] = rows[0].wp_admin_pass_encrypted.split(":");
-        const key = process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
-        const decipher = crypto2.createDecipheriv(
-          "aes-256-cbc",
-          Buffer.from(key),
-          Buffer.from(ivHex, "hex")
-        );
-        let decrypted = decipher.update(Buffer.from(encryptedHex, "hex"));
-        decrypted = Buffer.concat([decrypted, decipher.final()]);
-        rawPassword = decrypted.toString();
-      } catch (e) {
-        console.error("Decryption failed:", e);
+        [projectId, req.user.id]
+      );
+      if (!rows || rows.length === 0) {
+        return res.status(404).json({ error: "Job not found" });
       }
+      const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscout.online";
+      const liveUrl = rows[0].subdomain_url || null;
+      const adminUrl = rows[0].wp_admin_url || null;
+      const effectiveStatus = rows[0].status;
+      let rawPassword = null;
+      if (effectiveStatus === "completed" && rows[0].wp_admin_pass_encrypted) {
+        try {
+          const [ivHex, encryptedHex] = rows[0].wp_admin_pass_encrypted.split(":");
+          const key = process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
+          const decipher = crypto2.createDecipheriv(
+            "aes-256-cbc",
+            Buffer.from(key),
+            Buffer.from(ivHex, "hex")
+          );
+          let decrypted = decipher.update(Buffer.from(encryptedHex, "hex"));
+          decrypted = Buffer.concat([decrypted, decipher.final()]);
+          rawPassword = decrypted.toString();
+        } catch (e) {
+          console.error("Decryption failed:", e);
+        }
+      }
+      return res.json({
+        success: true,
+        status: effectiveStatus,
+        logs: rows[0].logs || [],
+        deployment: liveUrl ? {
+          liveUrl,
+          adminUrl,
+          username: rows[0].wp_admin_user || "admin",
+          password: rawPassword,
+          sslStatus: rows[0].ssl_status || "pending"
+        } : null
+      });
+    } catch (error) {
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to fetch status"
+      });
     }
-    return res.json({
-      success: true,
-      status: effectiveStatus,
-      logs: rows[0].logs || [],
-      deployment: liveUrl ? {
-        liveUrl,
-        adminUrl,
-        username: rows[0].wp_admin_user || "admin",
-        password: rawPassword,
-        sslStatus: rows[0].ssl_status || "pending"
-      } : null
-    });
-  } catch (error) {
-    return res.status(500).json({
-      error: error instanceof Error ? error.message : "Failed to fetch status"
-    });
   }
-});
+);
 app.get("/api/generate/replay/:traceId", async (req, res) => {
   const { traceId } = req.params;
   try {
@@ -4881,30 +5132,34 @@ app.get("/api/generate/replay/:traceId", async (req, res) => {
     });
   }
 });
-app.delete("/api/wordpress/site/:projectId", authenticateToken, async (req, res) => {
-  try {
-    const { projectId } = req.params;
-    if (!projectId) {
-      return res.status(400).json({ error: "Missing projectId" });
+app.delete(
+  "/api/wordpress/site/:projectId",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { projectId } = req.params;
+      if (!projectId) {
+        return res.status(400).json({ error: "Missing projectId" });
+      }
+      const [rows] = await pool.query(
+        `SELECT id FROM provisioning_jobs WHERE project_id = ? AND user_id = ? LIMIT 1`,
+        [projectId, req.user.id]
+      );
+      if (!rows || rows.length === 0) {
+        return res.status(404).json({ error: "Project not found or unauthorized" });
+      }
+      await deleteProvisionedWordPressSite(projectId);
+      return res.json({
+        success: true,
+        message: `WordPress site for project ${projectId} deleted successfully`
+      });
+    } catch (error) {
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to delete WordPress site"
+      });
     }
-    const [rows] = await pool.query(
-      `SELECT id FROM provisioning_jobs WHERE project_id = ? AND user_id = ? LIMIT 1`,
-      [projectId, req.user.id]
-    );
-    if (!rows || rows.length === 0) {
-      return res.status(404).json({ error: "Project not found or unauthorized" });
-    }
-    await deleteProvisionedWordPressSite(projectId);
-    return res.json({
-      success: true,
-      message: `WordPress site for project ${projectId} deleted successfully`
-    });
-  } catch (error) {
-    return res.status(500).json({
-      error: error instanceof Error ? error.message : "Failed to delete WordPress site"
-    });
   }
-});
+);
 app.get("/api/leads", authenticateToken, async (req, res) => {
   try {
     const [rows] = await pool.query(
@@ -5167,10 +5422,15 @@ Rules for your responses:
           }
         } else {
           const errText = await res2.text().catch(() => "");
-          throw new Error(`Vertex REST failed with status ${res2.status}: ${errText}`);
+          throw new Error(
+            `Vertex REST failed with status ${res2.status}: ${errText}`
+          );
         }
       } catch (vertexError) {
-        console.warn("[AI Chat] Vertex AI generation failed, falling back to Public Gemini SDK:", vertexError);
+        console.warn(
+          "[AI Chat] Vertex AI generation failed, falling back to Public Gemini SDK:",
+          vertexError
+        );
         fallbackUsed = true;
       }
     } else {

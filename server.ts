@@ -42,6 +42,7 @@ import { startProvisioningWorker } from "./src/lib/provisioning-worker";
 import { deleteProvisionedWordPressSite } from "./src/lib/provisioning-engine";
 import { buildPremiumPageContent } from "./src/lib/premium-site-builder";
 import { generateHomepageViaDirectVertexPrompt } from "./src/lib/direct-vertex-homepage-generation";
+import { generateSearchKeywords } from "./src/lib/search-keyword-expander";
 import { sendOTPEmail, sendResetPasswordEmail } from "./src/lib/mailer";
 
 const app = express();
@@ -80,7 +81,12 @@ app.use(
 	cors({
 		origin: true, // reflect request origin — allows any origin with credentials
 		credentials: true,
-		allowedHeaders: ["Content-Type", "Authorization", "x-debug-generation-id", "x-debug-generation-fallback"],
+		allowedHeaders: [
+			"Content-Type",
+			"Authorization",
+			"x-debug-generation-id",
+			"x-debug-generation-fallback",
+		],
 		exposedHeaders: ["x-debug-generation-id", "x-debug-generation-fallback"],
 		methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 	}),
@@ -100,16 +106,29 @@ function verifyPassword(password: string, storedHash: string): boolean {
 		const [salt, hash] = storedHash.split(":");
 		if (!salt || !hash) return false;
 		const verifyHash = crypto.scryptSync(password, salt, 64).toString("hex");
-		return crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(verifyHash, "hex"));
+		return crypto.timingSafeEqual(
+			Buffer.from(hash, "hex"),
+			Buffer.from(verifyHash, "hex"),
+		);
 	} catch {
 		return false;
 	}
 }
 
 function generateToken(payload: { userId: string }): string {
-	const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
-	const body = Buffer.from(JSON.stringify({ ...payload, exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60 })).toString("base64url");
-	const signature = crypto.createHmac("sha256", JWT_SECRET).update(`${header}.${body}`).digest("base64url");
+	const header = Buffer.from(
+		JSON.stringify({ alg: "HS256", typ: "JWT" }),
+	).toString("base64url");
+	const body = Buffer.from(
+		JSON.stringify({
+			...payload,
+			exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
+		}),
+	).toString("base64url");
+	const signature = crypto
+		.createHmac("sha256", JWT_SECRET)
+		.update(`${header}.${body}`)
+		.digest("base64url");
 	return `${header}.${body}.${signature}`;
 }
 
@@ -117,7 +136,10 @@ function verifyToken(token: string): { userId: string } | null {
 	try {
 		const [header, body, signature] = token.split(".");
 		if (!header || !body || !signature) return null;
-		const expectedSignature = crypto.createHmac("sha256", JWT_SECRET).update(`${header}.${body}`).digest("base64url");
+		const expectedSignature = crypto
+			.createHmac("sha256", JWT_SECRET)
+			.update(`${header}.${body}`)
+			.digest("base64url");
 		if (signature !== expectedSignature) return null;
 		const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
 		if (payload.exp && Date.now() / 1000 > payload.exp) return null;
@@ -151,13 +173,13 @@ async function authenticateToken(req: Request, res: Response, next: any) {
 	try {
 		const [users]: any = await pool.query(
 			"SELECT id, name, email, is_verified FROM users WHERE id = ? LIMIT 1",
-			[decoded.userId]
+			[decoded.userId],
 		);
 
 		if (!users || users.length === 0) {
 			return res.status(403).json({ error: "User not found" });
 		}
-		
+
 		if (!users[0].is_verified) {
 			return res.status(403).json({ error: "User email not verified" });
 		}
@@ -182,13 +204,15 @@ app.post("/api/auth/register", async (req, res) => {
 	try {
 		const { name, email, password } = req.body;
 		if (!name || !email || !password) {
-			return res.status(400).json({ error: "Missing required fields: name, email, password" });
+			return res
+				.status(400)
+				.json({ error: "Missing required fields: name, email, password" });
 		}
 
 		// Check if user already exists
 		const [existing]: any = await pool.query(
 			"SELECT id, is_verified FROM users WHERE email = ? LIMIT 1",
-			[email]
+			[email],
 		);
 
 		let userId = crypto.randomUUID();
@@ -202,12 +226,12 @@ app.post("/api/auth/register", async (req, res) => {
 			userId = existing[0].id;
 			await pool.query(
 				"UPDATE users SET name = ?, password_hash = ? WHERE id = ?",
-				[name, passwordHash, userId]
+				[name, passwordHash, userId],
 			);
 		} else {
 			await pool.query(
 				"INSERT INTO users (id, name, email, password_hash, is_verified) VALUES (?, ?, ?, ?, 0)",
-				[userId, name, email, passwordHash]
+				[userId, name, email, passwordHash],
 			);
 		}
 
@@ -217,11 +241,11 @@ app.post("/api/auth/register", async (req, res) => {
 
 		// Clear previous OTPs for this email
 		await pool.query("DELETE FROM otp_verifications WHERE email = ?", [email]);
-		
+
 		// Insert new OTP
 		await pool.query(
 			"INSERT INTO otp_verifications (email, otp_code, expires_at) VALUES (?, ?, ?)",
-			[email, otp, expiresAt]
+			[email, otp, expiresAt],
 		);
 
 		// Send email
@@ -244,18 +268,19 @@ app.post("/api/auth/verify-otp", async (req, res) => {
 		// Find OTP verification record
 		const [verifications]: any = await pool.query(
 			"SELECT id FROM otp_verifications WHERE email = ? AND otp_code = ? AND expires_at > NOW() LIMIT 1",
-			[email, otp]
+			[email, otp],
 		);
 
 		if (!verifications || verifications.length === 0) {
-			return res.status(400).json({ error: "Invalid or expired verification code" });
+			return res
+				.status(400)
+				.json({ error: "Invalid or expired verification code" });
 		}
 
 		// Mark user as verified
-		await pool.query(
-			"UPDATE users SET is_verified = 1 WHERE email = ?",
-			[email]
-		);
+		await pool.query("UPDATE users SET is_verified = 1 WHERE email = ?", [
+			email,
+		]);
 
 		// Clean up OTP verifications
 		await pool.query("DELETE FROM otp_verifications WHERE email = ?", [email]);
@@ -263,7 +288,7 @@ app.post("/api/auth/verify-otp", async (req, res) => {
 		// Find verified user details
 		const [users]: any = await pool.query(
 			"SELECT id, name, email FROM users WHERE email = ? LIMIT 1",
-			[email]
+			[email],
 		);
 
 		const user = users[0];
@@ -275,8 +300,8 @@ app.post("/api/auth/verify-otp", async (req, res) => {
 			user: {
 				id: user.id,
 				name: user.name,
-				email: user.email
-			}
+				email: user.email,
+			},
 		});
 	} catch (error) {
 		console.error("[Verify OTP] Error:", error);
@@ -293,7 +318,7 @@ app.post("/api/auth/resend-otp", async (req, res) => {
 
 		const [users]: any = await pool.query(
 			"SELECT id, is_verified FROM users WHERE email = ? LIMIT 1",
-			[email]
+			[email],
 		);
 
 		if (!users || users.length === 0) {
@@ -310,7 +335,7 @@ app.post("/api/auth/resend-otp", async (req, res) => {
 		await pool.query("DELETE FROM otp_verifications WHERE email = ?", [email]);
 		await pool.query(
 			"INSERT INTO otp_verifications (email, otp_code, expires_at) VALUES (?, ?, ?)",
-			[email, otp, expiresAt]
+			[email, otp, expiresAt],
 		);
 
 		await sendOTPEmail(email, otp);
@@ -331,7 +356,7 @@ app.post("/api/auth/login", async (req, res) => {
 
 		const [users]: any = await pool.query(
 			"SELECT id, name, email, password_hash, is_verified FROM users WHERE email = ? LIMIT 1",
-			[email]
+			[email],
 		);
 
 		if (!users || users.length === 0) {
@@ -339,13 +364,13 @@ app.post("/api/auth/login", async (req, res) => {
 		}
 
 		const user = users[0];
-		
+
 		// If user exists but is not verified, require OTP verification first
 		if (!user.is_verified) {
 			return res.status(403).json({
 				status: "unverified",
 				error: "Please verify your email address to log in.",
-				email: user.email
+				email: user.email,
 			});
 		}
 
@@ -362,8 +387,8 @@ app.post("/api/auth/login", async (req, res) => {
 			user: {
 				id: user.id,
 				name: user.name,
-				email: user.email
-			}
+				email: user.email,
+			},
 		});
 	} catch (error) {
 		console.error("[Login] Error:", error);
@@ -380,12 +405,16 @@ app.post("/api/auth/forgot-password", async (req, res) => {
 
 		const [users]: any = await pool.query(
 			"SELECT id, name FROM users WHERE email = ? LIMIT 1",
-			[email]
+			[email],
 		);
 
 		// Always return success even if user not found to prevent user enumeration
 		if (!users || users.length === 0) {
-			return res.json({ success: true, message: "If this email is registered, a password reset link has been sent" });
+			return res.json({
+				success: true,
+				message:
+					"If this email is registered, a password reset link has been sent",
+			});
 		}
 
 		const token = crypto.randomBytes(32).toString("hex");
@@ -394,7 +423,7 @@ app.post("/api/auth/forgot-password", async (req, res) => {
 		await pool.query("DELETE FROM password_resets WHERE email = ?", [email]);
 		await pool.query(
 			"INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)",
-			[email, token, expiresAt]
+			[email, token, expiresAt],
 		);
 
 		// Construct reset link using origin header
@@ -403,10 +432,16 @@ app.post("/api/auth/forgot-password", async (req, res) => {
 
 		await sendResetPasswordEmail(email, resetLink);
 
-		return res.json({ success: true, message: "If this email is registered, a password reset link has been sent" });
+		return res.json({
+			success: true,
+			message:
+				"If this email is registered, a password reset link has been sent",
+		});
 	} catch (error) {
 		console.error("[Forgot Password] Error:", error);
-		return res.status(500).json({ error: "Failed to generate password reset request" });
+		return res
+			.status(500)
+			.json({ error: "Failed to generate password reset request" });
 	}
 });
 
@@ -420,26 +455,31 @@ app.post("/api/auth/reset-password", async (req, res) => {
 		// Find token
 		const [resets]: any = await pool.query(
 			"SELECT email FROM password_resets WHERE token = ? AND expires_at > NOW() LIMIT 1",
-			[token]
+			[token],
 		);
 
 		if (!resets || resets.length === 0) {
-			return res.status(400).json({ error: "Invalid or expired password reset token" });
+			return res
+				.status(400)
+				.json({ error: "Invalid or expired password reset token" });
 		}
 
 		const email = resets[0].email;
 		const passwordHash = hashPassword(password);
 
 		// Update password
-		await pool.query(
-			"UPDATE users SET password_hash = ? WHERE email = ?",
-			[passwordHash, email]
-		);
+		await pool.query("UPDATE users SET password_hash = ? WHERE email = ?", [
+			passwordHash,
+			email,
+		]);
 
 		// Clean up reset token
 		await pool.query("DELETE FROM password_resets WHERE token = ?", [token]);
 
-		return res.json({ success: true, message: "Password updated successfully" });
+		return res.json({
+			success: true,
+			message: "Password updated successfully",
+		});
 	} catch (error) {
 		console.error("[Reset Password] Error:", error);
 		return res.status(500).json({ error: "Failed to reset password" });
@@ -462,7 +502,7 @@ app.get("/api/auth/me", async (req, res) => {
 	try {
 		const [users]: any = await pool.query(
 			"SELECT id, name, email, is_verified FROM users WHERE id = ? LIMIT 1",
-			[decoded.userId]
+			[decoded.userId],
 		);
 
 		if (!users || users.length === 0 || !users[0].is_verified) {
@@ -474,8 +514,8 @@ app.get("/api/auth/me", async (req, res) => {
 			user: {
 				id: users[0].id,
 				name: users[0].name,
-				email: users[0].email
-			}
+				email: users[0].email,
+			},
 		});
 	} catch (error) {
 		return res.status(500).json({ error: "Database query failed" });
@@ -3275,61 +3315,90 @@ function ensureSchemaMetadata(
 	return safeSchema as WebsiteSchema;
 }
 
-app.post("/api/generate", authenticateToken, async (req: any, res: Response) => {
-	try {
-		const business = req.body;
-		if (!business || !business.name) {
-			return res.status(400).json({ error: "Missing business payload" });
-		}
+app.post(
+	"/api/generate",
+	authenticateToken,
+	async (req: any, res: Response) => {
+		try {
+			const business = req.body;
+			if (!business || !business.name) {
+				return res.status(400).json({ error: "Missing business payload" });
+			}
 
-		const debugSession = createGenerationDebugSession(business);
-		logStderr(
-			`[Generate] start traceId=${debugSession.traceId} business=${business.name}`
-		);
-		res.setHeader("x-debug-generation-id", debugSession.traceId);
-		res.setHeader("x-debug-generation-fallback", "false");
+			const debugSession = createGenerationDebugSession(business);
+			logStderr(
+				`[Generate] start traceId=${debugSession.traceId} business=${business.name}`,
+			);
+			res.setHeader("x-debug-generation-id", debugSession.traceId);
+			res.setHeader("x-debug-generation-fallback", "false");
 
-		// Check if TEST MODE is enabled
-		if (WEBSITE_GENERATION_MODE === "template") {
-			logStderr(`[Generate] Template mode enabled - skipping generation`);
-			return res.status(422).json({
-				error: "Website creation failed: template mode is enabled.",
+			// Check if TEST MODE is enabled
+			if (WEBSITE_GENERATION_MODE === "template") {
+				logStderr(`[Generate] Template mode enabled - skipping generation`);
+				return res.status(422).json({
+					error: "Website creation failed: template mode is enabled.",
+				});
+			}
+
+			// Validate Gemini configuration
+			if (!GENAI_KEY && !process.env.GEMINI_REST_URL) {
+				logStderr(`[Generate] Missing Gemini API configuration`);
+				return res.status(422).json({
+					error: "Website creation failed: AI configuration missing.",
+				});
+			}
+
+			// Generate homepage using direct Vertex prompt
+			const schema = await generateHomepageViaDirectVertexPrompt(business, {
+				debugLog: (msg: string) => logStderr(msg),
+				debugSession,
+				persistFile: (filename: string, content: any) => {
+					persistGenerationDebugFile(debugSession, filename, content);
+				},
+				throttleGemini: () => throttleGemini(),
+			});
+
+			logStderr(
+				`[Generate] complete traceId=${debugSession.traceId} renderSource=direct-vertex-prompt`,
+			);
+
+			// Return the schema for compatibility with existing pipeline
+			return res.json(schema);
+		} catch (error) {
+			const errorMsg = error instanceof Error ? error.message : String(error);
+			logStderr(`[Generate] Error: ${errorMsg}`);
+
+			return res.status(500).json({
+				error: `Website generation failed: ${errorMsg}`,
 			});
 		}
+	},
+);
 
-		// Validate Gemini configuration
-		if (!GENAI_KEY && !process.env.GEMINI_REST_URL) {
-			logStderr(`[Generate] Missing Gemini API configuration`);
-			return res.status(422).json({
-				error: "Website creation failed: AI configuration missing.",
-			});
+app.post(
+	"/api/generate-search-keywords",
+	async (
+		req: Request<{}, {}, { category?: string; city?: string }>,
+		res: Response,
+	) => {
+		try {
+			const category = String(req.body?.category || "").trim();
+			const city = String(req.body?.city || "").trim();
+
+			if (!category || !city) {
+				return res.status(400).json({ error: "Missing category or city" });
+			}
+
+			const keywords = await generateSearchKeywords(category, city);
+			return res.json({ keywords });
+		} catch (error) {
+			const errorMsg = error instanceof Error ? error.message : String(error);
+			return res
+				.status(500)
+				.json({ error: `Keyword expansion failed: ${errorMsg}` });
 		}
-
-		// Generate homepage using direct Vertex prompt
-		const schema = await generateHomepageViaDirectVertexPrompt(business, {
-			debugLog: (msg: string) => logStderr(msg),
-			debugSession,
-			persistFile: (filename: string, content: any) => {
-				persistGenerationDebugFile(debugSession, filename, content);
-			},
-			throttleGemini: () => throttleGemini(),
-		});
-
-		logStderr(
-			`[Generate] complete traceId=${debugSession.traceId} renderSource=direct-vertex-prompt`
-		);
-
-		// Return the schema for compatibility with existing pipeline
-		return res.json(schema);
-	} catch (error) {
-		const errorMsg = error instanceof Error ? error.message : String(error);
-		logStderr(`[Generate] Error: ${errorMsg}`);
-
-		return res.status(500).json({
-			error: `Website generation failed: ${errorMsg}`,
-		});
-	}
-});
+	},
+);
 
 app.post(
 	"/api/debug-generation/:traceId/file",
@@ -3372,61 +3441,65 @@ app.get(
  * Simplified deterministic homepage generation using direct Vertex prompt
  * Uses: Business Context → Single Vertex Prompt → Final HTML/CSS → WordPress rendering
  */
-app.post("/api/generate-v2", authenticateToken, async (req: any, res: Response) => {
-	try {
-		const business = req.body;
-		if (!business || !business.name) {
-			return res.status(400).json({ error: "Missing business payload" });
-		}
+app.post(
+	"/api/generate-v2",
+	authenticateToken,
+	async (req: any, res: Response) => {
+		try {
+			const business = req.body;
+			if (!business || !business.name) {
+				return res.status(400).json({ error: "Missing business payload" });
+			}
 
-		const debugSession = createGenerationDebugSession(business);
-		logStderr(
-			`[GenerateV2] start traceId=${debugSession.traceId} business=${business.name}`,
-		);
-		res.setHeader("x-debug-generation-id", debugSession.traceId);
-		res.setHeader("x-debug-generation-fallback", "false");
+			const debugSession = createGenerationDebugSession(business);
+			logStderr(
+				`[GenerateV2] start traceId=${debugSession.traceId} business=${business.name}`,
+			);
+			res.setHeader("x-debug-generation-id", debugSession.traceId);
+			res.setHeader("x-debug-generation-fallback", "false");
 
-		// Check if TEST MODE is enabled
-		if (WEBSITE_GENERATION_MODE === "template") {
-			logStderr(`[GenerateV2] Template mode enabled - skipping generation`);
-			return res.status(422).json({
-				error: "Website creation failed: template mode is enabled.",
+			// Check if TEST MODE is enabled
+			if (WEBSITE_GENERATION_MODE === "template") {
+				logStderr(`[GenerateV2] Template mode enabled - skipping generation`);
+				return res.status(422).json({
+					error: "Website creation failed: template mode is enabled.",
+				});
+			}
+
+			// Validate Gemini configuration
+			if (!GENAI_KEY && !process.env.GEMINI_REST_URL) {
+				logStderr(`[GenerateV2] Missing Gemini API configuration`);
+				return res.status(422).json({
+					error: "Website creation failed: AI configuration missing.",
+				});
+			}
+
+			// Generate homepage using direct Vertex prompt
+			const schema = await generateHomepageViaDirectVertexPrompt(business, {
+				debugLog: (msg: string) => logStderr(msg),
+				debugSession,
+				persistFile: (filename: string, content: any) => {
+					persistGenerationDebugFile(debugSession, filename, content);
+				},
+				throttleGemini: () => throttleGemini(),
+			});
+
+			logStderr(
+				`[GenerateV2] complete traceId=${debugSession.traceId} renderSource=direct-vertex-prompt`,
+			);
+
+			// Return the schema for compatibility with existing pipeline
+			return res.json(schema);
+		} catch (error) {
+			const errorMsg = error instanceof Error ? error.message : String(error);
+			logStderr(`[GenerateV2] Error: ${errorMsg}`);
+
+			return res.status(500).json({
+				error: `Website generation failed: ${errorMsg}`,
 			});
 		}
-
-		// Validate Gemini configuration
-		if (!GENAI_KEY && !process.env.GEMINI_REST_URL) {
-			logStderr(`[GenerateV2] Missing Gemini API configuration`);
-			return res.status(422).json({
-				error: "Website creation failed: AI configuration missing.",
-			});
-		}
-
-		// Generate homepage using direct Vertex prompt
-		const schema = await generateHomepageViaDirectVertexPrompt(business, {
-			debugLog: (msg: string) => logStderr(msg),
-			debugSession,
-			persistFile: (filename: string, content: any) => {
-				persistGenerationDebugFile(debugSession, filename, content);
-			},
-			throttleGemini: () => throttleGemini(),
-		});
-
-		logStderr(
-			`[GenerateV2] complete traceId=${debugSession.traceId} renderSource=direct-vertex-prompt`,
-		);
-
-		// Return the schema for compatibility with existing pipeline
-		return res.json(schema);
-	} catch (error) {
-		const errorMsg = error instanceof Error ? error.message : String(error);
-		logStderr(`[GenerateV2] Error: ${errorMsg}`);
-
-		return res.status(500).json({
-			error: `Website generation failed: ${errorMsg}`,
-		});
-	}
-});
+	},
+);
 
 app.post(
 	"/api/deploy",
@@ -3741,10 +3814,7 @@ app.post(
 app.post(
 	"/api/wordpress/provision-site",
 	authenticateToken,
-	async (
-		req: any,
-		res: Response,
-	) => {
+	async (req: any, res: Response) => {
 		try {
 			const { projectId, business, websiteSchema, provisioningPlan, status } =
 				req.body;
@@ -3784,7 +3854,13 @@ app.post(
 				activeJobId = existing[0].id;
 				await pool.query(
 					`UPDATE provisioning_jobs SET website_schema = ?, status = ?, trace_id = ?, updated_at = NOW(), user_id = ? WHERE project_id = ?`,
-					[JSON.stringify(websiteSchema), targetStatus, traceId, req.user.id, projectId],
+					[
+						JSON.stringify(websiteSchema),
+						targetStatus,
+						traceId,
+						req.user.id,
+						projectId,
+					],
 				);
 			} else {
 				await pool.query(
@@ -3798,7 +3874,7 @@ app.post(
 						traceId,
 						isPreview,
 						previewExpiresAt,
-						req.user.id
+						req.user.id,
 					],
 				);
 			}
@@ -3822,65 +3898,70 @@ app.post(
 	},
 );
 
-app.get("/api/wordpress/site-status/:projectId", authenticateToken, async (req: any, res) => {
-	const { projectId } = req.params;
-	try {
-		const [rows]: any = await pool.query(
-			`SELECT status, logs, subdomain, subdomain_url, wp_admin_url, ssl_status, wp_admin_user, wp_admin_pass_encrypted 
+app.get(
+	"/api/wordpress/site-status/:projectId",
+	authenticateToken,
+	async (req: any, res) => {
+		const { projectId } = req.params;
+		try {
+			const [rows]: any = await pool.query(
+				`SELECT status, logs, subdomain, subdomain_url, wp_admin_url, ssl_status, wp_admin_user, wp_admin_pass_encrypted 
 			 FROM provisioning_jobs 
 			 LEFT JOIN isolated_deployments ON provisioning_jobs.project_id = isolated_deployments.project_id
 			 WHERE provisioning_jobs.project_id = ? AND provisioning_jobs.user_id = ? ORDER BY provisioning_jobs.created_at DESC LIMIT 1`,
-			[projectId, req.user.id],
-		);
+				[projectId, req.user.id],
+			);
 
-		if (!rows || rows.length === 0) {
-			return res.status(404).json({ error: "Job not found" });
-		}
-
-		const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscout.online";
-		const liveUrl = rows[0].subdomain_url || null;
-		const adminUrl = rows[0].wp_admin_url || null;
-		const effectiveStatus = rows[0].status;
-		let rawPassword = null;
-		if (effectiveStatus === "completed" && rows[0].wp_admin_pass_encrypted) {
-			try {
-				const [ivHex, encryptedHex] =
-					rows[0].wp_admin_pass_encrypted.split(":");
-				const key =
-					process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
-				const decipher = crypto.createDecipheriv(
-					"aes-256-cbc",
-					Buffer.from(key),
-					Buffer.from(ivHex, "hex"),
-				);
-				let decrypted = decipher.update(Buffer.from(encryptedHex, "hex"));
-				decrypted = Buffer.concat([decrypted, decipher.final()]);
-				rawPassword = decrypted.toString();
-			} catch (e) {
-				console.error("Decryption failed:", e);
+			if (!rows || rows.length === 0) {
+				return res.status(404).json({ error: "Job not found" });
 			}
-		}
 
-		return res.json({
-			success: true,
-			status: effectiveStatus,
-			logs: rows[0].logs || [],
-			deployment: liveUrl
-				? {
-						liveUrl,
-						adminUrl,
-						username: rows[0].wp_admin_user || "admin",
-						password: rawPassword,
-						sslStatus: rows[0].ssl_status || "pending",
-					}
-				: null,
-		});
-	} catch (error) {
-		return res.status(500).json({
-			error: error instanceof Error ? error.message : "Failed to fetch status",
-		});
-	}
-});
+			const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscout.online";
+			const liveUrl = rows[0].subdomain_url || null;
+			const adminUrl = rows[0].wp_admin_url || null;
+			const effectiveStatus = rows[0].status;
+			let rawPassword = null;
+			if (effectiveStatus === "completed" && rows[0].wp_admin_pass_encrypted) {
+				try {
+					const [ivHex, encryptedHex] =
+						rows[0].wp_admin_pass_encrypted.split(":");
+					const key =
+						process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef";
+					const decipher = crypto.createDecipheriv(
+						"aes-256-cbc",
+						Buffer.from(key),
+						Buffer.from(ivHex, "hex"),
+					);
+					let decrypted = decipher.update(Buffer.from(encryptedHex, "hex"));
+					decrypted = Buffer.concat([decrypted, decipher.final()]);
+					rawPassword = decrypted.toString();
+				} catch (e) {
+					console.error("Decryption failed:", e);
+				}
+			}
+
+			return res.json({
+				success: true,
+				status: effectiveStatus,
+				logs: rows[0].logs || [],
+				deployment: liveUrl
+					? {
+							liveUrl,
+							adminUrl,
+							username: rows[0].wp_admin_user || "admin",
+							password: rawPassword,
+							sslStatus: rows[0].ssl_status || "pending",
+						}
+					: null,
+			});
+		} catch (error) {
+			return res.status(500).json({
+				error:
+					error instanceof Error ? error.message : "Failed to fetch status",
+			});
+		}
+	},
+);
 
 app.get("/api/generate/replay/:traceId", async (req, res) => {
 	const { traceId } = req.params;
@@ -3918,36 +3999,42 @@ app.get("/api/generate/replay/:traceId", async (req, res) => {
 	}
 });
 
-app.delete("/api/wordpress/site/:projectId", authenticateToken, async (req: any, res) => {
-	try {
-		const { projectId } = req.params;
-		if (!projectId) {
-			return res.status(400).json({ error: "Missing projectId" });
-		}
+app.delete(
+	"/api/wordpress/site/:projectId",
+	authenticateToken,
+	async (req: any, res) => {
+		try {
+			const { projectId } = req.params;
+			if (!projectId) {
+				return res.status(400).json({ error: "Missing projectId" });
+			}
 
-		// Verify project belongs to user
-		const [rows]: any = await pool.query(
-			`SELECT id FROM provisioning_jobs WHERE project_id = ? AND user_id = ? LIMIT 1`,
-			[projectId, req.user.id]
-		);
-		if (!rows || rows.length === 0) {
-			return res.status(404).json({ error: "Project not found or unauthorized" });
-		}
+			// Verify project belongs to user
+			const [rows]: any = await pool.query(
+				`SELECT id FROM provisioning_jobs WHERE project_id = ? AND user_id = ? LIMIT 1`,
+				[projectId, req.user.id],
+			);
+			if (!rows || rows.length === 0) {
+				return res
+					.status(404)
+					.json({ error: "Project not found or unauthorized" });
+			}
 
-		await deleteProvisionedWordPressSite(projectId);
-		return res.json({
-			success: true,
-			message: `WordPress site for project ${projectId} deleted successfully`,
-		});
-	} catch (error) {
-		return res.status(500).json({
-			error:
-				error instanceof Error
-					? error.message
-					: "Failed to delete WordPress site",
-		});
-	}
-});
+			await deleteProvisionedWordPressSite(projectId);
+			return res.json({
+				success: true,
+				message: `WordPress site for project ${projectId} deleted successfully`,
+			});
+		} catch (error) {
+			return res.status(500).json({
+				error:
+					error instanceof Error
+						? error.message
+						: "Failed to delete WordPress site",
+			});
+		}
+	},
+);
 
 app.get("/api/leads", authenticateToken, async (req: any, res) => {
 	try {
@@ -3967,7 +4054,7 @@ app.get("/api/leads", authenticateToken, async (req: any, res) => {
 			 LEFT JOIN isolated_deployments idp ON pj.project_id = idp.project_id
 			 WHERE pj.user_id = ?
 			 ORDER BY pj.created_at DESC`,
-			[req.user.id]
+			[req.user.id],
 		);
 
 		const leads = rows.map((row: any) => {
@@ -3990,9 +4077,10 @@ app.get("/api/leads", authenticateToken, async (req: any, res) => {
 
 			let schema: any = {};
 			try {
-				schema = typeof row.websiteSchema === "string"
-					? JSON.parse(row.websiteSchema)
-					: (row.websiteSchema || {});
+				schema =
+					typeof row.websiteSchema === "string"
+						? JSON.parse(row.websiteSchema)
+						: row.websiteSchema || {};
 			} catch {
 				schema = {};
 			}
@@ -4229,7 +4317,8 @@ Rules for your responses:
 		if (googleCloudApiKey) {
 			try {
 				console.log("[AI Chat] Attempting primary Vertex AI generation...");
-				const apiEndpoint = process.env.VERTEX_API_ENDPOINT || "aiplatform.googleapis.com";
+				const apiEndpoint =
+					process.env.VERTEX_API_ENDPOINT || "aiplatform.googleapis.com";
 				const modelId = "gemini-3.1-pro-preview";
 				const generateContentApi = "generateContent";
 				const vertexUrl = `https://${apiEndpoint}/v1/publishers/google/models/${modelId}:${generateContentApi}?key=${googleCloudApiKey}`;
@@ -4238,22 +4327,22 @@ Rules for your responses:
 				const vertexPayload = {
 					contents: chatContents,
 					systemInstruction: {
-						parts: [{ text: systemPrompt }]
+						parts: [{ text: systemPrompt }],
 					},
 					generationConfig: {
-						temperature: 0.2
+						temperature: 0.2,
 					},
-					tools: [{ googleSearch: {} }]
+					tools: [{ googleSearch: {} }],
 				};
 
 				const res = await fetch(vertexUrl, {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify(vertexPayload)
+					body: JSON.stringify(vertexPayload),
 				});
 
 				if (res.ok) {
-					const data = await res.json() as any;
+					const data = (await res.json()) as any;
 					const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 					if (text) {
 						fullResponseText = text;
@@ -4263,10 +4352,15 @@ Rules for your responses:
 					}
 				} else {
 					const errText = await res.text().catch(() => "");
-					throw new Error(`Vertex REST failed with status ${res.status}: ${errText}`);
+					throw new Error(
+						`Vertex REST failed with status ${res.status}: ${errText}`,
+					);
 				}
 			} catch (vertexError) {
-				console.warn("[AI Chat] Vertex AI generation failed, falling back to Public Gemini SDK:", vertexError);
+				console.warn(
+					"[AI Chat] Vertex AI generation failed, falling back to Public Gemini SDK:",
+					vertexError,
+				);
 				fallbackUsed = true;
 			}
 		} else {
