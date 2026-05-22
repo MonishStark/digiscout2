@@ -22,6 +22,7 @@ import {
 	runWpCommand,
 	runRemoteShellCommand,
 } from "./wp-cli";
+import { mergeElementorTemplate } from "./elementor-merger";
 
 // NOTE: No local `fs` import — all filesystem operations are remote via SSH.
 
@@ -404,6 +405,21 @@ async function executeStateMachine(job: any) {
 			/* non-fatal */
 		}
 
+		await appendLog(job.id, "Installing and activating Elementor plugin...");
+		try {
+			await runWpCommand(
+				`plugin install elementor --activate`,
+				fullDocRoot,
+				(log) => appendLog(job.id, log),
+			);
+			await appendLog(job.id, "Elementor plugin installed and activated");
+		} catch (e: any) {
+			await appendLog(
+				job.id,
+				`Warning: Elementor plugin install failed (${e.message})`,
+			);
+		}
+
 		await runWpCommand(
 			`option update default_comment_status closed`,
 			fullDocRoot,
@@ -416,7 +432,7 @@ async function executeStateMachine(job: any) {
 		job.status = "deploying_content";
 	}
 
-	// ── STEP 5: Deploying Gutenberg Content ─────────────────────────────────
+	// ── STEP 5: Deploying Content ───────────────────────────────────────────
 	if (job.status === "deploying_content") {
 		await pool.query(
 			`UPDATE provisioning_jobs SET status = 'deploying_content' WHERE id = ?`,
@@ -424,7 +440,7 @@ async function executeStateMachine(job: any) {
 		);
 		await appendLog(
 			job.id,
-			"Deploying Gutenberg content blocks to remote WordPress...",
+			"Deploying content to remote WordPress...",
 		);
 
 		const fullDocRoot = `${docRootBase}/${subdomain}`;
@@ -434,13 +450,17 @@ async function executeStateMachine(job: any) {
 				: job.website_schema;
 
 		if (schema) {
-			const { schemaToGutenbergBlocks } = await import("./wordpress");
-			const homepageBlocks = schemaToGutenbergBlocks(schema);
+			const isElementor = schema.elementorContent !== undefined;
+			let homepageBlocks = "";
+			if (!isElementor) {
+				const { schemaToGutenbergBlocks } = await import("./wordpress");
+				homepageBlocks = schemaToGutenbergBlocks(schema);
+			}
 
-			// Store Gutenberg trace for audit/replay
+			// Store Gutenberg/Elementor trace for audit/replay
 			await pool.query(
 				`UPDATE provisioning_jobs SET gutenberg_trace = ?, status = 'deploying_content' WHERE id = ?`,
-				[homepageBlocks, job.id],
+				[isElementor ? JSON.stringify(schema.elementorContent) : homepageBlocks, job.id],
 			);
 
 			const contentMeta = await injectWebsiteContent(
@@ -554,6 +574,60 @@ function ensureWordPressHtmlBlock(html: string) {
 	return `<!-- wp:html -->\n${trimmed}\n<!-- /wp:html -->`;
 }
 
+export function updateElementorKitSettings(kitJson: any, schema: any): any {
+	const primary = schema.theme?.primaryColor || schema.theme?.palette?.primary || "#0066cc";
+	const accent = schema.theme?.accentColor || schema.theme?.palette?.accent || "#ff6600";
+	const neutral = schema.theme?.neutralColor || schema.theme?.palette?.background || "#f5f5f5";
+	const text = schema.theme?.palette?.text || "#0f172a";
+	const headingFont = schema.theme?.typography?.heading || "Inter";
+	const bodyFont = schema.theme?.typography?.body || "Inter";
+
+	const settings = kitJson.settings || {};
+
+	// 1. Update system colors
+	if (Array.isArray(settings.system_colors)) {
+		settings.system_colors.forEach((col: any) => {
+			if (col._id === "primary") col.color = primary;
+			if (col._id === "secondary") col.color = primary;
+			if (col._id === "accent") col.color = accent;
+			if (col._id === "text") col.color = text;
+		});
+	}
+
+	// 2. Update custom colors
+	if (Array.isArray(settings.custom_colors)) {
+		settings.custom_colors.forEach((col: any) => {
+			if (col._id === "afc2c62") {
+				col.color = neutral;
+			}
+		});
+	}
+
+	// 3. Update fonts recursively
+	const replaceFonts = (obj: any) => {
+		if (!obj || typeof obj !== "object") return;
+		
+		if (obj.typography_font_family === "Spartan") {
+			const title = String(obj.title || "").toLowerCase();
+			if (title.includes("text") || title.includes("copyright") || title.includes("body")) {
+				obj.typography_font_family = bodyFont;
+			} else {
+				obj.typography_font_family = headingFont;
+			}
+		}
+
+		for (const key of Object.keys(obj)) {
+			if (obj[key] && typeof obj[key] === "object") {
+				replaceFonts(obj[key]);
+			}
+		}
+	};
+
+	replaceFonts(settings);
+
+	return kitJson;
+}
+
 async function injectWebsiteContent(
 	docRoot: string,
 	schema: any,
@@ -569,6 +643,302 @@ async function injectWebsiteContent(
 			await runRemoteShellCommand(deleteCmd, logCallback);
 		} catch (e) {
 			/* non-fatal */
+		}
+
+		const isElementor = schema.elementorContent !== undefined;
+
+		if (isElementor) {
+			await logCallback("Deploying Elementor template-based layout...");
+			const mediaMap: Record<string, { id: number; url: string }> = {};
+			const imageSet = new Set<string>();
+			const aiContent = schema.elementorContent;
+
+			if (aiContent.hero?.hero_image) imageSet.add(aiContent.hero.hero_image);
+			if (aiContent.hero?.masked_image) imageSet.add(aiContent.hero.masked_image);
+			if (aiContent.about?.image) imageSet.add(aiContent.about.image);
+			if (aiContent.services?.image) imageSet.add(aiContent.services.image);
+			if (Array.isArray(aiContent.testimonials?.slideshow)) {
+				aiContent.testimonials.slideshow.forEach((url: string) => {
+					if (url) imageSet.add(url);
+				});
+			}
+
+			if (schema.brand?.logo) {
+				imageSet.add(schema.brand.logo);
+			}
+
+			// Import images
+			for (const imgUrl of imageSet) {
+				await logCallback(`Importing image: ${imgUrl}`);
+				try {
+					let mediaId = "";
+					try {
+						const mediaOut = await runWpCommand(
+							`media import "${imgUrl}" --porcelain`,
+							docRoot,
+							logCallback,
+						);
+						mediaId = mediaOut.stdout.trim();
+					} catch (e: any) {
+						await logCallback(`Direct import failed for ${imgUrl}. Trying with curl...`);
+						const ext = imgUrl.toLowerCase().includes(".png") ? "png" : "jpg";
+						const remoteTmpMedia = `/tmp/ds_media_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+						await runRemoteShellCommand(
+							`curl -sL "${imgUrl}" -o "${remoteTmpMedia}"`,
+							logCallback,
+						);
+						const mediaOut = await runWpCommand(
+							`media import "${remoteTmpMedia}" --porcelain`,
+							docRoot,
+							logCallback,
+						);
+						mediaId = mediaOut.stdout.trim();
+						await runRemoteShellCommand(`rm -f "${remoteTmpMedia}"`, logCallback).catch(() => {});
+					}
+
+					if (/^\d+$/.test(mediaId)) {
+						const urlOut = await runWpCommand(
+							`eval "echo wp_get_attachment_url(${mediaId});"`,
+							docRoot,
+							logCallback,
+						);
+						const localUrl = urlOut.stdout.trim();
+						mediaMap[imgUrl] = { id: parseInt(mediaId, 10), url: localUrl };
+						await logCallback(`Successfully imported: ${imgUrl} -> ID: ${mediaId}, URL: ${localUrl}`);
+
+						if (imgUrl === schema.brand?.logo) {
+							await logCallback(`Setting site icon to: ${mediaId}`);
+							await runWpCommand(
+								`option update site_icon ${mediaId}`,
+								docRoot,
+								logCallback,
+							).catch(() => {});
+						}
+					}
+				} catch (err: any) {
+					await logCallback(`Failed to import media ${imgUrl}: ${err.message}`);
+				}
+			}
+
+			// Create navigation menu
+			let menuId = "";
+			try {
+				await logCallback("Creating Main Menu...");
+				const menuCreateOut = await runWpCommand(
+					`menu create "Main Menu" --porcelain`,
+					docRoot,
+					logCallback,
+				).catch(async () => {
+					const out = await runWpCommand(
+						`menu list --fields=term_id,name --format=json`,
+						docRoot,
+						logCallback,
+					);
+					const menus = JSON.parse(out.stdout.trim() || "[]");
+					const found = menus.find((m: any) => m.name === "Main Menu");
+					return { stdout: found ? String(found.term_id) : "" };
+				});
+				menuId = menuCreateOut.stdout.trim();
+				await logCallback(`Main Menu ID: ${menuId}`);
+
+				if (menuId) {
+					await runWpCommand(
+						`menu location assign "Main Menu" menu-1`,
+						docRoot,
+						logCallback,
+					).catch(() => {});
+
+					try {
+						const itemsOut = await runWpCommand(
+							`menu item list "${menuId}" --format=ids`,
+							docRoot,
+							logCallback,
+						);
+						const itemIds = itemsOut.stdout.trim().replace(/\s+/g, " ");
+						if (itemIds) {
+							await runWpCommand(
+								`menu item delete ${itemIds}`,
+								docRoot,
+								logCallback,
+							);
+						}
+					} catch (e) {
+						// no items or delete failed
+					}
+
+					await runWpCommand(
+						`menu item add-custom "${menuId}" "Home" "#"`,
+						docRoot,
+						logCallback,
+					);
+					await runWpCommand(
+						`menu item add-custom "${menuId}" "Services" "#services"`,
+						docRoot,
+						logCallback,
+					);
+					await runWpCommand(
+						`menu item add-custom "${menuId}" "Reviews" "#reviews"`,
+						docRoot,
+						logCallback,
+					);
+					await runWpCommand(
+						`menu item add-custom "${menuId}" "Contact" "#contact"`,
+						docRoot,
+						logCallback,
+					);
+				}
+			} catch (menuErr: any) {
+				await logCallback(`Warning during menu creation: ${menuErr.message}`);
+			}
+
+			// Call mergeElementorTemplate
+			const templateDir = path.join(process.cwd(), "elementor-kit");
+			const businessInfo = {
+				name: schema.brand?.businessName || "Business",
+				address: schema.brand?.address || "",
+				phone: schema.brand?.phone || "",
+				email: schema.brand?.email || "",
+			};
+
+			await logCallback("Merging Elementor template layouts...");
+			const mergedJson = mergeElementorTemplate(
+				templateDir,
+				aiContent,
+				mediaMap,
+				businessInfo,
+				menuId,
+			);
+
+			// Create Home page
+			await logCallback("Creating Home page post in WordPress for Elementor...");
+			const homePageIdOut = await runWpCommand(
+				`post create --post_type=page --post_title="Home" --post_content="" --post_status=publish --format=ids --user="${adminUser}"`,
+				docRoot,
+				logCallback,
+			);
+			const homePageId = homePageIdOut.stdout.replace(/[^0-9]/g, "").trim();
+			if (!homePageId || homePageId === "0") {
+				throw new Error("Home page creation failed — invalid ID returned");
+			}
+
+			await logCallback(`Home page created with ID: ${homePageId}. Setting as front page...`);
+			await runWpCommand(`option update show_on_front page`, docRoot, logCallback);
+			await runWpCommand(`option update page_on_front ${homePageId}`, docRoot, logCallback);
+
+			if (schema.brand?.businessName) {
+				await runWpCommand(
+					`option update blogname "${esc(schema.brand.businessName)}"`,
+					docRoot,
+					logCallback,
+				);
+			}
+
+			await runWpCommand(`rewrite structure "/%postname%/"`, docRoot, logCallback);
+			await runWpCommand(`rewrite flush`, docRoot, logCallback);
+
+			// Retrieve active Elementor kit ID and customize kit settings
+			let activeKitId = "";
+			let updatedKitSettingsJson = "";
+			try {
+				await logCallback("Retrieving active Elementor kit...");
+				const kitOut = await runWpCommand(
+					`option get elementor_active_kit`,
+					docRoot,
+					logCallback,
+				);
+				activeKitId = kitOut.stdout.trim();
+				await logCallback(`Active Elementor kit ID: ${activeKitId}`);
+
+				if (activeKitId) {
+					const kitSettingsPath = path.join(process.cwd(), "elementor-kit", "site-settings.json");
+					if (fs.existsSync(kitSettingsPath)) {
+						const rawKitSettings = JSON.parse(fs.readFileSync(kitSettingsPath, "utf8"));
+						const updatedKit = updateElementorKitSettings(rawKitSettings, schema);
+						updatedKitSettingsJson = JSON.stringify(updatedKit.settings || {});
+					} else {
+						await logCallback(`Warning: site-settings.json not found at ${kitSettingsPath}`);
+					}
+				}
+			} catch (e: any) {
+				await logCallback(`Warning: failed to customize Elementor kit settings: ${e.message}`);
+			}
+
+			// Save to remote temp files and run eval script
+			const homepageJsonTmp = `/tmp/ds_el_data_${Date.now()}.json`;
+			const kitJsonTmp = `/tmp/ds_el_kit_${Date.now()}.json`;
+			const phpScriptTmp = `/tmp/ds_el_script_${Date.now()}.php`;
+
+			await logCallback("Uploading Elementor payloads to remote server...");
+			
+			const homepageB64 = Buffer.from(mergedJson).toString("base64");
+			await runRemoteShellCommand(
+				`echo "${homepageB64}" | base64 -d > '${homepageJsonTmp}'`,
+				logCallback,
+			);
+
+			if (updatedKitSettingsJson) {
+				const kitB64 = Buffer.from(updatedKitSettingsJson).toString("base64");
+				await runRemoteShellCommand(
+					`echo "${kitB64}" | base64 -d > '${kitJsonTmp}'`,
+					logCallback,
+				);
+			}
+
+			const phpCode = `<?php
+$homepage_id = intval($args[0]);
+$homepage_json_file = $args[1];
+$kit_id = intval($args[2]);
+$kit_settings_json_file = $args[3];
+
+if ($homepage_id && file_exists($homepage_json_file)) {
+    $json_content = file_get_contents($homepage_json_file);
+    $data = json_decode($json_content, true);
+    if ($data) {
+        update_post_meta($homepage_id, '_elementor_data', wp_slash($json_content));
+        update_post_meta($homepage_id, '_elementor_edit_mode', 'builder');
+        update_post_meta($homepage_id, '_wp_page_template', 'elementor_canvas');
+        echo "HOMEPAGE_META_UPDATED\\n";
+    } else {
+        echo "ERROR: Invalid homepage JSON\\n";
+    }
+}
+
+if ($kit_id && file_exists($kit_settings_json_file)) {
+    $kit_content = file_get_contents($kit_settings_json_file);
+    $settings = json_decode($kit_content, true);
+    if ($settings) {
+        update_post_meta($kit_id, '_elementor_page_settings', wp_slash($settings));
+        echo "KIT_SETTINGS_UPDATED\\n";
+    } else {
+        echo "ERROR: Invalid kit settings JSON\\n";
+    }
+}
+`;
+			const phpB64 = Buffer.from(phpCode).toString("base64");
+			await runRemoteShellCommand(
+				`echo "${phpB64}" | base64 -d > '${phpScriptTmp}'`,
+				logCallback,
+			);
+
+			await logCallback("Executing remote PHP metadata script...");
+			const evalOut = await runWpCommand(
+				`eval-file '${phpScriptTmp}' "${homePageId}" "${homepageJsonTmp}" "${activeKitId}" "${kitJsonTmp}"`,
+				docRoot,
+				logCallback,
+			);
+			await logCallback(`PHP script output: ${evalOut.stdout}`);
+
+			// Cleanup
+			await runRemoteShellCommand(`rm -f '${homepageJsonTmp}' '${kitJsonTmp}' '${phpScriptTmp}'`, logCallback).catch(() => {});
+
+			await logCallback("Elementor site injection complete ✓");
+
+			const contentHash = crypto.createHash("sha1").update(mergedJson).digest("hex");
+			return {
+				renderSource: "elementor-template",
+				length: mergedJson.length,
+				sha1: contentHash,
+			};
 		}
 
 		let content = "";

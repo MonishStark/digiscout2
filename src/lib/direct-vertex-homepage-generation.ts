@@ -189,15 +189,15 @@ async function callVertexHomepageGeneration(
 		const parsed = JSON.parse(jsonString) as HomepageGenerationResponse;
 
 		// Validate response structure
-		if (!parsed.html || !parsed.css || !Array.isArray(parsed.assets)) {
+		if (!parsed.elementorContent || !parsed.elementorContent.hero || !parsed.elementorContent.about || !parsed.elementorContent.services) {
 			throw new Error(
-				"Invalid response structure: missing html, css, or assets",
+				"Invalid response structure: missing elementorContent or required sections (hero, about, services)",
 			);
 		}
 
 		log(`[Vertex] Parsed response successfully`);
 		log(
-			`[Vertex] Generated HTML (${parsed.html.length} chars), CSS (${parsed.css.length} chars)`,
+			`[Vertex] Generated Hero Heading: "${parsed.elementorContent.hero.heading}"`,
 		);
 
 		return parsed;
@@ -255,10 +255,6 @@ export async function generateHomepageViaDirectVertexPrompt(
 		);
 		persist("02-vertex-response.json", response);
 
-		// Wrap for WordPress
-		const wpSafeHtml = wrapForWordPress(response);
-		persist("03-wordpress-wrapped.html", wpSafeHtml);
-
 		// Build a minimal WebsiteSchema compatible with existing pipeline
 		// This allows the rest of the system to use the generated content
 		const schema: any = {
@@ -313,10 +309,11 @@ export async function generateHomepageViaDirectVertexPrompt(
 			},
 			sections: [],
 			createdAt: new Date().toISOString(),
-			// Store the generated HTML/CSS for WordPress rendering
-			_wordpressHtml: wpSafeHtml,
+			_wordpressHtml: "",
 			_renderSource: "direct-vertex-prompt",
 			_generatedHomepage: response,
+			elementorContent: response.elementorContent,
+			notes: response.notes,
 			_validation: {
 				rating: business.rating || 0,
 				reviewCount: business.reviewCount || 0,
