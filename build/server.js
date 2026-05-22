@@ -1637,8 +1637,24 @@ ${JSON.stringify(request, null, 2)}` }
     if (jsonString.startsWith("```")) {
       jsonString = jsonString.replace(/^```[a-zA-Z]*\n/, "").replace(/\n```$/, "");
     }
-    const parsed = JSON.parse(jsonString);
-    if (!parsed.elementorContent || !parsed.elementorContent.hero || !parsed.elementorContent.about || !parsed.elementorContent.services) {
+    log(`[RAW VERTEX RESPONSE]: ${jsonString}`);
+    let parsed = JSON.parse(jsonString);
+    if (parsed && parsed.hero && parsed.about && parsed.services && !parsed.elementorContent) {
+      log("[Vertex] Detected direct root sections; wrapping under elementorContent");
+      parsed = {
+        elementorContent: {
+          hero: parsed.hero,
+          about: parsed.about,
+          services: parsed.services,
+          features: parsed.features,
+          projects: parsed.projects,
+          process: parsed.process,
+          testimonials: parsed.testimonials
+        },
+        notes: parsed.notes || "Auto-wrapped from direct root sections"
+      };
+    }
+    if (!parsed || !parsed.elementorContent || !parsed.elementorContent.hero || !parsed.elementorContent.about || !parsed.elementorContent.services) {
       throw new Error(
         "Invalid response structure: missing elementorContent or required sections (hero, about, services)"
       );

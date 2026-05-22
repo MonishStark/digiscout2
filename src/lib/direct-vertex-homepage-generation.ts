@@ -186,10 +186,29 @@ async function callVertexHomepageGeneration(
 				.replace(/\n```$/, "");
 		}
 
-		const parsed = JSON.parse(jsonString) as HomepageGenerationResponse;
+		log(`[RAW VERTEX RESPONSE]: ${jsonString}`);
+
+		let parsed = JSON.parse(jsonString) as any;
+
+		// Handle flat structure where sections are at root level (matching the prompt schema)
+		if (parsed && parsed.hero && parsed.about && parsed.services && !parsed.elementorContent) {
+			log("[Vertex] Detected direct root sections; wrapping under elementorContent");
+			parsed = {
+				elementorContent: {
+					hero: parsed.hero,
+					about: parsed.about,
+					services: parsed.services,
+					features: parsed.features,
+					projects: parsed.projects,
+					process: parsed.process,
+					testimonials: parsed.testimonials,
+				},
+				notes: parsed.notes || "Auto-wrapped from direct root sections",
+			};
+		}
 
 		// Validate response structure
-		if (!parsed.elementorContent || !parsed.elementorContent.hero || !parsed.elementorContent.about || !parsed.elementorContent.services) {
+		if (!parsed || !parsed.elementorContent || !parsed.elementorContent.hero || !parsed.elementorContent.about || !parsed.elementorContent.services) {
 			throw new Error(
 				"Invalid response structure: missing elementorContent or required sections (hero, about, services)",
 			);
