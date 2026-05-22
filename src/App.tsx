@@ -191,7 +191,7 @@ export default function App() {
 					selectedBusiness={selectedBusiness}
 					setSelectedBusiness={setSelectedBusiness}
 				/>
-				<div className='map-bg relative flex min-h-0 flex-1 flex-col border-t border-slate-200 md:border-t-0'>
+				<div className='map-bg relative flex min-w-0 min-h-0 flex-1 flex-col border-t border-slate-200 md:border-t-0'>
 					<nav className='absolute top-0 z-20 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white/75 px-8 backdrop-blur-xl'>
 						<div className='flex h-full items-center gap-6'>
 							<button
@@ -234,7 +234,7 @@ export default function App() {
 						</div>
 					</nav>
 
-					<div className='relative min-h-0 flex-1 pt-16'>
+					<div className='relative min-w-0 min-h-0 flex-1 pt-16'>
 						{activePage === "discover" ? (
 							<MapArea
 								businesses={businesses}

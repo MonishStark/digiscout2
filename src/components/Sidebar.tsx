@@ -410,7 +410,7 @@ export default function Sidebar({
 	};
 
 	return (
-		<div className='w-80 h-full border-r border-slate-200 bg-white flex flex-col z-20 shadow-[12px_0_40px_rgba(15,23,42,0.04)]'>
+		<div className='w-80 flex-shrink-0 h-full border-r border-slate-200 bg-white flex flex-col z-20 shadow-[12px_0_40px_rgba(15,23,42,0.04)]'>
 			<div className='p-6 pb-4 flex items-center gap-2 border-b border-slate-200'>
 				<div className='w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center font-bold text-white'>
 					DS

@@ -656,8 +656,8 @@ export default function DeploymentsView({
 
 	return (
 		<div className='h-full min-h-0 w-full overflow-y-auto px-6 pb-32 lg:px-8'>
-			<div className='mx-auto flex w-full max-w-[1600px] flex-col gap-6'>
-				<div className='space-y-4'>
+			<div className='mx-auto flex w-full max-w-[1600px] flex-col gap-6 min-w-0'>
+				<div className='space-y-4 w-full min-w-0'>
 					{displayProjects.map((project) => {
 						const isLive = project.provisioningStatus === "completed" || project.provisioningStatus === "ready";
 						const isSent = Boolean(project.emailSent);
@@ -667,7 +667,7 @@ export default function DeploymentsView({
 						return (
 							<article
 								key={project.id}
-								className='group relative overflow-hidden rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_24px_90px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-violet-200 hover:shadow-[0_30px_100px_rgba(15,23,42,0.1)] sm:p-5 lg:p-6'>
+								className='group relative overflow-hidden rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_24px_90px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-violet-200 hover:shadow-[0_30px_100px_rgba(15,23,42,0.1)] sm:p-5 lg:p-6 w-full min-w-0'>
 								<div className='absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.08),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.05),transparent_25%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100' />
 								<div className='relative flex flex-col gap-5 w-full min-w-0'>
 									<div className='flex min-w-0 flex-1 flex-col gap-5'>
