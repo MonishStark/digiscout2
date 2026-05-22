@@ -89,7 +89,7 @@ function toBusiness(place: any, category: string): Business {
 			: undefined,
 		photos: Array.isArray(place?.photos)
 			? place.photos.map((photo: any) =>
-					String(photo.getURI({ maxWidth: 400 })),
+					String(photo.getURI({ maxWidth: 1600 })),
 				)
 			: [],
 		isOpen: place?.businessStatus === "OPERATIONAL",

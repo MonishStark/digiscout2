@@ -2154,6 +2154,15 @@ function enforceLightTheme(
 	};
 }
 
+function optimizeGooglePhotoUrl(url: string, size = 1600): string {
+	if (!url || typeof url !== "string") return url;
+	if (url.includes("googleusercontent.com/places/") || url.includes("googleusercontent.com/p/")) {
+		const baseUrl = url.split("=")[0];
+		return `${baseUrl}=s${size}`;
+	}
+	return url;
+}
+
 function collectBusinessImages(business: any): string[] {
 	return Array.from(
 		new Set(
@@ -2163,13 +2172,41 @@ function collectBusinessImages(business: any): string[] {
 			].filter(
 				(value): value is string =>
 					typeof value === "string" && value.trim().length > 0,
-			),
+			).map(url => optimizeGooglePhotoUrl(url, 1600)),
 		),
 	);
 }
 
 function pickDesignProfile(category: string, seed = 0) {
 	const normalized = (category || "").toLowerCase();
+
+	if (
+		normalized.includes("cabinet") ||
+		normalized.includes("wood") ||
+		normalized.includes("carpenter") ||
+		normalized.includes("furniture")
+	) {
+		return {
+			name: "Bespoke Woodworking",
+			style: "editorial artisan",
+			layout: "editorial" as const,
+			buttonStyle: "sharp" as const,
+			surfaceStyle: "solid" as const,
+			mediaShape: "rounded" as const,
+			density: "airy" as const,
+			accentMode: "earthy" as const,
+			palette: {
+				background: "#E8E6DF",
+				surface: "#ffffff",
+				primary: "#141111",
+				accent: "#80311B",
+				text: "#141111",
+				muted: "#6B6661",
+				outline: "rgba(20, 17, 17, 0.12)",
+			},
+			typography: { heading: "Spartan", body: "Inter" },
+		};
+	}
 
 	if (
 		normalized.includes("restaurant") ||

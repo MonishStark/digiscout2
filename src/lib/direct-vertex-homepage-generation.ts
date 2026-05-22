@@ -22,22 +22,31 @@ const GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
 /**
  * Collect business images from multiple sources
  */
+function optimizeGooglePhotoUrl(url: string, size = 1600): string {
+	if (!url || typeof url !== "string") return url;
+	if (url.includes("googleusercontent.com/places/") || url.includes("googleusercontent.com/p/")) {
+		const baseUrl = url.split("=")[0];
+		return `${baseUrl}=s${size}`;
+	}
+	return url;
+}
+
 function collectBusinessImages(business: any): string[] {
 	const sources: string[] = [];
 
 	// Google Maps photos
 	if (Array.isArray(business.photos)) {
-		sources.push(...business.photos);
+		sources.push(...business.photos.map(url => optimizeGooglePhotoUrl(url, 1600)));
 	}
 
 	// Image suggestions
 	if (Array.isArray(business.imageSuggestions)) {
-		sources.push(...business.imageSuggestions);
+		sources.push(...business.imageSuggestions.map(url => optimizeGooglePhotoUrl(url, 1600)));
 	}
 
 	// Direct logo
 	if (business.logo) {
-		sources.push(business.logo);
+		sources.push(optimizeGooglePhotoUrl(business.logo, 400));
 	}
 
 	return sources;

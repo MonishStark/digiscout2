@@ -649,6 +649,32 @@ async function injectWebsiteContent(
 
 		if (isElementor) {
 			await logCallback("Deploying Elementor template-based layout...");
+
+			// Create mu-plugins directory and write allow-svg.php to allow SVGs
+			await logCallback("Creating mu-plugins to allow SVG uploads...");
+			await runRemoteShellCommand(`mkdir -p "${docRoot}/wp-content/mu-plugins"`, logCallback);
+			const allowSvgPhp = `<?php
+// Allow SVG uploads in WordPress
+add_filter('upload_mimes', function($mimes) {
+    $mimes['svg'] = 'image/svg+xml';
+    $mimes['svgz'] = 'image/svg+xml';
+    return $mimes;
+});
+add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes) {
+    $filetype = wp_check_filetype($filename, $mimes);
+    if ($filetype['ext'] === 'svg') {
+        $data['ext'] = 'svg';
+        $data['type'] = 'image/svg+xml';
+    }
+    return $data;
+}, 10, 4);
+`;
+			const base64AllowSvg = Buffer.from(allowSvgPhp).toString("base64");
+			await runRemoteShellCommand(
+				`echo "${base64AllowSvg}" | base64 -d > "${docRoot}/wp-content/mu-plugins/allow-svg.php"`,
+				logCallback
+			);
+
 			const mediaMap: Record<string, { id: number; url: string }> = {};
 			const imageSet = new Set<string>();
 			const aiContent = schema.elementorContent;
@@ -665,6 +691,31 @@ async function injectWebsiteContent(
 
 			if (schema.brand?.logo) {
 				imageSet.add(schema.brand.logo);
+			}
+
+			// Scan template JSON files for library.elementor.com URLs to download/import
+			const templateDir = path.join(process.cwd(), "elementor-kit");
+			const templateFiles = [
+				path.join(templateDir, "content", "page", "2.json"),
+				path.join(templateDir, "templates", "15.json"),
+				path.join(templateDir, "templates", "244.json"),
+			];
+
+			for (const file of templateFiles) {
+				if (fs.existsSync(file)) {
+					try {
+						const content = fs.readFileSync(file, "utf8");
+						const matches = content.match(/https?:\/\/library\.elementor\.com\/[^\s"'}]+/g);
+						if (matches) {
+							for (const match of matches) {
+								const url = match.replace(/\\/g, "");
+								imageSet.add(url);
+							}
+						}
+					} catch (e) {
+						await logCallback(`Error reading template file ${file}: ${e}`);
+					}
+				}
 			}
 
 			// Import images
@@ -790,9 +841,7 @@ async function injectWebsiteContent(
 			} catch (menuErr: any) {
 				await logCallback(`Warning during menu creation: ${menuErr.message}`);
 			}
-
 			// Call mergeElementorTemplate
-			const templateDir = path.join(process.cwd(), "elementor-kit");
 			const businessInfo = {
 				name: schema.brand?.businessName || "Business",
 				address: schema.brand?.address || "",

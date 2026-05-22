@@ -311,5 +311,52 @@ export function mergeElementorTemplate(
 		...footerSections,
 	];
 
+	// Recursively replace library.elementor.com URLs/IDs with local ones and force object-fit: cover on image widgets to prevent distortion.
+	const mapLibraryUrlsAndFixStretch = (obj: any) => {
+		if (!obj || typeof obj !== "object") return;
+
+		// Force object-fit: cover on all image widgets
+		if (obj.elType === "widget" && obj.widgetType === "image" && obj.settings) {
+			obj.settings["object-fit"] = "cover";
+		}
+
+		// Handle object structure: { url: "...", id: "..." }
+		if (obj.url && typeof obj.url === "string" && obj.url.includes("library.elementor.com")) {
+			const local = getLocalMedia(obj.url);
+			if (local) {
+				obj.url = local.url;
+				if (obj.id !== undefined) {
+					obj.id = String(local.id);
+				}
+			}
+		}
+
+		// Handle selected_icon/value structure: { value: { url: "...", id: "..." } }
+		if (obj.value && typeof obj.value === "object" && obj.value.url && typeof obj.value.url === "string" && obj.value.url.includes("library.elementor.com")) {
+			const local = getLocalMedia(obj.value.url);
+			if (local) {
+				obj.value.url = local.url;
+				if (obj.value.id !== undefined) {
+					obj.value.id = String(local.id);
+				}
+			}
+		}
+
+		// Recurse for nested fields
+		for (const key of Object.keys(obj)) {
+			const val = obj[key];
+			if (typeof val === "string" && val.includes("library.elementor.com")) {
+				const local = getLocalMedia(val);
+				if (local) {
+					obj[key] = local.url;
+				}
+			} else if (val && typeof val === "object") {
+				mapLibraryUrlsAndFixStretch(val);
+			}
+		}
+	};
+
+	mapLibraryUrlsAndFixStretch(combinedSections);
+
 	return JSON.stringify(combinedSections);
 }

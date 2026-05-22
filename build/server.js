@@ -1538,16 +1538,24 @@ __export(direct_vertex_homepage_generation_exports, {
   default: () => direct_vertex_homepage_generation_default,
   generateHomepageViaDirectVertexPrompt: () => generateHomepageViaDirectVertexPrompt
 });
+function optimizeGooglePhotoUrl(url, size = 1600) {
+  if (!url || typeof url !== "string") return url;
+  if (url.includes("googleusercontent.com/places/") || url.includes("googleusercontent.com/p/")) {
+    const baseUrl = url.split("=")[0];
+    return `${baseUrl}=s${size}`;
+  }
+  return url;
+}
 function collectBusinessImages(business) {
   const sources = [];
   if (Array.isArray(business.photos)) {
-    sources.push(...business.photos);
+    sources.push(...business.photos.map((url) => optimizeGooglePhotoUrl(url, 1600)));
   }
   if (Array.isArray(business.imageSuggestions)) {
-    sources.push(...business.imageSuggestions);
+    sources.push(...business.imageSuggestions.map((url) => optimizeGooglePhotoUrl(url, 1600)));
   }
   if (business.logo) {
-    sources.push(business.logo);
+    sources.push(optimizeGooglePhotoUrl(business.logo, 400));
   }
   return sources;
 }
@@ -2999,6 +3007,42 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
     ...homeSections,
     ...footerSections
   ];
+  const mapLibraryUrlsAndFixStretch = (obj) => {
+    if (!obj || typeof obj !== "object") return;
+    if (obj.elType === "widget" && obj.widgetType === "image" && obj.settings) {
+      obj.settings["object-fit"] = "cover";
+    }
+    if (obj.url && typeof obj.url === "string" && obj.url.includes("library.elementor.com")) {
+      const local = getLocalMedia(obj.url);
+      if (local) {
+        obj.url = local.url;
+        if (obj.id !== void 0) {
+          obj.id = String(local.id);
+        }
+      }
+    }
+    if (obj.value && typeof obj.value === "object" && obj.value.url && typeof obj.value.url === "string" && obj.value.url.includes("library.elementor.com")) {
+      const local = getLocalMedia(obj.value.url);
+      if (local) {
+        obj.value.url = local.url;
+        if (obj.value.id !== void 0) {
+          obj.value.id = String(local.id);
+        }
+      }
+    }
+    for (const key of Object.keys(obj)) {
+      const val = obj[key];
+      if (typeof val === "string" && val.includes("library.elementor.com")) {
+        const local = getLocalMedia(val);
+        if (local) {
+          obj[key] = local.url;
+        }
+      } else if (val && typeof val === "object") {
+        mapLibraryUrlsAndFixStretch(val);
+      }
+    }
+  };
+  mapLibraryUrlsAndFixStretch(combinedSections);
   return JSON.stringify(combinedSections);
 }
 
@@ -3463,6 +3507,29 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, adminUser,
     const isElementor = schema.elementorContent !== void 0;
     if (isElementor) {
       await logCallback("Deploying Elementor template-based layout...");
+      await logCallback("Creating mu-plugins to allow SVG uploads...");
+      await runRemoteShellCommand(`mkdir -p "${docRoot}/wp-content/mu-plugins"`, logCallback);
+      const allowSvgPhp = `<?php
+// Allow SVG uploads in WordPress
+add_filter('upload_mimes', function($mimes) {
+    $mimes['svg'] = 'image/svg+xml';
+    $mimes['svgz'] = 'image/svg+xml';
+    return $mimes;
+});
+add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes) {
+    $filetype = wp_check_filetype($filename, $mimes);
+    if ($filetype['ext'] === 'svg') {
+        $data['ext'] = 'svg';
+        $data['type'] = 'image/svg+xml';
+    }
+    return $data;
+}, 10, 4);
+`;
+      const base64AllowSvg = Buffer.from(allowSvgPhp).toString("base64");
+      await runRemoteShellCommand(
+        `echo "${base64AllowSvg}" | base64 -d > "${docRoot}/wp-content/mu-plugins/allow-svg.php"`,
+        logCallback
+      );
       const mediaMap = {};
       const imageSet = /* @__PURE__ */ new Set();
       const aiContent = schema.elementorContent;
@@ -3477,6 +3544,28 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, adminUser,
       }
       if (schema.brand?.logo) {
         imageSet.add(schema.brand.logo);
+      }
+      const templateDir = path3.join(process.cwd(), "elementor-kit");
+      const templateFiles = [
+        path3.join(templateDir, "content", "page", "2.json"),
+        path3.join(templateDir, "templates", "15.json"),
+        path3.join(templateDir, "templates", "244.json")
+      ];
+      for (const file of templateFiles) {
+        if (fs3.existsSync(file)) {
+          try {
+            const content2 = fs3.readFileSync(file, "utf8");
+            const matches = content2.match(/https?:\/\/library\.elementor\.com\/[^\s"'}]+/g);
+            if (matches) {
+              for (const match of matches) {
+                const url = match.replace(/\\/g, "");
+                imageSet.add(url);
+              }
+            }
+          } catch (e) {
+            await logCallback(`Error reading template file ${file}: ${e}`);
+          }
+        }
       }
       for (const imgUrl of imageSet) {
         await logCallback(`Importing image: ${imgUrl}`);
@@ -3595,7 +3684,6 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, adminUser,
       } catch (menuErr) {
         await logCallback(`Warning during menu creation: ${menuErr.message}`);
       }
-      const templateDir = path3.join(process.cwd(), "elementor-kit");
       const businessInfo = {
         name: schema.brand?.businessName || "Business",
         address: schema.brand?.address || "",
