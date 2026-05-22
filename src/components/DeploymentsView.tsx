@@ -669,10 +669,10 @@ export default function DeploymentsView({
 								key={project.id}
 								className='group relative overflow-hidden rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_24px_90px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-violet-200 hover:shadow-[0_30px_100px_rgba(15,23,42,0.1)] sm:p-5 lg:p-6'>
 								<div className='absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.08),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.05),transparent_25%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100' />
-								<div className='relative flex flex-col gap-5'>
+								<div className='relative flex flex-col gap-5 w-full min-w-0'>
 									<div className='flex min-w-0 flex-1 flex-col gap-5'>
-										<div className='flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between'>
-											<div className='min-w-0 space-y-3'>
+										<div className='flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between w-full min-w-0'>
+											<div className='min-w-0 flex-1 space-y-3'>
 												<div className='flex flex-wrap items-center gap-2'>
 													<Badge className='rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-violet-700'>
 														{getCategoryLabel(project)}
@@ -685,7 +685,7 @@ export default function DeploymentsView({
 														{getProvisioningLabel(project)}
 													</Badge>
 												</div>
-												<div className='space-y-1'>
+												<div className='space-y-1 min-w-0'>
 													<h3 className='truncate text-2xl font-semibold tracking-tight text-slate-900 sm:text-[1.7rem]'>
 														{project.businessName}
 													</h3>
@@ -752,7 +752,7 @@ export default function DeploymentsView({
 												</div>
 											</div>
 
-											<div className='flex flex-col gap-3 xl:items-end justify-start'>
+											<div className='flex flex-col gap-3 xl:items-end justify-start flex-shrink-0'>
 												{isSent && (
 													<Badge className='rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-medium text-amber-700 self-end'>
 														Outreach sent

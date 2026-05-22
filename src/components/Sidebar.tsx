@@ -428,12 +428,12 @@ export default function Sidebar({
 					<TabsList className='grid w-full grid-cols-2 bg-slate-100 border border-slate-200 rounded-xl p-1'>
 						<TabsTrigger
 							value='search'
-							className='rounded-lg text-xs font-medium uppercase tracking-wider !text-slate-600 data-[state=active]:!text-slate-900 data-[state=active]:bg-violet-50 data-[state=active]:shadow-md data-[state=active]:border data-[state=active]:border-violet-300 data-[state=active]:ring-1 data-[state=active]:ring-violet-200'>
+							className='rounded-lg text-xs font-medium uppercase tracking-wider !text-slate-600 data-[selected]:!text-slate-900 data-[selected]:bg-violet-50 data-[selected]:shadow-md data-[selected]:border data-[selected]:border-violet-300 data-[selected]:ring-1 data-[selected]:ring-violet-200'>
 							Search
 						</TabsTrigger>
 						<TabsTrigger
 							value='results'
-							className='rounded-lg text-xs font-medium uppercase tracking-wider !text-slate-600 data-[state=active]:!text-slate-900 data-[state=active]:bg-violet-50 data-[state=active]:shadow-md data-[state=active]:border data-[state=active]:border-violet-300 data-[state=active]:ring-1 data-[state=active]:ring-violet-200'>
+							className='rounded-lg text-xs font-medium uppercase tracking-wider !text-slate-600 data-[selected]:!text-slate-900 data-[selected]:bg-violet-50 data-[selected]:shadow-md data-[selected]:border data-[selected]:border-violet-300 data-[selected]:ring-1 data-[selected]:ring-violet-200'>
 							Results{" "}
 							{businesses.length > 0 && (
 								<Badge
