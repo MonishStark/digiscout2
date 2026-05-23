@@ -210,6 +210,51 @@ app.get("/", (req, res) => {
 	res.send("DigitalScout API Running");
 });
 
+app.get("/api/debug-logs", async (req, res) => {
+	try {
+		const results: Record<string, any> = {};
+		const pathsToTry = [
+			path.join(process.cwd(), "stderr.log"),
+			path.join(process.cwd(), "passenger.log"),
+			path.join(process.cwd(), "error.log"),
+			path.join(process.cwd(), "..", "stderr.log"),
+			path.join(process.cwd(), "..", "passenger.log"),
+			"/home/digimvyc/public_html/stderr.log",
+			"/home/digimvyc/stderr.log",
+			"/home/digimvyc/api.digiscout.online/stderr.log",
+			"/home/digigesf/public_html/stderr.log",
+			"/home/digigesf/stderr.log",
+		];
+
+		try {
+			results.cwd = process.cwd();
+			results.files = fs.readdirSync(process.cwd());
+			const parent = path.join(process.cwd(), "..");
+			results.parent = parent;
+			results.parentFiles = fs.readdirSync(parent);
+		} catch (dirErr: any) {
+			results.dirError = dirErr.message;
+		}
+
+		for (const p of pathsToTry) {
+			if (fs.existsSync(p)) {
+				try {
+					const content = fs.readFileSync(p, "utf8");
+					results[p] = content.substring(Math.max(0, content.length - 15000));
+				} catch (fileErr: any) {
+					results[p] = `Error reading: ${fileErr.message}`;
+				}
+			} else {
+				results[p] = "Not found";
+			}
+		}
+
+		return res.json(results);
+	} catch (err: any) {
+		return res.status(500).json({ error: err.message });
+	}
+});
+
 // Authentication Routes
 app.post("/api/auth/register", async (req, res) => {
 	try {

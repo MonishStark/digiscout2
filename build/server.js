@@ -5662,6 +5662,47 @@ async function authenticateToken(req, res, next) {
 app.get("/", (req, res) => {
   res.send("DigitalScout API Running");
 });
+app.get("/api/debug-logs", async (req, res) => {
+  try {
+    const results = {};
+    const pathsToTry = [
+      path6.join(process.cwd(), "stderr.log"),
+      path6.join(process.cwd(), "passenger.log"),
+      path6.join(process.cwd(), "error.log"),
+      path6.join(process.cwd(), "..", "stderr.log"),
+      path6.join(process.cwd(), "..", "passenger.log"),
+      "/home/digimvyc/public_html/stderr.log",
+      "/home/digimvyc/stderr.log",
+      "/home/digimvyc/api.digiscout.online/stderr.log",
+      "/home/digigesf/public_html/stderr.log",
+      "/home/digigesf/stderr.log"
+    ];
+    try {
+      results.cwd = process.cwd();
+      results.files = fs7.readdirSync(process.cwd());
+      const parent = path6.join(process.cwd(), "..");
+      results.parent = parent;
+      results.parentFiles = fs7.readdirSync(parent);
+    } catch (dirErr) {
+      results.dirError = dirErr.message;
+    }
+    for (const p of pathsToTry) {
+      if (fs7.existsSync(p)) {
+        try {
+          const content = fs7.readFileSync(p, "utf8");
+          results[p] = content.substring(Math.max(0, content.length - 15e3));
+        } catch (fileErr) {
+          results[p] = `Error reading: ${fileErr.message}`;
+        }
+      } else {
+        results[p] = "Not found";
+      }
+    }
+    return res.json(results);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
 app.post("/api/auth/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
