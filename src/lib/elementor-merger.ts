@@ -128,6 +128,23 @@ export function mergeElementorTemplate(
 					widgets.image[0].settings.image.url = local.url;
 					widgets.image[0].settings.image.id = String(local.id);
 				}
+			// Force circular image size to custom and constrain to a small, elegant radius
+				// image_size "custom" controls the WP image size requested, not the CSS display size.
+				// To visually constrain the circle, we set the width directly on the widget element.
+				widgets.image[0].settings.image_size = "large";
+				// Override the display width to be a smaller fixed size (matching the template's original smaller look)
+				widgets.image[0].settings.width = { unit: "%", size: "100", sizes: [] };
+				// Set custom dimensions for crop hint
+				widgets.image[0].settings.image_custom_dimension = {
+					width: "200",
+					height: "200"
+				};
+				// Constrain the element width in the layout to control circle display size
+				widgets.image[0].settings._element_width = "initial";
+				widgets.image[0].settings._element_custom_width = { unit: "px", size: "200", sizes: [] };
+				widgets.image[0].settings._element_custom_width_tablet = { unit: "px", size: "150", sizes: [] };
+				widgets.image[0].settings._element_custom_width_mobile = { unit: "px", size: "120", sizes: [] };
+
 			}
 		} else if (title === "Highest level") {
 			// About image

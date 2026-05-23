@@ -790,7 +790,50 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 						}
 					}
 
-					// 2. Standard direct or curl fallback
+					// 2. Try downloading locally to the Node server first and copy over SSH
+					if (!imported && imgUrl.startsWith("http")) {
+						try {
+							await logCallback(`Downloading image locally on Node server first: ${imgUrl}`);
+							const ext = imgUrl.toLowerCase().includes(".png") ? "png" : "jpg";
+							const tempLocalDir = path.join(process.cwd(), "scratch", "downloads");
+							if (!fs.existsSync(tempLocalDir)) {
+								fs.mkdirSync(tempLocalDir, { recursive: true });
+							}
+							const tempLocalPath = path.join(tempLocalDir, `dl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`);
+							
+							const response = await fetch(imgUrl);
+							if (response.ok) {
+								const arrayBuffer = await response.arrayBuffer();
+								fs.writeFileSync(tempLocalPath, Buffer.from(arrayBuffer));
+								
+								await logCallback(`Copying downloaded file to remote server via SSH: ${tempLocalPath}`);
+								const remoteTmpMedia = `/tmp/ds_dl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+								try {
+									await copyFileToRemote(tempLocalPath, remoteTmpMedia, logCallback);
+									const mediaOut = await runWpCommand(
+										`media import "${remoteTmpMedia}" --porcelain`,
+										docRoot,
+										logCallback,
+									);
+									mediaId = mediaOut.stdout.trim();
+									if (/^\d+$/.test(mediaId)) {
+										imported = true;
+									}
+								} finally {
+									await runRemoteShellCommand(`rm -f "${remoteTmpMedia}"`, logCallback).catch(() => {});
+									if (fs.existsSync(tempLocalPath)) {
+										fs.unlinkSync(tempLocalPath);
+									}
+								}
+							} else {
+								await logCallback(`Local download failed: HTTP status ${response.status}`);
+							}
+						} catch (downloadErr: any) {
+							await logCallback(`Failed local download/transfer pipeline: ${downloadErr.message}. Trying direct fallback...`);
+						}
+					}
+
+					// 3. Fallback to standard direct remote import or remote curl
 					if (!imported) {
 						try {
 							const mediaOut = await runWpCommand(
@@ -800,7 +843,7 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 							);
 							mediaId = mediaOut.stdout.trim();
 						} catch (e: any) {
-							await logCallback(`Direct import failed for ${imgUrl}. Trying with curl...`);
+							await logCallback(`Direct import failed for ${imgUrl}. Trying with curl on remote server...`);
 							const ext = imgUrl.toLowerCase().includes(".png") ? "png" : "jpg";
 							const remoteTmpMedia = `/tmp/ds_media_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
 							await runRemoteShellCommand(
@@ -847,18 +890,35 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 				for (const post of aiContent.projects.posts) {
 					try {
 						const localMedia = mediaMap[post.url];
-						const thumbnailArg = localMedia ? ` --thumbnail_id=${localMedia.id}` : "";
 
 						await logCallback(`Creating post: "${post.title}" with thumbnail ID: ${localMedia?.id || "none"}`);
 						
 						const safeTitle = post.title.replace(/'/g, `'\\''`);
+						// NOTE: --thumbnail_id is NOT a valid flag for wp post create.
+						// The featured image (thumbnail) MUST be set via a separate wp post meta set command.
 						const postCreateOut = await runWpCommand(
-							`post create --post_type=post --post_title='${safeTitle}' --post_status=publish${thumbnailArg} --porcelain`,
+							`post create --post_type=post --post_title='${safeTitle}' --post_status=publish --porcelain`,
 							docRoot,
 							logCallback
 						);
 						const newPostId = postCreateOut.stdout.trim();
 						await logCallback(`Created project post ID: ${newPostId}`);
+
+						// Set the featured image (thumbnail) via post meta — this is the correct method
+						if (newPostId && /^\d+$/.test(newPostId) && localMedia?.id) {
+							try {
+								await runWpCommand(
+									`post meta set ${newPostId} _thumbnail_id ${localMedia.id}`,
+									docRoot,
+									logCallback
+								);
+								await logCallback(`Set thumbnail (featured image) ID ${localMedia.id} for post ${newPostId}`);
+							} catch (thumbErr: any) {
+								await logCallback(`Warning: Failed to set thumbnail for post ${newPostId}: ${thumbErr.message}`);
+							}
+						} else if (newPostId && /^\d+$/.test(newPostId) && !localMedia?.id) {
+							await logCallback(`Warning: No media found in mediaMap for project URL: ${post.url}. Post created without thumbnail.`);
+						}
 					} catch (postErr: any) {
 						await logCallback(`Warning: Failed to create project post: ${postErr.message}`);
 					}

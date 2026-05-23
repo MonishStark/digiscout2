@@ -3309,6 +3309,16 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
           widgets.image[0].settings.image.url = local.url;
           widgets.image[0].settings.image.id = String(local.id);
         }
+        widgets.image[0].settings.image_size = "large";
+        widgets.image[0].settings.width = { unit: "%", size: "100", sizes: [] };
+        widgets.image[0].settings.image_custom_dimension = {
+          width: "200",
+          height: "200"
+        };
+        widgets.image[0].settings._element_width = "initial";
+        widgets.image[0].settings._element_custom_width = { unit: "px", size: "200", sizes: [] };
+        widgets.image[0].settings._element_custom_width_tablet = { unit: "px", size: "150", sizes: [] };
+        widgets.image[0].settings._element_custom_width_mobile = { unit: "px", size: "120", sizes: [] };
       }
     } else if (title === "Highest level") {
       if (widgets.image?.[0] && widgets.image[0].settings?.image) {
@@ -4129,6 +4139,46 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
               await logCallback(`Local file not found at ${localPath} for generated image URL: ${imgUrl}. Trying direct fallback...`);
             }
           }
+          if (!imported && imgUrl.startsWith("http")) {
+            try {
+              await logCallback(`Downloading image locally on Node server first: ${imgUrl}`);
+              const ext = imgUrl.toLowerCase().includes(".png") ? "png" : "jpg";
+              const tempLocalDir = path3.join(process.cwd(), "scratch", "downloads");
+              if (!fs4.existsSync(tempLocalDir)) {
+                fs4.mkdirSync(tempLocalDir, { recursive: true });
+              }
+              const tempLocalPath = path3.join(tempLocalDir, `dl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`);
+              const response = await fetch(imgUrl);
+              if (response.ok) {
+                const arrayBuffer = await response.arrayBuffer();
+                fs4.writeFileSync(tempLocalPath, Buffer.from(arrayBuffer));
+                await logCallback(`Copying downloaded file to remote server via SSH: ${tempLocalPath}`);
+                const remoteTmpMedia = `/tmp/ds_dl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+                try {
+                  await copyFileToRemote(tempLocalPath, remoteTmpMedia, logCallback);
+                  const mediaOut = await runWpCommand(
+                    `media import "${remoteTmpMedia}" --porcelain`,
+                    docRoot,
+                    logCallback
+                  );
+                  mediaId = mediaOut.stdout.trim();
+                  if (/^\d+$/.test(mediaId)) {
+                    imported = true;
+                  }
+                } finally {
+                  await runRemoteShellCommand(`rm -f "${remoteTmpMedia}"`, logCallback).catch(() => {
+                  });
+                  if (fs4.existsSync(tempLocalPath)) {
+                    fs4.unlinkSync(tempLocalPath);
+                  }
+                }
+              } else {
+                await logCallback(`Local download failed: HTTP status ${response.status}`);
+              }
+            } catch (downloadErr) {
+              await logCallback(`Failed local download/transfer pipeline: ${downloadErr.message}. Trying direct fallback...`);
+            }
+          }
           if (!imported) {
             try {
               const mediaOut = await runWpCommand(
@@ -4138,7 +4188,7 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
               );
               mediaId = mediaOut.stdout.trim();
             } catch (e) {
-              await logCallback(`Direct import failed for ${imgUrl}. Trying with curl...`);
+              await logCallback(`Direct import failed for ${imgUrl}. Trying with curl on remote server...`);
               const ext = imgUrl.toLowerCase().includes(".png") ? "png" : "jpg";
               const remoteTmpMedia = `/tmp/ds_media_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
               await runRemoteShellCommand(
@@ -4183,16 +4233,29 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
         for (const post of aiContent.projects.posts) {
           try {
             const localMedia = mediaMap[post.url];
-            const thumbnailArg = localMedia ? ` --thumbnail_id=${localMedia.id}` : "";
             await logCallback(`Creating post: "${post.title}" with thumbnail ID: ${localMedia?.id || "none"}`);
             const safeTitle = post.title.replace(/'/g, `'\\''`);
             const postCreateOut = await runWpCommand(
-              `post create --post_type=post --post_title='${safeTitle}' --post_status=publish${thumbnailArg} --porcelain`,
+              `post create --post_type=post --post_title='${safeTitle}' --post_status=publish --porcelain`,
               docRoot,
               logCallback
             );
             const newPostId = postCreateOut.stdout.trim();
             await logCallback(`Created project post ID: ${newPostId}`);
+            if (newPostId && /^\d+$/.test(newPostId) && localMedia?.id) {
+              try {
+                await runWpCommand(
+                  `post meta set ${newPostId} _thumbnail_id ${localMedia.id}`,
+                  docRoot,
+                  logCallback
+                );
+                await logCallback(`Set thumbnail (featured image) ID ${localMedia.id} for post ${newPostId}`);
+              } catch (thumbErr) {
+                await logCallback(`Warning: Failed to set thumbnail for post ${newPostId}: ${thumbErr.message}`);
+              }
+            } else if (newPostId && /^\d+$/.test(newPostId) && !localMedia?.id) {
+              await logCallback(`Warning: No media found in mediaMap for project URL: ${post.url}. Post created without thumbnail.`);
+            }
           } catch (postErr) {
             await logCallback(`Warning: Failed to create project post: ${postErr.message}`);
           }
