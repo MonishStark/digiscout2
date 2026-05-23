@@ -120,7 +120,7 @@ export function mergeElementorTemplate(
 					bgCol.settings.background_image.id = String(local.id);
 				}
 			}
-			// Supporting circular image
+			// Supporting circular image — must be a PERFECT CIRCLE, not oval
 			if (widgets.image?.[0] && widgets.image[0].settings?.image) {
 				const targetUrl = aiContent.hero?.masked_image || "";
 				const local = getLocalMedia(targetUrl);
@@ -128,24 +128,34 @@ export function mergeElementorTemplate(
 					widgets.image[0].settings.image.url = local.url;
 					widgets.image[0].settings.image.id = String(local.id);
 				}
-			// Force circular image size to custom and constrain to a small, elegant radius
-				// image_size "custom" controls the WP image size requested, not the CSS display size.
-				// To visually constrain the circle, we set the width directly on the widget element.
-				widgets.image[0].settings.image_size = "large";
-				// Override the display width to be a smaller fixed size (matching the template's original smaller look)
-				widgets.image[0].settings.width = { unit: "%", size: "100", sizes: [] };
-				// Set custom dimensions for crop hint
-				widgets.image[0].settings.image_custom_dimension = {
-					width: "200",
-					height: "200"
+				// Use full image size so WP serves the highest quality for the cropped circle
+				widgets.image[0].settings.image_size = "full";
+				// CRITICAL: object-fit MUST be "cover" — "fill" stretches non-square images into ovals
+				widgets.image[0].settings["object-fit"] = "cover";
+				// Set BOTH width and height to the same px value to form a square container
+				// border-radius: 50% on a square = perfect circle
+				widgets.image[0].settings.width = { unit: "px", size: "220", sizes: [] };
+				widgets.image[0].settings.height = { unit: "px", size: "220", sizes: [] };
+				widgets.image[0].settings.width_tablet = { unit: "px", size: "160", sizes: [] };
+				widgets.image[0].settings.height_tablet = { unit: "px", size: "160", sizes: [] };
+				widgets.image[0].settings.width_mobile = { unit: "px", size: "130", sizes: [] };
+				widgets.image[0].settings.height_mobile = { unit: "px", size: "130", sizes: [] };
+				// Keep border-radius 50% (already in template: image_border_radius top/right/bottom/left = 50%)
+				widgets.image[0].settings.image_border_radius = {
+					unit: "%",
+					top: "50",
+					right: "50",
+					bottom: "50",
+					left: "50",
+					isLinked: "1"
 				};
-				// Constrain the element width in the layout to control circle display size
-				widgets.image[0].settings._element_width = "initial";
-				widgets.image[0].settings._element_custom_width = { unit: "px", size: "200", sizes: [] };
-				widgets.image[0].settings._element_custom_width_tablet = { unit: "px", size: "150", sizes: [] };
-				widgets.image[0].settings._element_custom_width_mobile = { unit: "px", size: "120", sizes: [] };
-
+				// Remove _element_width override so absolute positioning is preserved from template
+				delete widgets.image[0].settings._element_width;
+				delete widgets.image[0].settings._element_custom_width;
+				delete widgets.image[0].settings._element_custom_width_tablet;
+				delete widgets.image[0].settings._element_custom_width_mobile;
 			}
+
 		} else if (title === "Highest level") {
 			// About image
 			if (widgets.image?.[0] && widgets.image[0].settings?.image) {

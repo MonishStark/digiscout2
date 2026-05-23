@@ -3309,16 +3309,26 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
           widgets.image[0].settings.image.url = local.url;
           widgets.image[0].settings.image.id = String(local.id);
         }
-        widgets.image[0].settings.image_size = "large";
-        widgets.image[0].settings.width = { unit: "%", size: "100", sizes: [] };
-        widgets.image[0].settings.image_custom_dimension = {
-          width: "200",
-          height: "200"
+        widgets.image[0].settings.image_size = "full";
+        widgets.image[0].settings["object-fit"] = "cover";
+        widgets.image[0].settings.width = { unit: "px", size: "220", sizes: [] };
+        widgets.image[0].settings.height = { unit: "px", size: "220", sizes: [] };
+        widgets.image[0].settings.width_tablet = { unit: "px", size: "160", sizes: [] };
+        widgets.image[0].settings.height_tablet = { unit: "px", size: "160", sizes: [] };
+        widgets.image[0].settings.width_mobile = { unit: "px", size: "130", sizes: [] };
+        widgets.image[0].settings.height_mobile = { unit: "px", size: "130", sizes: [] };
+        widgets.image[0].settings.image_border_radius = {
+          unit: "%",
+          top: "50",
+          right: "50",
+          bottom: "50",
+          left: "50",
+          isLinked: "1"
         };
-        widgets.image[0].settings._element_width = "initial";
-        widgets.image[0].settings._element_custom_width = { unit: "px", size: "200", sizes: [] };
-        widgets.image[0].settings._element_custom_width_tablet = { unit: "px", size: "150", sizes: [] };
-        widgets.image[0].settings._element_custom_width_mobile = { unit: "px", size: "120", sizes: [] };
+        delete widgets.image[0].settings._element_width;
+        delete widgets.image[0].settings._element_custom_width;
+        delete widgets.image[0].settings._element_custom_width_tablet;
+        delete widgets.image[0].settings._element_custom_width_mobile;
       }
     } else if (title === "Highest level") {
       if (widgets.image?.[0] && widgets.image[0].settings?.image) {
@@ -4450,6 +4460,33 @@ if ($kit_id && file_exists($kit_settings_json_file)) {
         await runWpCommand(`elementor force-regenerate-css`, docRoot, logCallback);
       } catch (cssErr) {
         await logCallback(`Warning: Failed to regenerate Elementor CSS: ${cssErr.message}`);
+      }
+      try {
+        await logCallback("Injecting global CSS fixes (overflow, circle image)...");
+        const globalCss = `
+/* Fix horizontal scroll \u2014 Elementor sections must not overflow viewport */
+html, body {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+}
+.elementor-section, .e-container, .elementor-column {
+  max-width: 100% !important;
+}
+/* Ensure circle image is always a perfect circle, never oval */
+.elementor-widget-image img {
+  border-radius: inherit;
+  object-fit: cover;
+}`.trim();
+        const safeCss = globalCss.replace(/\\/g, "\\\\").replace(/'/g, `'\\''`);
+        await runWpCommand(
+          `option update elementor_custom_css '${safeCss}'`,
+          docRoot,
+          logCallback
+        ).catch(async (e) => {
+          await logCallback(`Warning: Failed to set elementor_custom_css: ${e.message}`);
+        });
+      } catch (cssFixErr) {
+        await logCallback(`Warning: Failed to inject global CSS: ${cssFixErr.message}`);
       }
       await runRemoteShellCommand(`rm -f '${homepageJsonTmp}' '${kitJsonTmp}' '${phpScriptTmp}'`, logCallback).catch(() => {
       });

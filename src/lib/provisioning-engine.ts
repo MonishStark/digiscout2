@@ -1139,6 +1139,37 @@ if ($kit_id && file_exists($kit_settings_json_file)) {
 				await logCallback(`Warning: Failed to regenerate Elementor CSS: ${cssErr.message}`);
 			}
 
+			// Inject global CSS fix for horizontal scroll overflow and circle image
+			// Elementor sites often overflow-x due to animated sections with negative margins
+			try {
+				await logCallback("Injecting global CSS fixes (overflow, circle image)...");
+				const globalCss = `
+/* Fix horizontal scroll — Elementor sections must not overflow viewport */
+html, body {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+}
+.elementor-section, .e-container, .elementor-column {
+  max-width: 100% !important;
+}
+/* Ensure circle image is always a perfect circle, never oval */
+.elementor-widget-image img {
+  border-radius: inherit;
+  object-fit: cover;
+}`.trim();
+				const safeCss = globalCss.replace(/\\/g, "\\\\").replace(/'/g, `'\\''`);
+				await runWpCommand(
+					`option update elementor_custom_css '${safeCss}'`,
+					docRoot,
+					logCallback,
+				).catch(async (e: any) => {
+					await logCallback(`Warning: Failed to set elementor_custom_css: ${e.message}`);
+				});
+			} catch (cssFixErr: any) {
+				await logCallback(`Warning: Failed to inject global CSS: ${cssFixErr.message}`);
+			}
+
+
 			// Cleanup
 			await runRemoteShellCommand(`rm -f '${homepageJsonTmp}' '${kitJsonTmp}' '${phpScriptTmp}'`, logCallback).catch(() => {});
 
