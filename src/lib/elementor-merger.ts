@@ -263,7 +263,7 @@ export function mergeElementorTemplate(
 				}
 			} else if (title === "Banner") {
 				if (widgets["icon-list"]?.[0] && widgets["icon-list"][0].settings?.icon_list?.[0]) {
-					widgets["icon-list"][0].settings.icon_list[0].text = `Call Us: ${businessInfo.phone} | Email: ${businessInfo.email}`;
+					widgets["icon-list"][0].settings.icon_list[0].text = `Call Us: ${businessInfo.phone}`;
 				}
 			} else if (title === "Header") {
 				if (widgets["nav-menu"]?.[0] && widgets["nav-menu"][0].settings && menuId) {
@@ -278,6 +278,10 @@ export function mergeElementorTemplate(
 							id: String(local.id),
 						};
 					}
+					widgets["theme-site-logo"][0].settings.height = { unit: "px", size: 45, sizes: [] };
+					widgets["theme-site-logo"][0].settings.height_tablet = { unit: "px", size: 40, sizes: [] };
+					widgets["theme-site-logo"][0].settings.height_mobile = { unit: "px", size: 35, sizes: [] };
+					widgets["theme-site-logo"][0].settings.width = { unit: "%", size: 100, sizes: [] };
 				}
 			} else if (title === "Footer") {
 				if (widgets["text-editor"]?.[0] && widgets["text-editor"][0].settings) {

@@ -3518,7 +3518,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
         }
       } else if (title === "Banner") {
         if (widgets["icon-list"]?.[0] && widgets["icon-list"][0].settings?.icon_list?.[0]) {
-          widgets["icon-list"][0].settings.icon_list[0].text = `Call Us: ${businessInfo.phone} | Email: ${businessInfo.email}`;
+          widgets["icon-list"][0].settings.icon_list[0].text = `Call Us: ${businessInfo.phone}`;
         }
       } else if (title === "Header") {
         if (widgets["nav-menu"]?.[0] && widgets["nav-menu"][0].settings && menuId) {
@@ -3533,6 +3533,10 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
               id: String(local.id)
             };
           }
+          widgets["theme-site-logo"][0].settings.height = { unit: "px", size: 45, sizes: [] };
+          widgets["theme-site-logo"][0].settings.height_tablet = { unit: "px", size: 40, sizes: [] };
+          widgets["theme-site-logo"][0].settings.height_mobile = { unit: "px", size: 35, sizes: [] };
+          widgets["theme-site-logo"][0].settings.width = { unit: "%", size: 100, sizes: [] };
         }
       } else if (title === "Footer") {
         if (widgets["text-editor"]?.[0] && widgets["text-editor"][0].settings) {
@@ -4749,6 +4753,7 @@ if ($logo_attachment_id) {
 // Inject global CSS to fix horizontal scroll and ensure circle images render correctly.
 // This runs inside WP context so no shell-escaping issues.
 $global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !important; } .elementor-section, .e-container, .elementor-column { max-width: 100% !important; } .elementor-widget-image img { object-fit: cover !important; } ' .
+	'.elementor-widget-theme-site-logo img { mix-blend-mode: multiply !important; height: auto !important; max-height: 45px !important; width: auto !important; } ' .
 	'.elementor-element-1b226200, .elementor-element-1b226200 .elementor-widget-text-editor, .elementor-element-1b226200 .elementor-widget-text-editor p { color: #E9E8E6 !important; } ' .
 	'.elementor-element-1b226200 .elementor-widget-text-editor strong { color: #FFFFFF !important; } ' .
 	'.elementor-element-4d1645d0 .elementor-background-overlay { background-color: rgba(233, 232, 230, 0.75) !important; opacity: 1 !important; } ' .
@@ -4760,7 +4765,9 @@ $global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !imp
 	'.elementor-element-39f1fa01 .elementor-background-overlay { background-color: rgba(12, 40, 53, 0.45) !important; opacity: 1 !important; } ' .
 	'.elementor-element-39f1fa01::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(12, 40, 53, 0.45) !important; z-index: 0; pointer-events: none; } ' .
 	'.elementor-element-39f1fa01 > * { position: relative; z-index: 1; } ' .
-	'.elementor-element-29c6e791, .elementor-element-29c6e791 .elementor-widget-heading h6, .elementor-element-29c6e791 .elementor-icon-list-item, .elementor-element-29c6e791 .elementor-icon-list-text, .elementor-element-29c6e791 a, .elementor-element-29c6e791 p { color: #FFFFFF !important; } ' .
+	'.elementor-element-29c6e791, .elementor-element-29c6e791 p, .elementor-element-29c6e791 a, .elementor-element-29c6e791 span, .elementor-element-29c6e791 li, .elementor-element-29c6e791 .elementor-item, .elementor-element-29c6e791 .elementor-icon-list-text, .elementor-element-29c6e791 .elementor-icon-list-item { color: #E9E8E6 !important; } ' .
+	'.elementor-element-29c6e791 h6, .elementor-element-29c6e791 .elementor-widget-heading h6, .elementor-element-29c6e791 .elementor-heading-title, .elementor-element-29c6e791 .elementor-heading-title a { color: #FFFFFF !important; } ' .
+	'.elementor-element-29c6e791 a:hover, .elementor-element-29c6e791 .elementor-item:hover { color: #FFFFFF !important; } ' .
 	'.elementor-element-56d5c22, .elementor-element-56d5c22 p, .elementor-element-56d5c22 a { color: rgba(255, 255, 255, 0.6) !important; }';
 update_option('elementor_custom_css', $global_css);
 echo "GLOBAL_CSS_SET\\n";
