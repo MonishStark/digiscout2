@@ -726,12 +726,12 @@ export default function DeploymentsView({
 																	)}
 																</button>
 															</div>
-															<div className='flex items-center gap-1.5'>
-																<span>Pass:</span>
-																<span className='font-mono bg-white/50 px-1.5 py-0.5 rounded'>{project.wordpressPassword}</span>
+															<div className='flex items-center gap-1.5 flex-wrap min-w-0'>
+																<span className='flex-shrink-0'>Pass:</span>
+																<span className='font-mono bg-white/50 px-1.5 py-0.5 rounded break-all min-w-0'>{project.wordpressPassword}</span>
 																<button
 																	onClick={() => handleCopy(project.wordpressPassword || "", `${project.id}-pass`)}
-																	className='text-amber-700 hover:text-amber-900 p-1 rounded hover:bg-amber-100/50 transition-colors flex items-center justify-center'
+																	className='text-amber-700 hover:text-amber-900 p-1 rounded hover:bg-amber-100/50 transition-colors flex items-center justify-center flex-shrink-0'
 																	title='Copy Password'>
 																	{copiedId === `${project.id}-pass` ? (
 																		<Check className='h-3.5 w-3.5 text-emerald-600' />
