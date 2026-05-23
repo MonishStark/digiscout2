@@ -4105,15 +4105,20 @@ app.delete(
 				return res.status(400).json({ error: "Missing projectId" });
 			}
 
-			// Verify project belongs to user
+			// Verify project belongs to user or is unowned
 			const [rows]: any = await pool.query(
-				`SELECT id FROM provisioning_jobs WHERE project_id = ? AND user_id = ? LIMIT 1`,
-				[projectId, req.user.id],
+				`SELECT id, user_id FROM provisioning_jobs WHERE project_id = ? LIMIT 1`,
+				[projectId],
 			);
 			if (!rows || rows.length === 0) {
 				return res
 					.status(404)
-					.json({ error: "Project not found or unauthorized" });
+					.json({ error: "Project not found" });
+			}
+			if (rows[0].user_id && rows[0].user_id !== req.user.id) {
+				return res
+					.status(403)
+					.json({ error: "Unauthorized to delete this project" });
 			}
 
 			await deleteProvisionedWordPressSite(projectId);
@@ -4194,6 +4199,7 @@ app.get("/api/leads", authenticateToken, async (req: any, res) => {
 				imageSuggestions: schema._validation?.imageSuggestions || [],
 				wordpressPassword: rawPassword,
 				websiteContent: "",
+				isDeployed: row.provisioningStatus === "completed" || row.provisioningStatus === "ready" || !!row.wordpressSiteUrl,
 			};
 		});
 

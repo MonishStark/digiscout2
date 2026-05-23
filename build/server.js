@@ -4765,12 +4765,13 @@ $global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !imp
 	'.elementor-element-39f1fa01 .elementor-background-overlay { background-color: rgba(12, 40, 53, 0.45) !important; opacity: 1 !important; } ' .
 	'.elementor-element-39f1fa01::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(12, 40, 53, 0.45) !important; z-index: 0; pointer-events: none; } ' .
 	'.elementor-element-39f1fa01 > * { position: relative; z-index: 1; } ' .
-	'.elementor-element-29c6e791, .elementor-element-29c6e791 p, .elementor-element-29c6e791 a, .elementor-element-29c6e791 span, .elementor-element-29c6e791 li, .elementor-element-29c6e791 .elementor-item, .elementor-element-29c6e791 .elementor-icon-list-text, .elementor-element-29c6e791 .elementor-icon-list-item { color: #E9E8E6 !important; } ' .
-	'.elementor-element-29c6e791 h6, .elementor-element-29c6e791 .elementor-widget-heading h6, .elementor-element-29c6e791 .elementor-heading-title, .elementor-element-29c6e791 .elementor-heading-title a { color: #FFFFFF !important; } ' .
-	'.elementor-element-29c6e791 a:hover, .elementor-element-29c6e791 .elementor-item:hover { color: #FFFFFF !important; } ' .
+	'[data-elementor-type="footer"], [data-elementor-type="footer"] p, [data-elementor-type="footer"] a, [data-elementor-type="footer"] span, [data-elementor-type="footer"] li, [data-elementor-type="footer"] .elementor-item, [data-elementor-type="footer"] .elementor-icon-list-text, [data-elementor-type="footer"] .elementor-icon-list-icon i, [data-elementor-type="footer"] .elementor-icon-list-icon svg, [data-elementor-type="footer"] .elementor-icon-list-item, [data-elementor-type="footer"] i, footer p, footer a, footer span, footer li, footer .elementor-item, footer .elementor-icon-list-text, footer .elementor-icon-list-icon i, footer .elementor-icon-list-icon svg, footer .elementor-icon-list-item, footer i, .site-footer p, .site-footer a, .site-footer span, .site-footer li, .site-footer .elementor-item, .site-footer .elementor-icon-list-text, .site-footer .elementor-icon-list-icon i, .site-footer .elementor-icon-list-icon svg, .site-footer .elementor-icon-list-item, .site-footer i, .elementor-location-footer p, .elementor-location-footer a, .elementor-location-footer span, .elementor-location-footer li, .elementor-location-footer .elementor-item, .elementor-location-footer .elementor-icon-list-text, .elementor-location-footer .elementor-icon-list-icon i, .elementor-location-footer .elementor-icon-list-icon svg, .elementor-location-footer .elementor-icon-list-item, .elementor-location-footer i, .elementor-element-29c6e791, .elementor-element-29c6e791 p, .elementor-element-29c6e791 a, .elementor-element-29c6e791 span, .elementor-element-29c6e791 li, .elementor-element-29c6e791 .elementor-item, .elementor-element-29c6e791 .elementor-icon-list-text, .elementor-element-29c6e791 .elementor-icon-list-icon i, .elementor-element-29c6e791 .elementor-icon-list-icon svg, .elementor-element-29c6e791 .elementor-icon-list-item, .elementor-element-29c6e791 i { color: #E9E8E6 !important; fill: #E9E8E6 !important; } ' .
+	'[data-elementor-type="footer"] h1, [data-elementor-type="footer"] h2, [data-elementor-type="footer"] h3, [data-elementor-type="footer"] h4, [data-elementor-type="footer"] h5, [data-elementor-type="footer"] h6, [data-elementor-type="footer"] .elementor-heading-title, [data-elementor-type="footer"] .elementor-heading-title a, footer h1, footer h2, footer h3, footer h4, footer h5, footer h6, footer .elementor-heading-title, footer .elementor-heading-title a, .site-footer h1, .site-footer h2, .site-footer h3, .site-footer h4, .site-footer h5, .site-footer h6, .site-footer .elementor-heading-title, .site-footer .elementor-heading-title a, .elementor-location-footer h1, .elementor-location-footer h2, .elementor-location-footer h3, .elementor-location-footer h4, .elementor-location-footer h5, .elementor-location-footer h6, .elementor-location-footer .elementor-heading-title, .elementor-location-footer .elementor-heading-title a, .elementor-element-29c6e791 h6, .elementor-element-29c6e791 .elementor-widget-heading h6, .elementor-element-29c6e791 .elementor-heading-title, .elementor-element-29c6e791 .elementor-heading-title a { color: #FFFFFF !important; } ' .
+	'[data-elementor-type="footer"] a:hover, [data-elementor-type="footer"] .elementor-item:hover, footer a:hover, footer .elementor-item:hover, .site-footer a:hover, .site-footer .elementor-item:hover, .elementor-location-footer a:hover, .elementor-location-footer .elementor-item:hover, .elementor-element-29c6e791 a:hover, .elementor-element-29c6e791 .elementor-item:hover { color: #FFFFFF !important; } ' .
 	'.elementor-element-56d5c22, .elementor-element-56d5c22 p, .elementor-element-56d5c22 a { color: rgba(255, 255, 255, 0.6) !important; }';
 update_option('elementor_custom_css', $global_css);
-echo "GLOBAL_CSS_SET\\n";
+echo "GLOBAL_CSS_SET
+";
 `;
       const phpB64 = Buffer.from(phpCode).toString("base64");
       await runRemoteShellCommand(
@@ -5105,10 +5106,39 @@ async function rollbackJob(job) {
   }
   await appendLog(job.id, "[ROLLBACK] Remote cleanup finished.");
 }
+function extractSubdomainFromUrl(subdomainUrl) {
+  if (!subdomainUrl) return null;
+  try {
+    let hostname = subdomainUrl;
+    if (hostname.includes("://")) {
+      hostname = hostname.split("://")[1];
+    }
+    hostname = hostname.split("/")[0];
+    const parts = hostname.split(".");
+    if (parts.length >= 3) {
+      return parts[0];
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
 async function deleteProvisionedWordPressSite(projectId) {
   console.log(
     `[Cleanup] Starting comprehensive remote deletion for project ${projectId}`
   );
+  let subdomainFromDeployment = null;
+  try {
+    const [deployments] = await pool.query(
+      `SELECT subdomain_url FROM isolated_deployments WHERE project_id = ?`,
+      [projectId]
+    );
+    if (deployments && deployments.length > 0 && deployments[0].subdomain_url) {
+      subdomainFromDeployment = extractSubdomainFromUrl(deployments[0].subdomain_url);
+    }
+  } catch (err) {
+    console.error(`[Cleanup] Error querying isolated_deployments: ${err.message}`);
+  }
   const [rows] = await pool.query(
     `SELECT * FROM provisioning_jobs WHERE project_id = ?`,
     [projectId]
@@ -5117,16 +5147,30 @@ async function deleteProvisionedWordPressSite(projectId) {
     console.warn(
       `[Cleanup] No provisioning job found in DB for project ${projectId}. Attempting database-only purge.`
     );
-    await pool.query(`DELETE FROM isolated_deployments WHERE project_id = ?`, [
-      projectId
-    ]);
-    await pool.query(`DELETE FROM provisioning_jobs WHERE project_id = ?`, [
-      projectId
-    ]);
+    if (subdomainFromDeployment) {
+      console.log(`[Cleanup] Found subdomain "${subdomainFromDeployment}" from deployment. Attempting file rollback without job record.`);
+      try {
+        await rollbackJob({ subdomain: subdomainFromDeployment });
+      } catch (e) {
+        console.error(`[Cleanup] Remote directory cleanup failed: ${e.message}`);
+      }
+    }
+    await pool.query(`DELETE FROM isolated_deployments WHERE project_id = ?`, [projectId]);
+    await pool.query(`DELETE FROM provisioning_jobs WHERE project_id = ?`, [projectId]);
+    await pool.query(`DELETE FROM lead_ai_messages WHERE lead_id = ?`, [projectId]);
     return;
   }
   for (const job of rows) {
     try {
+      if (!job.subdomain && subdomainFromDeployment) {
+        job.subdomain = subdomainFromDeployment;
+      }
+      if (job.trace_id) {
+        await pool.query(`DELETE FROM generation_audit_logs WHERE trace_id = ?`, [
+          job.trace_id
+        ]).catch(() => {
+        });
+      }
       await rollbackJob(job);
     } catch (e) {
       console.error(
@@ -5135,17 +5179,19 @@ async function deleteProvisionedWordPressSite(projectId) {
     }
   }
   try {
-    const [del1] = await pool.query(
+    await pool.query(
       `DELETE FROM isolated_deployments WHERE project_id = ?`,
       [projectId]
     );
-    const [del2] = await pool.query(
+    await pool.query(
       `DELETE FROM provisioning_jobs WHERE project_id = ?`,
       [projectId]
     );
-    console.log(
-      `[Cleanup] Project ${projectId} purged from local DB. Jobs removed: ${del2.affectedRows}`
+    await pool.query(
+      `DELETE FROM lead_ai_messages WHERE lead_id = ?`,
+      [projectId]
     );
+    console.log(`[Cleanup] Project ${projectId} and associated rows purged from local DB.`);
   } catch (e) {
     console.error(
       `[Cleanup] Failed to purge project ${projectId} from local DB: ${e.message}`
@@ -6774,11 +6820,14 @@ app.delete(
         return res.status(400).json({ error: "Missing projectId" });
       }
       const [rows] = await pool.query(
-        `SELECT id FROM provisioning_jobs WHERE project_id = ? AND user_id = ? LIMIT 1`,
-        [projectId, req.user.id]
+        `SELECT id, user_id FROM provisioning_jobs WHERE project_id = ? LIMIT 1`,
+        [projectId]
       );
       if (!rows || rows.length === 0) {
-        return res.status(404).json({ error: "Project not found or unauthorized" });
+        return res.status(404).json({ error: "Project not found" });
+      }
+      if (rows[0].user_id && rows[0].user_id !== req.user.id) {
+        return res.status(403).json({ error: "Unauthorized to delete this project" });
       }
       await deleteProvisionedWordPressSite(projectId);
       return res.json({
@@ -6848,7 +6897,8 @@ app.get("/api/leads", authenticateToken, async (req, res) => {
         photos: schema._validation?.photos || [],
         imageSuggestions: schema._validation?.imageSuggestions || [],
         wordpressPassword: rawPassword,
-        websiteContent: ""
+        websiteContent: "",
+        isDeployed: row.provisioningStatus === "completed" || row.provisioningStatus === "ready" || !!row.wordpressSiteUrl
       };
     });
     return res.json(leads);

@@ -481,7 +481,8 @@ export default function DeploymentsView({
 
 		try {
 			const stopped = await stopDeployment(projectId);
-			if (!stopped && (project.isDeployed || project.siteId)) {
+			const isDeployed = project.isDeployed || project.provisioningStatus === "completed" || project.provisioningStatus === "ready" || !!project.wordpressSiteUrl;
+			if (!stopped && (isDeployed || project.siteId)) {
 				return;
 			}
 
@@ -499,7 +500,12 @@ export default function DeploymentsView({
 	});
 
 	const totalLeads = projects.length;
-	const liveWebsites = projects.filter((project) => project.isDeployed).length;
+
+	const isProjectDeployed = (project: WebsiteProject) => {
+		return project.isDeployed || project.provisioningStatus === "completed" || project.provisioningStatus === "ready" || !!project.wordpressSiteUrl;
+	};
+
+	const liveWebsites = projects.filter((project) => isProjectDeployed(project)).length;
 	const cmsReadyWebsites = projects.filter(
 		(project) =>
 			project.provisioningStatus === "ready" ||
@@ -509,13 +515,13 @@ export default function DeploymentsView({
 
 	const getLeadStatusLabel = (project: WebsiteProject) => {
 		if (project.emailSent) return "EMAIL SENT";
-		if (project.isDeployed) return "WEBSITE LIVE";
+		if (isProjectDeployed(project)) return "WEBSITE LIVE";
 		return "DRAFT";
 	};
 
 	const getLeadStatusTone = (project: WebsiteProject) => {
 		if (project.emailSent) return "bg-amber-500/90 text-white";
-		if (project.isDeployed) return "bg-violet-600/95 text-white";
+		if (isProjectDeployed(project)) return "bg-violet-600/95 text-white";
 		return "bg-slate-100 text-slate-700";
 	};
 

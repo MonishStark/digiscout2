@@ -455,6 +455,7 @@ export interface WebsiteProject extends WordPressProvisioningState {
 	outreachStatus?: OutreachStatus;
 	outreachSentAt?: string;
 	emailSent?: boolean;
+	isDeployed?: boolean;
 }
 
 export type OutreachStatus = "Pending" | "Sent" | "Replied";
