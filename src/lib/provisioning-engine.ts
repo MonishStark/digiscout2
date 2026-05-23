@@ -1087,11 +1087,15 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 				);
 			}
 
+			const logoUrl = schema.brand?.logo || "";
+			const logoAttachmentId = logoUrl ? (mediaMap[logoUrl]?.id || "") : "";
+
 			const phpCode = `<?php
 $homepage_id = intval($args[0]);
 $homepage_json_file = $args[1];
 $kit_id = intval($args[2]);
 $kit_settings_json_file = $args[3];
+$logo_attachment_id = intval($args[4]);
 
 if ($homepage_id && file_exists($homepage_json_file)) {
     $json_content = file_get_contents($homepage_json_file);
@@ -1117,9 +1121,27 @@ if ($kit_id && file_exists($kit_settings_json_file)) {
     }
 }
 
+if ($logo_attachment_id) {
+    set_theme_mod('custom_logo', $logo_attachment_id);
+    echo "CUSTOM_LOGO_SET\\n";
+}
+
 // Inject global CSS to fix horizontal scroll and ensure circle images render correctly.
 // This runs inside WP context so no shell-escaping issues.
-$global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !important; } .elementor-section, .e-container, .elementor-column { max-width: 100% !important; } .elementor-widget-image img { object-fit: cover !important; }';
+$global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !important; } .elementor-section, .e-container, .elementor-column { max-width: 100% !important; } .elementor-widget-image img { object-fit: cover !important; } ' .
+	'.elementor-element-1b226200, .elementor-element-1b226200 .elementor-widget-text-editor, .elementor-element-1b226200 .elementor-widget-text-editor p { color: #E9E8E6 !important; } ' .
+	'.elementor-element-1b226200 .elementor-widget-text-editor strong { color: #FFFFFF !important; } ' .
+	'.elementor-element-4d1645d0 .elementor-background-overlay { background-color: rgba(233, 232, 230, 0.75) !important; opacity: 1 !important; } ' .
+	'.elementor-element-4d1645d0::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(233, 232, 230, 0.75) !important; z-index: 0; pointer-events: none; } ' .
+	'.elementor-element-4d1645d0 > * { position: relative; z-index: 1; } ' .
+	'.elementor-element-51305b21 .elementor-background-overlay { background-color: rgba(12, 40, 53, 0.6) !important; opacity: 1 !important; } ' .
+	'.elementor-element-51305b21::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(12, 40, 53, 0.6) !important; z-index: 0; pointer-events: none; } ' .
+	'.elementor-element-51305b21 > * { position: relative; z-index: 1; } ' .
+	'.elementor-element-39f1fa01 .elementor-background-overlay { background-color: rgba(12, 40, 53, 0.45) !important; opacity: 1 !important; } ' .
+	'.elementor-element-39f1fa01::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(12, 40, 53, 0.45) !important; z-index: 0; pointer-events: none; } ' .
+	'.elementor-element-39f1fa01 > * { position: relative; z-index: 1; } ' .
+	'.elementor-element-29c6e791, .elementor-element-29c6e791 .elementor-widget-heading h6, .elementor-element-29c6e791 .elementor-icon-list-item, .elementor-element-29c6e791 .elementor-icon-list-text, .elementor-element-29c6e791 a, .elementor-element-29c6e791 p { color: #FFFFFF !important; } ' .
+	'.elementor-element-56d5c22, .elementor-element-56d5c22 p, .elementor-element-56d5c22 a { color: rgba(255, 255, 255, 0.6) !important; }';
 update_option('elementor_custom_css', $global_css);
 echo "GLOBAL_CSS_SET\\n";
 `;
@@ -1131,7 +1153,7 @@ echo "GLOBAL_CSS_SET\\n";
 
 			await logCallback("Executing remote PHP metadata script...");
 			const evalOut = await runWpCommand(
-				`eval-file '${phpScriptTmp}' "${homePageId}" "${homepageJsonTmp}" "${activeKitId}" "${kitJsonTmp}"`,
+				`eval-file '${phpScriptTmp}' "${homePageId}" "${homepageJsonTmp}" "${activeKitId}" "${kitJsonTmp}" "${logoAttachmentId}"`,
 				docRoot,
 				logCallback,
 			);

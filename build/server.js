@@ -1690,6 +1690,7 @@ __export(direct_vertex_homepage_generation_exports, {
   analyzeAndFilterImages: () => analyzeAndFilterImages,
   buildHomepageGenerationRequest: () => buildHomepageGenerationRequest,
   default: () => direct_vertex_homepage_generation_default,
+  detectOrGenerateLogo: () => detectOrGenerateLogo,
   generateHomepageViaDirectVertexPrompt: () => generateHomepageViaDirectVertexPrompt,
   resolveSectionImages: () => resolveSectionImages
 });
@@ -1769,6 +1770,12 @@ Determine which images are highly relevant, high quality, and suitable for the f
 4. "services_image": Background image for services section showing a service in action.
 5. "testimonials_slideshow": A list of up to 3 gallery/reviews images.
 6. "project_posts": A list of up to 4 project images representing completed works/projects (e.g., finished custom cabinets, closets, shelves, tables). For each selected image, provide a descriptive, professional "post_title" (e.g., "Custom Oak Kitchen Cabinetry", "Modern Built-in Wardrobe").
+
+CRITICAL RULES FOR IMAGE SELECTION:
+- HIGH RESOLUTION & CLARITY ONLY: Only select an image if it is sharp, clear, and high-definition. If a photo is blurry, low-resolution, poorly lit, amateur, or contains watermarks/logos/text/flyers, reject it and mark "action": "generate" instead.
+- NO REPETITIVE IMAGES (UNIQUENESS): You MUST ensure that every selected image_index is completely unique across all layout sections (hero_image, masked_image, about_image, services_image, testimonials_slideshow, project_posts). No single image_index should be reused.
+- RELEVANCY: Ensure all selected images showcase premium, finished work of the business (e.g., finished custom cabinets, custom kitchens/bathrooms, dining tables). Avoid raw material piles, tools on floor, trucks, or office maps.
+- HIGH-QUALITY GENERATION PROMPTS: When "action" is "generate", write a highly detailed, professional photography prompt specifying lighting, composition, texture, and style (e.g., "A high-end professional architectural photograph of custom built-in cabinets...").
 
 If any of the Google Maps/Reviews photos are suitable, map them to the corresponding section by setting "action": "use_existing" and providing the "image_index" (0-based index matching the order of the images provided).
 If none of the provided photos are suitable or relevant, or if no images were provided, mark "action": "generate" and write a highly descriptive, detailed image generation prompt ("generation_prompt") tailored to the business category and location context for the model "gemini-3-pro-image-preview". The prompt should describe a premium, high-quality photograph, setting, lighting, and detail.
@@ -1853,14 +1860,73 @@ Return ONLY a JSON response in the following format:
     };
   }
 }
-async function resolveSectionImages(analysis, log) {
+async function detectOrGenerateLogo(business, log, options) {
+  log(`[LogoDetector] Analyzing Google Photos to find an existing business logo...`);
+  const images = collectBusinessImages(business);
+  const numImages = Math.min(images.length, 12);
+  const base64Parts = [];
+  for (let i = 0; i < numImages; i++) {
+    const part = await downloadImageAsBase64(images[i]);
+    if (part) {
+      base64Parts.push({
+        inlineData: {
+          mimeType: part.mimeType,
+          data: part.data
+        }
+      });
+    }
+  }
+  const promptText = `You are a branding designer.
+Analyze these ${base64Parts.length} photos from Google Maps/Reviews for the business "${business.name}" (Category: "${business.category || business.businessType}").
+Determine if any of these photos is the official business logo, emblem, or clean storefront signage containing the logo.
+If you find one, return a JSON response with:
+{ "action": "use_existing", "logo_index": <0-based index of the photo> }
+
+If no clear logo exists in the photos, return:
+{ "action": "generate", "generation_prompt": "A premium professional minimalist vector logo for ${business.name}, representing custom cabinetry/woodworking, clean flat design, solid white background, sharp vector shapes" }
+
+Return ONLY valid JSON:`;
+  const parts = [{ text: promptText }];
+  if (base64Parts.length > 0) {
+    parts.push(...base64Parts);
+  }
+  try {
+    const responseText = await generateWithFallback(
+      [{ role: "user", parts }],
+      { temperature: 0.1, responseMimeType: "application/json" },
+      {
+        logStderr: log,
+        debugSession: options?.debugSession,
+        throttleGemini: options?.throttleGemini || (async () => {
+        }),
+        contextLabel: "logo-detection"
+      }
+    );
+    let jsonString = responseText.trim();
+    if (jsonString.startsWith("```")) {
+      jsonString = jsonString.replace(/^```[a-zA-Z]*\n/, "").replace(/\n```$/, "");
+    }
+    const parsed = JSON.parse(jsonString);
+    if (parsed.action === "use_existing" && typeof parsed.logo_index === "number" && images[parsed.logo_index]) {
+      log(`[LogoDetector] Found logo in Google photos at index ${parsed.logo_index}`);
+      return { action: "use_existing", url: images[parsed.logo_index] };
+    }
+  } catch (e) {
+    log(`[LogoDetector] Logo detection failed or no logo found: ${e}`);
+  }
+  log(`[LogoDetector] No logo found in Google photos. Generating a custom one.`);
+  const defaultPrompt = `A premium professional minimalist vector logo for ${business.name}, representing custom cabinetry and high-end woodworking, clean flat design, solid white background, sharp vector lines`;
+  return { action: "generate", generation_prompt: defaultPrompt };
+}
+async function resolveSectionImages(analysis, log, logoAnalysis) {
   const resultUrls = {
     hero_image: "",
     masked_image: "",
     about_image: "",
     services_image: "",
     testimonials_slideshow: [],
-    project_posts: []
+    project_posts: [],
+    logo_image: ""
   };
   const generateAndSave = async (prompt, role, aspectRatio = "16:9") => {
     try {
@@ -1928,6 +1994,13 @@ async function resolveSectionImages(analysis, log) {
     }
   }
   resultUrls.project_posts = resolvedProjects;
+  if (logoAnalysis && logoAnalysis.action === "use_existing" && logoAnalysis.url) {
+    resultUrls.logo_image = logoAnalysis.url;
+  } else if (logoAnalysis && logoAnalysis.generation_prompt) {
+    resultUrls.logo_image = await generateAndSave(logoAnalysis.generation_prompt, "logo", "1:1");
+  } else {
+    resultUrls.logo_image = "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800";
+  }
   return resultUrls;
 }
 function pickDesignProfile(category) {
@@ -2092,7 +2165,12 @@ async function generateHomepageViaDirectVertexPrompt(business, options) {
       debugSession: options?.debugSession
     });
     persist("01a-image-analysis.json", imageAnalysis);
-    const resolvedImages = await resolveSectionImages(imageAnalysis, log);
+    const logoAnalysis = await detectOrGenerateLogo(business, log, {
+      throttleGemini: options?.throttleGemini,
+      debugSession: options?.debugSession
+    });
+    persist("01logo-analysis.json", logoAnalysis);
+    const resolvedImages = await resolveSectionImages(imageAnalysis, log, logoAnalysis);
     persist("01b-resolved-images.json", resolvedImages);
     const request = buildHomepageGenerationRequest(business);
     request.images = {
@@ -2121,6 +2199,7 @@ async function generateHomepageViaDirectVertexPrompt(business, options) {
       response.elementorContent.testimonials.slideshow = resolvedImages.testimonials_slideshow;
       if (!response.elementorContent.projects) response.elementorContent.projects = {};
       response.elementorContent.projects.posts = resolvedImages.project_posts;
+      response.elementorContent.logo_image = resolvedImages.logo_image;
     }
     persist("02-vertex-response.json", response);
     const schema = {
@@ -2143,7 +2222,7 @@ async function generateHomepageViaDirectVertexPrompt(business, options) {
         phone: business.phoneNumber || "",
         email: business.email || "",
         websiteUri: business.websiteUri || "",
-        logo: business.logo || ""
+        logo: resolvedImages.logo_image || business.logo || ""
       },
       seo: {
         title: `${business.name || "Business"} | Preview`,
@@ -3445,6 +3524,16 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
         if (widgets["nav-menu"]?.[0] && widgets["nav-menu"][0].settings && menuId) {
           widgets["nav-menu"][0].settings.menu = String(menuId);
         }
+        if (widgets["theme-site-logo"]?.[0] && widgets["theme-site-logo"][0].settings) {
+          const targetUrl = aiContent.logo_image || "";
+          const local = getLocalMedia(targetUrl);
+          if (local) {
+            widgets["theme-site-logo"][0].settings.image = {
+              url: local.url,
+              id: String(local.id)
+            };
+          }
+        }
       } else if (title === "Footer") {
         if (widgets["text-editor"]?.[0] && widgets["text-editor"][0].settings) {
           widgets["text-editor"][0].settings.editor = `<p>${businessInfo.name} - Professional craftsmanship and dedicated service.</p>`;
@@ -3464,6 +3553,23 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
           }
           if (contactList.settings.icon_list[3]) {
             contactList.settings.icon_list[3].text = "";
+          }
+        }
+        if (widgets.image?.[0] && widgets.image[0].settings) {
+          const targetUrl = aiContent.logo_image || "";
+          const local = getLocalMedia(targetUrl);
+          if (local) {
+            widgets.image[0].settings.image = {
+              url: local.url,
+              id: String(local.id)
+            };
+          }
+        }
+        if (widgets.heading && Array.isArray(widgets.heading)) {
+          for (const h of widgets.heading) {
+            if (h.settings && h.settings.link) {
+              h.settings.link.url = "#";
+            }
           }
         }
       } else if (title === "Copyright") {
@@ -4599,11 +4705,14 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
           logCallback
         );
       }
+      const logoUrl = schema.brand?.logo || "";
+      const logoAttachmentId = logoUrl ? mediaMap[logoUrl]?.id || "" : "";
       const phpCode = `<?php
 $homepage_id = intval($args[0]);
 $homepage_json_file = $args[1];
 $kit_id = intval($args[2]);
 $kit_settings_json_file = $args[3];
+$logo_attachment_id = intval($args[4]);
 
 if ($homepage_id && file_exists($homepage_json_file)) {
     $json_content = file_get_contents($homepage_json_file);
@@ -4629,9 +4738,27 @@ if ($kit_id && file_exists($kit_settings_json_file)) {
     }
 }
 
+if ($logo_attachment_id) {
+    set_theme_mod('custom_logo', $logo_attachment_id);
+    echo "CUSTOM_LOGO_SET\\n";
+}
+
 // Inject global CSS to fix horizontal scroll and ensure circle images render correctly.
 // This runs inside WP context so no shell-escaping issues.
-$global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !important; } .elementor-section, .e-container, .elementor-column { max-width: 100% !important; } .elementor-widget-image img { object-fit: cover !important; }';
+$global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !important; } .elementor-section, .e-container, .elementor-column { max-width: 100% !important; } .elementor-widget-image img { object-fit: cover !important; } ' .
+	'.elementor-element-1b226200, .elementor-element-1b226200 .elementor-widget-text-editor, .elementor-element-1b226200 .elementor-widget-text-editor p { color: #E9E8E6 !important; } ' .
+	'.elementor-element-1b226200 .elementor-widget-text-editor strong { color: #FFFFFF !important; } ' .
+	'.elementor-element-4d1645d0 .elementor-background-overlay { background-color: rgba(233, 232, 230, 0.75) !important; opacity: 1 !important; } ' .
+	'.elementor-element-4d1645d0::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(233, 232, 230, 0.75) !important; z-index: 0; pointer-events: none; } ' .
+	'.elementor-element-4d1645d0 > * { position: relative; z-index: 1; } ' .
+	'.elementor-element-51305b21 .elementor-background-overlay { background-color: rgba(12, 40, 53, 0.6) !important; opacity: 1 !important; } ' .
+	'.elementor-element-51305b21::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(12, 40, 53, 0.6) !important; z-index: 0; pointer-events: none; } ' .
+	'.elementor-element-51305b21 > * { position: relative; z-index: 1; } ' .
+	'.elementor-element-39f1fa01 .elementor-background-overlay { background-color: rgba(12, 40, 53, 0.45) !important; opacity: 1 !important; } ' .
+	'.elementor-element-39f1fa01::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(12, 40, 53, 0.45) !important; z-index: 0; pointer-events: none; } ' .
+	'.elementor-element-39f1fa01 > * { position: relative; z-index: 1; } ' .
+	'.elementor-element-29c6e791, .elementor-element-29c6e791 .elementor-widget-heading h6, .elementor-element-29c6e791 .elementor-icon-list-item, .elementor-element-29c6e791 .elementor-icon-list-text, .elementor-element-29c6e791 a, .elementor-element-29c6e791 p { color: #FFFFFF !important; } ' .
+	'.elementor-element-56d5c22, .elementor-element-56d5c22 p, .elementor-element-56d5c22 a { color: rgba(255, 255, 255, 0.6) !important; }';
 update_option('elementor_custom_css', $global_css);
 echo "GLOBAL_CSS_SET\\n";
 `;
@@ -4642,7 +4769,7 @@ echo "GLOBAL_CSS_SET\\n";
       );
       await logCallback("Executing remote PHP metadata script...");
       const evalOut = await runWpCommand(
-        `eval-file '${phpScriptTmp}' "${homePageId2}" "${homepageJsonTmp}" "${activeKitId}" "${kitJsonTmp}"`,
+        `eval-file '${phpScriptTmp}' "${homePageId2}" "${homepageJsonTmp}" "${activeKitId}" "${kitJsonTmp}" "${logoAttachmentId}"`,
         docRoot,
         logCallback
       );

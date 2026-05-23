@@ -269,6 +269,16 @@ export function mergeElementorTemplate(
 				if (widgets["nav-menu"]?.[0] && widgets["nav-menu"][0].settings && menuId) {
 					widgets["nav-menu"][0].settings.menu = String(menuId);
 				}
+				if (widgets["theme-site-logo"]?.[0] && widgets["theme-site-logo"][0].settings) {
+					const targetUrl = (aiContent as any).logo_image || "";
+					const local = getLocalMedia(targetUrl);
+					if (local) {
+						widgets["theme-site-logo"][0].settings.image = {
+							url: local.url,
+							id: String(local.id),
+						};
+					}
+				}
 			} else if (title === "Footer") {
 				if (widgets["text-editor"]?.[0] && widgets["text-editor"][0].settings) {
 					widgets["text-editor"][0].settings.editor = `<p>${businessInfo.name} - Professional craftsmanship and dedicated service.</p>`;
@@ -289,6 +299,25 @@ export function mergeElementorTemplate(
 					}
 					if (contactList.settings.icon_list[3]) {
 						contactList.settings.icon_list[3].text = "";
+					}
+				}
+				// Map the footer logo image
+				if (widgets.image?.[0] && widgets.image[0].settings) {
+					const targetUrl = (aiContent as any).logo_image || "";
+					const local = getLocalMedia(targetUrl);
+					if (local) {
+						widgets.image[0].settings.image = {
+							url: local.url,
+							id: String(local.id),
+						};
+					}
+				}
+				// Clear ceramic page links on headings by setting link.url = "#"
+				if (widgets.heading && Array.isArray(widgets.heading)) {
+					for (const h of widgets.heading) {
+						if (h.settings && h.settings.link) {
+							h.settings.link.url = "#";
+						}
 					}
 				}
 			} else if (title === "Copyright") {

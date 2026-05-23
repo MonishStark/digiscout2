@@ -149,6 +149,12 @@ Determine which images are highly relevant, high quality, and suitable for the f
 5. "testimonials_slideshow": A list of up to 3 gallery/reviews images.
 6. "project_posts": A list of up to 4 project images representing completed works/projects (e.g., finished custom cabinets, closets, shelves, tables). For each selected image, provide a descriptive, professional "post_title" (e.g., "Custom Oak Kitchen Cabinetry", "Modern Built-in Wardrobe").
 
+CRITICAL RULES FOR IMAGE SELECTION:
+- HIGH RESOLUTION & CLARITY ONLY: Only select an image if it is sharp, clear, and high-definition. If a photo is blurry, low-resolution, poorly lit, amateur, or contains watermarks/logos/text/flyers, reject it and mark "action": "generate" instead.
+- NO REPETITIVE IMAGES (UNIQUENESS): You MUST ensure that every selected image_index is completely unique across all layout sections (hero_image, masked_image, about_image, services_image, testimonials_slideshow, project_posts). No single image_index should be reused.
+- RELEVANCY: Ensure all selected images showcase premium, finished work of the business (e.g., finished custom cabinets, custom kitchens/bathrooms, dining tables). Avoid raw material piles, tools on floor, trucks, or office maps.
+- HIGH-QUALITY GENERATION PROMPTS: When "action" is "generate", write a highly detailed, professional photography prompt specifying lighting, composition, texture, and style (e.g., "A high-end professional architectural photograph of custom built-in cabinets...").
+
 If any of the Google Maps/Reviews photos are suitable, map them to the corresponding section by setting "action": "use_existing" and providing the "image_index" (0-based index matching the order of the images provided).
 If none of the provided photos are suitable or relevant, or if no images were provided, mark "action": "generate" and write a highly descriptive, detailed image generation prompt ("generation_prompt") tailored to the business category and location context for the model "gemini-3-pro-image-preview". The prompt should describe a premium, high-quality photograph, setting, lighting, and detail.
 
@@ -243,9 +249,82 @@ Return ONLY a JSON response in the following format:
 	}
 }
 
+export async function detectOrGenerateLogo(
+	business: any,
+	log: (msg: string) => void,
+	options?: {
+		throttleGemini?: () => Promise<void>;
+		debugSession?: any;
+	}
+): Promise<{ action: "use_existing" | "generate"; url?: string; generation_prompt?: string }> {
+	log(`[LogoDetector] Analyzing Google Photos to find an existing business logo...`);
+	const images = collectBusinessImages(business);
+	const numImages = Math.min(images.length, 12);
+	const base64Parts: any[] = [];
+
+	for (let i = 0; i < numImages; i++) {
+		const part = await downloadImageAsBase64(images[i]);
+		if (part) {
+			base64Parts.push({
+				inlineData: {
+					mimeType: part.mimeType,
+					data: part.data,
+				}
+			});
+		}
+	}
+
+	const promptText = `You are a branding designer.
+Analyze these ${base64Parts.length} photos from Google Maps/Reviews for the business "${business.name}" (Category: "${business.category || business.businessType}").
+Determine if any of these photos is the official business logo, emblem, or clean storefront signage containing the logo.
+If you find one, return a JSON response with:
+{ "action": "use_existing", "logo_index": <0-based index of the photo> }
+
+If no clear logo exists in the photos, return:
+{ "action": "generate", "generation_prompt": "A premium professional minimalist vector logo for ${business.name}, representing custom cabinetry/woodworking, clean flat design, solid white background, sharp vector shapes" }
+
+Return ONLY valid JSON:`;
+
+	const parts: any[] = [{ text: promptText }];
+	if (base64Parts.length > 0) {
+		parts.push(...base64Parts);
+	}
+
+	try {
+		const responseText = await generateWithFallback(
+			[{ role: "user", parts }],
+			{ temperature: 0.1, responseMimeType: "application/json" },
+			{
+				logStderr: log,
+				debugSession: options?.debugSession,
+				throttleGemini: options?.throttleGemini || (async () => {}),
+				contextLabel: "logo-detection",
+			}
+		);
+
+		let jsonString = responseText.trim();
+		if (jsonString.startsWith("```")) {
+			jsonString = jsonString.replace(/^```[a-zA-Z]*\n/, "").replace(/\n```$/, "");
+		}
+
+		const parsed = JSON.parse(jsonString);
+		if (parsed.action === "use_existing" && typeof parsed.logo_index === "number" && images[parsed.logo_index]) {
+			log(`[LogoDetector] Found logo in Google photos at index ${parsed.logo_index}`);
+			return { action: "use_existing", url: images[parsed.logo_index] };
+		}
+	} catch (e) {
+		log(`[LogoDetector] Logo detection failed or no logo found: ${e}`);
+	}
+
+	log(`[LogoDetector] No logo found in Google photos. Generating a custom one.`);
+	const defaultPrompt = `A premium professional minimalist vector logo for ${business.name}, representing custom cabinetry and high-end woodworking, clean flat design, solid white background, sharp vector lines`;
+	return { action: "generate", generation_prompt: defaultPrompt };
+}
+
 export async function resolveSectionImages(
 	analysis: ImageAnalysisResult,
 	log: (msg: string) => void,
+	logoAnalysis?: { action: "use_existing" | "generate"; url?: string; generation_prompt?: string }
 ): Promise<{
 	hero_image: string;
 	masked_image: string;
@@ -253,6 +332,7 @@ export async function resolveSectionImages(
 	services_image: string;
 	testimonials_slideshow: string[];
 	project_posts: Array<{ title: string; url: string }>;
+	logo_image: string;
 }> {
 	const resultUrls: any = {
 		hero_image: "",
@@ -261,6 +341,7 @@ export async function resolveSectionImages(
 		services_image: "",
 		testimonials_slideshow: [],
 		project_posts: [],
+		logo_image: "",
 	};
 
 	const generateAndSave = async (prompt: string, role: string, aspectRatio: "1:1" | "3:4" | "4:3" | "9:16" | "16:9" = "16:9"): Promise<string> => {
@@ -343,6 +424,15 @@ export async function resolveSectionImages(
 		}
 	}
 	resultUrls.project_posts = resolvedProjects;
+
+	// 7. Logo
+	if (logoAnalysis && logoAnalysis.action === "use_existing" && logoAnalysis.url) {
+		resultUrls.logo_image = logoAnalysis.url;
+	} else if (logoAnalysis && logoAnalysis.generation_prompt) {
+		resultUrls.logo_image = await generateAndSave(logoAnalysis.generation_prompt, "logo", "1:1");
+	} else {
+		resultUrls.logo_image = "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800"; // fallback
+	}
 
 	return resultUrls;
 }
@@ -589,7 +679,14 @@ export async function generateHomepageViaDirectVertexPrompt(
 		});
 		persist("01a-image-analysis.json", imageAnalysis);
 
-		const resolvedImages = await resolveSectionImages(imageAnalysis, log);
+		// Run dedicated logo analysis
+		const logoAnalysis = await detectOrGenerateLogo(business, log, {
+			throttleGemini: options?.throttleGemini,
+			debugSession: options?.debugSession
+		});
+		persist("01logo-analysis.json", logoAnalysis);
+
+		const resolvedImages = await resolveSectionImages(imageAnalysis, log, logoAnalysis);
 		persist("01b-resolved-images.json", resolvedImages);
 
 		// Build the request
@@ -632,6 +729,9 @@ export async function generateHomepageViaDirectVertexPrompt(
 			// Add projects mapping
 			if (!response.elementorContent.projects) response.elementorContent.projects = {} as any;
 			(response.elementorContent.projects as any).posts = resolvedImages.project_posts;
+
+			// Add logo image
+			response.elementorContent.logo_image = resolvedImages.logo_image;
 		}
 
 		persist("02-vertex-response.json", response);
@@ -661,7 +761,7 @@ export async function generateHomepageViaDirectVertexPrompt(
 				phone: business.phoneNumber || "",
 				email: business.email || "",
 				websiteUri: business.websiteUri || "",
-				logo: business.logo || "",
+				logo: resolvedImages.logo_image || business.logo || "",
 			},
 			seo: {
 				title: `${business.name || "Business"} | Preview`,
