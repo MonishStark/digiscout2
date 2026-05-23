@@ -326,7 +326,8 @@ export function mergeElementorTemplate(
 				}
 			} else if (title === "Copyright") {
 				if (widgets.heading?.[0] && widgets.heading[0].settings) {
-					widgets.heading[0].settings.title = `${businessInfo.name} © ${new Date().getFullYear()} All Rights Reserved.`;
+					delete widgets.heading[0].settings.__dynamic__;
+					widgets.heading[0].settings.title = `© ${new Date().getFullYear()} ${businessInfo.name}. All Rights Reserved.`;
 				}
 			}
 		} else {
@@ -569,7 +570,7 @@ export function mergeElementorTemplate(
 				if (widgets.heading?.[0] && widgets.heading[0].settings) {
 					const cHeading = widgets.heading[0];
 					delete cHeading.settings.__dynamic__;
-					cHeading.settings.title = `${businessInfo.name} © ${new Date().getFullYear()} All Rights Reserved.`;
+					cHeading.settings.title = `© ${new Date().getFullYear()} ${businessInfo.name}. All Rights Reserved.`;
 				}
 				// Contact info list
 				const contactList = (widgets["icon-list"] || []).find((widget: any) =>
@@ -608,6 +609,81 @@ export function mergeElementorTemplate(
 		const title = section.settings?._title || "Footer";
 		processSection(section, title);
 	});
+
+	// Inject CSS style widget into the footer container to ensure visibility
+	if (footerSections.length > 0) {
+		const lastSection = footerSections[footerSections.length - 1];
+		let targetContainer = lastSection;
+		
+		// If it's a legacy section, find the last column
+		if (lastSection.elType === "section" && lastSection.elements && lastSection.elements.length > 0) {
+			const columns = lastSection.elements;
+			targetContainer = columns[columns.length - 1];
+		}
+		
+		if (targetContainer && targetContainer.elements) {
+			targetContainer.elements.push({
+				id: "ds_custom_footer_css",
+				settings: {
+					html: `<style>
+/* Force all text inside footer to be white */
+[data-elementor-type="footer"] *, 
+.elementor-element-29c6e791 *, 
+.elementor-element-28f7602f *, 
+footer *, 
+.site-footer *, 
+.elementor-location-footer * { 
+    color: #ffffff !important; 
+} 
+/* Force all icons inside footer to be white */
+[data-elementor-type="footer"] svg, 
+[data-elementor-type="footer"] path, 
+.elementor-element-29c6e791 svg, 
+.elementor-element-29c6e791 path, 
+.elementor-element-28f7602f svg,
+.elementor-element-28f7602f path,
+footer svg, 
+footer path, 
+.site-footer svg, 
+.site-footer path,
+.elementor-location-footer svg,
+.elementor-location-footer path { 
+    fill: #ffffff !important; 
+} 
+/* Hover states for links inside footer */
+[data-elementor-type="footer"] a:hover, 
+[data-elementor-type="footer"] a:hover *, 
+.elementor-element-29c6e791 a:hover, 
+.elementor-element-29c6e791 a:hover *, 
+.elementor-element-28f7602f a:hover,
+.elementor-element-28f7602f a:hover *,
+footer a:hover, 
+footer a:hover *, 
+.site-footer a:hover, 
+.site-footer a:hover *,
+.elementor-location-footer a:hover,
+.elementor-location-footer a:hover * { 
+    color: #ffffff !important; 
+    opacity: 0.8 !important; 
+} 
+/* Placeholder styling for subscription form */
+[data-elementor-type="footer"] ::placeholder, 
+.elementor-element-29c6e791 ::placeholder, 
+.elementor-element-28f7602f ::placeholder,
+footer ::placeholder, 
+.site-footer ::placeholder,
+.elementor-location-footer ::placeholder { 
+    color: rgba(255, 255, 255, 0.6) !important; 
+}
+</style>`
+				},
+				elements: [],
+				isInner: false,
+				widgetType: "html",
+				elType: "widget"
+			});
+		}
+	}
 
 	// Concatenate sections into a single array for elementor_canvas layout
 	// Header sections first, then home sections, then footer sections
