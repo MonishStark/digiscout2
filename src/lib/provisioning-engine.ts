@@ -728,11 +728,11 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 			}
 
 			// Scan template JSON files for library.elementor.com URLs to download/import
-			const templateDir = path.join(process.cwd(), "elementor-kit");
+			const templateDir = path.join(process.cwd(), "elementor-kit-2");
 			const templateFiles = [
 				path.join(templateDir, "content", "page", "2.json"),
-				path.join(templateDir, "templates", "15.json"),
-				path.join(templateDir, "templates", "244.json"),
+				path.join(templateDir, "templates", "49.json"),
+				path.join(templateDir, "templates", "156.json"),
 			];
 
 			for (const file of templateFiles) {
@@ -1053,7 +1053,7 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 				await logCallback(`Active Elementor kit ID: ${activeKitId}`);
 
 				if (activeKitId) {
-					const kitSettingsPath = path.join(process.cwd(), "elementor-kit", "site-settings.json");
+					const kitSettingsPath = path.join(process.cwd(), "elementor-kit-2", "site-settings.json");
 					if (fs.existsSync(kitSettingsPath)) {
 						const rawKitSettings = JSON.parse(fs.readFileSync(kitSettingsPath, "utf8"));
 						const updatedKit = updateElementorKitSettings(rawKitSettings, schema);
