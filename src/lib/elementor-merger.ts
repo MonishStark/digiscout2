@@ -120,7 +120,11 @@ export function mergeElementorTemplate(
 					bgCol.settings.background_image.id = String(local.id);
 				}
 			}
-			// Supporting circular image — must be a PERFECT CIRCLE, not oval
+			// Supporting circular image — ONLY fix: object-fit must be "cover" not "fill"
+			// The template already has: image_custom_dimension 260×260, border-radius 50%,
+			// and absolute positioning with correct _offset_x/_offset_y values.
+			// "fill" (the template default) stretches non-square photos into ovals.
+			// "cover" crops to fill the square container → perfect circle.
 			if (widgets.image?.[0] && widgets.image[0].settings?.image) {
 				const targetUrl = aiContent.hero?.masked_image || "";
 				const local = getLocalMedia(targetUrl);
@@ -128,33 +132,23 @@ export function mergeElementorTemplate(
 					widgets.image[0].settings.image.url = local.url;
 					widgets.image[0].settings.image.id = String(local.id);
 				}
-				// Use full image size so WP serves the highest quality for the cropped circle
-				widgets.image[0].settings.image_size = "full";
-				// CRITICAL: object-fit MUST be "cover" — "fill" stretches non-square images into ovals
+				// THE critical fix: "cover" keeps aspect ratio and crops; "fill" stretches → oval
 				widgets.image[0].settings["object-fit"] = "cover";
-				// Set BOTH width and height to the same px value to form a square container
-				// border-radius: 50% on a square = perfect circle
-				widgets.image[0].settings.width = { unit: "px", size: "220", sizes: [] };
-				widgets.image[0].settings.height = { unit: "px", size: "220", sizes: [] };
-				widgets.image[0].settings.width_tablet = { unit: "px", size: "160", sizes: [] };
-				widgets.image[0].settings.height_tablet = { unit: "px", size: "160", sizes: [] };
-				widgets.image[0].settings.width_mobile = { unit: "px", size: "130", sizes: [] };
-				widgets.image[0].settings.height_mobile = { unit: "px", size: "130", sizes: [] };
-				// Keep border-radius 50% (already in template: image_border_radius top/right/bottom/left = 50%)
+				// Keep image_size as "full" so WP serves the highest-res version for cropping
+				widgets.image[0].settings.image_size = "full";
+				// Ensure border-radius 50% is enforced (template already has this but be explicit)
 				widgets.image[0].settings.image_border_radius = {
 					unit: "%",
 					top: "50",
 					right: "50",
 					bottom: "50",
 					left: "50",
-					isLinked: "1"
+					isLinked: "1",
 				};
-				// Remove _element_width override so absolute positioning is preserved from template
-				delete widgets.image[0].settings._element_width;
-				delete widgets.image[0].settings._element_custom_width;
-				delete widgets.image[0].settings._element_custom_width_tablet;
-				delete widgets.image[0].settings._element_custom_width_mobile;
+				// DO NOT change width, height, _element_width, _offset_x, _offset_y —
+				// the template's absolute positioning values are already correct.
 			}
+
 
 		} else if (title === "Highest level") {
 			// About image
