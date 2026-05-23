@@ -10,6 +10,7 @@ import {
 	Phone,
 	Mail,
 	Navigation,
+	X,
 } from "lucide-react";
 import { useMapsLibrary, useMap } from "@vis.gl/react-google-maps";
 
@@ -28,6 +29,8 @@ interface SidebarProps {
 	setBusinesses: (b: Business[]) => void;
 	selectedBusiness: Business | null;
 	setSelectedBusiness: (b: Business | null) => void;
+	isOpen?: boolean;
+	onClose?: () => void;
 }
 
 function sanitizeBusiness(b: any): Business {
@@ -128,6 +131,8 @@ export default function Sidebar({
 	setBusinesses,
 	selectedBusiness,
 	setSelectedBusiness,
+	isOpen = false,
+	onClose,
 }: SidebarProps) {
 	const [city, setCity] = useState("");
 	const [category, setCategory] = useState("");
@@ -410,14 +415,29 @@ export default function Sidebar({
 	};
 
 	return (
-		<div className='w-80 flex-shrink-0 h-full border-r border-slate-200 bg-white flex flex-col z-20 shadow-[12px_0_40px_rgba(15,23,42,0.04)]'>
-			<div className='p-6 pb-4 flex items-center gap-2 border-b border-slate-200'>
-				<div className='w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center font-bold text-white'>
-					DS
+		<div className={cn(
+			'w-80 flex-shrink-0 h-full border-r border-slate-200 bg-white flex flex-col z-30 shadow-[12px_0_40px_rgba(15,23,42,0.04)]',
+			'fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out',
+			isOpen && 'translate-x-0'
+		)}>
+			<div className='p-6 pb-4 flex items-center justify-between border-b border-slate-200'>
+				<div className='flex items-center gap-2'>
+					<div className='w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center font-bold text-white'>
+						DS
+					</div>
+					<h1 className='text-lg font-semibold tracking-tight text-slate-900'>
+						Digital Scout
+					</h1>
 				</div>
-				<h1 className='text-lg font-semibold tracking-tight text-slate-900'>
-					Digital Scout
-				</h1>
+				{onClose && (
+					<button
+						onClick={onClose}
+						className='md:hidden p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors border-0 flex items-center justify-center'
+						title='Close Menu'
+					>
+						<X className='h-4 w-4' />
+					</button>
+				)}
 			</div>
 
 			<Tabs

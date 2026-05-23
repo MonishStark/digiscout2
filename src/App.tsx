@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { APIProvider } from "@vis.gl/react-google-maps";
+import { Menu } from "lucide-react";
 
 import { Business, WebsiteProject } from "./types";
 import Sidebar from "./components/Sidebar";
@@ -25,6 +26,7 @@ export default function App() {
 	const [activePage, setActivePage] = useState<"discover" | "leads">(
 		"discover",
 	);
+	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
 	// Authentication state
 	const [user, setUser] = useState<{ id: string; name: string; email: string } | null>(null);
@@ -108,6 +110,8 @@ export default function App() {
 	useEffect(() => {
 		if (selectedBusiness) {
 			setActivePage("discover");
+			// Close sidebar on mobile when selecting a business
+			setIsSidebarOpen(false);
 		}
 	}, [selectedBusiness]);
 
@@ -190,10 +194,25 @@ export default function App() {
 					setBusinesses={setBusinesses}
 					selectedBusiness={selectedBusiness}
 					setSelectedBusiness={setSelectedBusiness}
+					isOpen={isSidebarOpen}
+					onClose={() => setIsSidebarOpen(false)}
 				/>
+				{isSidebarOpen && (
+					<div
+						className='fixed inset-0 z-20 bg-black/30 backdrop-blur-sm md:hidden transition-opacity duration-300'
+						onClick={() => setIsSidebarOpen(false)}
+					/>
+				)}
 				<div className='map-bg relative flex min-w-0 min-h-0 flex-1 flex-col border-t border-slate-200 md:border-t-0'>
-					<nav className='absolute top-0 z-20 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white/75 px-8 backdrop-blur-xl'>
-						<div className='flex h-full items-center gap-6'>
+					<nav className='absolute top-0 z-20 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white/75 px-4 md:px-8 backdrop-blur-xl'>
+						<div className='flex h-full items-center gap-4 md:gap-6'>
+							<button
+								onClick={() => setIsSidebarOpen(true)}
+								className='md:hidden p-2 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 border-0 flex items-center justify-center'
+								title='Toggle Menu'
+							>
+								<Menu className='h-5 w-5' />
+							</button>
 							<button
 								onClick={() => setActivePage("discover")}
 								className={`flex h-full items-center pt-[2px] text-sm font-medium transition-all ${activePage === "discover" ? "border-b-2 border-violet-500 text-slate-900" : "text-slate-500 hover:text-slate-800"}`}>

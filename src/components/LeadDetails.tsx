@@ -36,6 +36,7 @@ interface LeadDetailsProps {
 	projects?: WebsiteProject[];
 	setProjects?: React.Dispatch<React.SetStateAction<WebsiteProject[]>>;
 	setActivePage?: (page: "discover" | "leads") => void;
+	onClose?: () => void;
 }
 
 export default function LeadDetails({
@@ -43,6 +44,7 @@ export default function LeadDetails({
 	projects = [],
 	setProjects,
 	setActivePage,
+	onClose,
 }: LeadDetailsProps) {
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [isAddingLead, setIsAddingLead] = useState(false);
@@ -536,7 +538,7 @@ export default function LeadDetails({
 						animate={{ opacity: 1, x: 0, scale: 1 }}
 						exit={{ opacity: 0, x: 30, scale: 0.95 }}
 						transition={{ type: "spring", stiffness: 300, damping: 25 }}
-						className='absolute top-20 right-[480px] w-[400px] h-[540px] max-h-[calc(100vh-180px)] flex flex-col glass rounded-2xl shadow-2xl overflow-hidden z-50 accent-glow text-slate-900'>
+						className='fixed bottom-0 inset-x-0 md:absolute md:top-20 md:right-[480px] w-full md:w-[400px] h-[70vh] md:h-[540px] max-h-[calc(100vh-100px)] md:max-h-[calc(100vh-180px)] flex flex-col glass rounded-t-3xl rounded-b-none md:rounded-2xl shadow-2xl overflow-hidden z-50 accent-glow text-slate-900'>
 						
 						{/* Chat Header */}
 						<div className='p-4 border-b border-slate-200 bg-white/50 backdrop-blur-xl flex items-center justify-between'>
@@ -652,23 +654,32 @@ export default function LeadDetails({
 					animate={{ opacity: 1, scale: 1, y: 0 }}
 					exit={{ opacity: 0, scale: 0.95, y: 20 }}
 					transition={{ type: "spring", stiffness: 300, damping: 25 }}
-					className='absolute top-20 right-10 w-[450px] h-[540px] max-h-[calc(100vh-180px)] flex flex-col glass rounded-2xl shadow-2xl overflow-hidden z-50 accent-glow text-slate-900'>
+					className='fixed bottom-0 inset-x-0 md:absolute md:top-20 md:right-10 w-full md:w-[450px] h-[70vh] md:h-[540px] max-h-[calc(100vh-100px)] md:max-h-[calc(100vh-180px)] flex flex-col glass rounded-t-3xl rounded-b-none md:rounded-2xl shadow-2xl overflow-hidden z-40 accent-glow text-slate-900'>
 				<div className='p-6 border-b border-slate-200 relative'>
 					<div className='absolute top-0 right-0 p-4 opacity-10 pointer-events-none text-violet-500'>
 						<Rocket className='w-24 h-24' />
 					</div>
-					<div className='flex items-start justify-between relative z-10'>
-						<div>
-							<h2 className='text-2xl font-bold tracking-tight mb-1 text-slate-900'>
+					<div className='flex items-start justify-between relative z-10 gap-4'>
+						<div className='min-w-0 flex-1'>
+							<h2 className='text-2xl font-bold tracking-tight mb-1 text-slate-900 truncate'>
 								{business.name}
 							</h2>
 							<div className='flex items-center text-sm text-slate-500 gap-3'>
-								<span className='flex items-center'>
-									<MapPin className='w-3.5 h-3.5 mr-1 text-violet-500' />{" "}
-									{business.address}
+								<span className='flex items-center truncate'>
+									<MapPin className='w-3.5 h-3.5 mr-1 text-violet-500 flex-shrink-0' />{" "}
+									<span className='truncate'>{business.address}</span>
 								</span>
 							</div>
 						</div>
+						{onClose && (
+							<button
+								onClick={onClose}
+								className='p-1.5 rounded-full hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors border-0 flex-shrink-0'
+								title='Close Panel'
+							>
+								<X className='h-5 w-5' />
+							</button>
+						)}
 					</div>
 
 					<div className='flex items-center gap-4 mt-4 relative z-10 flex-wrap'>

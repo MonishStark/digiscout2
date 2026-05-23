@@ -62,6 +62,7 @@ export default function MapArea({
 					projects={projects}
 					setProjects={setProjects}
 					setActivePage={setActivePage}
+					onClose={() => setSelectedBusiness(null)}
 				/>
 			)}
 		</div>

@@ -869,7 +869,7 @@ export default function DeploymentsView({
 				<div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm'>
 					<div className='w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl'>
 						<div className='flex items-center justify-between mb-4'>
-							<h2 className='text-xl font-semibold text-white'>
+							<h2 className='text-xl font-semibold text-slate-900'>
 								Send Outreach
 							</h2>
 							<button
@@ -883,7 +883,7 @@ export default function DeploymentsView({
 							{/* Business Info */}
 							<div className='rounded-lg border border-slate-200 bg-slate-50 p-3'>
 								<p className='text-sm text-slate-500'>To:</p>
-								<p className='text-white font-medium'>
+								<p className='text-slate-900 font-semibold'>
 									{projects.find((p) => p.id === outreachProjectId)
 										?.businessName || "Unknown"}
 								</p>
@@ -895,7 +895,7 @@ export default function DeploymentsView({
 
 							{/* Channel Selection */}
 							<div>
-								<label className='block text-sm font-medium text-white mb-2'>
+								<label className='block text-sm font-medium text-slate-700 mb-2'>
 									Channel
 								</label>
 								<div className='flex gap-2'>
@@ -922,7 +922,7 @@ export default function DeploymentsView({
 
 							{/* Message Input */}
 							<div>
-								<label className='block text-sm font-medium text-white mb-2'>
+								<label className='block text-sm font-medium text-slate-700 mb-2'>
 									Message
 								</label>
 								<textarea
