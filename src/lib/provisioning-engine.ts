@@ -1,8 +1,8 @@
 /** @format */
 
-import crypto from "crypto";
-import fs from "fs";
-import path from "path";
+import * as crypto from "crypto";
+import * as fs from "fs";
+import * as path from "path";
 import { pool } from "./db";
 import {
 	addSubdomain,
@@ -21,6 +21,7 @@ import {
 	configurePermalinks,
 	runWpCommand,
 	runRemoteShellCommand,
+	copyFileToRemote,
 } from "./wp-cli";
 import { mergeElementorTemplate } from "./elementor-merger";
 
@@ -723,28 +724,63 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 				await logCallback(`Importing image: ${imgUrl}`);
 				try {
 					let mediaId = "";
-					try {
-						const mediaOut = await runWpCommand(
-							`media import "${imgUrl}" --porcelain`,
-							docRoot,
-							logCallback,
-						);
-						mediaId = mediaOut.stdout.trim();
-					} catch (e: any) {
-						await logCallback(`Direct import failed for ${imgUrl}. Trying with curl...`);
-						const ext = imgUrl.toLowerCase().includes(".png") ? "png" : "jpg";
-						const remoteTmpMedia = `/tmp/ds_media_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
-						await runRemoteShellCommand(
-							`curl -sL "${imgUrl}" -o "${remoteTmpMedia}"`,
-							logCallback,
-						);
-						const mediaOut = await runWpCommand(
-							`media import "${remoteTmpMedia}" --porcelain`,
-							docRoot,
-							logCallback,
-						);
-						mediaId = mediaOut.stdout.trim();
-						await runRemoteShellCommand(`rm -f "${remoteTmpMedia}"`, logCallback).catch(() => {});
+					let imported = false;
+
+					// 1. Try local generated image transfer first
+					if (imgUrl.includes("/public/generated-images/")) {
+						const parts = imgUrl.split("/public/generated-images/");
+						const filename = parts[parts.length - 1];
+						const localPath = path.join(process.cwd(), "public", "generated-images", filename);
+						if (fs.existsSync(localPath)) {
+							await logCallback(`Detected local generated image: ${filename}. Copying to remote server...`);
+							const ext = filename.toLowerCase().endsWith(".png") ? "png" : "jpg";
+							const remoteTmpMedia = `/tmp/ds_local_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+							try {
+								await copyFileToRemote(localPath, remoteTmpMedia, logCallback);
+								const mediaOut = await runWpCommand(
+									`media import "${remoteTmpMedia}" --porcelain`,
+									docRoot,
+									logCallback,
+								);
+								mediaId = mediaOut.stdout.trim();
+								if (/^\d+$/.test(mediaId)) {
+									imported = true;
+								}
+							} catch (uploadErr: any) {
+								await logCallback(`Failed to copy/import local file ${filename}: ${uploadErr.message}. Trying direct fallback...`);
+							} finally {
+								await runRemoteShellCommand(`rm -f "${remoteTmpMedia}"`, logCallback).catch(() => {});
+							}
+						} else {
+							await logCallback(`Local file not found at ${localPath} for generated image URL: ${imgUrl}. Trying direct fallback...`);
+						}
+					}
+
+					// 2. Standard direct or curl fallback
+					if (!imported) {
+						try {
+							const mediaOut = await runWpCommand(
+								`media import "${imgUrl}" --porcelain`,
+								docRoot,
+								logCallback,
+							);
+							mediaId = mediaOut.stdout.trim();
+						} catch (e: any) {
+							await logCallback(`Direct import failed for ${imgUrl}. Trying with curl...`);
+							const ext = imgUrl.toLowerCase().includes(".png") ? "png" : "jpg";
+							const remoteTmpMedia = `/tmp/ds_media_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+							await runRemoteShellCommand(
+								`curl -sL "${imgUrl}" -o "${remoteTmpMedia}"`,
+								logCallback,
+							);
+							const mediaOut = await runWpCommand(
+								`media import "${remoteTmpMedia}" --porcelain`,
+								docRoot,
+								logCallback,
+							);
+							mediaId = mediaOut.stdout.trim();
+							await runRemoteShellCommand(`rm -f "${remoteTmpMedia}"`, logCallback).catch(() => {});
+						}
 					}
 
 					if (/^\d+$/.test(mediaId)) {
@@ -1116,38 +1152,70 @@ if ($kit_id && file_exists($kit_settings_json_file)) {
 			try {
 				await logCallback(`Attempting to import logo: ${schema.brand.logo}`);
 
-				// Try to import directly first
 				let mediaId = "";
-				try {
-					const mediaOut = await runWpCommand(
-						`media import "${schema.brand.logo}" --porcelain`,
-						docRoot,
-						logCallback,
-					);
-					mediaId = mediaOut.stdout.trim();
-				} catch (e) {
-					// If direct import fails (likely due to missing extension), download to temp file first
-					await logCallback(
-						"Direct import failed. Retrying with local temp file...",
-					);
-					const ext = schema.brand.logo.toLowerCase().includes(".png")
-						? "png"
-						: "jpg";
-					const remoteTmpMedia = `/tmp/ds_logo_${Date.now()}.${ext}`;
-					await runRemoteShellCommand(
-						`curl -sL "${schema.brand.logo}" -o "${remoteTmpMedia}"`,
-						logCallback,
-					);
-					const mediaOut = await runWpCommand(
-						`media import "${remoteTmpMedia}" --porcelain`,
-						docRoot,
-						logCallback,
-					);
-					mediaId = mediaOut.stdout.trim();
-					await runRemoteShellCommand(
-						`rm -f "${remoteTmpMedia}"`,
-						logCallback,
-					).catch(() => {});
+				let imported = false;
+
+				// 1. Try local generated logo transfer first
+				if (schema.brand.logo.includes("/public/generated-images/")) {
+					const parts = schema.brand.logo.split("/public/generated-images/");
+					const filename = parts[parts.length - 1];
+					const localPath = path.join(process.cwd(), "public", "generated-images", filename);
+					if (fs.existsSync(localPath)) {
+						await logCallback(`Detected local generated logo: ${filename}. Copying to remote server...`);
+						const ext = filename.toLowerCase().endsWith(".png") ? "png" : "jpg";
+						const remoteTmpMedia = `/tmp/ds_logo_${Date.now()}.${ext}`;
+						try {
+							await copyFileToRemote(localPath, remoteTmpMedia, logCallback);
+							const mediaOut = await runWpCommand(
+								`media import "${remoteTmpMedia}" --porcelain`,
+								docRoot,
+								logCallback,
+							);
+							mediaId = mediaOut.stdout.trim();
+							if (/^\d+$/.test(mediaId)) {
+								imported = true;
+							}
+						} catch (uploadErr: any) {
+							await logCallback(`Failed to copy/import local logo ${filename}: ${uploadErr.message}. Trying direct fallback...`);
+						} finally {
+							await runRemoteShellCommand(`rm -f "${remoteTmpMedia}"`, logCallback).catch(() => {});
+						}
+					}
+				}
+
+				// 2. Try direct import/curl fallback
+				if (!imported) {
+					try {
+						const mediaOut = await runWpCommand(
+							`media import "${schema.brand.logo}" --porcelain`,
+							docRoot,
+							logCallback,
+						);
+						mediaId = mediaOut.stdout.trim();
+					} catch (e) {
+						// If direct import fails (likely due to missing extension), download to temp file first
+						await logCallback(
+							"Direct import failed. Retrying with local temp file...",
+						);
+						const ext = schema.brand.logo.toLowerCase().includes(".png")
+							? "png"
+							: "jpg";
+						const remoteTmpMedia = `/tmp/ds_logo_${Date.now()}.${ext}`;
+						await runRemoteShellCommand(
+							`curl -sL "${schema.brand.logo}" -o "${remoteTmpMedia}"`,
+							logCallback,
+						);
+						const mediaOut = await runWpCommand(
+							`media import "${remoteTmpMedia}" --porcelain`,
+							docRoot,
+							logCallback,
+						);
+						mediaId = mediaOut.stdout.trim();
+						await runRemoteShellCommand(
+							`rm -f "${remoteTmpMedia}"`,
+							logCallback,
+						).catch(() => {});
+					}
 				}
 
 				if (/^\d+$/.test(mediaId)) {

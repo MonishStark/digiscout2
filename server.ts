@@ -93,6 +93,17 @@ app.use(
 );
 app.use(express.json({ limit: "50mb" }));
 
+// Create public directories if they do not exist
+const publicDir = path.join(process.cwd(), "public");
+const imagesDir = path.join(publicDir, "generated-images");
+if (!fs.existsSync(publicDir)) {
+	fs.mkdirSync(publicDir, { recursive: true });
+}
+if (!fs.existsSync(imagesDir)) {
+	fs.mkdirSync(imagesDir, { recursive: true });
+}
+app.use("/public", express.static(publicDir));
+
 const JWT_SECRET = process.env.ENCRYPTION_KEY || "default-secret-key-12345";
 
 function hashPassword(password: string): string {

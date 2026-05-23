@@ -891,6 +891,7 @@ var gemini_exports = {};
 __export(gemini_exports, {
   askBusinessAIChatStream: () => askBusinessAIChatStream,
   fetchLeadAIChatHistory: () => fetchLeadAIChatHistory,
+  generateCustomImage: () => generateCustomImage,
   generateOutreachEmail: () => generateOutreachEmail,
   generateWebsite: () => generateWebsite,
   generateWebsiteContent: () => generateWebsiteContent,
@@ -1524,6 +1525,116 @@ async function generateWebsiteContent(business, options) {
     throw error;
   }
 }
+async function generateCustomImage(prompt, options) {
+  const log = options?.logStderr || ((msg) => console.error(msg));
+  const googleCloudApiKey = process.env.GOOGLE_CLOUD_API_KEY;
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  if (!googleCloudApiKey && !geminiApiKey) {
+    throw new Error("Missing API key for image generation (GEMINI_API_KEY or GOOGLE_CLOUD_API_KEY)");
+  }
+  if (googleCloudApiKey) {
+    const apiEndpoint = process.env.VERTEX_API_ENDPOINT || "aiplatform.googleapis.com";
+    const modelName = "imagen-3.0-generate-002";
+    const url = `https://${apiEndpoint}/v1/publishers/google/models/${modelName}:predict?key=${googleCloudApiKey}`;
+    log(`[AI] Generating image via Vertex API using ${modelName}. Prompt: "${prompt}"...`);
+    let attempt = 0;
+    const maxAttempts = 4;
+    while (attempt < maxAttempts) {
+      attempt++;
+      try {
+        const payload = {
+          instances: [
+            {
+              prompt
+            }
+          ],
+          parameters: {
+            sampleCount: 1,
+            aspectRatio: options?.aspectRatio || "16:9",
+            outputMimeType: "image/png"
+          }
+        };
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const imageBytes = data.predictions?.[0]?.bytesBase64Encoded;
+          if (imageBytes) {
+            log(`[AI] Vertex Image generation successful (${imageBytes.length} bytes)`);
+            return imageBytes;
+          }
+          throw new Error("No bytesBase64Encoded returned in prediction response");
+        } else {
+          const errText = await res.text().catch(() => "");
+          if ((res.status === 429 || errText.includes("RESOURCE_EXHAUSTED")) && attempt < maxAttempts) {
+            const delay = 3e3 + Math.random() * 2e3;
+            log(`[AI] Vertex rate limited (429/RESOURCE_EXHAUSTED). Retrying attempt ${attempt + 1}/${maxAttempts} in ${(delay / 1e3).toFixed(1)}s...`);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            continue;
+          }
+          throw new Error(`Vertex REST failed with status ${res.status}: ${errText}`);
+        }
+      } catch (err) {
+        const isTransient = err.message?.includes("fetch") || err.message?.includes("network") || err.message?.includes("timeout");
+        if (isTransient && attempt < maxAttempts) {
+          const delay = 3e3 + Math.random() * 2e3;
+          log(`[AI] Vertex fetch network error: ${err.message || err}. Retrying attempt ${attempt + 1}/${maxAttempts} in ${(delay / 1e3).toFixed(1)}s...`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
+        }
+        log(`[AI] Vertex Image generation failed on attempt ${attempt}/${maxAttempts}: ${err.message || err}.`);
+        if (attempt >= maxAttempts) {
+          log(`[AI] Vertex Image generation failed after ${maxAttempts} attempts. Trying fallback...`);
+        }
+      }
+    }
+  }
+  if (geminiApiKey) {
+    const modelName = "imagen-4.0-generate-001";
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${geminiApiKey}`;
+    log(`[AI] Generating image via Gemini API fallback using ${modelName}. Prompt: "${prompt}"...`);
+    try {
+      const payload = {
+        instances: [
+          {
+            prompt
+          }
+        ],
+        parameters: {
+          sampleCount: 1,
+          aspectRatio: options?.aspectRatio || "16:9"
+        }
+      };
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const imageBytes = data.predictions?.[0]?.bytesBase64Encoded;
+        if (imageBytes) {
+          log(`[AI] Gemini Image generation successful (${imageBytes.length} bytes)`);
+          return imageBytes;
+        }
+        throw new Error("No bytesBase64Encoded returned in prediction response");
+      } else {
+        const errText = await res.text().catch(() => "");
+        throw new Error(`Gemini REST failed with status ${res.status}: ${errText}`);
+      }
+    } catch (err) {
+      log(`[AI] Gemini Image generation failed: ${err.message || err}`);
+    }
+  }
+  throw new Error("All image generation attempts failed");
+}
 var API_URL;
 var init_gemini = __esm({
   "src/lib/gemini.ts"() {
@@ -1534,10 +1645,14 @@ var init_gemini = __esm({
 // src/lib/direct-vertex-homepage-generation.ts
 var direct_vertex_homepage_generation_exports = {};
 __export(direct_vertex_homepage_generation_exports, {
+  analyzeAndFilterImages: () => analyzeAndFilterImages,
   buildHomepageGenerationRequest: () => buildHomepageGenerationRequest,
   default: () => direct_vertex_homepage_generation_default,
-  generateHomepageViaDirectVertexPrompt: () => generateHomepageViaDirectVertexPrompt
+  generateHomepageViaDirectVertexPrompt: () => generateHomepageViaDirectVertexPrompt,
+  resolveSectionImages: () => resolveSectionImages
 });
+import fs5 from "fs";
+import path4 from "path";
 function optimizeGooglePhotoUrl(url, size = 1600) {
   if (!url || typeof url !== "string") return url;
   if (url.includes("googleusercontent.com/places/") || url.includes("googleusercontent.com/p/")) {
@@ -1558,6 +1673,181 @@ function collectBusinessImages(business) {
     sources.push(optimizeGooglePhotoUrl(business.logo, 400));
   }
   return sources;
+}
+async function downloadImageAsBase64(url) {
+  try {
+    const lowResUrl = optimizeGooglePhotoUrl(url, 400);
+    const res = await fetch(lowResUrl);
+    if (!res.ok) return null;
+    const buffer = await res.arrayBuffer();
+    const base64Data = Buffer.from(buffer).toString("base64");
+    let mimeType = res.headers.get("content-type") || "image/jpeg";
+    if (mimeType.includes(";")) {
+      mimeType = mimeType.split(";")[0];
+    }
+    return { mimeType, data: base64Data };
+  } catch (e) {
+    return null;
+  }
+}
+async function analyzeAndFilterImages(business, log, options) {
+  log(`[ImageAnalyzer] Running image pre-filtering & analysis for: ${business.name}`);
+  const images = collectBusinessImages(business);
+  const numImages = Math.min(images.length, 6);
+  const base64Parts = [];
+  log(`[ImageAnalyzer] Found ${images.length} business photos. Downloading top ${numImages} for Gemini analysis...`);
+  for (let i = 0; i < numImages; i++) {
+    const part = await downloadImageAsBase64(images[i]);
+    if (part) {
+      base64Parts.push({
+        inlineData: {
+          mimeType: part.mimeType,
+          data: part.data
+        }
+      });
+      log(`[ImageAnalyzer] Downloaded photo ${i}: ${images[i].substring(0, 80)}...`);
+    }
+  }
+  const hasImages = base64Parts.length > 0;
+  const promptText = `You are a staff brand art director.
+Evaluate these ${base64Parts.length} images from Google Maps for the business "${business.name}" (Category: "${business.category || business.businessType}").
+Determine which images are highly relevant, high quality, and suitable for the following website layout sections:
+1. "hero_image": The main hero background. Needs to be a high-quality, clean, atmospheric representation of the business (e.g. for woodworking, a premium walnut table/chair or beautiful workshop/showroom).
+2. "masked_image": A detailed/masked circular photo (e.g. detail of a wood joint, wood texture close-up).
+3. "about_image": Photo showing the craftsmanship process, team, or workspace.
+4. "services_image": Background image for services section showing a service in action.
+5. "testimonials_slideshow": A list of up to 3 gallery/reviews images.
+
+If any of the Google Maps photos are suitable, map them to the corresponding section by setting "action": "use_existing" and providing the "image_index" (0-based index matching the order of the images provided).
+If none of the provided photos are suitable or relevant, or if no images were provided, mark "action": "generate" and write a highly descriptive, detailed image generation prompt ("generation_prompt") tailored to the business category and location context for the model "gemini-3-pro-image-preview". The prompt should describe a premium, high-quality photograph, setting, lighting, and detail.
+
+Return ONLY a JSON response in the following format:
+{
+  "hero_image": { "action": "use_existing" or "generate", "image_index": 0, "generation_prompt": "..." },
+  "masked_image": { "action": "use_existing" or "generate", "image_index": 1, "generation_prompt": "..." },
+  "about_image": { "action": "use_existing" or "generate", "image_index": 2, "generation_prompt": "..." },
+  "services_image": { "action": "use_existing" or "generate", "image_index": 3, "generation_prompt": "..." },
+  "testimonials_slideshow": [
+    { "action": "use_existing" or "generate", "image_index": 4, "generation_prompt": "..." },
+    { "action": "use_existing" or "generate", "image_index": 5, "generation_prompt": "..." },
+    { "action": "use_existing" or "generate", "image_index": 6, "generation_prompt": "..." }
+  ]
+}`;
+  const parts = [{ text: promptText }];
+  if (hasImages) {
+    parts.push(...base64Parts);
+  }
+  try {
+    log(`[ImageAnalyzer] Calling Gemini to analyze images...`);
+    const responseText = await generateWithFallback(
+      [{ role: "user", parts }],
+      { temperature: 0.1, responseMimeType: "application/json" },
+      {
+        logStderr: log,
+        debugSession: options?.debugSession,
+        throttleGemini: options?.throttleGemini || (async () => {
+        }),
+        contextLabel: "image-analysis"
+      }
+    );
+    let jsonString = responseText.trim();
+    if (jsonString.startsWith("```")) {
+      jsonString = jsonString.replace(/^```[a-zA-Z]*\n/, "").replace(/\n```$/, "");
+    }
+    log(`[ImageAnalyzer] Parse result: ${jsonString}`);
+    const result = JSON.parse(jsonString);
+    const mapIndexToUrl = (mapping) => {
+      if (mapping.action === "use_existing" && typeof mapping.image_index === "number" && images[mapping.image_index]) {
+        return { ...mapping, url: images[mapping.image_index] };
+      }
+      return { ...mapping, action: "generate" };
+    };
+    return {
+      hero_image: mapIndexToUrl(result.hero_image),
+      masked_image: mapIndexToUrl(result.masked_image),
+      about_image: mapIndexToUrl(result.about_image),
+      services_image: mapIndexToUrl(result.services_image),
+      testimonials_slideshow: (result.testimonials_slideshow || []).map(mapIndexToUrl)
+    };
+  } catch (error) {
+    log(`[ImageAnalyzer] Analysis failed: ${error instanceof Error ? error.message : String(error)}. Falling back to full generation prompts.`);
+    const getFallbackPrompt = (role) => {
+      return `A high-end professional commercial photograph of a ${business.category || "local business"} related to ${business.name}, representing ${role}, clean composition, dramatic soft warm lighting, depth of field, 8k, detailed texture.`;
+    };
+    return {
+      hero_image: { action: "generate", generation_prompt: getFallbackPrompt("hero background showcase") },
+      masked_image: { action: "generate", generation_prompt: getFallbackPrompt("close up detail shot") },
+      about_image: { action: "generate", generation_prompt: getFallbackPrompt("workspace environment or team action") },
+      services_image: { action: "generate", generation_prompt: getFallbackPrompt("services in action") },
+      testimonials_slideshow: [
+        { action: "generate", generation_prompt: getFallbackPrompt("project outcome detail 1") },
+        { action: "generate", generation_prompt: getFallbackPrompt("project outcome detail 2") },
+        { action: "generate", generation_prompt: getFallbackPrompt("project outcome detail 3") }
+      ]
+    };
+  }
+}
+async function resolveSectionImages(analysis, log) {
+  const resultUrls = {
+    hero_image: "",
+    masked_image: "",
+    about_image: "",
+    services_image: "",
+    testimonials_slideshow: []
+  };
+  const generateAndSave = async (prompt, role, aspectRatio = "16:9") => {
+    try {
+      const base64Bytes = await generateCustomImage(prompt, { aspectRatio, logStderr: log });
+      const filename = `gen_${role}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.png`;
+      const publicDir2 = path4.join(process.cwd(), "public");
+      const imagesDir2 = path4.join(publicDir2, "generated-images");
+      if (!fs5.existsSync(imagesDir2)) {
+        fs5.mkdirSync(imagesDir2, { recursive: true });
+      }
+      const filePath = path4.join(imagesDir2, filename);
+      fs5.writeFileSync(filePath, Buffer.from(base64Bytes, "base64"));
+      const baseUrl = process.env.API_URL || "https://api.digiscout.online";
+      const fileUrl = `${baseUrl}/public/generated-images/${filename}`;
+      log(`[ImageGenerator] Saved generated image for ${role} to ${fileUrl}`);
+      return fileUrl;
+    } catch (err) {
+      log(`[ImageGenerator] Error generating image for ${role}: ${err.message || err}. Falling back to default placeholder.`);
+      return "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800";
+    }
+  };
+  if (analysis.hero_image.action === "use_existing" && analysis.hero_image.url) {
+    resultUrls.hero_image = analysis.hero_image.url;
+  } else {
+    resultUrls.hero_image = await generateAndSave(analysis.hero_image.generation_prompt || "wooden chair chair modern", "hero", "3:4");
+  }
+  if (analysis.masked_image.action === "use_existing" && analysis.masked_image.url) {
+    resultUrls.masked_image = analysis.masked_image.url;
+  } else {
+    resultUrls.masked_image = await generateAndSave(analysis.masked_image.generation_prompt || "wood grain pattern detail close-up", "masked", "1:1");
+  }
+  if (analysis.about_image.action === "use_existing" && analysis.about_image.url) {
+    resultUrls.about_image = analysis.about_image.url;
+  } else {
+    resultUrls.about_image = await generateAndSave(analysis.about_image.generation_prompt || "woodworking craftsman work", "about", "4:3");
+  }
+  if (analysis.services_image.action === "use_existing" && analysis.services_image.url) {
+    resultUrls.services_image = analysis.services_image.url;
+  } else {
+    resultUrls.services_image = await generateAndSave(analysis.services_image.generation_prompt || "carpentry workshop background", "services", "16:9");
+  }
+  const slideshowUrls = [];
+  for (let i = 0; i < 3; i++) {
+    const item = analysis.testimonials_slideshow?.[i];
+    if (item && item.action === "use_existing" && item.url) {
+      slideshowUrls.push(item.url);
+    } else {
+      const prompt = item?.generation_prompt || `wood projects showcase detail shot ${i + 1}`;
+      const url = await generateAndSave(prompt, `testimonial_${i + 1}`, "4:3");
+      slideshowUrls.push(url);
+    }
+  }
+  resultUrls.testimonials_slideshow = slideshowUrls;
+  return resultUrls;
 }
 function buildHomepageGenerationRequest(business) {
   const images = collectBusinessImages(business);
@@ -1699,7 +1989,21 @@ async function generateHomepageViaDirectVertexPrompt(business, options) {
   const persist = options?.persistFile || ((filename, content) => {
   });
   try {
+    log(`[DirectVertex] Starting image pre-filtering and resolution...`);
+    const imageAnalysis = await analyzeAndFilterImages(business, log, {
+      throttleGemini: options?.throttleGemini,
+      debugSession: options?.debugSession
+    });
+    persist("01a-image-analysis.json", imageAnalysis);
+    const resolvedImages = await resolveSectionImages(imageAnalysis, log);
+    persist("01b-resolved-images.json", resolvedImages);
     const request = buildHomepageGenerationRequest(business);
+    request.images = {
+      hero: resolvedImages.hero_image,
+      service1: resolvedImages.services_image,
+      service2: resolvedImages.about_image,
+      gallery: [resolvedImages.masked_image, ...resolvedImages.testimonials_slideshow]
+    };
     persist("01-homepage-generation-request.json", request);
     log(`[DirectVertex] Starting deterministic homepage generation...`);
     const response = await callVertexHomepageGeneration(
@@ -1708,6 +2012,17 @@ async function generateHomepageViaDirectVertexPrompt(business, options) {
       log,
       options
     );
+    if (response.elementorContent) {
+      if (!response.elementorContent.hero) response.elementorContent.hero = {};
+      response.elementorContent.hero.hero_image = resolvedImages.hero_image;
+      response.elementorContent.hero.masked_image = resolvedImages.masked_image;
+      if (!response.elementorContent.about) response.elementorContent.about = {};
+      response.elementorContent.about.image = resolvedImages.about_image;
+      if (!response.elementorContent.services) response.elementorContent.services = {};
+      response.elementorContent.services.image = resolvedImages.services_image;
+      if (!response.elementorContent.testimonials) response.elementorContent.testimonials = {};
+      response.elementorContent.testimonials.slideshow = resolvedImages.testimonials_slideshow;
+    }
     persist("02-vertex-response.json", response);
     const schema = {
       id: business.id || `homepage-${Date.now()}`,
@@ -1788,6 +2103,7 @@ var GENAI_KEY, direct_vertex_homepage_generation_default;
 var init_direct_vertex_homepage_generation = __esm({
   "src/lib/direct-vertex-homepage-generation.ts"() {
     init_vertex_homepage_generation_prompt();
+    init_gemini();
     GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
     direct_vertex_homepage_generation_default = {
       generateHomepageViaDirectVertexPrompt,
@@ -2054,8 +2370,8 @@ var env_default = process.env;
 import crypto2 from "crypto";
 import cors from "cors";
 import express from "express";
-import fs5 from "fs";
-import path5, { dirname } from "path";
+import fs7 from "fs";
+import path6, { dirname } from "path";
 import { fileURLToPath as fileURLToPath2 } from "url";
 
 // src/lib/callhippo-service.ts
@@ -2412,9 +2728,9 @@ async function initializeDatabase() {
 }
 
 // src/lib/provisioning-engine.ts
-import crypto from "crypto";
-import fs3 from "fs";
-import path3 from "path";
+import * as crypto from "crypto";
+import * as fs4 from "fs";
+import * as path3 from "path";
 
 // src/lib/cpanel-uapi.ts
 import { exec } from "child_process";
@@ -2615,6 +2931,7 @@ async function setDatabasePrivileges(dbUser, dbName, privileges = "ALL PRIVILEGE
 // src/lib/wp-cli.ts
 import { exec as exec2 } from "child_process";
 import { promisify as promisify2 } from "util";
+import * as fs2 from "fs";
 var execAsync2 = promisify2(exec2);
 var WpCliError = class extends Error {
   constructor(message, stdout, stderr, code) {
@@ -2747,26 +3064,70 @@ async function configurePermalinks(documentRoot, structure = "/%postname%/", log
 async function runRemoteShellCommand(command, logCallback) {
   return executeRemoteCommand(command, logCallback);
 }
+async function copyFileToRemote(localPath, remotePath, logCallback) {
+  const { host, port, user, keyPath } = getSshConfig();
+  if (!host || !user) {
+    if (logCallback) logCallback(`[LOCAL COPY] ${localPath} -> ${remotePath}`);
+    fs2.copyFileSync(localPath, remotePath);
+    return;
+  }
+  const keyFlag = keyPath ? `-i "${keyPath}"` : "";
+  const escapedRemotePath = remotePath.replace(/'/g, `'\\''`);
+  const sshCmd = [
+    "ssh",
+    "-p",
+    port,
+    keyFlag,
+    "-o StrictHostKeyChecking=no",
+    "-o ConnectTimeout=30",
+    "-o ServerAliveInterval=60",
+    "-o BatchMode=yes",
+    `${user}@${host}`,
+    `'cat > "${escapedRemotePath}"'`
+  ].filter(Boolean).join(" ");
+  if (logCallback) {
+    logCallback(`[SSH COPY] ${localPath} -> ${user}@${host}:${remotePath}`);
+  }
+  return new Promise((resolve, reject) => {
+    const child = exec2(sshCmd, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+      if (error) {
+        if (logCallback) {
+          logCallback(`[SSH COPY FAILED] error: ${error.message}`);
+          if (stderr) logCallback(`[SSH COPY FAILED stderr] ${stderr}`);
+        }
+        reject(new Error(`SSH copy failed: ${error.message} (stderr: ${stderr})`));
+      } else {
+        resolve();
+      }
+    });
+    const readStream = fs2.createReadStream(localPath);
+    readStream.on("error", (err) => {
+      child.kill();
+      reject(err);
+    });
+    readStream.pipe(child.stdin);
+  });
+}
 
 // src/lib/elementor-merger.ts
-import fs2 from "fs";
+import fs3 from "fs";
 import path2 from "path";
 function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, menuId) {
   const homePath = path2.join(templateDir, "content", "page", "2.json");
   const headerPath = path2.join(templateDir, "templates", "15.json");
   const footerPath = path2.join(templateDir, "templates", "244.json");
-  if (!fs2.existsSync(homePath)) {
+  if (!fs3.existsSync(homePath)) {
     throw new Error(`Home page template not found at ${homePath}`);
   }
-  if (!fs2.existsSync(headerPath)) {
+  if (!fs3.existsSync(headerPath)) {
     throw new Error(`Header template not found at ${headerPath}`);
   }
-  if (!fs2.existsSync(footerPath)) {
+  if (!fs3.existsSync(footerPath)) {
     throw new Error(`Footer template not found at ${footerPath}`);
   }
-  const homeData = JSON.parse(fs2.readFileSync(homePath, "utf8"));
-  const headerData = JSON.parse(fs2.readFileSync(headerPath, "utf8"));
-  const footerData = JSON.parse(fs2.readFileSync(footerPath, "utf8"));
+  const homeData = JSON.parse(fs3.readFileSync(homePath, "utf8"));
+  const headerData = JSON.parse(fs3.readFileSync(headerPath, "utf8"));
+  const footerData = JSON.parse(fs3.readFileSync(footerPath, "utf8"));
   const homeSections = homeData.content || [];
   const headerSections = headerData.content || [];
   const footerSections = footerData.content || [];
@@ -2782,225 +3143,257 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
     }
     return null;
   };
-  const processElements = (elements, sectionIndex, sectionTitle) => {
-    for (const el of elements) {
-      if (el.elType === "column" && el.settings) {
-        if (el.settings.background_image && el.settings.background_image.url) {
-          const origUrl = el.settings.background_image.url;
-          let targetUrl = "";
-          if (sectionTitle === "Hero section") {
-            targetUrl = aiContent.hero?.hero_image || "";
-          } else if (sectionTitle === "What we do") {
-            targetUrl = aiContent.services?.image || "";
-          }
-          const local = getLocalMedia(targetUrl);
-          if (local) {
-            el.settings.background_image.url = local.url;
-            el.settings.background_image.id = String(local.id);
+  const collectElements = (elements) => {
+    const columns = [];
+    const widgets = {};
+    const traverse = (els) => {
+      if (!els || !Array.isArray(els)) return;
+      for (const el of els) {
+        if (el.elType === "column") {
+          columns.push(el);
+        } else if (el.elType === "widget") {
+          const type = el.widgetType;
+          if (type) {
+            if (!widgets[type]) {
+              widgets[type] = [];
+            }
+            widgets[type].push(el);
           }
         }
-        if (el.settings.background_background === "slideshow" && Array.isArray(el.settings.background_slideshow_gallery)) {
-          const localSlideshow = [];
-          const slideshowUrls = aiContent.testimonials?.slideshow || [];
-          for (let i = 0; i < Math.min(3, slideshowUrls.length); i++) {
-            const targetUrl = slideshowUrls[i];
-            const local = getLocalMedia(targetUrl);
-            if (local) {
-              localSlideshow.push({
-                id: String(local.id),
-                url: local.url
-              });
-            }
-          }
-          if (localSlideshow.length > 0) {
-            el.settings.background_slideshow_gallery = localSlideshow;
+        if (el.elements && Array.isArray(el.elements)) {
+          traverse(el.elements);
+        }
+      }
+    };
+    traverse(elements);
+    return { columns, widgets };
+  };
+  const processSection = (section, title) => {
+    if (!section.elements || !Array.isArray(section.elements)) return;
+    const { columns, widgets } = collectElements(section.elements);
+    if (title === "Hero section") {
+      if (widgets.heading?.[0] && widgets.heading[0].settings) {
+        widgets.heading[0].settings.title = aiContent.hero?.heading || "";
+      }
+      if (widgets.button?.[0] && widgets.button[0].settings) {
+        widgets.button[0].settings.text = `${aiContent.hero?.button_text || "Get Started"} \u2794`;
+        widgets.button[0].settings.link = {
+          url: "#services",
+          is_external: "",
+          nofollow: "",
+          custom_attributes: ""
+        };
+      }
+      let bgCol = columns.find((c) => c.settings?.background_image?.url);
+      if (!bgCol && columns.length > 1) {
+        bgCol = columns[1];
+      }
+      if (bgCol && bgCol.settings?.background_image) {
+        const targetUrl = aiContent.hero?.hero_image || "";
+        const local = getLocalMedia(targetUrl);
+        if (local) {
+          bgCol.settings.background_image.url = local.url;
+          bgCol.settings.background_image.id = String(local.id);
+        }
+      }
+      if (widgets.image?.[0] && widgets.image[0].settings?.image) {
+        const targetUrl = aiContent.hero?.masked_image || "";
+        const local = getLocalMedia(targetUrl);
+        if (local) {
+          widgets.image[0].settings.image.url = local.url;
+          widgets.image[0].settings.image.id = String(local.id);
+        }
+      }
+    } else if (title === "Highest level") {
+      if (widgets.image?.[0] && widgets.image[0].settings?.image) {
+        const targetUrl = aiContent.about?.image || "";
+        const local = getLocalMedia(targetUrl);
+        if (local) {
+          widgets.image[0].settings.image.url = local.url;
+          widgets.image[0].settings.image.id = String(local.id);
+        }
+      }
+      if (widgets.heading?.[0] && widgets.heading[0].settings) {
+        widgets.heading[0].settings.title = aiContent.about?.heading || "";
+      }
+      if (widgets["text-editor"]?.[0] && widgets["text-editor"][0].settings) {
+        widgets["text-editor"][0].settings.editor = `<p>${aiContent.about?.description || ""}</p>`;
+      }
+      if (widgets.button?.[0] && widgets.button[0].settings) {
+        widgets.button[0].settings.text = `${aiContent.about?.button_text || "Learn More"} \u2794`;
+        widgets.button[0].settings.link = {
+          url: "#services",
+          is_external: "",
+          nofollow: "",
+          custom_attributes: ""
+        };
+      }
+    } else if (title === "What we do") {
+      if (widgets.heading?.[0] && widgets.heading[0].settings) {
+        widgets.heading[0].settings.title = aiContent.services?.heading || "";
+      }
+      if (widgets["text-editor"]?.[0] && widgets["text-editor"][0].settings) {
+        widgets["text-editor"][0].settings.editor = aiContent.services?.description || "";
+      }
+      const iconLists = widgets["icon-list"] || [];
+      const servicesList = aiContent.services?.list || [];
+      if (iconLists[0] && iconLists[0].settings && Array.isArray(iconLists[0].settings.icon_list)) {
+        for (let i = 0; i < 4; i++) {
+          if (iconLists[0].settings.icon_list[i] && servicesList[i]) {
+            iconLists[0].settings.icon_list[i].text = servicesList[i];
           }
         }
       }
-      if (el.elType === "widget" && el.widgetType) {
-        const type = el.widgetType;
-        const settings = el.settings || {};
-        if (type === "heading" && settings.title) {
-          const currentTitle = String(settings.title).trim();
-          if (sectionTitle === "Hero section" && currentTitle.includes("wood shop")) {
-            settings.title = aiContent.hero?.heading || "";
-          } else if (sectionTitle === "Highest level" && currentTitle.includes("Highest level")) {
-            settings.title = aiContent.about?.heading || "";
-          } else if (sectionTitle === "What we do" && currentTitle.includes("What we do")) {
-            settings.title = aiContent.services?.heading || "";
-          } else if (sectionTitle === "Exceptional quality" && currentTitle.includes("Exceptional quality")) {
-            settings.title = aiContent.features?.heading || "";
-          } else if (sectionTitle === "Recent projects" && currentTitle.includes("Recent projects")) {
-            settings.title = aiContent.projects?.heading || "";
-          } else if (sectionTitle === "Work Process" && currentTitle.includes("Work Process")) {
-            settings.title = aiContent.process?.heading || "";
-          } else if (sectionTitle === "Client testimonials" && currentTitle.includes("Client testimonials")) {
-            settings.title = aiContent.testimonials?.heading || "";
-          } else if (currentTitle.includes("Let\u2019s discuss your project!")) {
-            settings.title = `Let\u2019s discuss your project!`;
-          } else if (settings.__dynamic__ && settings.__dynamic__.title && settings.__dynamic__.title.includes("current-date-time")) {
-            delete settings.__dynamic__;
-            settings.title = `${businessInfo.name} \xA9 ${(/* @__PURE__ */ new Date()).getFullYear()} All Rights Reserved.`;
+      if (iconLists[1] && iconLists[1].settings && Array.isArray(iconLists[1].settings.icon_list)) {
+        for (let i = 0; i < 4; i++) {
+          if (iconLists[1].settings.icon_list[i] && servicesList[i + 4]) {
+            iconLists[1].settings.icon_list[i].text = servicesList[i + 4];
           }
-        }
-        if (type === "text-editor" && settings.editor) {
-          if (sectionTitle === "Highest level") {
-            settings.editor = `<p>${aiContent.about?.description || ""}</p>`;
-          } else if (sectionTitle === "What we do") {
-            settings.editor = aiContent.services?.description || "";
-          } else if (sectionTitle === "Recent projects") {
-            settings.editor = aiContent.projects?.description || "";
-          } else if (String(settings.editor).includes("Don\u2019t hesitate to contact us")) {
-            settings.editor = `<p>Don\u2019t hesitate to contact us. We\u2019ll be happy to discuss your needs, provide estimates, and answer all your questions.</p>`;
-          }
-        }
-        if (type === "button") {
-          const btnText = String(settings.text || "");
-          if (sectionTitle === "Hero section" && btnText.includes("Projects")) {
-            settings.text = `${aiContent.hero?.button_text || "Get Started"} \u2794`;
-            settings.link = {
-              url: "#services",
-              is_external: "",
-              nofollow: "",
-              custom_attributes: ""
-            };
-          } else if (sectionTitle === "Highest level" && btnText.includes("Learn More")) {
-            settings.text = `${aiContent.about?.button_text || "Learn More"} \u2794`;
-            settings.link = {
-              url: "#services",
-              is_external: "",
-              nofollow: "",
-              custom_attributes: ""
-            };
-          } else if (btnText.includes("Contact Us")) {
-            settings.link = {
-              url: "#contact",
-              is_external: "",
-              nofollow: "",
-              custom_attributes: ""
-            };
-          } else if (btnText.includes("Call Us")) {
-            delete settings.__dynamic__;
-            settings.text = `Call Us ${businessInfo.phone}`;
-            settings.link = {
-              url: `tel:${businessInfo.phone.replace(/[^0-9+]/g, "")}`,
-              is_external: "",
-              nofollow: "",
-              custom_attributes: ""
-            };
-          }
-        }
-        if (type === "image" && settings.image) {
-          let targetUrl = "";
-          if (sectionTitle === "Hero section") {
-            targetUrl = aiContent.hero?.masked_image || "";
-          } else if (sectionTitle === "Highest level") {
-            targetUrl = aiContent.about?.image || "";
-          }
-          const local = getLocalMedia(targetUrl);
-          if (local) {
-            settings.image.url = local.url;
-            settings.image.id = String(local.id);
-          }
-        }
-        if (type === "icon-list" && Array.isArray(settings.icon_list)) {
-          if (sectionTitle === "What we do") {
-            const isLeftList = settings.icon_list.some(
-              (item) => String(item.text).includes("Restaurant")
-            );
-            const servicesList = aiContent.services?.list || [];
-            if (isLeftList) {
-              for (let i = 0; i < 4; i++) {
-                if (settings.icon_list[i] && servicesList[i]) {
-                  settings.icon_list[i].text = servicesList[i];
-                }
-              }
-            } else {
-              for (let i = 0; i < 4; i++) {
-                if (settings.icon_list[i] && servicesList[i + 4]) {
-                  settings.icon_list[i].text = servicesList[i + 4];
-                }
-              }
-            }
-          } else if (sectionTitle === "Footer" && settings.icon_list.some((item) => item.text && item.text.includes("@"))) {
-            for (const item of settings.icon_list) {
-              const text = String(item.text || "");
-              if (text.includes("St Germain")) {
-                item.text = businessInfo.address;
-              } else if (text.includes("620-637")) {
-                item.text = businessInfo.phone;
-                item.link = { url: `tel:${businessInfo.phone.replace(/[^0-9+]/g, "")}` };
-              } else if (text.includes("ray@woodworking")) {
-                item.text = businessInfo.email;
-                item.link = { url: `mailto:${businessInfo.email}` };
-              }
-            }
-          }
-        }
-        if (type === "icon-box") {
-          const title = String(settings.title_text || "");
-          if (sectionTitle === "Exceptional quality" && aiContent.features?.items) {
-            if (title.includes("quality") && aiContent.features.items[0]) {
-              settings.title_text = aiContent.features.items[0].title;
-              settings.description_text = aiContent.features.items[0].description;
-            } else if (title.includes("experience") && aiContent.features.items[1]) {
-              settings.title_text = aiContent.features.items[1].title;
-              settings.description_text = aiContent.features.items[1].description;
-            } else if (title.includes("details") && aiContent.features.items[2]) {
-              settings.title_text = aiContent.features.items[2].title;
-              settings.description_text = aiContent.features.items[2].description;
-            }
-          } else if (sectionTitle === "Work Process" && aiContent.process?.steps) {
-            if (title.includes("Brief") && aiContent.process.steps[0]) {
-              settings.title_text = aiContent.process.steps[0].title;
-              settings.description_text = aiContent.process.steps[0].description;
-            } else if (title.includes("Design") && aiContent.process.steps[1]) {
-              settings.title_text = aiContent.process.steps[1].title;
-              settings.description_text = aiContent.process.steps[1].description;
-            } else if (title.includes("Manufacture") && aiContent.process.steps[2]) {
-              settings.title_text = aiContent.process.steps[2].title;
-              settings.description_text = aiContent.process.steps[2].description;
-            } else if (title.includes("Installation") && aiContent.process.steps[3]) {
-              settings.title_text = aiContent.process.steps[3].title;
-              settings.description_text = aiContent.process.steps[3].description;
-            }
-          }
-        }
-        if (type === "testimonial-carousel" && Array.isArray(settings.slides) && aiContent.testimonials?.items) {
-          for (let i = 0; i < Math.min(3, settings.slides.length); i++) {
-            if (aiContent.testimonials.items[i]) {
-              settings.slides[i].content = `\u201C${aiContent.testimonials.items[i].content}\u201D`;
-              settings.slides[i].name = aiContent.testimonials.items[i].name;
-              settings.slides[i].title = "";
-            }
-          }
-        }
-        if (type === "nav-menu" && menuId) {
-          settings.menu = String(menuId);
         }
       }
-      if (Array.isArray(el.elements)) {
-        processElements(el.elements, sectionIndex, sectionTitle);
+      let bgCol = columns.find((c) => c.settings?.background_image?.url);
+      if (!bgCol && columns.length > 1) {
+        bgCol = columns[1];
+      }
+      if (bgCol && bgCol.settings?.background_image) {
+        const targetUrl = aiContent.services?.image || "";
+        const local = getLocalMedia(targetUrl);
+        if (local) {
+          bgCol.settings.background_image.url = local.url;
+          bgCol.settings.background_image.id = String(local.id);
+        }
+      }
+    } else if (title === "Exceptional quality") {
+      if (widgets.heading?.[0] && widgets.heading[0].settings) {
+        widgets.heading[0].settings.title = aiContent.features?.heading || "";
+      }
+      const iconBoxes = widgets["icon-box"] || [];
+      const featuresItems = aiContent.features?.items || [];
+      for (let i = 0; i < 3; i++) {
+        if (iconBoxes[i] && iconBoxes[i].settings && featuresItems[i]) {
+          iconBoxes[i].settings.title_text = featuresItems[i].title;
+          iconBoxes[i].settings.description_text = featuresItems[i].description;
+        }
+      }
+    } else if (title === "Recent projects") {
+      if (widgets.heading?.[0] && widgets.heading[0].settings) {
+        widgets.heading[0].settings.title = aiContent.projects?.heading || "";
+      }
+      if (widgets["text-editor"]?.[0] && widgets["text-editor"][0].settings) {
+        widgets["text-editor"][0].settings.editor = aiContent.projects?.description || "";
+      }
+    } else if (title === "Work Process") {
+      if (widgets.heading?.[0] && widgets.heading[0].settings) {
+        widgets.heading[0].settings.title = aiContent.process?.heading || "";
+      }
+      const iconBoxes = widgets["icon-box"] || [];
+      const steps = aiContent.process?.steps || [];
+      for (let i = 0; i < 4; i++) {
+        if (iconBoxes[i] && iconBoxes[i].settings && steps[i]) {
+          iconBoxes[i].settings.title_text = steps[i].title;
+          iconBoxes[i].settings.description_text = steps[i].description;
+        }
+      }
+    } else if (title === "Client testimonials") {
+      const slideshowCol = columns.find((c) => c.settings?.background_background === "slideshow");
+      if (slideshowCol && slideshowCol.settings && Array.isArray(slideshowCol.settings.background_slideshow_gallery)) {
+        const localSlideshow = [];
+        const slideshowUrls = aiContent.testimonials?.slideshow || [];
+        for (let i = 0; i < Math.min(3, slideshowUrls.length); i++) {
+          const targetUrl = slideshowUrls[i];
+          const local = getLocalMedia(targetUrl);
+          if (local) {
+            localSlideshow.push({
+              id: String(local.id),
+              url: local.url
+            });
+          }
+        }
+        if (localSlideshow.length > 0) {
+          slideshowCol.settings.background_slideshow_gallery = localSlideshow;
+        }
+      }
+      if (widgets.heading?.[0] && widgets.heading[0].settings) {
+        widgets.heading[0].settings.title = aiContent.testimonials?.heading || "";
+      }
+      if (widgets["testimonial-carousel"]?.[0] && widgets["testimonial-carousel"][0].settings && Array.isArray(widgets["testimonial-carousel"][0].settings.slides)) {
+        const slides = widgets["testimonial-carousel"][0].settings.slides;
+        const testimonialsItems = aiContent.testimonials?.items || [];
+        for (let i = 0; i < Math.min(3, slides.length); i++) {
+          if (testimonialsItems[i]) {
+            slides[i].content = `\u201C${testimonialsItems[i].content}\u201D`;
+            slides[i].name = testimonialsItems[i].name;
+            slides[i].title = "";
+          }
+        }
+      }
+    } else if (title === "Header") {
+      if (widgets.button?.[0] && widgets.button[0].settings) {
+        const btn = widgets.button[0];
+        delete btn.settings.__dynamic__;
+        btn.settings.text = `Call Us ${businessInfo.phone}`;
+        btn.settings.link = {
+          url: `tel:${businessInfo.phone.replace(/[^0-9+]/g, "")}`,
+          is_external: "",
+          nofollow: "",
+          custom_attributes: ""
+        };
+      }
+      if (widgets["nav-menu"]?.[0] && widgets["nav-menu"][0].settings && menuId) {
+        widgets["nav-menu"][0].settings.menu = String(menuId);
+      }
+    } else if (title === "Let's discuss") {
+      if (widgets.heading?.[0] && widgets.heading[0].settings) {
+        widgets.heading[0].settings.title = `Let\u2019s discuss your project!`;
+      }
+      if (widgets["text-editor"]?.[0] && widgets["text-editor"][0].settings) {
+        widgets["text-editor"][0].settings.editor = `<p>Don\u2019t hesitate to contact us. We\u2019ll be happy to discuss your needs, provide estimates, and answer all your questions.</p>`;
+      }
+      if (widgets.button?.[0] && widgets.button[0].settings) {
+        widgets.button[0].settings.text = `Contact Us \u2794`;
+        widgets.button[0].settings.link = {
+          url: "#contact",
+          is_external: "",
+          nofollow: "",
+          custom_attributes: ""
+        };
+      }
+    } else if (title === "Footer") {
+      if (widgets.heading?.[0] && widgets.heading[0].settings) {
+        const cHeading = widgets.heading[0];
+        delete cHeading.settings.__dynamic__;
+        cHeading.settings.title = `${businessInfo.name} \xA9 ${(/* @__PURE__ */ new Date()).getFullYear()} All Rights Reserved.`;
+      }
+      const contactList = (widgets["icon-list"] || []).find(
+        (widget) => widget.settings?.icon_list?.some((item) => String(item.text).includes("@"))
+      );
+      if (contactList && Array.isArray(contactList.settings.icon_list)) {
+        for (const item of contactList.settings.icon_list) {
+          const text = String(item.text || "");
+          if (text.includes("St Germain") || item.text === "315 St Germain Ave, Canada") {
+            item.text = businessInfo.address;
+          } else if (text.includes("620-637") || text.match(/[0-9]{3}-[0-9]{3}/)) {
+            item.text = businessInfo.phone;
+            item.link = { url: `tel:${businessInfo.phone.replace(/[^0-9+]/g, "")}` };
+          } else if (text.includes("@")) {
+            item.text = businessInfo.email;
+            item.link = { url: `mailto:${businessInfo.email}` };
+          }
+        }
       }
     }
   };
-  homeSections.forEach((section, idx) => {
+  homeSections.forEach((section) => {
     const title = section.settings?._title || "";
-    if (section.elements) {
-      processElements(section.elements, idx, title);
-    }
+    processSection(section, title);
   });
-  headerSections.forEach((section, idx) => {
+  headerSections.forEach((section) => {
     const title = section.settings?._title || "Header";
-    if (section.elements) {
-      processElements(section.elements, idx, title);
-    }
+    processSection(section, title);
   });
-  footerSections.forEach((section, idx) => {
+  footerSections.forEach((section) => {
     const title = section.settings?._title || "Footer";
-    if (section.elements) {
-      processElements(section.elements, idx, title);
-    }
+    processSection(section, title);
   });
   const combinedSections = [
     ...headerSections,
@@ -3128,7 +3521,7 @@ async function appendLog(jobId, message) {
   const timestamp = (/* @__PURE__ */ new Date()).toISOString();
   const logEntry = `[${timestamp}] ${message}`;
   console.log(`[Job ${jobId}] ${message}`);
-  fs3.writeSync(2, `[Job ${jobId}] ${message}
+  fs4.writeSync(2, `[Job ${jobId}] ${message}
 `);
   await pool.query(
     `UPDATE provisioning_jobs SET logs = JSON_ARRAY_APPEND(COALESCE(logs, JSON_ARRAY()), '$', ?) WHERE id = ?`,
@@ -3552,9 +3945,9 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
         path3.join(templateDir, "templates", "244.json")
       ];
       for (const file of templateFiles) {
-        if (fs3.existsSync(file)) {
+        if (fs4.existsSync(file)) {
           try {
-            const content2 = fs3.readFileSync(file, "utf8");
+            const content2 = fs4.readFileSync(file, "utf8");
             const matches = content2.match(/https?:\/\/library\.elementor\.com\/[^\s"'}]+/g);
             if (matches) {
               for (const match of matches) {
@@ -3571,29 +3964,61 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
         await logCallback(`Importing image: ${imgUrl}`);
         try {
           let mediaId = "";
-          try {
-            const mediaOut = await runWpCommand(
-              `media import "${imgUrl}" --porcelain`,
-              docRoot,
-              logCallback
-            );
-            mediaId = mediaOut.stdout.trim();
-          } catch (e) {
-            await logCallback(`Direct import failed for ${imgUrl}. Trying with curl...`);
-            const ext = imgUrl.toLowerCase().includes(".png") ? "png" : "jpg";
-            const remoteTmpMedia = `/tmp/ds_media_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
-            await runRemoteShellCommand(
-              `curl -sL "${imgUrl}" -o "${remoteTmpMedia}"`,
-              logCallback
-            );
-            const mediaOut = await runWpCommand(
-              `media import "${remoteTmpMedia}" --porcelain`,
-              docRoot,
-              logCallback
-            );
-            mediaId = mediaOut.stdout.trim();
-            await runRemoteShellCommand(`rm -f "${remoteTmpMedia}"`, logCallback).catch(() => {
-            });
+          let imported = false;
+          if (imgUrl.includes("/public/generated-images/")) {
+            const parts = imgUrl.split("/public/generated-images/");
+            const filename = parts[parts.length - 1];
+            const localPath = path3.join(process.cwd(), "public", "generated-images", filename);
+            if (fs4.existsSync(localPath)) {
+              await logCallback(`Detected local generated image: ${filename}. Copying to remote server...`);
+              const ext = filename.toLowerCase().endsWith(".png") ? "png" : "jpg";
+              const remoteTmpMedia = `/tmp/ds_local_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+              try {
+                await copyFileToRemote(localPath, remoteTmpMedia, logCallback);
+                const mediaOut = await runWpCommand(
+                  `media import "${remoteTmpMedia}" --porcelain`,
+                  docRoot,
+                  logCallback
+                );
+                mediaId = mediaOut.stdout.trim();
+                if (/^\d+$/.test(mediaId)) {
+                  imported = true;
+                }
+              } catch (uploadErr) {
+                await logCallback(`Failed to copy/import local file ${filename}: ${uploadErr.message}. Trying direct fallback...`);
+              } finally {
+                await runRemoteShellCommand(`rm -f "${remoteTmpMedia}"`, logCallback).catch(() => {
+                });
+              }
+            } else {
+              await logCallback(`Local file not found at ${localPath} for generated image URL: ${imgUrl}. Trying direct fallback...`);
+            }
+          }
+          if (!imported) {
+            try {
+              const mediaOut = await runWpCommand(
+                `media import "${imgUrl}" --porcelain`,
+                docRoot,
+                logCallback
+              );
+              mediaId = mediaOut.stdout.trim();
+            } catch (e) {
+              await logCallback(`Direct import failed for ${imgUrl}. Trying with curl...`);
+              const ext = imgUrl.toLowerCase().includes(".png") ? "png" : "jpg";
+              const remoteTmpMedia = `/tmp/ds_media_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+              await runRemoteShellCommand(
+                `curl -sL "${imgUrl}" -o "${remoteTmpMedia}"`,
+                logCallback
+              );
+              const mediaOut = await runWpCommand(
+                `media import "${remoteTmpMedia}" --porcelain`,
+                docRoot,
+                logCallback
+              );
+              mediaId = mediaOut.stdout.trim();
+              await runRemoteShellCommand(`rm -f "${remoteTmpMedia}"`, logCallback).catch(() => {
+              });
+            }
           }
           if (/^\d+$/.test(mediaId)) {
             const urlOut = await runWpCommand(
@@ -3733,8 +4158,8 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
         await logCallback(`Active Elementor kit ID: ${activeKitId}`);
         if (activeKitId) {
           const kitSettingsPath = path3.join(process.cwd(), "elementor-kit", "site-settings.json");
-          if (fs3.existsSync(kitSettingsPath)) {
-            const rawKitSettings = JSON.parse(fs3.readFileSync(kitSettingsPath, "utf8"));
+          if (fs4.existsSync(kitSettingsPath)) {
+            const rawKitSettings = JSON.parse(fs4.readFileSync(kitSettingsPath, "utf8"));
             const updatedKit = updateElementorKitSettings(rawKitSettings, schema);
             updatedKitSettingsJson = JSON.stringify(updatedKit.settings || {});
           } else {
@@ -3845,13 +4270,13 @@ ${content}
     if (traceId) {
       try {
         const traceDir = path3.join(DEBUG_ROOT_DIR, traceId);
-        fs3.mkdirSync(traceDir, { recursive: true });
-        fs3.writeFileSync(
+        fs4.mkdirSync(traceDir, { recursive: true });
+        fs4.writeFileSync(
           path3.join(traceDir, "11-wp-injected.html"),
           content,
           "utf8"
         );
-        fs3.writeFileSync(
+        fs4.writeFileSync(
           path3.join(traceDir, "11-wp-injected-meta.json"),
           JSON.stringify(
             {
@@ -3922,34 +4347,64 @@ ${content}
       try {
         await logCallback(`Attempting to import logo: ${schema.brand.logo}`);
         let mediaId = "";
-        try {
-          const mediaOut = await runWpCommand(
-            `media import "${schema.brand.logo}" --porcelain`,
-            docRoot,
-            logCallback
-          );
-          mediaId = mediaOut.stdout.trim();
-        } catch (e) {
-          await logCallback(
-            "Direct import failed. Retrying with local temp file..."
-          );
-          const ext = schema.brand.logo.toLowerCase().includes(".png") ? "png" : "jpg";
-          const remoteTmpMedia = `/tmp/ds_logo_${Date.now()}.${ext}`;
-          await runRemoteShellCommand(
-            `curl -sL "${schema.brand.logo}" -o "${remoteTmpMedia}"`,
-            logCallback
-          );
-          const mediaOut = await runWpCommand(
-            `media import "${remoteTmpMedia}" --porcelain`,
-            docRoot,
-            logCallback
-          );
-          mediaId = mediaOut.stdout.trim();
-          await runRemoteShellCommand(
-            `rm -f "${remoteTmpMedia}"`,
-            logCallback
-          ).catch(() => {
-          });
+        let imported = false;
+        if (schema.brand.logo.includes("/public/generated-images/")) {
+          const parts = schema.brand.logo.split("/public/generated-images/");
+          const filename = parts[parts.length - 1];
+          const localPath = path3.join(process.cwd(), "public", "generated-images", filename);
+          if (fs4.existsSync(localPath)) {
+            await logCallback(`Detected local generated logo: ${filename}. Copying to remote server...`);
+            const ext = filename.toLowerCase().endsWith(".png") ? "png" : "jpg";
+            const remoteTmpMedia = `/tmp/ds_logo_${Date.now()}.${ext}`;
+            try {
+              await copyFileToRemote(localPath, remoteTmpMedia, logCallback);
+              const mediaOut = await runWpCommand(
+                `media import "${remoteTmpMedia}" --porcelain`,
+                docRoot,
+                logCallback
+              );
+              mediaId = mediaOut.stdout.trim();
+              if (/^\d+$/.test(mediaId)) {
+                imported = true;
+              }
+            } catch (uploadErr) {
+              await logCallback(`Failed to copy/import local logo ${filename}: ${uploadErr.message}. Trying direct fallback...`);
+            } finally {
+              await runRemoteShellCommand(`rm -f "${remoteTmpMedia}"`, logCallback).catch(() => {
+              });
+            }
+          }
+        }
+        if (!imported) {
+          try {
+            const mediaOut = await runWpCommand(
+              `media import "${schema.brand.logo}" --porcelain`,
+              docRoot,
+              logCallback
+            );
+            mediaId = mediaOut.stdout.trim();
+          } catch (e) {
+            await logCallback(
+              "Direct import failed. Retrying with local temp file..."
+            );
+            const ext = schema.brand.logo.toLowerCase().includes(".png") ? "png" : "jpg";
+            const remoteTmpMedia = `/tmp/ds_logo_${Date.now()}.${ext}`;
+            await runRemoteShellCommand(
+              `curl -sL "${schema.brand.logo}" -o "${remoteTmpMedia}"`,
+              logCallback
+            );
+            const mediaOut = await runWpCommand(
+              `media import "${remoteTmpMedia}" --porcelain`,
+              docRoot,
+              logCallback
+            );
+            mediaId = mediaOut.stdout.trim();
+            await runRemoteShellCommand(
+              `rm -f "${remoteTmpMedia}"`,
+              logCallback
+            ).catch(() => {
+            });
+          }
         }
         if (/^\d+$/.test(mediaId)) {
           await logCallback(
@@ -3979,14 +4434,14 @@ ${content}
         const traceId2 = schema?.meta?.traceId || schema?._validation?.traceId;
         if (traceId2 && finalDom) {
           const traceDir = path3.join(DEBUG_ROOT_DIR, traceId2);
-          fs3.mkdirSync(traceDir, { recursive: true });
-          fs3.writeFileSync(
+          fs4.mkdirSync(traceDir, { recursive: true });
+          fs4.writeFileSync(
             path3.join(traceDir, "12-wp-final-dom.html"),
             finalDom,
             "utf8"
           );
           const stripped = finalDom.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/\sstyle="[^"]*"/gi, "");
-          fs3.writeFileSync(
+          fs4.writeFileSync(
             path3.join(traceDir, "12-wp-final-dom-stripped.html"),
             stripped,
             "utf8"
@@ -3999,7 +4454,7 @@ ${content}
             ),
             length: finalDom.length
           };
-          fs3.writeFileSync(
+          fs4.writeFileSync(
             path3.join(traceDir, "12-wp-final-mutations.json"),
             JSON.stringify(wpMutations, null, 2),
             "utf8"
@@ -4390,14 +4845,14 @@ async function generateSearchKeywords(category, city) {
 
 // src/lib/mailer.ts
 import nodemailer from "nodemailer";
-import fs4 from "fs";
-import path4 from "path";
+import fs6 from "fs";
+import path5 from "path";
 function logEmailLocally(to, subject, body) {
-  const logDir = path4.join(process.cwd(), ".debug-generation");
-  if (!fs4.existsSync(logDir)) {
-    fs4.mkdirSync(logDir, { recursive: true });
+  const logDir = path5.join(process.cwd(), ".debug-generation");
+  if (!fs6.existsSync(logDir)) {
+    fs6.mkdirSync(logDir, { recursive: true });
   }
-  const logPath = path4.join(logDir, "sent_emails.log");
+  const logPath = path5.join(logDir, "sent_emails.log");
   const entry = `[${(/* @__PURE__ */ new Date()).toISOString()}] To: ${to}
 Subject: ${subject}
 Body:
@@ -4405,7 +4860,7 @@ ${body}
 ==================================================
 
 `;
-  fs4.appendFileSync(logPath, entry, "utf8");
+  fs6.appendFileSync(logPath, entry, "utf8");
   console.log(`[Mailer] Simulated email saved to ${logPath}`);
   console.log(`[Mailer] --- simulated email to ${to} ---`);
   console.log(`Subject: ${subject}`);
@@ -4510,14 +4965,14 @@ The DigitalScout Team`;
 }
 
 // server.ts
-fs5.writeSync(
+fs7.writeSync(
   2,
   `[BOOT] Server process starting at ${(/* @__PURE__ */ new Date()).toISOString()}
 `
 );
-fs5.writeSync(2, `[BOOT] CWD: ${process.cwd()}
+fs7.writeSync(2, `[BOOT] CWD: ${process.cwd()}
 `);
-fs5.writeSync(2, `[BOOT] DB_USER: ${process.env.DB_USER || "NOT SET"}
+fs7.writeSync(2, `[BOOT] DB_USER: ${process.env.DB_USER || "NOT SET"}
 `);
 var __filename2 = fileURLToPath2(import.meta.url);
 var __dirname2 = dirname(__filename2);
@@ -4525,7 +4980,7 @@ var GoogleGenerativeAI = null;
 var app = express();
 var PORT = process.env.PORT || 5001;
 var logStderr = (message) => {
-  fs5.writeSync(2, `${message}
+  fs7.writeSync(2, `${message}
 `);
 };
 var lastGeminiCallTime = 0;
@@ -4566,6 +5021,15 @@ app.use(
   })
 );
 app.use(express.json({ limit: "50mb" }));
+var publicDir = path6.join(process.cwd(), "public");
+var imagesDir = path6.join(publicDir, "generated-images");
+if (!fs7.existsSync(publicDir)) {
+  fs7.mkdirSync(publicDir, { recursive: true });
+}
+if (!fs7.existsSync(imagesDir)) {
+  fs7.mkdirSync(imagesDir, { recursive: true });
+}
+app.use("/public", express.static(publicDir));
 var JWT_SECRET = process.env.ENCRYPTION_KEY || "default-secret-key-12345";
 function hashPassword(password) {
   const salt = crypto2.randomBytes(16).toString("hex");
@@ -4887,7 +5351,7 @@ app.get("/api/auth/me", async (req, res) => {
     return res.status(500).json({ error: "Database query failed" });
   }
 });
-var DEBUG_ROOT_DIR2 = path5.join(process.cwd(), ".debug-generation");
+var DEBUG_ROOT_DIR2 = path6.join(process.cwd(), ".debug-generation");
 var generationDebugSessions = /* @__PURE__ */ new Map();
 function slugifyDebugSegment(value) {
   return (value || "generation").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -4902,14 +5366,14 @@ function createGenerationTraceId(business) {
 function createGenerationDebugSession(business) {
   const traceId = createGenerationTraceId(business);
   let folderName = traceId;
-  let folderPath = path5.join(DEBUG_ROOT_DIR2, folderName);
+  let folderPath = path6.join(DEBUG_ROOT_DIR2, folderName);
   let suffix = 2;
-  while (fs5.existsSync(folderPath)) {
+  while (fs7.existsSync(folderPath)) {
     folderName = `${traceId}-${suffix}`;
-    folderPath = path5.join(DEBUG_ROOT_DIR2, folderName);
+    folderPath = path6.join(DEBUG_ROOT_DIR2, folderName);
     suffix += 1;
   }
-  fs5.mkdirSync(folderPath, { recursive: true });
+  fs7.mkdirSync(folderPath, { recursive: true });
   const session = {
     traceId,
     folderName,
@@ -4935,15 +5399,15 @@ function formatDebugPayload(content) {
   return JSON.stringify(content, null, 2);
 }
 function persistGenerationDebugFile(session, fileName, content, append = false) {
-  fs5.mkdirSync(session.folderPath, { recursive: true });
-  const targetPath = path5.join(session.folderPath, fileName);
+  fs7.mkdirSync(session.folderPath, { recursive: true });
+  const targetPath = path6.join(session.folderPath, fileName);
   const payload = formatDebugPayload(content);
-  if (append && fs5.existsSync(targetPath)) {
-    fs5.appendFileSync(targetPath, `${payload}
+  if (append && fs7.existsSync(targetPath)) {
+    fs7.appendFileSync(targetPath, `${payload}
 `, "utf8");
     return;
   }
-  fs5.writeFileSync(targetPath, payload, "utf8");
+  fs7.writeFileSync(targetPath, payload, "utf8");
 }
 function getLatestApiKeyFromDisk(keyName = "GEMINI_API_KEY") {
   const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_CLOUD_API_KEY;
@@ -5671,15 +6135,15 @@ app.get(
 app.get("/api/generate/replay/:traceId", async (req, res) => {
   const { traceId } = req.params;
   try {
-    const inputPath = path5.join(
+    const inputPath = path6.join(
       DEBUG_ROOT_DIR2,
       traceId,
       "06-renderer-input.json"
     );
-    if (!fs5.existsSync(inputPath)) {
+    if (!fs7.existsSync(inputPath)) {
       return res.status(404).json({ error: "Trace not found or missing renderer input" });
     }
-    const schemaContent = fs5.readFileSync(inputPath, "utf-8");
+    const schemaContent = fs7.readFileSync(inputPath, "utf-8");
     const rawSchema = JSON.parse(schemaContent);
     const { validateWebsiteSchema: validateWebsiteSchema2 } = await Promise.resolve().then(() => (init_website_schema_validator(), website_schema_validator_exports));
     const { schemaToGutenbergBlocks: schemaToGutenbergBlocks2 } = await Promise.resolve().then(() => (init_wordpress(), wordpress_exports));

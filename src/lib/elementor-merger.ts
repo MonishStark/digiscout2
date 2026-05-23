@@ -59,248 +59,293 @@ export function mergeElementorTemplate(
 		return null;
 	};
 
-	// Helper to recursively find and modify widgets by widgetType
-	const processElements = (elements: any[], sectionIndex: number, sectionTitle: string) => {
-		for (const el of elements) {
-			if (el.elType === "column" && el.settings) {
-				// Column background images
-				if (el.settings.background_image && el.settings.background_image.url) {
-					const origUrl = el.settings.background_image.url;
-					let targetUrl = "";
-					if (sectionTitle === "Hero section") {
-						targetUrl = aiContent.hero?.hero_image || "";
-					} else if (sectionTitle === "What we do") {
-						targetUrl = aiContent.services?.image || "";
-					}
-					const local = getLocalMedia(targetUrl);
-					if (local) {
-						el.settings.background_image.url = local.url;
-						el.settings.background_image.id = String(local.id);
+	const collectElements = (elements: any[]) => {
+		const columns: any[] = [];
+		const widgets: Record<string, any[]> = {};
+
+		const traverse = (els: any[]) => {
+			if (!els || !Array.isArray(els)) return;
+			for (const el of els) {
+				if (el.elType === "column") {
+					columns.push(el);
+				} else if (el.elType === "widget") {
+					const type = el.widgetType;
+					if (type) {
+						if (!widgets[type]) {
+							widgets[type] = [];
+						}
+						widgets[type].push(el);
 					}
 				}
+				if (el.elements && Array.isArray(el.elements)) {
+					traverse(el.elements);
+				}
+			}
+		};
 
-				// Column background slideshow (Testimonials gallery)
-				if (el.settings.background_background === "slideshow" && Array.isArray(el.settings.background_slideshow_gallery)) {
-					const localSlideshow: any[] = [];
-					const slideshowUrls = aiContent.testimonials?.slideshow || [];
-					for (let i = 0; i < Math.min(3, slideshowUrls.length); i++) {
-						const targetUrl = slideshowUrls[i];
-						const local = getLocalMedia(targetUrl);
-						if (local) {
-							localSlideshow.push({
-								id: String(local.id),
-								url: local.url,
-							});
-						}
-					}
-					if (localSlideshow.length > 0) {
-						el.settings.background_slideshow_gallery = localSlideshow;
+		traverse(elements);
+		return { columns, widgets };
+	};
+
+	const processSection = (section: any, title: string) => {
+		if (!section.elements || !Array.isArray(section.elements)) return;
+		const { columns, widgets } = collectElements(section.elements);
+
+		if (title === "Hero section") {
+			// Heading
+			if (widgets.heading?.[0] && widgets.heading[0].settings) {
+				widgets.heading[0].settings.title = aiContent.hero?.heading || "";
+			}
+			// Button
+			if (widgets.button?.[0] && widgets.button[0].settings) {
+				widgets.button[0].settings.text = `${aiContent.hero?.button_text || "Get Started"} ➔`;
+				widgets.button[0].settings.link = {
+					url: "#services",
+					is_external: "",
+					nofollow: "",
+					custom_attributes: "",
+				};
+			}
+			// Column background image
+			let bgCol = columns.find((c: any) => c.settings?.background_image?.url);
+			if (!bgCol && columns.length > 1) {
+				bgCol = columns[1];
+			}
+			if (bgCol && bgCol.settings?.background_image) {
+				const targetUrl = aiContent.hero?.hero_image || "";
+				const local = getLocalMedia(targetUrl);
+				if (local) {
+					bgCol.settings.background_image.url = local.url;
+					bgCol.settings.background_image.id = String(local.id);
+				}
+			}
+			// Supporting circular image
+			if (widgets.image?.[0] && widgets.image[0].settings?.image) {
+				const targetUrl = aiContent.hero?.masked_image || "";
+				const local = getLocalMedia(targetUrl);
+				if (local) {
+					widgets.image[0].settings.image.url = local.url;
+					widgets.image[0].settings.image.id = String(local.id);
+				}
+			}
+		} else if (title === "Highest level") {
+			// About image
+			if (widgets.image?.[0] && widgets.image[0].settings?.image) {
+				const targetUrl = aiContent.about?.image || "";
+				const local = getLocalMedia(targetUrl);
+				if (local) {
+					widgets.image[0].settings.image.url = local.url;
+					widgets.image[0].settings.image.id = String(local.id);
+				}
+			}
+			// About title
+			if (widgets.heading?.[0] && widgets.heading[0].settings) {
+				widgets.heading[0].settings.title = aiContent.about?.heading || "";
+			}
+			// About description
+			if (widgets["text-editor"]?.[0] && widgets["text-editor"][0].settings) {
+				widgets["text-editor"][0].settings.editor = `<p>${aiContent.about?.description || ""}</p>`;
+			}
+			// About button
+			if (widgets.button?.[0] && widgets.button[0].settings) {
+				widgets.button[0].settings.text = `${aiContent.about?.button_text || "Learn More"} ➔`;
+				widgets.button[0].settings.link = {
+					url: "#services",
+					is_external: "",
+					nofollow: "",
+					custom_attributes: "",
+				};
+			}
+		} else if (title === "What we do") {
+			// Services heading
+			if (widgets.heading?.[0] && widgets.heading[0].settings) {
+				widgets.heading[0].settings.title = aiContent.services?.heading || "";
+			}
+			// Services description
+			if (widgets["text-editor"]?.[0] && widgets["text-editor"][0].settings) {
+				widgets["text-editor"][0].settings.editor = aiContent.services?.description || "";
+			}
+			// Icon lists (2 columns/widgets)
+			const iconLists = widgets["icon-list"] || [];
+			const servicesList = aiContent.services?.list || [];
+			if (iconLists[0] && iconLists[0].settings && Array.isArray(iconLists[0].settings.icon_list)) {
+				for (let i = 0; i < 4; i++) {
+					if (iconLists[0].settings.icon_list[i] && servicesList[i]) {
+						iconLists[0].settings.icon_list[i].text = servicesList[i];
 					}
 				}
 			}
-
-			if (el.elType === "widget" && el.widgetType) {
-				const type = el.widgetType;
-				const settings = el.settings || {};
-
-				if (type === "heading" && settings.title) {
-					const currentTitle = String(settings.title).trim();
-
-					if (sectionTitle === "Hero section" && currentTitle.includes("wood shop")) {
-						settings.title = aiContent.hero?.heading || "";
-					} else if (sectionTitle === "Highest level" && currentTitle.includes("Highest level")) {
-						settings.title = aiContent.about?.heading || "";
-					} else if (sectionTitle === "What we do" && currentTitle.includes("What we do")) {
-						settings.title = aiContent.services?.heading || "";
-					} else if (sectionTitle === "Exceptional quality" && currentTitle.includes("Exceptional quality")) {
-						settings.title = aiContent.features?.heading || "";
-					} else if (sectionTitle === "Recent projects" && currentTitle.includes("Recent projects")) {
-						settings.title = aiContent.projects?.heading || "";
-					} else if (sectionTitle === "Work Process" && currentTitle.includes("Work Process")) {
-						settings.title = aiContent.process?.heading || "";
-					} else if (sectionTitle === "Client testimonials" && currentTitle.includes("Client testimonials")) {
-						settings.title = aiContent.testimonials?.heading || "";
-					} else if (currentTitle.includes("Let’s discuss your project!")) {
-						settings.title = `Let’s discuss your project!`;
-					} else if (settings.__dynamic__ && settings.__dynamic__.title && settings.__dynamic__.title.includes("current-date-time")) {
-						// Copyright heading: Replace dynamic tag with static text to avoid Pro dependency
-						delete settings.__dynamic__;
-						settings.title = `${businessInfo.name} © ${new Date().getFullYear()} All Rights Reserved.`;
+			if (iconLists[1] && iconLists[1].settings && Array.isArray(iconLists[1].settings.icon_list)) {
+				for (let i = 0; i < 4; i++) {
+					if (iconLists[1].settings.icon_list[i] && servicesList[i + 4]) {
+						iconLists[1].settings.icon_list[i].text = servicesList[i + 4];
 					}
-				}
-
-				if (type === "text-editor" && settings.editor) {
-					if (sectionTitle === "Highest level") {
-						settings.editor = `<p>${aiContent.about?.description || ""}</p>`;
-					} else if (sectionTitle === "What we do") {
-						settings.editor = aiContent.services?.description || "";
-					} else if (sectionTitle === "Recent projects") {
-						settings.editor = aiContent.projects?.description || "";
-					} else if (String(settings.editor).includes("Don’t hesitate to contact us")) {
-						settings.editor = `<p>Don’t hesitate to contact us. We’ll be happy to discuss your needs, provide estimates, and answer all your questions.</p>`;
-					}
-				}
-
-				if (type === "button") {
-					const btnText = String(settings.text || "");
-					if (sectionTitle === "Hero section" && btnText.includes("Projects")) {
-						settings.text = `${aiContent.hero?.button_text || "Get Started"} ➔`;
-						settings.link = {
-							url: "#services",
-							is_external: "",
-							nofollow: "",
-							custom_attributes: "",
-						};
-					} else if (sectionTitle === "Highest level" && btnText.includes("Learn More")) {
-						settings.text = `${aiContent.about?.button_text || "Learn More"} ➔`;
-						settings.link = {
-							url: "#services",
-							is_external: "",
-							nofollow: "",
-							custom_attributes: "",
-						};
-					} else if (btnText.includes("Contact Us")) {
-						settings.link = {
-							url: "#contact",
-							is_external: "",
-							nofollow: "",
-							custom_attributes: "",
-						};
-					} else if (btnText.includes("Call Us")) {
-						delete settings.__dynamic__;
-						settings.text = `Call Us ${businessInfo.phone}`;
-						settings.link = {
-							url: `tel:${businessInfo.phone.replace(/[^0-9+]/g, "")}`,
-							is_external: "",
-							nofollow: "",
-							custom_attributes: "",
-						};
-					}
-				}
-
-				if (type === "image" && settings.image) {
-					let targetUrl = "";
-					if (sectionTitle === "Hero section") {
-						targetUrl = aiContent.hero?.masked_image || "";
-					} else if (sectionTitle === "Highest level") {
-						targetUrl = aiContent.about?.image || "";
-					}
-					const local = getLocalMedia(targetUrl);
-					if (local) {
-						settings.image.url = local.url;
-						settings.image.id = String(local.id);
-					}
-				}
-
-				if (type === "icon-list" && Array.isArray(settings.icon_list)) {
-					if (sectionTitle === "What we do") {
-						// Left column list (first list) vs right column list (second list)
-						// Left list has "Restaurant and Retail Furniture" placeholder
-						const isLeftList = settings.icon_list.some((item: any) =>
-							String(item.text).includes("Restaurant"),
-						);
-						const servicesList = aiContent.services?.list || [];
-						if (isLeftList) {
-							for (let i = 0; i < 4; i++) {
-								if (settings.icon_list[i] && servicesList[i]) {
-									settings.icon_list[i].text = servicesList[i];
-								}
-							}
-						} else {
-							for (let i = 0; i < 4; i++) {
-								if (settings.icon_list[i] && servicesList[i + 4]) {
-									settings.icon_list[i].text = servicesList[i + 4];
-								}
-							}
-						}
-					} else if (sectionTitle === "Footer" && settings.icon_list.some((item: any) => item.text && item.text.includes("@"))) {
-						// Footer contact info list
-						for (const item of settings.icon_list) {
-							const text = String(item.text || "");
-							if (text.includes("St Germain")) {
-								item.text = businessInfo.address;
-							} else if (text.includes("620-637")) {
-								item.text = businessInfo.phone;
-								item.link = { url: `tel:${businessInfo.phone.replace(/[^0-9+]/g, "")}` };
-							} else if (text.includes("ray@woodworking")) {
-								item.text = businessInfo.email;
-								item.link = { url: `mailto:${businessInfo.email}` };
-							}
-						}
-					}
-				}
-
-				if (type === "icon-box") {
-					const title = String(settings.title_text || "");
-					if (sectionTitle === "Exceptional quality" && aiContent.features?.items) {
-						if (title.includes("quality") && aiContent.features.items[0]) {
-							settings.title_text = aiContent.features.items[0].title;
-							settings.description_text = aiContent.features.items[0].description;
-						} else if (title.includes("experience") && aiContent.features.items[1]) {
-							settings.title_text = aiContent.features.items[1].title;
-							settings.description_text = aiContent.features.items[1].description;
-						} else if (title.includes("details") && aiContent.features.items[2]) {
-							settings.title_text = aiContent.features.items[2].title;
-							settings.description_text = aiContent.features.items[2].description;
-						}
-					} else if (sectionTitle === "Work Process" && aiContent.process?.steps) {
-						if (title.includes("Brief") && aiContent.process.steps[0]) {
-							settings.title_text = aiContent.process.steps[0].title;
-							settings.description_text = aiContent.process.steps[0].description;
-						} else if (title.includes("Design") && aiContent.process.steps[1]) {
-							settings.title_text = aiContent.process.steps[1].title;
-							settings.description_text = aiContent.process.steps[1].description;
-						} else if (title.includes("Manufacture") && aiContent.process.steps[2]) {
-							settings.title_text = aiContent.process.steps[2].title;
-							settings.description_text = aiContent.process.steps[2].description;
-						} else if (title.includes("Installation") && aiContent.process.steps[3]) {
-							settings.title_text = aiContent.process.steps[3].title;
-							settings.description_text = aiContent.process.steps[3].description;
-						}
-					}
-				}
-
-				if (type === "testimonial-carousel" && Array.isArray(settings.slides) && aiContent.testimonials?.items) {
-					for (let i = 0; i < Math.min(3, settings.slides.length); i++) {
-						if (aiContent.testimonials.items[i]) {
-							settings.slides[i].content = `“${aiContent.testimonials.items[i].content}”`;
-							settings.slides[i].name = aiContent.testimonials.items[i].name;
-							settings.slides[i].title = ""; // clear subtitle/role
-						}
-					}
-				}
-
-				if (type === "nav-menu" && menuId) {
-					settings.menu = String(menuId);
 				}
 			}
-
-			if (Array.isArray(el.elements)) {
-				processElements(el.elements, sectionIndex, sectionTitle);
+			// Column background image
+			let bgCol = columns.find((c: any) => c.settings?.background_image?.url);
+			if (!bgCol && columns.length > 1) {
+				bgCol = columns[1];
+			}
+			if (bgCol && bgCol.settings?.background_image) {
+				const targetUrl = aiContent.services?.image || "";
+				const local = getLocalMedia(targetUrl);
+				if (local) {
+					bgCol.settings.background_image.url = local.url;
+					bgCol.settings.background_image.id = String(local.id);
+				}
+			}
+		} else if (title === "Exceptional quality") {
+			// Features heading
+			if (widgets.heading?.[0] && widgets.heading[0].settings) {
+				widgets.heading[0].settings.title = aiContent.features?.heading || "";
+			}
+			// Icon boxes (3 features)
+			const iconBoxes = widgets["icon-box"] || [];
+			const featuresItems = aiContent.features?.items || [];
+			for (let i = 0; i < 3; i++) {
+				if (iconBoxes[i] && iconBoxes[i].settings && featuresItems[i]) {
+					iconBoxes[i].settings.title_text = featuresItems[i].title;
+					iconBoxes[i].settings.description_text = featuresItems[i].description;
+				}
+			}
+		} else if (title === "Recent projects") {
+			// Projects heading
+			if (widgets.heading?.[0] && widgets.heading[0].settings) {
+				widgets.heading[0].settings.title = aiContent.projects?.heading || "";
+			}
+			// Projects description
+			if (widgets["text-editor"]?.[0] && widgets["text-editor"][0].settings) {
+				widgets["text-editor"][0].settings.editor = aiContent.projects?.description || "";
+			}
+		} else if (title === "Work Process") {
+			// Process heading
+			if (widgets.heading?.[0] && widgets.heading[0].settings) {
+				widgets.heading[0].settings.title = aiContent.process?.heading || "";
+			}
+			// Icon boxes (4 steps)
+			const iconBoxes = widgets["icon-box"] || [];
+			const steps = aiContent.process?.steps || [];
+			for (let i = 0; i < 4; i++) {
+				if (iconBoxes[i] && iconBoxes[i].settings && steps[i]) {
+					iconBoxes[i].settings.title_text = steps[i].title;
+					iconBoxes[i].settings.description_text = steps[i].description;
+				}
+			}
+		} else if (title === "Client testimonials") {
+			// Slideshow background
+			const slideshowCol = columns.find((c: any) => c.settings?.background_background === "slideshow");
+			if (slideshowCol && slideshowCol.settings && Array.isArray(slideshowCol.settings.background_slideshow_gallery)) {
+				const localSlideshow: any[] = [];
+				const slideshowUrls = aiContent.testimonials?.slideshow || [];
+				for (let i = 0; i < Math.min(3, slideshowUrls.length); i++) {
+					const targetUrl = slideshowUrls[i];
+					const local = getLocalMedia(targetUrl);
+					if (local) {
+						localSlideshow.push({
+							id: String(local.id),
+							url: local.url,
+						});
+					}
+				}
+				if (localSlideshow.length > 0) {
+					slideshowCol.settings.background_slideshow_gallery = localSlideshow;
+				}
+			}
+			// Testimonials heading
+			if (widgets.heading?.[0] && widgets.heading[0].settings) {
+				widgets.heading[0].settings.title = aiContent.testimonials?.heading || "";
+			}
+			// Testimonial carousel
+			if (widgets["testimonial-carousel"]?.[0] && widgets["testimonial-carousel"][0].settings && Array.isArray(widgets["testimonial-carousel"][0].settings.slides)) {
+				const slides = widgets["testimonial-carousel"][0].settings.slides;
+				const testimonialsItems = aiContent.testimonials?.items || [];
+				for (let i = 0; i < Math.min(3, slides.length); i++) {
+					if (testimonialsItems[i]) {
+						slides[i].content = `“${testimonialsItems[i].content}”`;
+						slides[i].name = testimonialsItems[i].name;
+						slides[i].title = ""; // clear subtitle
+					}
+				}
+			}
+		} else if (title === "Header") {
+			// Call Us button
+			if (widgets.button?.[0] && widgets.button[0].settings) {
+				const btn = widgets.button[0];
+				delete btn.settings.__dynamic__;
+				btn.settings.text = `Call Us ${businessInfo.phone}`;
+				btn.settings.link = {
+					url: `tel:${businessInfo.phone.replace(/[^0-9+]/g, "")}`,
+					is_external: "",
+					nofollow: "",
+					custom_attributes: "",
+				};
+			}
+			// Nav menu
+			if (widgets["nav-menu"]?.[0] && widgets["nav-menu"][0].settings && menuId) {
+				widgets["nav-menu"][0].settings.menu = String(menuId);
+			}
+		} else if (title === "Let's discuss") {
+			// Heading
+			if (widgets.heading?.[0] && widgets.heading[0].settings) {
+				widgets.heading[0].settings.title = `Let’s discuss your project!`;
+			}
+			// Description
+			if (widgets["text-editor"]?.[0] && widgets["text-editor"][0].settings) {
+				widgets["text-editor"][0].settings.editor = `<p>Don’t hesitate to contact us. We’ll be happy to discuss your needs, provide estimates, and answer all your questions.</p>`;
+			}
+			// Button
+			if (widgets.button?.[0] && widgets.button[0].settings) {
+				widgets.button[0].settings.text = `Contact Us ➔`;
+				widgets.button[0].settings.link = {
+					url: "#contact",
+					is_external: "",
+					nofollow: "",
+					custom_attributes: "",
+				};
+			}
+		} else if (title === "Footer") {
+			// Copyright heading
+			if (widgets.heading?.[0] && widgets.heading[0].settings) {
+				const cHeading = widgets.heading[0];
+				delete cHeading.settings.__dynamic__;
+				cHeading.settings.title = `${businessInfo.name} © ${new Date().getFullYear()} All Rights Reserved.`;
+			}
+			// Contact info list
+			const contactList = (widgets["icon-list"] || []).find((widget: any) =>
+				widget.settings?.icon_list?.some((item: any) => String(item.text).includes("@"))
+			);
+			if (contactList && Array.isArray(contactList.settings.icon_list)) {
+				for (const item of contactList.settings.icon_list) {
+					const text = String(item.text || "");
+					if (text.includes("St Germain") || item.text === "315 St Germain Ave, Canada") {
+						item.text = businessInfo.address;
+					} else if (text.includes("620-637") || text.match(/[0-9]{3}-[0-9]{3}/)) {
+						item.text = businessInfo.phone;
+						item.link = { url: `tel:${businessInfo.phone.replace(/[^0-9+]/g, "")}` };
+					} else if (text.includes("@")) {
+						item.text = businessInfo.email;
+						item.link = { url: `mailto:${businessInfo.email}` };
+					}
+				}
 			}
 		}
 	};
 
 	// Process each of the layout sections
-	homeSections.forEach((section: any, idx: number) => {
+	homeSections.forEach((section: any) => {
 		const title = section.settings?._title || "";
-		if (section.elements) {
-			processElements(section.elements, idx, title);
-		}
+		processSection(section, title);
 	});
 
-	headerSections.forEach((section: any, idx: number) => {
+	headerSections.forEach((section: any) => {
 		const title = section.settings?._title || "Header";
-		if (section.elements) {
-			processElements(section.elements, idx, title);
-		}
+		processSection(section, title);
 	});
 
-	footerSections.forEach((section: any, idx: number) => {
+	footerSections.forEach((section: any) => {
 		const title = section.settings?._title || "Footer";
-		if (section.elements) {
-			processElements(section.elements, idx, title);
-		}
+		processSection(section, title);
 	});
 
 	// Concatenate sections into a single array for elementor_canvas layout

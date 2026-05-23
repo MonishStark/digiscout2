@@ -550,7 +550,7 @@
                 "size": "100",
                 "sizes": []
               },
-              "object-fit": "fill",
+              "object-fit": "cover",
               "image_border_radius": {
                 "unit": "%",
                 "top": "50",
@@ -3540,7 +3540,7 @@
           {
             "id": "4500c934",
             "settings": {
-              "text": "Contact Us  ⟶",
+              "text": "Contact Us ➔",
               "text_padding": {
                 "unit": "px",
                 "top": "0",

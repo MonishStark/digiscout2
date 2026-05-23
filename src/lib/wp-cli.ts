@@ -1,5 +1,8 @@
 import { exec } from "child_process";
 import { promisify } from "util";
+import * as fs from "fs";
+
+
 
 const execAsync = promisify(exec);
 
@@ -244,3 +247,64 @@ export async function runRemoteShellCommand(
 ): Promise<WpCliResult> {
 	return executeRemoteCommand(command, logCallback);
 }
+
+/**
+ * Copies a local file to a remote path via SSH standard input redirection.
+ * Falls back to local filesystem copy if SSH is not configured.
+ */
+export async function copyFileToRemote(
+	localPath: string,
+	remotePath: string,
+	logCallback?: (log: string) => void,
+): Promise<void> {
+	const { host, port, user, keyPath } = getSshConfig();
+
+	if (!host || !user) {
+		// Local mode - copy file locally
+		if (logCallback) logCallback(`[LOCAL COPY] ${localPath} -> ${remotePath}`);
+		fs.copyFileSync(localPath, remotePath);
+		return;
+	}
+
+	const keyFlag = keyPath ? `-i "${keyPath}"` : "";
+	// Escape remotePath for safety in remote command
+	const escapedRemotePath = remotePath.replace(/'/g, `'\\''`);
+	
+	const sshCmd = [
+		"ssh",
+		"-p", port,
+		keyFlag,
+		"-o StrictHostKeyChecking=no",
+		"-o ConnectTimeout=30",
+		"-o ServerAliveInterval=60",
+		"-o BatchMode=yes",
+		`${user}@${host}`,
+		`'cat > "${escapedRemotePath}"'`,
+	].filter(Boolean).join(" ");
+
+	if (logCallback) {
+		logCallback(`[SSH COPY] ${localPath} -> ${user}@${host}:${remotePath}`);
+	}
+
+	return new Promise<void>((resolve, reject) => {
+		const child = exec(sshCmd, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+			if (error) {
+				if (logCallback) {
+					logCallback(`[SSH COPY FAILED] error: ${error.message}`);
+					if (stderr) logCallback(`[SSH COPY FAILED stderr] ${stderr}`);
+				}
+				reject(new Error(`SSH copy failed: ${error.message} (stderr: ${stderr})`));
+			} else {
+				resolve();
+			}
+		});
+
+		const readStream = fs.createReadStream(localPath);
+		readStream.on("error", (err) => {
+			child.kill();
+			reject(err);
+		});
+		readStream.pipe(child.stdin!);
+	});
+}
+

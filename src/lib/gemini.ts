@@ -796,3 +796,133 @@ export async function generateWebsiteContent(
 		throw error;
 	}
 }
+
+export async function generateCustomImage(
+	prompt: string,
+	options?: {
+		aspectRatio?: "1:1" | "3:4" | "4:3" | "9:16" | "16:9";
+		logStderr?: (msg: string) => void;
+	},
+): Promise<string> {
+	const log = options?.logStderr || ((msg: string) => console.error(msg));
+	const googleCloudApiKey = process.env.GOOGLE_CLOUD_API_KEY;
+	const geminiApiKey = process.env.GEMINI_API_KEY;
+
+	if (!googleCloudApiKey && !geminiApiKey) {
+		throw new Error("Missing API key for image generation (GEMINI_API_KEY or GOOGLE_CLOUD_API_KEY)");
+	}
+
+	// 1. Primary path: Vertex AI Imagen via GOOGLE_CLOUD_API_KEY
+	if (googleCloudApiKey) {
+		const apiEndpoint = process.env.VERTEX_API_ENDPOINT || "aiplatform.googleapis.com";
+		const modelName = "imagen-3.0-generate-002";
+		const url = `https://${apiEndpoint}/v1/publishers/google/models/${modelName}:predict?key=${googleCloudApiKey}`;
+
+		log(`[AI] Generating image via Vertex API using ${modelName}. Prompt: "${prompt}"...`);
+		let attempt = 0;
+		const maxAttempts = 4;
+		while (attempt < maxAttempts) {
+			attempt++;
+			try {
+				const payload = {
+					instances: [
+						{
+							prompt,
+						},
+					],
+					parameters: {
+						sampleCount: 1,
+						aspectRatio: options?.aspectRatio || "16:9",
+						outputMimeType: "image/png",
+					},
+				};
+
+				const res = await fetch(url, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify(payload),
+				});
+
+				if (res.ok) {
+					const data = (await res.json()) as any;
+					const imageBytes = data.predictions?.[0]?.bytesBase64Encoded;
+					if (imageBytes) {
+						log(`[AI] Vertex Image generation successful (${imageBytes.length} bytes)`);
+						return imageBytes;
+					}
+					throw new Error("No bytesBase64Encoded returned in prediction response");
+				} else {
+					const errText = await res.text().catch(() => "");
+					if ((res.status === 429 || errText.includes("RESOURCE_EXHAUSTED")) && attempt < maxAttempts) {
+						const delay = 3000 + Math.random() * 2000;
+						log(`[AI] Vertex rate limited (429/RESOURCE_EXHAUSTED). Retrying attempt ${attempt + 1}/${maxAttempts} in ${(delay / 1000).toFixed(1)}s...`);
+						await new Promise((resolve) => setTimeout(resolve, delay));
+						continue;
+					}
+					throw new Error(`Vertex REST failed with status ${res.status}: ${errText}`);
+				}
+			} catch (err: any) {
+				const isTransient = err.message?.includes("fetch") || err.message?.includes("network") || err.message?.includes("timeout");
+				if (isTransient && attempt < maxAttempts) {
+					const delay = 3000 + Math.random() * 2000;
+					log(`[AI] Vertex fetch network error: ${err.message || err}. Retrying attempt ${attempt + 1}/${maxAttempts} in ${(delay / 1000).toFixed(1)}s...`);
+					await new Promise((resolve) => setTimeout(resolve, delay));
+					continue;
+				}
+				log(`[AI] Vertex Image generation failed on attempt ${attempt}/${maxAttempts}: ${err.message || err}.`);
+				if (attempt >= maxAttempts) {
+					log(`[AI] Vertex Image generation failed after ${maxAttempts} attempts. Trying fallback...`);
+				}
+			}
+		}
+	}
+
+	// 2. Secondary/Fallback path: Gemini API Imagen via GEMINI_API_KEY
+	if (geminiApiKey) {
+		const modelName = "imagen-4.0-generate-001";
+		const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${geminiApiKey}`;
+
+		log(`[AI] Generating image via Gemini API fallback using ${modelName}. Prompt: "${prompt}"...`);
+		try {
+			const payload = {
+				instances: [
+					{
+						prompt,
+					},
+				],
+				parameters: {
+					sampleCount: 1,
+					aspectRatio: options?.aspectRatio || "16:9",
+				},
+			};
+
+			const res = await fetch(url, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(payload),
+			});
+
+			if (res.ok) {
+				const data = (await res.json()) as any;
+				const imageBytes = data.predictions?.[0]?.bytesBase64Encoded;
+				if (imageBytes) {
+					log(`[AI] Gemini Image generation successful (${imageBytes.length} bytes)`);
+					return imageBytes;
+				}
+				throw new Error("No bytesBase64Encoded returned in prediction response");
+			} else {
+				const errText = await res.text().catch(() => "");
+				throw new Error(`Gemini REST failed with status ${res.status}: ${errText}`);
+			}
+		} catch (err: any) {
+			log(`[AI] Gemini Image generation failed: ${err.message || err}`);
+		}
+	}
+
+	throw new Error("All image generation attempts failed");
+}
+
