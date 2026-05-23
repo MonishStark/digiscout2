@@ -3869,7 +3869,10 @@ var SUBDOMAIN_SEMANTIC_VARIANTS = [
   "-pro"
 ];
 function sanitizeSubdomainBase(name) {
-  return (name || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "").substring(0, 40);
+  return (name || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "").substring(0, 40).replace(/^-+|-+$/g, "");
+}
+function cleanSubdomain(sub) {
+  return sub.replace(/-+/g, "-").replace(/^-+|-+$/g, "");
 }
 async function isSubdomainTaken(subdomain) {
   const [rows] = await pool.query(
@@ -3889,28 +3892,28 @@ async function generateUniqueSubdomain(businessName) {
     return base;
   }
   for (let i = 1; i <= 5; i++) {
-    const candidate = `${base}-${i}`.substring(0, MAX_SUBDOMAIN_LENGTH);
+    const candidate = cleanSubdomain(`${base}-${i}`.substring(0, MAX_SUBDOMAIN_LENGTH));
     if (!await isSubdomainTaken(candidate)) {
       return candidate;
     }
   }
   for (const suffix of SUBDOMAIN_SEMANTIC_VARIANTS) {
-    const candidate = `${base}${suffix}`.substring(0, MAX_SUBDOMAIN_LENGTH);
+    const candidate = cleanSubdomain(`${base}${suffix}`.substring(0, MAX_SUBDOMAIN_LENGTH));
     if (!await isSubdomainTaken(candidate)) {
       return candidate;
     }
   }
   for (let attempt = 0; attempt < 10; attempt++) {
     const suffix = crypto.randomBytes(2).toString("hex");
-    const candidate = `${base}-${suffix}`.substring(0, MAX_SUBDOMAIN_LENGTH);
+    const candidate = cleanSubdomain(`${base}-${suffix}`.substring(0, MAX_SUBDOMAIN_LENGTH));
     if (!await isSubdomainTaken(candidate)) {
       return candidate;
     }
   }
-  return `${base}-${crypto.randomBytes(4).toString("hex")}`.substring(
+  return cleanSubdomain(`${base}-${crypto.randomBytes(4).toString("hex")}`.substring(
     0,
     MAX_SUBDOMAIN_LENGTH
-  );
+  ));
 }
 function generateSecurePassword() {
   return crypto.randomBytes(16).toString("hex") + "!aA1";

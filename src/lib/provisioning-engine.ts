@@ -58,7 +58,15 @@ function sanitizeSubdomainBase(name: string): string {
 		.replace(/[^a-z0-9]+/g, "-") // non-alphanumeric → hyphen
 		.replace(/-+/g, "-") // collapse repeated hyphens
 		.replace(/^-+|-+$/g, "") // trim leading/trailing hyphens
-		.substring(0, 40); // leave room for any suffix
+		.substring(0, 40) // leave room for any suffix
+		.replace(/^-+|-+$/g, ""); // trim leading/trailing hyphens again after truncation
+}
+
+/**
+ * Helper to ensure a subdomain candidate is DNS-safe by collapsing and trimming hyphens.
+ */
+function cleanSubdomain(sub: string): string {
+	return sub.replace(/-+/g, "-").replace(/^-+|-+$/g, "");
 }
 
 /**
@@ -99,7 +107,7 @@ async function generateUniqueSubdomain(businessName: string): Promise<string> {
 
 	// Priority 2: numeric variants
 	for (let i = 1; i <= 5; i++) {
-		const candidate = `${base}-${i}`.substring(0, MAX_SUBDOMAIN_LENGTH);
+		const candidate = cleanSubdomain(`${base}-${i}`.substring(0, MAX_SUBDOMAIN_LENGTH));
 		if (!(await isSubdomainTaken(candidate))) {
 			return candidate;
 		}
@@ -107,7 +115,7 @@ async function generateUniqueSubdomain(businessName: string): Promise<string> {
 
 	// Priority 3: semantic variants
 	for (const suffix of SUBDOMAIN_SEMANTIC_VARIANTS) {
-		const candidate = `${base}${suffix}`.substring(0, MAX_SUBDOMAIN_LENGTH);
+		const candidate = cleanSubdomain(`${base}${suffix}`.substring(0, MAX_SUBDOMAIN_LENGTH));
 		if (!(await isSubdomainTaken(candidate))) {
 			return candidate;
 		}
@@ -116,17 +124,17 @@ async function generateUniqueSubdomain(businessName: string): Promise<string> {
 	// Priority 4: short random hex suffix (last resort)
 	for (let attempt = 0; attempt < 10; attempt++) {
 		const suffix = crypto.randomBytes(2).toString("hex"); // 4 chars e.g. "a3f1"
-		const candidate = `${base}-${suffix}`.substring(0, MAX_SUBDOMAIN_LENGTH);
+		const candidate = cleanSubdomain(`${base}-${suffix}`.substring(0, MAX_SUBDOMAIN_LENGTH));
 		if (!(await isSubdomainTaken(candidate))) {
 			return candidate;
 		}
 	}
 
 	// Absolute last resort (collision-safe)
-	return `${base}-${crypto.randomBytes(4).toString("hex")}`.substring(
+	return cleanSubdomain(`${base}-${crypto.randomBytes(4).toString("hex")}`.substring(
 		0,
 		MAX_SUBDOMAIN_LENGTH,
-	);
+	));
 }
 
 function generateSecurePassword() {
