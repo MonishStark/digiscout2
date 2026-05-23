@@ -1534,8 +1534,8 @@ async function generateCustomImage(prompt, options) {
   }
   if (googleCloudApiKey) {
     const apiEndpoint = process.env.VERTEX_API_ENDPOINT || "aiplatform.googleapis.com";
-    const modelName = "imagen-3.0-generate-002";
-    const url = `https://${apiEndpoint}/v1/publishers/google/models/${modelName}:predict?key=${googleCloudApiKey}`;
+    const modelName = "gemini-3-pro-image-preview";
+    const url = `https://${apiEndpoint}/v1/publishers/google/models/${modelName}:streamGenerateContent?key=${googleCloudApiKey}`;
     log(`[AI] Generating image via Vertex API using ${modelName}. Prompt: "${prompt}"...`);
     let attempt = 0;
     const maxAttempts = 4;
@@ -1543,16 +1543,48 @@ async function generateCustomImage(prompt, options) {
       attempt++;
       try {
         const payload = {
-          instances: [
+          contents: [
             {
-              prompt
+              role: "user",
+              parts: [
+                {
+                  text: prompt
+                }
+              ]
             }
           ],
-          parameters: {
-            sampleCount: 1,
-            aspectRatio: options?.aspectRatio || "16:9",
-            outputMimeType: "image/png"
-          }
+          generationConfig: {
+            temperature: 1,
+            maxOutputTokens: 32768,
+            responseModalities: ["TEXT", "IMAGE"],
+            topP: 0.95,
+            imageConfig: {
+              aspectRatio: options?.aspectRatio || "16:9",
+              imageSize: "1K",
+              imageOutputOptions: {
+                mimeType: "image/png"
+              },
+              personGeneration: "ALLOW_ALL"
+            }
+          },
+          safetySettings: [
+            {
+              category: "HARM_CATEGORY_HATE_SPEECH",
+              threshold: "OFF"
+            },
+            {
+              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+              threshold: "OFF"
+            },
+            {
+              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              threshold: "OFF"
+            },
+            {
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "OFF"
+            }
+          ]
         };
         const res = await fetch(url, {
           method: "POST",
@@ -1562,13 +1594,23 @@ async function generateCustomImage(prompt, options) {
           body: JSON.stringify(payload)
         });
         if (res.ok) {
-          const data = await res.json();
-          const imageBytes = data.predictions?.[0]?.bytesBase64Encoded;
+          const chunks = await res.json();
+          let imageBytes = "";
+          for (const chunk of chunks) {
+            const parts = chunk.candidates?.[0]?.content?.parts;
+            if (parts) {
+              for (const part of parts) {
+                if (part.inlineData && part.inlineData.data) {
+                  imageBytes = part.inlineData.data;
+                }
+              }
+            }
+          }
           if (imageBytes) {
             log(`[AI] Vertex Image generation successful (${imageBytes.length} bytes)`);
             return imageBytes;
           }
-          throw new Error("No bytesBase64Encoded returned in prediction response");
+          throw new Error("No inlineData image bytes found in stream chunks");
         } else {
           const errText = await res.text().catch(() => "");
           if ((res.status === 429 || errText.includes("RESOURCE_EXHAUSTED")) && attempt < maxAttempts) {
@@ -3734,6 +3776,31 @@ async function executeStateMachine(job) {
         job.id,
         `Warning: Elementor plugin install failed (${e.message})`
       );
+    }
+    const localProZipPath = path3.join(process.cwd(), "elementor-pro-4.0.4.zip");
+    if (fs4.existsSync(localProZipPath)) {
+      await appendLog(job.id, "Found Elementor Pro zip file. Uploading to remote server...");
+      const remoteProZipPath = `/tmp/elementor-pro-4.0.4.zip`;
+      try {
+        await copyFileToRemote(localProZipPath, remoteProZipPath, (log) => appendLog(job.id, log));
+        await appendLog(job.id, "Elementor Pro zip uploaded. Installing and activating...");
+        await runWpCommand(
+          `plugin install "${remoteProZipPath}" --activate`,
+          fullDocRoot,
+          (log) => appendLog(job.id, log)
+        );
+        await appendLog(job.id, "Elementor Pro plugin installed and activated successfully.");
+      } catch (err) {
+        await appendLog(
+          job.id,
+          `Warning: Elementor Pro plugin install failed (${err.message})`
+        );
+      } finally {
+        await runRemoteShellCommand(`rm -f "${remoteProZipPath}"`, (log) => appendLog(job.id, log)).catch(() => {
+        });
+      }
+    } else {
+      await appendLog(job.id, "Warning: elementor-pro-4.0.4.zip not found in workspace root. Skipping Elementor Pro installation.");
     }
     await runWpCommand(
       `option update default_comment_status closed`,

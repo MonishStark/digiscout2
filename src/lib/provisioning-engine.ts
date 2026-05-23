@@ -421,6 +421,32 @@ async function executeStateMachine(job: any) {
 			);
 		}
 
+		// Install and activate Elementor Pro if zip file is present in the workspace
+		const localProZipPath = path.join(process.cwd(), "elementor-pro-4.0.4.zip");
+		if (fs.existsSync(localProZipPath)) {
+			await appendLog(job.id, "Found Elementor Pro zip file. Uploading to remote server...");
+			const remoteProZipPath = `/tmp/elementor-pro-4.0.4.zip`;
+			try {
+				await copyFileToRemote(localProZipPath, remoteProZipPath, (log) => appendLog(job.id, log));
+				await appendLog(job.id, "Elementor Pro zip uploaded. Installing and activating...");
+				await runWpCommand(
+					`plugin install "${remoteProZipPath}" --activate`,
+					fullDocRoot,
+					(log) => appendLog(job.id, log),
+				);
+				await appendLog(job.id, "Elementor Pro plugin installed and activated successfully.");
+			} catch (err: any) {
+				await appendLog(
+					job.id,
+					`Warning: Elementor Pro plugin install failed (${err.message})`,
+				);
+			} finally {
+				await runRemoteShellCommand(`rm -f "${remoteProZipPath}"`, (log) => appendLog(job.id, log)).catch(() => {});
+			}
+		} else {
+			await appendLog(job.id, "Warning: elementor-pro-4.0.4.zip not found in workspace root. Skipping Elementor Pro installation.");
+		}
+
 		await runWpCommand(
 			`option update default_comment_status closed`,
 			fullDocRoot,

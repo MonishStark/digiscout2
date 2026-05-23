@@ -815,8 +815,8 @@ export async function generateCustomImage(
 	// 1. Primary path: Vertex AI Imagen via GOOGLE_CLOUD_API_KEY
 	if (googleCloudApiKey) {
 		const apiEndpoint = process.env.VERTEX_API_ENDPOINT || "aiplatform.googleapis.com";
-		const modelName = "imagen-3.0-generate-002";
-		const url = `https://${apiEndpoint}/v1/publishers/google/models/${modelName}:predict?key=${googleCloudApiKey}`;
+		const modelName = "gemini-3-pro-image-preview";
+		const url = `https://${apiEndpoint}/v1/publishers/google/models/${modelName}:streamGenerateContent?key=${googleCloudApiKey}`;
 
 		log(`[AI] Generating image via Vertex API using ${modelName}. Prompt: "${prompt}"...`);
 		let attempt = 0;
@@ -825,16 +825,48 @@ export async function generateCustomImage(
 			attempt++;
 			try {
 				const payload = {
-					instances: [
+					contents: [
 						{
-							prompt,
+							role: "user",
+							parts: [
+								{
+									text: prompt,
+								},
+							],
 						},
 					],
-					parameters: {
-						sampleCount: 1,
-						aspectRatio: options?.aspectRatio || "16:9",
-						outputMimeType: "image/png",
+					generationConfig: {
+						temperature: 1,
+						maxOutputTokens: 32768,
+						responseModalities: ["TEXT", "IMAGE"],
+						topP: 0.95,
+						imageConfig: {
+							aspectRatio: options?.aspectRatio || "16:9",
+							imageSize: "1K",
+							imageOutputOptions: {
+								mimeType: "image/png",
+							},
+							personGeneration: "ALLOW_ALL",
+						},
 					},
+					safetySettings: [
+						{
+							category: "HARM_CATEGORY_HATE_SPEECH",
+							threshold: "OFF",
+						},
+						{
+							category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+							threshold: "OFF",
+						},
+						{
+							category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+							threshold: "OFF",
+						},
+						{
+							category: "HARM_CATEGORY_HARASSMENT",
+							threshold: "OFF",
+						},
+					],
 				};
 
 				const res = await fetch(url, {
@@ -846,13 +878,23 @@ export async function generateCustomImage(
 				});
 
 				if (res.ok) {
-					const data = (await res.json()) as any;
-					const imageBytes = data.predictions?.[0]?.bytesBase64Encoded;
+					const chunks = (await res.json()) as any[];
+					let imageBytes = "";
+					for (const chunk of chunks) {
+						const parts = chunk.candidates?.[0]?.content?.parts;
+						if (parts) {
+							for (const part of parts) {
+								if (part.inlineData && part.inlineData.data) {
+									imageBytes = part.inlineData.data;
+								}
+							}
+						}
+					}
 					if (imageBytes) {
 						log(`[AI] Vertex Image generation successful (${imageBytes.length} bytes)`);
 						return imageBytes;
 					}
-					throw new Error("No bytesBase64Encoded returned in prediction response");
+					throw new Error("No inlineData image bytes found in stream chunks");
 				} else {
 					const errText = await res.text().catch(() => "");
 					if ((res.status === 429 || errText.includes("RESOURCE_EXHAUSTED")) && attempt < maxAttempts) {
