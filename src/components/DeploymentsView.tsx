@@ -735,6 +735,10 @@ export default function DeploymentsView({
 																</button>
 															</div>
 															<p className='mt-1 text-[10px] text-amber-600 italic'>Save these! They are only shown once.</p>
+															<p className='mt-1.5 text-[10px] text-amber-700/80 flex items-start gap-1'>
+																<span className='mt-0.5 flex-shrink-0'>⏱</span>
+																<span><strong>Note:</strong> The WP Preview &amp; Admin links may take <strong>1–2 minutes</strong> to become accessible after the site goes live (DNS &amp; server warmup).</span>
+															</p>
 														</div>
 													)}
 													{project.deployedUrl && (
