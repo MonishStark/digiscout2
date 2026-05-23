@@ -716,6 +716,13 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 				});
 			}
 
+			// Add projects posts images to the imageSet so they are uploaded to WordPress
+			if (Array.isArray(aiContent.projects?.posts)) {
+				aiContent.projects.posts.forEach((p: any) => {
+					if (p.url) imageSet.add(p.url);
+				});
+			}
+
 			if (schema.brand?.logo) {
 				imageSet.add(schema.brand.logo);
 			}
@@ -731,12 +738,13 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 			for (const file of templateFiles) {
 				if (fs.existsSync(file)) {
 					try {
-						const content = fs.readFileSync(file, "utf8");
+						// Strip backslashes from the raw template file content before matching, 
+						// to ensure standard regex can capture escaped library.elementor.com URLs.
+						const content = fs.readFileSync(file, "utf8").replace(/\\/g, "");
 						const matches = content.match(/https?:\/\/library\.elementor\.com\/[^\s"'}]+/g);
 						if (matches) {
 							for (const match of matches) {
-								const url = match.replace(/\\/g, "");
-								imageSet.add(url);
+								imageSet.add(match);
 							}
 						}
 					} catch (e) {
@@ -830,6 +838,30 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 					}
 				} catch (err: any) {
 					await logCallback(`Failed to import media ${imgUrl}: ${err.message}`);
+				}
+			}
+
+			// Create Project Posts in WordPress
+			if (Array.isArray(aiContent.projects?.posts) && aiContent.projects.posts.length > 0) {
+				await logCallback(`Creating ${aiContent.projects.posts.length} project posts in WordPress...`);
+				for (const post of aiContent.projects.posts) {
+					try {
+						const localMedia = mediaMap[post.url];
+						const thumbnailArg = localMedia ? ` --thumbnail_id=${localMedia.id}` : "";
+
+						await logCallback(`Creating post: "${post.title}" with thumbnail ID: ${localMedia?.id || "none"}`);
+						
+						const safeTitle = post.title.replace(/'/g, `'\\''`);
+						const postCreateOut = await runWpCommand(
+							`post create --post_type=post --post_title='${safeTitle}' --post_status=publish${thumbnailArg} --porcelain`,
+							docRoot,
+							logCallback
+						);
+						const newPostId = postCreateOut.stdout.trim();
+						await logCallback(`Created project post ID: ${newPostId}`);
+					} catch (postErr: any) {
+						await logCallback(`Warning: Failed to create project post: ${postErr.message}`);
+					}
 				}
 			}
 
@@ -1038,6 +1070,14 @@ if ($kit_id && file_exists($kit_settings_json_file)) {
 				logCallback,
 			);
 			await logCallback(`PHP script output: ${evalOut.stdout}`);
+
+			// Force Elementor to regenerate its static CSS files so colors/fonts apply
+			try {
+				await logCallback("Regenerating Elementor CSS files...");
+				await runWpCommand(`elementor force-regenerate-css`, docRoot, logCallback);
+			} catch (cssErr: any) {
+				await logCallback(`Warning: Failed to regenerate Elementor CSS: ${cssErr.message}`);
+			}
 
 			// Cleanup
 			await runRemoteShellCommand(`rm -f '${homepageJsonTmp}' '${kitJsonTmp}' '${phpScriptTmp}'`, logCallback).catch(() => {});

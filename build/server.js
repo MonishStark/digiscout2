@@ -1714,7 +1714,16 @@ function collectBusinessImages(business) {
   if (business.logo) {
     sources.push(optimizeGooglePhotoUrl(business.logo, 400));
   }
-  return sources;
+  if (Array.isArray(business.reviews)) {
+    business.reviews.forEach((r) => {
+      if (Array.isArray(r.photos)) {
+        sources.push(...r.photos.map((url) => typeof url === "string" ? optimizeGooglePhotoUrl(url, 1600) : ""));
+      } else if (Array.isArray(r.images)) {
+        sources.push(...r.images.map((url) => typeof url === "string" ? optimizeGooglePhotoUrl(url, 1600) : ""));
+      }
+    });
+  }
+  return [...new Set(sources.filter(Boolean))];
 }
 async function downloadImageAsBase64(url) {
   try {
@@ -1735,7 +1744,7 @@ async function downloadImageAsBase64(url) {
 async function analyzeAndFilterImages(business, log, options) {
   log(`[ImageAnalyzer] Running image pre-filtering & analysis for: ${business.name}`);
   const images = collectBusinessImages(business);
-  const numImages = Math.min(images.length, 6);
+  const numImages = Math.min(images.length, 12);
   const base64Parts = [];
   log(`[ImageAnalyzer] Found ${images.length} business photos. Downloading top ${numImages} for Gemini analysis...`);
   for (let i = 0; i < numImages; i++) {
@@ -1752,15 +1761,16 @@ async function analyzeAndFilterImages(business, log, options) {
   }
   const hasImages = base64Parts.length > 0;
   const promptText = `You are a staff brand art director.
-Evaluate these ${base64Parts.length} images from Google Maps for the business "${business.name}" (Category: "${business.category || business.businessType}").
+Evaluate these ${base64Parts.length} images from Google Maps/Reviews for the business "${business.name}" (Category: "${business.category || business.businessType}").
 Determine which images are highly relevant, high quality, and suitable for the following website layout sections:
-1. "hero_image": The main hero background. Needs to be a high-quality, clean, atmospheric representation of the business (e.g. for woodworking, a premium walnut table/chair or beautiful workshop/showroom).
+1. "hero_image": The main hero background. Needs to be a high-quality, clean, atmospheric representation of the business (e.g. for woodworking, a premium finished product or beautiful showroom).
 2. "masked_image": A detailed/masked circular photo (e.g. detail of a wood joint, wood texture close-up).
 3. "about_image": Photo showing the craftsmanship process, team, or workspace.
 4. "services_image": Background image for services section showing a service in action.
 5. "testimonials_slideshow": A list of up to 3 gallery/reviews images.
+6. "project_posts": A list of up to 4 project images representing completed works/projects (e.g., finished custom cabinets, closets, shelves, tables). For each selected image, provide a descriptive, professional "post_title" (e.g., "Custom Oak Kitchen Cabinetry", "Modern Built-in Wardrobe").
 
-If any of the Google Maps photos are suitable, map them to the corresponding section by setting "action": "use_existing" and providing the "image_index" (0-based index matching the order of the images provided).
+If any of the Google Maps/Reviews photos are suitable, map them to the corresponding section by setting "action": "use_existing" and providing the "image_index" (0-based index matching the order of the images provided).
 If none of the provided photos are suitable or relevant, or if no images were provided, mark "action": "generate" and write a highly descriptive, detailed image generation prompt ("generation_prompt") tailored to the business category and location context for the model "gemini-3-pro-image-preview". The prompt should describe a premium, high-quality photograph, setting, lighting, and detail.
 
 Return ONLY a JSON response in the following format:
@@ -1773,6 +1783,10 @@ Return ONLY a JSON response in the following format:
     { "action": "use_existing" or "generate", "image_index": 4, "generation_prompt": "..." },
     { "action": "use_existing" or "generate", "image_index": 5, "generation_prompt": "..." },
     { "action": "use_existing" or "generate", "image_index": 6, "generation_prompt": "..." }
+  ],
+  "project_posts": [
+    { "action": "use_existing" or "generate", "image_index": 7, "post_title": "Custom Walnut Kitchen Cabinets", "generation_prompt": "..." },
+    { "action": "use_existing" or "generate", "image_index": 8, "post_title": "Minimalist Oak TV Console", "generation_prompt": "..." }
   ]
 }`;
   const parts = [{ text: promptText }];
@@ -1809,7 +1823,11 @@ Return ONLY a JSON response in the following format:
       masked_image: mapIndexToUrl(result.masked_image),
       about_image: mapIndexToUrl(result.about_image),
       services_image: mapIndexToUrl(result.services_image),
-      testimonials_slideshow: (result.testimonials_slideshow || []).map(mapIndexToUrl)
+      testimonials_slideshow: (result.testimonials_slideshow || []).map(mapIndexToUrl),
+      project_posts: (result.project_posts || []).map((p) => ({
+        ...mapIndexToUrl(p),
+        post_title: p.post_title || "Custom Project"
+      }))
     };
   } catch (error) {
     log(`[ImageAnalyzer] Analysis failed: ${error instanceof Error ? error.message : String(error)}. Falling back to full generation prompts.`);
@@ -1825,6 +1843,12 @@ Return ONLY a JSON response in the following format:
         { action: "generate", generation_prompt: getFallbackPrompt("project outcome detail 1") },
         { action: "generate", generation_prompt: getFallbackPrompt("project outcome detail 2") },
         { action: "generate", generation_prompt: getFallbackPrompt("project outcome detail 3") }
+      ],
+      project_posts: [
+        { action: "generate", post_title: "Custom Kitchen Cabinetry", generation_prompt: getFallbackPrompt("custom kitchen cabinetry installation") },
+        { action: "generate", post_title: "Bespoke Built-in Wardrobe", generation_prompt: getFallbackPrompt("bespoke built-in wardrobe detail") },
+        { action: "generate", post_title: "Handcrafted Dining Table", generation_prompt: getFallbackPrompt("handcrafted solid wood dining table") },
+        { action: "generate", post_title: "Modern Wooden TV Console", generation_prompt: getFallbackPrompt("modern minimalist wooden tv console") }
       ]
     };
   }
@@ -1835,7 +1859,8 @@ async function resolveSectionImages(analysis, log) {
     masked_image: "",
     about_image: "",
     services_image: "",
-    testimonials_slideshow: []
+    testimonials_slideshow: [],
+    project_posts: []
   };
   const generateAndSave = async (prompt, role, aspectRatio = "16:9") => {
     try {
@@ -1889,82 +1914,35 @@ async function resolveSectionImages(analysis, log) {
     }
   }
   resultUrls.testimonials_slideshow = slideshowUrls;
+  const resolvedProjects = [];
+  const projectsList = analysis.project_posts || [];
+  for (let i = 0; i < Math.min(4, projectsList.length); i++) {
+    const item = projectsList[i];
+    const title = item.post_title || `Project ${i + 1}`;
+    if (item.action === "use_existing" && item.url) {
+      resolvedProjects.push({ title, url: item.url });
+    } else {
+      const prompt = item.generation_prompt || `premium custom cabinet project showcase ${i + 1}`;
+      const url = await generateAndSave(prompt, `project_${i + 1}`, "4:3");
+      resolvedProjects.push({ title, url });
+    }
+  }
+  resultUrls.project_posts = resolvedProjects;
   return resultUrls;
 }
 function pickDesignProfile(category) {
-  const normalized = (category || "").toLowerCase();
-  if (normalized.includes("cabinet") || normalized.includes("wood") || normalized.includes("carpenter") || normalized.includes("furniture")) {
-    return {
-      name: "Bespoke Woodworking",
-      palette: {
-        background: "#E8E6DF",
-        surface: "#ffffff",
-        primary: "#141111",
-        accent: "#80311B",
-        text: "#141111",
-        muted: "#6B6661",
-        outline: "rgba(20, 17, 17, 0.12)"
-      },
-      typography: { heading: "Spartan", body: "Inter" }
-    };
-  }
-  if (normalized.includes("restaurant") || normalized.includes("cafe") || normalized.includes("bakery")) {
-    return {
-      name: "Warm Editorial",
-      palette: {
-        background: "#fcf3ea",
-        surface: "#ffffff",
-        primary: "#c2410c",
-        accent: "#f59e0b",
-        text: "#1f2937",
-        muted: "#6b7280",
-        outline: "rgba(194, 65, 12, 0.12)"
-      },
-      typography: { heading: "Playfair Display", body: "Inter" }
-    };
-  }
-  if (normalized.includes("salon") || normalized.includes("spa") || normalized.includes("wellness")) {
-    return {
-      name: "Soft Luxe",
-      palette: {
-        background: "#f8f4f5",
-        surface: "#ffffff",
-        primary: "#9333ea",
-        accent: "#e9d5ff",
-        text: "#1f2937",
-        muted: "#9ca3af",
-        outline: "rgba(147, 51, 234, 0.12)"
-      },
-      typography: { heading: "Cormorant Garamond", body: "Inter" }
-    };
-  }
-  if (normalized.includes("gym") || normalized.includes("fitness") || normalized.includes("training")) {
-    return {
-      name: "Electric Performance",
-      palette: {
-        background: "#f0fdf4",
-        surface: "#ffffff",
-        primary: "#16a34a",
-        accent: "#0284c7",
-        text: "#0f172a",
-        muted: "#64748b",
-        outline: "rgba(22, 163, 74, 0.16)"
-      },
-      typography: { heading: "Space Grotesk", body: "Inter" }
-    };
-  }
   return {
-    name: "Modern Agency",
+    name: "Bespoke Woodworking",
     palette: {
-      background: "#f8fafc",
+      background: "#E8E6DF",
       surface: "#ffffff",
-      primary: "#0066cc",
-      accent: "#ff6600",
-      text: "#0f172a",
-      muted: "#64748b",
-      outline: "#e2e8f0"
+      primary: "#141111",
+      accent: "#80311B",
+      text: "#141111",
+      muted: "#6B6661",
+      outline: "rgba(20, 17, 17, 0.12)"
     },
-    typography: { heading: "Inter", body: "Inter" }
+    typography: { heading: "Spartan", body: "Inter" }
   };
 }
 function buildHomepageGenerationRequest(business) {
@@ -2003,9 +1981,9 @@ function buildHomepageGenerationRequest(business) {
       gallery: gallery || []
     },
     colors: {
-      primary: business.brandColor || business.primaryColor || business.color || design.palette.primary,
-      accent: business.accentColor || business.highlightColor || design.palette.accent,
-      neutral: business.neutralColor || design.palette.background
+      primary: design.palette.primary,
+      accent: design.palette.accent,
+      neutral: design.palette.background
     },
     logo_url: business.logo,
     local_context: `${business.neighborhood || business.area || business.city || "Local area"}, serving the ${business.city || "community"}`,
@@ -2141,6 +2119,8 @@ async function generateHomepageViaDirectVertexPrompt(business, options) {
       response.elementorContent.services.image = resolvedImages.services_image;
       if (!response.elementorContent.testimonials) response.elementorContent.testimonials = {};
       response.elementorContent.testimonials.slideshow = resolvedImages.testimonials_slideshow;
+      if (!response.elementorContent.projects) response.elementorContent.projects = {};
+      response.elementorContent.projects.posts = resolvedImages.project_posts;
     }
     persist("02-vertex-response.json", response);
     const schema = {
@@ -4086,6 +4066,11 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
           if (url) imageSet.add(url);
         });
       }
+      if (Array.isArray(aiContent.projects?.posts)) {
+        aiContent.projects.posts.forEach((p) => {
+          if (p.url) imageSet.add(p.url);
+        });
+      }
       if (schema.brand?.logo) {
         imageSet.add(schema.brand.logo);
       }
@@ -4098,12 +4083,11 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
       for (const file of templateFiles) {
         if (fs4.existsSync(file)) {
           try {
-            const content2 = fs4.readFileSync(file, "utf8");
+            const content2 = fs4.readFileSync(file, "utf8").replace(/\\/g, "");
             const matches = content2.match(/https?:\/\/library\.elementor\.com\/[^\s"'}]+/g);
             if (matches) {
               for (const match of matches) {
-                const url = match.replace(/\\/g, "");
-                imageSet.add(url);
+                imageSet.add(match);
               }
             }
           } catch (e) {
@@ -4192,6 +4176,26 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
           }
         } catch (err) {
           await logCallback(`Failed to import media ${imgUrl}: ${err.message}`);
+        }
+      }
+      if (Array.isArray(aiContent.projects?.posts) && aiContent.projects.posts.length > 0) {
+        await logCallback(`Creating ${aiContent.projects.posts.length} project posts in WordPress...`);
+        for (const post of aiContent.projects.posts) {
+          try {
+            const localMedia = mediaMap[post.url];
+            const thumbnailArg = localMedia ? ` --thumbnail_id=${localMedia.id}` : "";
+            await logCallback(`Creating post: "${post.title}" with thumbnail ID: ${localMedia?.id || "none"}`);
+            const safeTitle = post.title.replace(/'/g, `'\\''`);
+            const postCreateOut = await runWpCommand(
+              `post create --post_type=post --post_title='${safeTitle}' --post_status=publish${thumbnailArg} --porcelain`,
+              docRoot,
+              logCallback
+            );
+            const newPostId = postCreateOut.stdout.trim();
+            await logCallback(`Created project post ID: ${newPostId}`);
+          } catch (postErr) {
+            await logCallback(`Warning: Failed to create project post: ${postErr.message}`);
+          }
         }
       }
       let menuId = "";
@@ -4378,6 +4382,12 @@ if ($kit_id && file_exists($kit_settings_json_file)) {
         logCallback
       );
       await logCallback(`PHP script output: ${evalOut.stdout}`);
+      try {
+        await logCallback("Regenerating Elementor CSS files...");
+        await runWpCommand(`elementor force-regenerate-css`, docRoot, logCallback);
+      } catch (cssErr) {
+        await logCallback(`Warning: Failed to regenerate Elementor CSS: ${cssErr.message}`);
+      }
       await runRemoteShellCommand(`rm -f '${homepageJsonTmp}' '${kitJsonTmp}' '${phpScriptTmp}'`, logCallback).catch(() => {
       });
       await logCallback("Elementor site injection complete \u2713");
