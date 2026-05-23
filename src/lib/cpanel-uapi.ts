@@ -133,6 +133,7 @@ export async function addSubdomain(
 
 export async function deleteSubdomain(subdomain: string, rootDomain: string) {
 	const fullDomain = `${subdomain}.${rootDomain}`;
+	const underscoreDomain = `${subdomain}_${rootDomain}`;
 	process.stderr.write(
 		`[cPanel-SSH] Attempting to delete domain/subdomain: ${fullDomain}\n`,
 	);
@@ -188,20 +189,55 @@ export async function deleteSubdomain(subdomain: string, rootDomain: string) {
 		);
 	}
 
-	// 5. Try legacy cpapi2 fallback (for older/custom cPanel environments)
-	try {
-		const sshPrefix = getSshPrefix();
-		const cpapi2Cmd = `cpapi2 --output=json SubDomain delsubdomain domain=${subdomain} rootdomain=${rootDomain}`;
-		const fullCmd = `${sshPrefix} '${cpapi2Cmd}'`;
-		process.stderr.write(
-			`[cPanel-SSH] Attempting cpapi2 fallback for delsubdomain...\n`,
-		);
-		await execAsync(fullCmd, { timeout: 60000 });
-		return true;
-	} catch (e: any) {
-		console.warn(
-			`[cPanel-SSH] cpapi2 SubDomain::delsubdomain failed: ${e.message}`,
-		);
+	// 5. Try legacy cpapi2 fallback (the actual functional route for many Namecheap/cPanel servers)
+	// We must try:
+	// A) domain=subdomain.rootDomain
+	// B) domain=subdomain_rootDomain (specifically required for subdomains on addon domains)
+	// And we must try both 'cpapi2' and '/usr/local/cpanel/bin/cpapi2' in case cpapi2 is not in path.
+	const cpapi2Variants = [
+		`cpapi2 --output=json SubDomain delsubdomain domain=${fullDomain}`,
+		`cpapi2 --output=json SubDomain delsubdomain domain=${underscoreDomain}`,
+		`/usr/local/cpanel/bin/cpapi2 --output=json SubDomain delsubdomain domain=${fullDomain}`,
+		`/usr/local/cpanel/bin/cpapi2 --output=json SubDomain delsubdomain domain=${underscoreDomain}`,
+	];
+
+	for (const cpapi2Cmd of cpapi2Variants) {
+		try {
+			const sshPrefix = getSshPrefix();
+			const fullCmd = `${sshPrefix} '${cpapi2Cmd}'`;
+			process.stderr.write(
+				`[cPanel-SSH] Attempting cpapi2 fallback: ${cpapi2Cmd}\n`,
+			);
+			const { stdout, stderr } = await execAsync(fullCmd, { timeout: 60000 });
+			process.stderr.write(`[cPanel-SSH] cpapi2 output: ${stdout.trim()}\n`);
+			if (stderr.trim()) {
+				process.stderr.write(`[cPanel-SSH] cpapi2 stderr: ${stderr.trim()}\n`);
+			}
+			
+			// Verify if the output doesn't indicate a clear error
+			let parsed: any;
+			try {
+				parsed = JSON.parse(stdout);
+				const error = parsed?.cpanelresult?.error;
+				if (error) {
+					console.warn(`[cPanel-SSH] cpapi2 reported error in JSON response: ${error}`);
+					continue; // Try next variant
+				}
+				const data = parsed?.cpanelresult?.data;
+				if (data && data.result === 0) {
+					console.warn(`[cPanel-SSH] cpapi2 reported failure in JSON data: ${data.reason}`);
+					continue; // Try next variant
+				}
+			} catch (jsonErr) {
+				// If not JSON, but command succeeded, we still proceed or log
+			}
+			
+			return true;
+		} catch (e: any) {
+			console.warn(
+				`[cPanel-SSH] cpapi2 command failed (${cpapi2Cmd}): ${e.message}`,
+			);
+		}
 	}
 
 	// 6. Try DomainInfo::delete_domain (last resort)

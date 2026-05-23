@@ -2995,6 +2995,7 @@ async function addSubdomain(subdomain, rootDomain, documentRoot) {
 }
 async function deleteSubdomain(subdomain, rootDomain) {
   const fullDomain = `${subdomain}.${rootDomain}`;
+  const underscoreDomain = `${subdomain}_${rootDomain}`;
   process.stderr.write(
     `[cPanel-SSH] Attempting to delete domain/subdomain: ${fullDomain}
 `
@@ -3042,20 +3043,48 @@ async function deleteSubdomain(subdomain, rootDomain) {
       `[cPanel-SSH] SubDomain::delete_subdomain failed: ${e.message}.`
     );
   }
-  try {
-    const sshPrefix = getSshPrefix();
-    const cpapi2Cmd = `cpapi2 --output=json SubDomain delsubdomain domain=${subdomain} rootdomain=${rootDomain}`;
-    const fullCmd = `${sshPrefix} '${cpapi2Cmd}'`;
-    process.stderr.write(
-      `[cPanel-SSH] Attempting cpapi2 fallback for delsubdomain...
+  const cpapi2Variants = [
+    `cpapi2 --output=json SubDomain delsubdomain domain=${fullDomain}`,
+    `cpapi2 --output=json SubDomain delsubdomain domain=${underscoreDomain}`,
+    `/usr/local/cpanel/bin/cpapi2 --output=json SubDomain delsubdomain domain=${fullDomain}`,
+    `/usr/local/cpanel/bin/cpapi2 --output=json SubDomain delsubdomain domain=${underscoreDomain}`
+  ];
+  for (const cpapi2Cmd of cpapi2Variants) {
+    try {
+      const sshPrefix = getSshPrefix();
+      const fullCmd = `${sshPrefix} '${cpapi2Cmd}'`;
+      process.stderr.write(
+        `[cPanel-SSH] Attempting cpapi2 fallback: ${cpapi2Cmd}
 `
-    );
-    await execAsync(fullCmd, { timeout: 6e4 });
-    return true;
-  } catch (e) {
-    console.warn(
-      `[cPanel-SSH] cpapi2 SubDomain::delsubdomain failed: ${e.message}`
-    );
+      );
+      const { stdout, stderr } = await execAsync(fullCmd, { timeout: 6e4 });
+      process.stderr.write(`[cPanel-SSH] cpapi2 output: ${stdout.trim()}
+`);
+      if (stderr.trim()) {
+        process.stderr.write(`[cPanel-SSH] cpapi2 stderr: ${stderr.trim()}
+`);
+      }
+      let parsed;
+      try {
+        parsed = JSON.parse(stdout);
+        const error = parsed?.cpanelresult?.error;
+        if (error) {
+          console.warn(`[cPanel-SSH] cpapi2 reported error in JSON response: ${error}`);
+          continue;
+        }
+        const data = parsed?.cpanelresult?.data;
+        if (data && data.result === 0) {
+          console.warn(`[cPanel-SSH] cpapi2 reported failure in JSON data: ${data.reason}`);
+          continue;
+        }
+      } catch (jsonErr) {
+      }
+      return true;
+    } catch (e) {
+      console.warn(
+        `[cPanel-SSH] cpapi2 command failed (${cpapi2Cmd}): ${e.message}`
+      );
+    }
   }
   try {
     await callUapiRemote("DomainInfo", "delete_domain", {
