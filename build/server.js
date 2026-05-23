@@ -1891,9 +1891,86 @@ async function resolveSectionImages(analysis, log) {
   resultUrls.testimonials_slideshow = slideshowUrls;
   return resultUrls;
 }
+function pickDesignProfile(category) {
+  const normalized = (category || "").toLowerCase();
+  if (normalized.includes("cabinet") || normalized.includes("wood") || normalized.includes("carpenter") || normalized.includes("furniture")) {
+    return {
+      name: "Bespoke Woodworking",
+      palette: {
+        background: "#E8E6DF",
+        surface: "#ffffff",
+        primary: "#141111",
+        accent: "#80311B",
+        text: "#141111",
+        muted: "#6B6661",
+        outline: "rgba(20, 17, 17, 0.12)"
+      },
+      typography: { heading: "Spartan", body: "Inter" }
+    };
+  }
+  if (normalized.includes("restaurant") || normalized.includes("cafe") || normalized.includes("bakery")) {
+    return {
+      name: "Warm Editorial",
+      palette: {
+        background: "#fcf3ea",
+        surface: "#ffffff",
+        primary: "#c2410c",
+        accent: "#f59e0b",
+        text: "#1f2937",
+        muted: "#6b7280",
+        outline: "rgba(194, 65, 12, 0.12)"
+      },
+      typography: { heading: "Playfair Display", body: "Inter" }
+    };
+  }
+  if (normalized.includes("salon") || normalized.includes("spa") || normalized.includes("wellness")) {
+    return {
+      name: "Soft Luxe",
+      palette: {
+        background: "#f8f4f5",
+        surface: "#ffffff",
+        primary: "#9333ea",
+        accent: "#e9d5ff",
+        text: "#1f2937",
+        muted: "#9ca3af",
+        outline: "rgba(147, 51, 234, 0.12)"
+      },
+      typography: { heading: "Cormorant Garamond", body: "Inter" }
+    };
+  }
+  if (normalized.includes("gym") || normalized.includes("fitness") || normalized.includes("training")) {
+    return {
+      name: "Electric Performance",
+      palette: {
+        background: "#f0fdf4",
+        surface: "#ffffff",
+        primary: "#16a34a",
+        accent: "#0284c7",
+        text: "#0f172a",
+        muted: "#64748b",
+        outline: "rgba(22, 163, 74, 0.16)"
+      },
+      typography: { heading: "Space Grotesk", body: "Inter" }
+    };
+  }
+  return {
+    name: "Modern Agency",
+    palette: {
+      background: "#f8fafc",
+      surface: "#ffffff",
+      primary: "#0066cc",
+      accent: "#ff6600",
+      text: "#0f172a",
+      muted: "#64748b",
+      outline: "#e2e8f0"
+    },
+    typography: { heading: "Inter", body: "Inter" }
+  };
+}
 function buildHomepageGenerationRequest(business) {
   const images = collectBusinessImages(business);
   const [hero, service1, service2, ...gallery] = images;
+  const design = pickDesignProfile(business.category || business.businessType || "");
   return {
     business_name: business.name || "Untitled Business",
     business_category: business.category || business.businessType || "Local Service",
@@ -1926,9 +2003,9 @@ function buildHomepageGenerationRequest(business) {
       gallery: gallery || []
     },
     colors: {
-      primary: business.brandColor || business.primaryColor || business.color || "#0066cc",
-      accent: business.accentColor || business.highlightColor || "#ff6600",
-      neutral: business.neutralColor || "#f5f5f5"
+      primary: business.brandColor || business.primaryColor || business.color || design.palette.primary,
+      accent: business.accentColor || business.highlightColor || design.palette.accent,
+      neutral: business.neutralColor || design.palette.background
     },
     logo_url: business.logo,
     local_context: `${business.neighborhood || business.area || business.city || "Local area"}, serving the ${business.city || "community"}`,
@@ -2093,26 +2170,32 @@ async function generateHomepageViaDirectVertexPrompt(business, options) {
         description: business.tagline || `Bespoke web presentation for ${business.name || "our client"}.`,
         keywords: [business.category || "Local Business"]
       },
-      theme: {
-        primaryColor: request.colors?.primary || "#0066cc",
-        accentColor: request.colors?.accent || "#ff6600",
-        neutralColor: request.colors?.neutral || "#f5f5f5",
-        name: "modern-agency",
-        mode: "light",
-        palette: {
-          primary: request.colors?.primary || "#0066cc",
-          surface: "#ffffff",
-          background: "#f8fafc",
-          accent: request.colors?.accent || "#ff6600",
-          text: "#0f172a",
-          muted: "#64748b",
-          outline: "#e2e8f0"
-        },
-        typography: {
-          heading: "Inter",
-          body: "Inter"
-        }
-      },
+      theme: (() => {
+        const design = pickDesignProfile(business.category || business.businessType || "");
+        const primary = request.colors?.primary || design.palette.primary;
+        const accent = request.colors?.accent || design.palette.accent;
+        const neutral = request.colors?.neutral || design.palette.background;
+        return {
+          primaryColor: primary,
+          accentColor: accent,
+          neutralColor: neutral,
+          name: "modern-agency",
+          mode: "light",
+          palette: {
+            primary,
+            surface: design.palette.surface,
+            background: neutral,
+            accent,
+            text: design.palette.text,
+            muted: design.palette.muted,
+            outline: design.palette.outline
+          },
+          typography: {
+            heading: design.typography.heading,
+            body: design.typography.body
+          }
+        };
+      })(),
       sections: [],
       createdAt: (/* @__PURE__ */ new Date()).toISOString(),
       _wordpressHtml: "",
@@ -3175,8 +3258,9 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
   const footerSections = footerData.content || [];
   const getLocalMedia = (url) => {
     if (!url) return null;
-    if (mediaMap[url]) return mediaMap[url];
-    const cleanUrl = url.split("?")[0].replace(/^https?:/, "");
+    const normalizedUrl = url.replace(/\\/g, "");
+    if (mediaMap[normalizedUrl]) return mediaMap[normalizedUrl];
+    const cleanUrl = normalizedUrl.split("?")[0].replace(/^https?:/, "");
     for (const key of Object.keys(mediaMap)) {
       const cleanKey = key.split("?")[0].replace(/^https?:/, "");
       if (cleanKey === cleanUrl) {

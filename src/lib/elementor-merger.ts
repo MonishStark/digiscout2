@@ -47,9 +47,10 @@ export function mergeElementorTemplate(
 	// Helper to resolve media item from map
 	const getLocalMedia = (url?: string): MediaItem | null => {
 		if (!url) return null;
-		if (mediaMap[url]) return mediaMap[url];
+		const normalizedUrl = url.replace(/\\/g, "");
+		if (mediaMap[normalizedUrl]) return mediaMap[normalizedUrl];
 		// Try fuzzy matching (e.g. without query parameters or protocols)
-		const cleanUrl = url.split("?")[0].replace(/^https?:/, "");
+		const cleanUrl = normalizedUrl.split("?")[0].replace(/^https?:/, "");
 		for (const key of Object.keys(mediaMap)) {
 			const cleanKey = key.split("?")[0].replace(/^https?:/, "");
 			if (cleanKey === cleanUrl) {
