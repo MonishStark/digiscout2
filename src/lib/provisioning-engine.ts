@@ -1162,6 +1162,68 @@ $global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !imp
 	'.elementor-element-5a62107a img, .elementor-element-44b1aa0b img, [data-elementor-type="footer"] img[src*="gen_logo"], footer img[src*="gen_logo"], .site-footer img[src*="gen_logo"] { filter: invert(1) !important; mix-blend-mode: screen !important; background-color: transparent !important; }';
 update_option('elementor_custom_css', $global_css);
 echo "GLOBAL_CSS_SET\n";
+
+// Create Must-Use plugin to inject styles dynamically
+$mu_dir = WP_CONTENT_DIR . '/mu-plugins';
+if (!is_dir($mu_dir)) {
+    mkdir($mu_dir, 0755, true);
+}
+$mu_plugin_code = '<?php
+/*
+Plugin Name: DigitalScout Custom Layout Fixes
+Description: Dynamic layout fixes for Elementor and custom logos.
+Version: 1.1
+*/
+add_action("wp_head", function() {
+    ?>
+    <style>
+    /* Injected layout fixes */
+    html, body { overflow-x: hidden !important; max-width: 100vw !important; }
+    .elementor-section, .e-container, .elementor-column { max-width: 100% !important; }
+    .elementor-widget-image img { object-fit: cover !important; }
+    .elementor-widget-theme-site-logo img { mix-blend-mode: multiply !important; height: auto !important; max-height: 45px !important; width: auto !important; }
+    .elementor-element-1b226200, .elementor-element-1b226200 .elementor-widget-text-editor, .elementor-element-1b226200 .elementor-widget-text-editor p { color: #E9E8E6 !important; }
+    .elementor-element-1b226200 .elementor-widget-text-editor strong { color: #FFFFFF !important; }
+    .elementor-element-4d1645d0 .elementor-background-overlay { background-color: rgba(233, 232, 230, 0.75) !important; opacity: 1 !important; }
+    .elementor-element-4d1645d0::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(233, 232, 230, 0.75) !important; z-index: 0; pointer-events: none; }
+    .elementor-element-4d1645d0 > * { position: relative; z-index: 1; }
+    .elementor-element-51305b21 .elementor-background-overlay { background-color: rgba(12, 40, 53, 0.6) !important; opacity: 1 !important; }
+    .elementor-element-51305b21::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(12, 40, 53, 0.6) !important; z-index: 0; pointer-events: none; }
+    .elementor-element-51305b21 > * { position: relative; z-index: 1; }
+    .elementor-element-39f1fa01 .elementor-background-overlay { background-color: rgba(12, 40, 53, 0.45) !important; opacity: 1 !important; }
+    .elementor-element-39f1fa01::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(12, 40, 53, 0.45) !important; z-index: 0; pointer-events: none; }
+    .elementor-element-39f1fa01 > * { position: relative; z-index: 1; }
+    [data-elementor-type="footer"] *, .elementor-element-29c6e791 *, footer *, .site-footer *, .elementor-location-footer * { color: #ffffff !important; }
+    [data-elementor-type="footer"] svg, [data-elementor-type="footer"] path, .elementor-element-29c6e791 svg, .elementor-element-29c6e791 path, footer svg, footer path, .site-footer svg, .site-footer path { fill: #ffffff !important; }
+    [data-elementor-type="footer"] a:hover, [data-elementor-type="footer"] a:hover *, .elementor-element-29c6e791 a:hover, .elementor-element-29c6e791 a:hover *, footer a:hover, footer a:hover *, .site-footer a:hover, .site-footer a:hover * { color: #ffffff !important; opacity: 0.8 !important; }
+    [data-elementor-type="footer"] ::placeholder, .elementor-element-29c6e791 ::placeholder, footer ::placeholder, .site-footer ::placeholder { color: rgba(255, 255, 255, 0.6) !important; }
+    
+    /* Call to Action Centering & Desktop/Tablet Breakout overrides */
+    .elementor-widget-call-to-action .elementor-cta__content { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; text-align: center !important; }
+    .elementor-widget-call-to-action .elementor-cta__title, .elementor-widget-call-to-action .elementor-cta__description, .elementor-widget-call-to-action .elementor-cta__content * { text-align: center !important; }
+    .elementor-widget-call-to-action .elementor-cta__button-wrapper { display: flex !important; justify-content: center !important; width: 100% !important; }
+    .elementor-widget-call-to-action .elementor-cta__button { margin: 0 auto !important; display: inline-block !important; }
+    
+    @media (min-width: 768px) {
+        .elementor-widget-call-to-action {
+            width: 100vw !important;
+            max-width: 100vw !important;
+            position: relative !important;
+            left: -50vw !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+    }
+    
+    /* Logo Background Transparency */
+    .elementor-element-3b58bec7, .elementor-element-69be47e, .elementor-element-5a62107a, .elementor-element-44b1aa0b, .elementor-element-3b58bec7 .elementor-widget-container, .elementor-element-69be47e .elementor-widget-container, .elementor-element-5a62107a .elementor-widget-container, .elementor-element-44b1aa0b .elementor-widget-container { background-color: transparent !important; background: transparent !important; }
+    .elementor-element-3b58bec7 img, .elementor-element-69be47e img, .elementor-widget-theme-site-logo img, .elementor-widget-image img[src*="gen_logo"], header img[src*="gen_logo"], .site-header img[src*="gen_logo"] { mix-blend-mode: multiply !important; background-color: transparent !important; }
+    .elementor-element-5a62107a img, .elementor-element-44b1aa0b img, [data-elementor-type="footer"] img[src*="gen_logo"], footer img[src*="gen_logo"], .site-footer img[src*="gen_logo"] { filter: invert(1) !important; mix-blend-mode: screen !important; background-color: transparent !important; }
+    </style>
+    <?php
+});';
+file_put_contents($mu_dir . '/ds-custom-styles.php', $mu_plugin_code);
+echo "MU_PLUGIN_CREATED\n";
 `;
 			const phpB64 = Buffer.from(phpCode).toString("base64");
 			await runRemoteShellCommand(
