@@ -1949,58 +1949,100 @@ async function resolveSectionImages(analysis, log, logoAnalysis) {
       return "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800";
     }
   };
+  const taskList = [];
   if (analysis.hero_image.action === "use_existing" && analysis.hero_image.url) {
     resultUrls.hero_image = analysis.hero_image.url;
   } else {
-    resultUrls.hero_image = await generateAndSave(analysis.hero_image.generation_prompt || "wooden chair chair modern", "hero", "3:4");
+    taskList.push({
+      run: async () => {
+        resultUrls.hero_image = await generateAndSave(analysis.hero_image.generation_prompt || "wooden chair chair modern", "hero", "3:4");
+      }
+    });
   }
   if (analysis.masked_image.action === "use_existing" && analysis.masked_image.url) {
     resultUrls.masked_image = analysis.masked_image.url;
   } else {
-    resultUrls.masked_image = await generateAndSave(analysis.masked_image.generation_prompt || "wood grain pattern detail close-up", "masked", "1:1");
+    taskList.push({
+      run: async () => {
+        resultUrls.masked_image = await generateAndSave(analysis.masked_image.generation_prompt || "wood grain pattern detail close-up", "masked", "1:1");
+      }
+    });
   }
   if (analysis.about_image.action === "use_existing" && analysis.about_image.url) {
     resultUrls.about_image = analysis.about_image.url;
   } else {
-    resultUrls.about_image = await generateAndSave(analysis.about_image.generation_prompt || "woodworking craftsman work", "about", "4:3");
+    taskList.push({
+      run: async () => {
+        resultUrls.about_image = await generateAndSave(analysis.about_image.generation_prompt || "woodworking craftsman work", "about", "4:3");
+      }
+    });
   }
   if (analysis.services_image.action === "use_existing" && analysis.services_image.url) {
     resultUrls.services_image = analysis.services_image.url;
   } else {
-    resultUrls.services_image = await generateAndSave(analysis.services_image.generation_prompt || "carpentry workshop background", "services", "16:9");
+    taskList.push({
+      run: async () => {
+        resultUrls.services_image = await generateAndSave(analysis.services_image.generation_prompt || "carpentry workshop background", "services", "16:9");
+      }
+    });
   }
-  const slideshowUrls = [];
+  const testimonialsItems = analysis.testimonials_slideshow || [];
   for (let i = 0; i < 3; i++) {
-    const item = analysis.testimonials_slideshow?.[i];
+    const item = testimonialsItems[i];
     if (item && item.action === "use_existing" && item.url) {
-      slideshowUrls.push(item.url);
+      resultUrls.testimonials_slideshow[i] = item.url;
     } else {
       const prompt = item?.generation_prompt || `wood projects showcase detail shot ${i + 1}`;
-      const url = await generateAndSave(prompt, `testimonial_${i + 1}`, "4:3");
-      slideshowUrls.push(url);
+      taskList.push({
+        run: async () => {
+          resultUrls.testimonials_slideshow[i] = await generateAndSave(prompt, `testimonial_${i + 1}`, "4:3");
+        }
+      });
     }
   }
-  resultUrls.testimonials_slideshow = slideshowUrls;
-  const resolvedProjects = [];
   const projectsList = analysis.project_posts || [];
   for (let i = 0; i < Math.min(4, projectsList.length); i++) {
     const item = projectsList[i];
     const title = item.post_title || `Project ${i + 1}`;
     if (item.action === "use_existing" && item.url) {
-      resolvedProjects.push({ title, url: item.url });
+      resultUrls.project_posts[i] = { title, url: item.url };
     } else {
       const prompt = item.generation_prompt || `premium custom cabinet project showcase ${i + 1}`;
-      const url = await generateAndSave(prompt, `project_${i + 1}`, "4:3");
-      resolvedProjects.push({ title, url });
+      taskList.push({
+        run: async () => {
+          const url = await generateAndSave(prompt, `project_${i + 1}`, "4:3");
+          resultUrls.project_posts[i] = { title, url };
+        }
+      });
     }
   }
-  resultUrls.project_posts = resolvedProjects;
   if (logoAnalysis && logoAnalysis.action === "use_existing" && logoAnalysis.url) {
     resultUrls.logo_image = logoAnalysis.url;
   } else if (logoAnalysis && logoAnalysis.generation_prompt) {
-    resultUrls.logo_image = await generateAndSave(logoAnalysis.generation_prompt, "logo", "16:9");
+    taskList.push({
+      run: async () => {
+        resultUrls.logo_image = await generateAndSave(logoAnalysis.generation_prompt, "logo", "16:9");
+      }
+    });
   } else {
     resultUrls.logo_image = "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800";
+  }
+  if (taskList.length > 0) {
+    log(`[ImageGenerator] Queueing ${taskList.length} AI image generation tasks with concurrency limit of 3...`);
+    let nextIndex = 0;
+    const worker = async () => {
+      while (nextIndex < taskList.length) {
+        const index = nextIndex++;
+        try {
+          await taskList[index].run();
+        } catch (err) {
+          log(`[ImageGenerator] Worker task error: ${err.message || err}`);
+        }
+      }
+    };
+    const limit = 3;
+    const workers = Array.from({ length: Math.min(limit, taskList.length) }, worker);
+    await Promise.all(workers);
   }
   return resultUrls;
 }
