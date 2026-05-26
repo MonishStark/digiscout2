@@ -1792,7 +1792,7 @@ async function detectOrGenerateLogo(business, log, options) {
   const defaultPrompt = `A premium minimalist text-based typography logo featuring the business name "${business.name}" with a elegant modern wood chisel or fine tree icon, clean modern flat design, solid white background, sharp vector lines, high-end lettermark`;
   return { action: "generate", generation_prompt: defaultPrompt };
 }
-async function resolveSectionImages(analysis, log, logoAnalysis) {
+async function resolveSectionImages(analysis, log, logoAnalysis, business) {
   const resultUrls = {
     hero_image: "",
     masked_image: "",
@@ -1890,14 +1890,42 @@ async function resolveSectionImages(analysis, log, logoAnalysis) {
   for (let i = 0; i < 3; i++) {
     resultUrls.testimonials_slideshow[i] = getFallbackPlaceholder(`testimonial_${i + 1}`);
   }
+  const projectPhotos = [];
+  if (business) {
+    if (Array.isArray(business.photos)) {
+      projectPhotos.push(...business.photos.map((url) => optimizeGooglePhotoUrl(url, 1600)));
+    }
+    if (Array.isArray(business.imageSuggestions)) {
+      projectPhotos.push(...business.imageSuggestions.map((url) => optimizeGooglePhotoUrl(url, 1600)));
+    }
+    if (Array.isArray(business.reviews)) {
+      business.reviews.forEach((r) => {
+        if (Array.isArray(r.photos)) {
+          projectPhotos.push(...r.photos.map((url) => typeof url === "string" ? optimizeGooglePhotoUrl(url, 1600) : ""));
+        } else if (Array.isArray(r.images)) {
+          projectPhotos.push(...r.images.map((url) => typeof url === "string" ? optimizeGooglePhotoUrl(url, 1600) : ""));
+        }
+      });
+    }
+  }
+  const uniqueProjectPhotos = [...new Set(projectPhotos.filter(Boolean))];
   const projectsList = analysis.project_posts || [];
   for (let i = 0; i < Math.min(4, projectsList.length); i++) {
     const item = projectsList[i];
     const title = item.post_title || `Project ${i + 1}`;
-    resultUrls.project_posts[i] = {
-      title,
-      url: getFallbackPlaceholder(`project_${i + 1}`)
-    };
+    if (uniqueProjectPhotos[i]) {
+      log(`[ImageGenerator] Project "${title}": Using actual Google Maps photo: ${uniqueProjectPhotos[i]}`);
+      resultUrls.project_posts[i] = {
+        title,
+        url: uniqueProjectPhotos[i]
+      };
+    } else {
+      log(`[ImageGenerator] Project "${title}": No Google Maps photo found, using cabinet fallback`);
+      resultUrls.project_posts[i] = {
+        title,
+        url: getFallbackPlaceholder(`project_${i + 1}`)
+      };
+    }
   }
   if (logoAnalysis && logoAnalysis.action === "use_existing" && logoAnalysis.url) {
     resultUrls.logo_image = logoAnalysis.url;
@@ -2096,7 +2124,7 @@ async function generateHomepageViaDirectVertexPrompt(business, options) {
       debugSession: options?.debugSession
     });
     persist("01logo-analysis.json", logoAnalysis);
-    const resolvedImages = await resolveSectionImages(imageAnalysis, log, logoAnalysis);
+    const resolvedImages = await resolveSectionImages(imageAnalysis, log, logoAnalysis, business);
     persist("01b-resolved-images.json", resolvedImages);
     const request = buildHomepageGenerationRequest(business);
     request.images = {

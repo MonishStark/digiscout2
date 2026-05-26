@@ -194,7 +194,8 @@ export async function detectOrGenerateLogo(
 export async function resolveSectionImages(
 	analysis: ImageAnalysisResult,
 	log: (msg: string) => void,
-	logoAnalysis?: { action: "use_existing" | "generate"; url?: string; generation_prompt?: string }
+	logoAnalysis?: { action: "use_existing" | "generate"; url?: string; generation_prompt?: string },
+	business?: any
 ): Promise<{
 	hero_image: string;
 	masked_image: string;
@@ -313,15 +314,46 @@ export async function resolveSectionImages(
 		resultUrls.testimonials_slideshow[i] = getFallbackPlaceholder(`testimonial_${i + 1}`);
 	}
 
-	// 6. Project Posts (use direct high-quality Unsplash cabinet placeholders to save time and API limits)
+	// Extract actual Google Maps project photos (excluding logo if possible)
+	const projectPhotos: string[] = [];
+	if (business) {
+		if (Array.isArray(business.photos)) {
+			projectPhotos.push(...business.photos.map((url: any) => optimizeGooglePhotoUrl(url, 1600)));
+		}
+		if (Array.isArray(business.imageSuggestions)) {
+			projectPhotos.push(...business.imageSuggestions.map((url: any) => optimizeGooglePhotoUrl(url, 1600)));
+		}
+		if (Array.isArray(business.reviews)) {
+			business.reviews.forEach((r: any) => {
+				if (Array.isArray(r.photos)) {
+					projectPhotos.push(...r.photos.map((url: any) => typeof url === "string" ? optimizeGooglePhotoUrl(url, 1600) : ""));
+				} else if (Array.isArray(r.images)) {
+					projectPhotos.push(...r.images.map((url: any) => typeof url === "string" ? optimizeGooglePhotoUrl(url, 1600) : ""));
+				}
+			});
+		}
+	}
+	const uniqueProjectPhotos = [...new Set(projectPhotos.filter(Boolean))];
+
+	// 6. Project Posts (use direct actual Google Maps business photos first, then high-quality cabinet placeholders)
 	const projectsList = analysis.project_posts || [];
 	for (let i = 0; i < Math.min(4, projectsList.length); i++) {
 		const item = projectsList[i];
 		const title = item.post_title || `Project ${i + 1}`;
-		resultUrls.project_posts[i] = {
-			title,
-			url: getFallbackPlaceholder(`project_${i + 1}`)
-		};
+		
+		if (uniqueProjectPhotos[i]) {
+			log(`[ImageGenerator] Project "${title}": Using actual Google Maps photo: ${uniqueProjectPhotos[i]}`);
+			resultUrls.project_posts[i] = {
+				title,
+				url: uniqueProjectPhotos[i]
+			};
+		} else {
+			log(`[ImageGenerator] Project "${title}": No Google Maps photo found, using cabinet fallback`);
+			resultUrls.project_posts[i] = {
+				title,
+				url: getFallbackPlaceholder(`project_${i + 1}`)
+			};
+		}
 	}
 
 	// 7. Logo
@@ -608,7 +640,7 @@ export async function generateHomepageViaDirectVertexPrompt(
 		});
 		persist("01logo-analysis.json", logoAnalysis);
 
-		const resolvedImages = await resolveSectionImages(imageAnalysis, log, logoAnalysis);
+		const resolvedImages = await resolveSectionImages(imageAnalysis, log, logoAnalysis, business);
 		persist("01b-resolved-images.json", resolvedImages);
 
 		// Build the request
