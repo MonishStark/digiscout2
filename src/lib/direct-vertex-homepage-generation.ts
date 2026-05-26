@@ -308,38 +308,20 @@ export async function resolveSectionImages(
 		});
 	}
 
-	// 5. Testimonials Slideshow
-	const testimonialsItems = analysis.testimonials_slideshow || [];
+	// 5. Testimonials Slideshow (use direct high-quality Unsplash cabinet placeholders to save time and API limits)
 	for (let i = 0; i < 3; i++) {
-		const item = testimonialsItems[i];
-		if (item && item.action === "use_existing" && item.url) {
-			resultUrls.testimonials_slideshow[i] = item.url;
-		} else {
-			const prompt = item?.generation_prompt || `wood projects showcase detail shot ${i + 1}`;
-			taskList.push({
-				run: async () => {
-					resultUrls.testimonials_slideshow[i] = await generateAndSave(prompt, `testimonial_${i + 1}`, "4:3");
-				}
-			});
-		}
+		resultUrls.testimonials_slideshow[i] = getFallbackPlaceholder(`testimonial_${i + 1}`);
 	}
 
-	// 6. Project Posts
+	// 6. Project Posts (use direct high-quality Unsplash cabinet placeholders to save time and API limits)
 	const projectsList = analysis.project_posts || [];
 	for (let i = 0; i < Math.min(4, projectsList.length); i++) {
 		const item = projectsList[i];
 		const title = item.post_title || `Project ${i + 1}`;
-		if (item.action === "use_existing" && item.url) {
-			resultUrls.project_posts[i] = { title, url: item.url };
-		} else {
-			const prompt = item.generation_prompt || `premium custom cabinet project showcase ${i + 1}`;
-			taskList.push({
-				run: async () => {
-					const url = await generateAndSave(prompt, `project_${i + 1}`, "4:3");
-					resultUrls.project_posts[i] = { title, url };
-				}
-			});
-		}
+		resultUrls.project_posts[i] = {
+			title,
+			url: getFallbackPlaceholder(`project_${i + 1}`)
+		};
 	}
 
 	// 7. Logo
@@ -355,21 +337,23 @@ export async function resolveSectionImages(
 		resultUrls.logo_image = "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=400&q=80"; // fallback
 	}
 
-	// Run tasks sequentially with a small delay to avoid hitting API rate limits
+	// Run remaining 5 image tasks with a concurrency limit of 2 to keep speed high and stay safe from rate limits
 	if (taskList.length > 0) {
-		log(`[ImageGenerator] Running ${taskList.length} AI image generation tasks sequentially with a delay to avoid rate limits...`);
-		for (let i = 0; i < taskList.length; i++) {
-			if (i > 0) {
-				const delayMs = 3000;
-				log(`[ImageGenerator] Waiting ${delayMs / 1000}s before next image generation...`);
-				await new Promise((resolve) => setTimeout(resolve, delayMs));
+		log(`[ImageGenerator] Queueing ${taskList.length} AI image generation tasks with concurrency limit of 2...`);
+		let nextIndex = 0;
+		const worker = async () => {
+			while (nextIndex < taskList.length) {
+				const index = nextIndex++;
+				try {
+					await taskList[index].run();
+				} catch (err: any) {
+					log(`[ImageGenerator] Worker task error: ${err.message || err}`);
+				}
 			}
-			try {
-				await taskList[i].run();
-			} catch (err: any) {
-				log(`[ImageGenerator] Task error at index ${i}: ${err.message || err}`);
-			}
-		}
+		};
+		const limit = 2;
+		const workers = Array.from({ length: Math.min(limit, taskList.length) }, worker);
+		await Promise.all(workers);
 	}
 
 	return resultUrls;
