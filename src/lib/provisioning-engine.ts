@@ -1152,7 +1152,14 @@ $global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !imp
 	'[data-elementor-type="footer"] *, .elementor-element-29c6e791 *, footer *, .site-footer *, .elementor-location-footer * { color: #ffffff !important; } ' .
 	'[data-elementor-type="footer"] svg, [data-elementor-type="footer"] path, .elementor-element-29c6e791 svg, .elementor-element-29c6e791 path, footer svg, footer path, .site-footer svg, .site-footer path { fill: #ffffff !important; } ' .
 	'[data-elementor-type="footer"] a:hover, [data-elementor-type="footer"] a:hover *, .elementor-element-29c6e791 a:hover, .elementor-element-29c6e791 a:hover *, footer a:hover, footer a:hover *, .site-footer a:hover, .site-footer a:hover * { color: #ffffff !important; opacity: 0.8 !important; } ' .
-	'[data-elementor-type="footer"] ::placeholder, .elementor-element-29c6e791 ::placeholder, footer ::placeholder, .site-footer ::placeholder { color: rgba(255, 255, 255, 0.6) !important; }';
+	'[data-elementor-type="footer"] ::placeholder, .elementor-element-29c6e791 ::placeholder, footer ::placeholder, .site-footer ::placeholder { color: rgba(255, 255, 255, 0.6) !important; } ' .
+	'.elementor-widget-call-to-action .elementor-cta__content { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; text-align: center !important; } ' .
+	'.elementor-widget-call-to-action .elementor-cta__title, .elementor-widget-call-to-action .elementor-cta__description, .elementor-widget-call-to-action .elementor-cta__content * { text-align: center !important; } ' .
+	'.elementor-widget-call-to-action .elementor-cta__button-wrapper { display: flex !important; justify-content: center !important; width: 100% !important; } ' .
+	'.elementor-widget-call-to-action .elementor-cta__button { margin: 0 auto !important; display: inline-block !important; } ' .
+	'.elementor-element-3b58bec7, .elementor-element-69be47e, .elementor-element-5a62107a, .elementor-element-44b1aa0b, .elementor-element-3b58bec7 .elementor-widget-container, .elementor-element-69be47e .elementor-widget-container, .elementor-element-5a62107a .elementor-widget-container, .elementor-element-44b1aa0b .elementor-widget-container { background-color: transparent !important; background: transparent !important; } ' .
+	'.elementor-element-3b58bec7 img, .elementor-element-69be47e img, .elementor-widget-theme-site-logo img, .elementor-widget-image img[src*="gen_logo"], header img[src*="gen_logo"], .site-header img[src*="gen_logo"] { mix-blend-mode: multiply !important; background-color: transparent !important; } ' .
+	'.elementor-element-5a62107a img, .elementor-element-44b1aa0b img, [data-elementor-type="footer"] img[src*="gen_logo"], footer img[src*="gen_logo"], .site-footer img[src*="gen_logo"] { filter: invert(1) !important; mix-blend-mode: screen !important; background-color: transparent !important; }';
 update_option('elementor_custom_css', $global_css);
 echo "GLOBAL_CSS_SET\n";
 `;

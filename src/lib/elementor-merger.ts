@@ -128,6 +128,8 @@ export function mergeElementorTemplate(
 					cta.settings.title = aiContent.hero?.heading || "";
 					cta.settings.description = aiContent.hero?.description || aiContent.about?.description || "";
 					cta.settings.button = `${aiContent.hero?.button_text || "Shop Now"} ➔`;
+					cta.settings.align = "center";
+					cta.settings.alignment = "center";
 					cta.settings.link = {
 						url: "#products",
 						is_external: "",
