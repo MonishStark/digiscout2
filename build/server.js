@@ -1728,6 +1728,65 @@ function collectBusinessImages(business) {
   }
   return [...new Set(sources.filter(Boolean))];
 }
+async function downloadImageAsBase64(url) {
+  try {
+    const lowResUrl = optimizeGooglePhotoUrl(url, 400);
+    const res = await crossFetch2(lowResUrl);
+    if (!res.ok) return null;
+    const buffer = await res.arrayBuffer();
+    const base64Data = Buffer.from(buffer).toString("base64");
+    let mimeType = res.headers.get("content-type") || "image/jpeg";
+    if (mimeType.includes(";")) {
+      mimeType = mimeType.split(";")[0];
+    }
+    return { mimeType, data: base64Data };
+  } catch (e) {
+    return null;
+  }
+}
+async function analyzeProjectImage(url, fallbackTitle, log, options) {
+  log(`[ImageAnalyzer] Downloading and analyzing Google Maps project image: ${url}`);
+  const imgObj = await downloadImageAsBase64(url);
+  if (!imgObj) {
+    log(`[ImageAnalyzer] Failed to download or convert image: ${url}. Using fallback title: ${fallbackTitle}`);
+    return fallbackTitle;
+  }
+  try {
+    log(`[ImageAnalyzer] Running Gemini Vision analysis on image...`);
+    const prompt = `This photo was uploaded to Google Maps for a cabinetry/woodworking business. Identify the specific cabinetry, furniture, or woodwork item shown in this photo (e.g., kitchen cabinets, closet shelving, wooden dining table, bathroom vanity, TV console, bookshelf, etc.). Respond with a short, professional, human-sounding project title (2 to 4 words maximum, capitalized) describing what the photo shows. Do not use generic words like 'Recent Project' or 'Woodworking'. Return ONLY the title itself, with no explanation or punctuation.`;
+    const responseText = await generateWithFallback(
+      [
+        {
+          role: "user",
+          parts: [
+            { inlineData: { mimeType: imgObj.mimeType, data: imgObj.data } },
+            { text: prompt }
+          ]
+        }
+      ],
+      {
+        temperature: 0.2
+      },
+      {
+        logStderr: log,
+        debugSession: options?.debugSession,
+        throttleGemini: options?.throttleGemini || (async () => {
+        }),
+        contextLabel: "project-image-caption"
+      }
+    );
+    const title = responseText?.trim();
+    if (title && title.length > 2 && title.length < 50) {
+      log(`[ImageAnalyzer] Successfully analyzed image. Title: "${title}"`);
+      return title;
+    }
+    log(`[ImageAnalyzer] Gemini response was empty or invalid. Response: "${responseText}". Using fallback: ${fallbackTitle}`);
+    return fallbackTitle;
+  } catch (e) {
+    log(`[ImageAnalyzer] Error analyzing image: ${e.message || e}. Using fallback: ${fallbackTitle}`);
+    return fallbackTitle;
+  }
+}
 async function analyzeAndFilterImages(business, log, options) {
   log(`[ImageAnalyzer] Cabinetry focus: Returning custom cabinetry generation prompts for: ${business.name}`);
   const city = business.city || "Houston";
@@ -1792,7 +1851,7 @@ async function detectOrGenerateLogo(business, log, options) {
   const defaultPrompt = `A premium minimalist text-based typography logo featuring the business name "${business.name}" with a elegant modern wood chisel or fine tree icon, clean modern flat design, solid white background, sharp vector lines, high-end lettermark`;
   return { action: "generate", generation_prompt: defaultPrompt };
 }
-async function resolveSectionImages(analysis, log, logoAnalysis, business) {
+async function resolveSectionImages(analysis, log, logoAnalysis, business, options) {
   const resultUrls = {
     hero_image: "",
     masked_image: "",
@@ -1964,8 +2023,9 @@ async function resolveSectionImages(analysis, log, logoAnalysis, business) {
     const title = item.post_title || `Project ${i + 1}`;
     if (uniqueProjectPhotos[i]) {
       log(`[ImageGenerator] Project "${title}": Using actual Google Maps photo: ${uniqueProjectPhotos[i]}`);
+      const analyzedTitle = await analyzeProjectImage(uniqueProjectPhotos[i], title, log, options);
       resultUrls.project_posts[i] = {
-        title,
+        title: analyzedTitle,
         url: uniqueProjectPhotos[i]
       };
     } else {
@@ -2073,8 +2133,8 @@ async function callVertexHomepageGeneration(prompt, request, debugLog, options) 
   log(`[Vertex] Business: ${request.business_name}`);
   log(`[Vertex] Category: ${request.business_category}`);
   try {
-    const { generateWithFallback: generateWithFallback3 } = await Promise.resolve().then(() => (init_gemini(), gemini_exports));
-    const responseText = await generateWithFallback3(
+    const { generateWithFallback: generateWithFallback2 } = await Promise.resolve().then(() => (init_gemini(), gemini_exports));
+    const responseText = await generateWithFallback2(
       [
         {
           role: "user",
@@ -2173,7 +2233,10 @@ async function generateHomepageViaDirectVertexPrompt(business, options) {
       debugSession: options?.debugSession
     });
     persist("01logo-analysis.json", logoAnalysis);
-    const resolvedImages = await resolveSectionImages(imageAnalysis, log, logoAnalysis, business);
+    const resolvedImages = await resolveSectionImages(imageAnalysis, log, logoAnalysis, business, {
+      throttleGemini: options?.throttleGemini,
+      debugSession: options?.debugSession
+    });
     persist("01b-resolved-images.json", resolvedImages);
     const request = buildHomepageGenerationRequest(business);
     request.images = {
@@ -3445,12 +3508,27 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
               source: "library"
             };
           }
+          mainContainer.settings.background_overlay_background = "classic";
+          mainContainer.settings.background_overlay_color = "#E8E6DF";
+          mainContainer.settings.background_overlay_opacity = { unit: "px", size: 0.85, sizes: [] };
+          if (mainContainer.settings.__globals__) {
+            delete mainContainer.settings.__globals__.background_overlay_color;
+            delete mainContainer.settings.__globals__.background_overlay_image;
+          }
         }
         if (widgets.heading?.[0] && widgets.heading[0].settings) {
           widgets.heading[0].settings.title = aiContent.about?.heading || "";
+          widgets.heading[0].settings.title_color = "#141111";
+          if (widgets.heading[0].settings.__globals__) {
+            delete widgets.heading[0].settings.__globals__.title_color;
+          }
         }
         if (widgets["text-editor"]?.[0] && widgets["text-editor"][0].settings) {
-          widgets["text-editor"][0].settings.editor = `<p>${aiContent.about?.description || ""}</p>`;
+          widgets["text-editor"][0].settings.editor = `<div style="color: #141111; line-height: 1.6; font-size: 1.1rem;">${aiContent.about?.description || ""}</div>`;
+          widgets["text-editor"][0].settings.text_color = "#141111";
+          if (widgets["text-editor"][0].settings.__globals__) {
+            delete widgets["text-editor"][0].settings.__globals__.text_color;
+          }
         }
         if (widgets.button?.[0] && widgets.button[0].settings) {
           widgets.button[0].settings.text = `${aiContent.about?.button_text || "Learn More"}`;

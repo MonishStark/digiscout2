@@ -153,12 +153,30 @@ export function mergeElementorTemplate(
 							source: "library"
 						};
 					}
+					// Readability improvement: Set a clean, beige backdrop overlay
+					mainContainer.settings.background_overlay_background = "classic";
+					mainContainer.settings.background_overlay_color = "#E8E6DF"; // Use brand neutral beige
+					mainContainer.settings.background_overlay_opacity = { unit: "px", size: 0.85, sizes: [] }; // 85% opacity
+					
+					// Clear global background overlay overrides if they exist
+					if (mainContainer.settings.__globals__) {
+						delete mainContainer.settings.__globals__.background_overlay_color;
+						delete mainContainer.settings.__globals__.background_overlay_image;
+					}
 				}
 				if (widgets.heading?.[0] && widgets.heading[0].settings) {
 					widgets.heading[0].settings.title = aiContent.about?.heading || "";
+					widgets.heading[0].settings.title_color = "#141111"; // Explicitly charcoal text
+					if (widgets.heading[0].settings.__globals__) {
+						delete widgets.heading[0].settings.__globals__.title_color;
+					}
 				}
 				if (widgets["text-editor"]?.[0] && widgets["text-editor"][0].settings) {
-					widgets["text-editor"][0].settings.editor = `<p>${aiContent.about?.description || ""}</p>`;
+					widgets["text-editor"][0].settings.editor = `<div style="color: #141111; line-height: 1.6; font-size: 1.1rem;">${aiContent.about?.description || ""}</div>`;
+					widgets["text-editor"][0].settings.text_color = "#141111"; // Explicitly charcoal text
+					if (widgets["text-editor"][0].settings.__globals__) {
+						delete widgets["text-editor"][0].settings.__globals__.text_color;
+					}
 				}
 				if (widgets.button?.[0] && widgets.button[0].settings) {
 					widgets.button[0].settings.text = `${aiContent.about?.button_text || "Learn More"}`;

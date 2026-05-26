@@ -87,6 +87,61 @@ async function downloadImageAsBase64(url: string): Promise<{ mimeType: string; d
 	}
 }
 
+async function analyzeProjectImage(
+	url: string,
+	fallbackTitle: string,
+	log: (msg: string) => void,
+	options?: {
+		throttleGemini?: () => Promise<void>;
+		debugSession?: any;
+	}
+): Promise<string> {
+	log(`[ImageAnalyzer] Downloading and analyzing Google Maps project image: ${url}`);
+	const imgObj = await downloadImageAsBase64(url);
+	if (!imgObj) {
+		log(`[ImageAnalyzer] Failed to download or convert image: ${url}. Using fallback title: ${fallbackTitle}`);
+		return fallbackTitle;
+	}
+	
+	try {
+		log(`[ImageAnalyzer] Running Gemini Vision analysis on image...`);
+		const prompt = `This photo was uploaded to Google Maps for a cabinetry/woodworking business. Identify the specific cabinetry, furniture, or woodwork item shown in this photo (e.g., kitchen cabinets, closet shelving, wooden dining table, bathroom vanity, TV console, bookshelf, etc.). Respond with a short, professional, human-sounding project title (2 to 4 words maximum, capitalized) describing what the photo shows. Do not use generic words like 'Recent Project' or 'Woodworking'. Return ONLY the title itself, with no explanation or punctuation.`;
+		
+		const responseText = await generateWithFallback(
+			[
+				{
+					role: "user",
+					parts: [
+						{ inlineData: { mimeType: imgObj.mimeType, data: imgObj.data } },
+						{ text: prompt }
+					]
+				}
+			],
+			{
+				temperature: 0.2,
+			},
+			{
+				logStderr: log,
+				debugSession: options?.debugSession,
+				throttleGemini: options?.throttleGemini || (async () => {}),
+				contextLabel: "project-image-caption"
+			}
+		);
+		
+		const title = responseText?.trim();
+		if (title && title.length > 2 && title.length < 50) {
+			log(`[ImageAnalyzer] Successfully analyzed image. Title: "${title}"`);
+			return title;
+		}
+		
+		log(`[ImageAnalyzer] Gemini response was empty or invalid. Response: "${responseText}". Using fallback: ${fallbackTitle}`);
+		return fallbackTitle;
+	} catch (e: any) {
+		log(`[ImageAnalyzer] Error analyzing image: ${e.message || e}. Using fallback: ${fallbackTitle}`);
+		return fallbackTitle;
+	}
+}
+
 interface ImageAnalysisMapping {
 	action: "use_existing" | "generate";
 	image_index?: number;
@@ -195,7 +250,11 @@ export async function resolveSectionImages(
 	analysis: ImageAnalysisResult,
 	log: (msg: string) => void,
 	logoAnalysis?: { action: "use_existing" | "generate"; url?: string; generation_prompt?: string },
-	business?: any
+	business?: any,
+	options?: {
+		throttleGemini?: () => Promise<void>;
+		debugSession?: any;
+	}
 ): Promise<{
 	hero_image: string;
 	masked_image: string;
@@ -407,8 +466,9 @@ export async function resolveSectionImages(
 		
 		if (uniqueProjectPhotos[i]) {
 			log(`[ImageGenerator] Project "${title}": Using actual Google Maps photo: ${uniqueProjectPhotos[i]}`);
+			const analyzedTitle = await analyzeProjectImage(uniqueProjectPhotos[i], title, log, options);
 			resultUrls.project_posts[i] = {
-				title,
+				title: analyzedTitle,
 				url: uniqueProjectPhotos[i]
 			};
 		} else {
@@ -704,7 +764,10 @@ export async function generateHomepageViaDirectVertexPrompt(
 		});
 		persist("01logo-analysis.json", logoAnalysis);
 
-		const resolvedImages = await resolveSectionImages(imageAnalysis, log, logoAnalysis, business);
+		const resolvedImages = await resolveSectionImages(imageAnalysis, log, logoAnalysis, business, {
+			throttleGemini: options?.throttleGemini,
+			debugSession: options?.debugSession
+		});
 		persist("01b-resolved-images.json", resolvedImages);
 
 		// Build the request
