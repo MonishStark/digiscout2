@@ -2594,6 +2594,7 @@ if (!process.env.DB_USER) {
 var env_default = process.env;
 
 // server.ts
+import fetch2 from "cross-fetch";
 import crypto2 from "crypto";
 import cors from "cors";
 import express from "express";
@@ -5841,6 +5842,8 @@ The DigitalScout Team`;
 }
 
 // server.ts
+global.fetch = fetch2;
+globalThis.fetch = fetch2;
 fs7.writeSync(
   2,
   `[BOOT] Server process starting at ${(/* @__PURE__ */ new Date()).toISOString()}
@@ -6693,7 +6696,7 @@ app.post(
         return res.status(400).json({ error: "Missing websiteContent or businessName" });
       }
       const siteName = `${businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "digital-scout"}-${Date.now()}`;
-      const siteResponse = await fetch("https://api.netlify.com/api/v1/sites", {
+      const siteResponse = await fetch2("https://api.netlify.com/api/v1/sites", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${NETLIFY_TOKEN}`,
@@ -6712,7 +6715,7 @@ app.post(
       const siteId = siteData.id;
       const deployedUrl = siteData.ssl_url || siteData.url || siteData.deploy_url;
       const sha1 = crypto2.createHash("sha1").update(websiteContent).digest("hex");
-      const deployResponse = await fetch(
+      const deployResponse = await fetch2(
         `https://api.netlify.com/api/v1/sites/${siteId}/deploys`,
         {
           method: "POST",
@@ -6736,7 +6739,7 @@ app.post(
       }
       const deployData = await deployResponse.json();
       const deployId = deployData.id;
-      const uploadResponse = await fetch(
+      const uploadResponse = await fetch2(
         `https://api.netlify.com/api/v1/deploys/${deployId}/files/index.html`,
         {
           method: "PUT",
@@ -6816,7 +6819,7 @@ app.post(
           imageSuggestions: categoryImageSuggestions(category, businessName)
         });
       }
-      const response = await fetch(websiteUri, {
+      const response = await fetch2(websiteUri, {
         headers: {
           "User-Agent": "Mozilla/5.0 (compatible; DigitalScout/1.0)"
         }
@@ -7355,7 +7358,7 @@ Rules for your responses:
           },
           tools: [{ googleSearch: {} }]
         };
-        const res2 = await fetch(vertexUrl, {
+        const res2 = await fetch2(vertexUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(vertexPayload)
@@ -7428,7 +7431,7 @@ Rules for your responses:
         tools: [{ googleSearch: {} }]
       };
       await throttleGemini();
-      const fetchResponse = await fetch(url, {
+      const fetchResponse = await fetch2(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody)
@@ -7486,7 +7489,7 @@ app.delete("/api/sites/:siteId", async (req, res) => {
     if (!siteId) {
       return res.status(400).json({ error: "Missing siteId" });
     }
-    const response = await fetch(
+    const response = await fetch2(
       `https://api.netlify.com/api/v1/sites/${siteId}`,
       {
         method: "DELETE",

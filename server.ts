@@ -1,6 +1,9 @@
 /** @format */
 
 import "./src/lib/env";
+import fetch from "cross-fetch";
+(global as any).fetch = fetch;
+(globalThis as any).fetch = fetch;
 import fs from "fs";
 // Low-level write to stderr to bypass console redirection
 fs.writeSync(
