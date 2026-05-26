@@ -18,6 +18,7 @@ const DEFAULT_FIELD_SET = [
 	"photos",
 	"businessStatus",
 	"reviews",
+	"regularOpeningHours",
 ];
 
 interface SearchBusinessesExpandedOptions {
@@ -65,11 +66,79 @@ function getPlaceAddress(place: any): string {
 	);
 }
 
+function summarizeHours(weekdayDescriptions: string[]): string {
+	if (!Array.isArray(weekdayDescriptions) || weekdayDescriptions.length === 0) {
+		return "";
+	}
+	
+	const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+	const shortDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+	const parsed: { day: string; short: string; time: string }[] = [];
+	
+	for (const desc of weekdayDescriptions) {
+		const parts = desc.split(":");
+		if (parts.length < 2) continue;
+		const dayPart = parts[0].trim();
+		const timePart = parts.slice(1).join(":").trim();
+		
+		const dayIdx = dayNames.findIndex(d => d.toLowerCase() === dayPart.toLowerCase());
+		if (dayIdx !== -1) {
+			parsed.push({
+				day: dayNames[dayIdx],
+				short: shortDays[dayIdx],
+				time: timePart
+			});
+		}
+	}
+	
+	parsed.sort((a, b) => dayNames.indexOf(a.day) - dayNames.indexOf(b.day));
+	
+	if (parsed.length === 0) {
+		return weekdayDescriptions.join(", ");
+	}
+	
+	const groups: { startDay: string; endDay: string; time: string }[] = [];
+	let currentGroup: { startDay: string; endDay: string; time: string } | null = null;
+	
+	for (let i = 0; i < parsed.length; i++) {
+		const item = parsed[i];
+		if (!currentGroup) {
+			currentGroup = { startDay: item.short, endDay: item.short, time: item.time };
+		} else if (currentGroup.time === item.time) {
+			currentGroup.endDay = item.short;
+		} else {
+			groups.push(currentGroup);
+			currentGroup = { startDay: item.short, endDay: item.short, time: item.time };
+		}
+	}
+	if (currentGroup) {
+		groups.push(currentGroup);
+	}
+	
+	const formatted = groups.map(g => {
+		const daysStr = g.startDay === g.endDay ? g.startDay : `${g.startDay}–${g.endDay}`;
+		let cleanTime = g.time
+			.replace(/:00/g, "")
+			.replace(/\bAM\b/gi, "am")
+			.replace(/\bPM\b/gi, "pm")
+			.replace(/\s*–\s*/g, "–")
+			.replace(/\s*-\s*/g, "–");
+		
+		return `${daysStr} ${cleanTime}`;
+	});
+	
+	return formatted.join(", ");
+}
+
 function toBusiness(place: any, category: string): Business {
 	const locationLat =
 		typeof place?.location?.lat === "function" ? place.location.lat() : 0;
 	const locationLng =
 		typeof place?.location?.lng === "function" ? place.location.lng() : 0;
+
+	// Extract opening hours description if available
+	const rawHours = place?.regularOpeningHours?.weekdayDescriptions || place?.regular_opening_hours?.weekday_text;
+	const hoursStr = Array.isArray(rawHours) ? summarizeHours(rawHours) : "";
 
 	return {
 		id: String(place?.id || Math.random().toString(36).slice(2, 11)),
@@ -103,6 +172,7 @@ function toBusiness(place: any, category: string): Business {
 					date: review.relativePublishTimeDescription || "",
 				}))
 			: [],
+		hours: hoursStr || undefined,
 	};
 }
 

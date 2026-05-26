@@ -1029,8 +1029,7 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 					} catch (clearErr) {}
 
 					await runWpCommand(`menu item add-custom "${footerMenuId}" "Terms of Use" "#"`, docRoot, logCallback);
-					await runWpCommand(`menu item add-custom "${footerMenuId}" "Privacy" "#"`, docRoot, logCallback);
-					await runWpCommand(`menu item add-custom "${footerMenuId}" "Cookie" "#"`, docRoot, logCallback);
+					await runWpCommand(`menu item add-custom "${footerMenuId}" "Privacy & Cookies" "#"`, docRoot, logCallback);
 				}
 			} catch (fmErr: any) {
 				await logCallback(`Warning during footer menu creation: ${fmErr.message}`);

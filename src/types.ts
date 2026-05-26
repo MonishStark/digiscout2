@@ -49,6 +49,7 @@ export interface Business {
 	logo?: string;
 	isOpen?: boolean;
 	reviews?: any[];
+	hours?: string | string[];
 }
 
 export type WebsiteSectionType =
