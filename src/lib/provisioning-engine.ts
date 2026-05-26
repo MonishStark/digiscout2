@@ -810,7 +810,11 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 							}
 							const tempLocalPath = path.join(tempLocalDir, `dl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`);
 							
-							const response = await crossFetch(imgUrl);
+							const response = await crossFetch(imgUrl, {
+								headers: {
+									"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+								}
+							});
 							if (response.ok) {
 								const arrayBuffer = await response.arrayBuffer();
 								fs.writeFileSync(tempLocalPath, Buffer.from(arrayBuffer));
@@ -856,7 +860,7 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 							const ext = imgUrl.toLowerCase().includes(".png") ? "png" : "jpg";
 							const remoteTmpMedia = `/tmp/ds_media_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
 							await runRemoteShellCommand(
-								`curl -sL "${imgUrl}" -o "${remoteTmpMedia}"`,
+								`curl -sL -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" "${imgUrl}" -o "${remoteTmpMedia}"`,
 								logCallback,
 							);
 							const mediaOut = await runWpCommand(
@@ -1433,7 +1437,7 @@ echo "MU_PLUGIN_CREATED\n";
 							: "jpg";
 						const remoteTmpMedia = `/tmp/ds_logo_${Date.now()}.${ext}`;
 						await runRemoteShellCommand(
-							`curl -sL "${schema.brand.logo}" -o "${remoteTmpMedia}"`,
+							`curl -sL -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" "${schema.brand.logo}" -o "${remoteTmpMedia}"`,
 							logCallback,
 						);
 						const mediaOut = await runWpCommand(

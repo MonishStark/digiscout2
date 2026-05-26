@@ -820,7 +820,7 @@ export async function generateCustomImage(
 
 		log(`[AI] Generating image via Vertex API using ${modelName}. Prompt: "${prompt}"...`);
 		let attempt = 0;
-		const maxAttempts = 4;
+		const maxAttempts = 6;
 		while (attempt < maxAttempts) {
 			attempt++;
 			try {
@@ -898,7 +898,7 @@ export async function generateCustomImage(
 				} else {
 					const errText = await res.text().catch(() => "");
 					if ((res.status === 429 || errText.includes("RESOURCE_EXHAUSTED")) && attempt < maxAttempts) {
-						const delay = 3000 + Math.random() * 2000;
+						const delay = 8000 + Math.random() * 4000;
 						log(`[AI] Vertex rate limited (429/RESOURCE_EXHAUSTED). Retrying attempt ${attempt + 1}/${maxAttempts} in ${(delay / 1000).toFixed(1)}s...`);
 						await new Promise((resolve) => setTimeout(resolve, delay));
 						continue;

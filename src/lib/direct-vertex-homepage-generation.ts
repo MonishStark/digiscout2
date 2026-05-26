@@ -117,137 +117,65 @@ export async function analyzeAndFilterImages(
 		debugSession?: any;
 	}
 ): Promise<ImageAnalysisResult> {
-	log(`[ImageAnalyzer] Running image pre-filtering & analysis for: ${business.name}`);
+	log(`[ImageAnalyzer] Cabinetry focus: Returning custom cabinetry generation prompts for: ${business.name}`);
 
-	const images = collectBusinessImages(business);
-	const numImages = Math.min(images.length, 12);
-	const base64Parts: any[] = [];
+	const city = business.city || "Houston";
+	const name = business.name || "Cabinetree";
 
-	log(`[ImageAnalyzer] Found ${images.length} business photos. Downloading top ${numImages} for Gemini analysis...`);
-
-	for (let i = 0; i < numImages; i++) {
-		const part = await downloadImageAsBase64(images[i]);
-		if (part) {
-			base64Parts.push({
-				inlineData: {
-					mimeType: part.mimeType,
-					data: part.data,
-				}
-			});
-			log(`[ImageAnalyzer] Downloaded photo ${i}: ${images[i].substring(0, 80)}...`);
-		}
-	}
-
-	const hasImages = base64Parts.length > 0;
-
-	const promptText = `You are a staff brand art director.
-Evaluate these ${base64Parts.length} images from Google Maps/Reviews for the business "${business.name}" (Category: "${business.category || business.businessType}").
-Determine which images are highly relevant, high quality, and suitable for the following website layout sections:
-1. "hero_image": The main hero background. Needs to be a high-quality, clean, atmospheric representation of the business (e.g. for woodworking, a premium finished product or beautiful showroom).
-2. "masked_image": A detailed/masked circular photo (e.g. detail of a wood joint, wood texture close-up).
-3. "about_image": Photo showing the craftsmanship process, team, or workspace.
-4. "services_image": Background image for services section showing a service in action.
-5. "testimonials_slideshow": A list of up to 3 gallery/reviews images.
-6. "project_posts": A list of up to 4 project images representing completed works/projects (e.g., finished custom cabinets, closets, shelves, tables). For each selected image, provide a descriptive, professional "post_title" (e.g., "Custom Oak Kitchen Cabinetry", "Modern Built-in Wardrobe").
-
-CRITICAL RULES FOR IMAGE SELECTION:
-- HIGH RESOLUTION & CLARITY ONLY: Only select an image if it is sharp, clear, and high-definition. If a photo is blurry, low-resolution, poorly lit, amateur, or contains watermarks/logos/text/flyers, reject it and mark "action": "generate" instead.
-- NO REPETITIVE IMAGES (UNIQUENESS): You MUST ensure that every selected image_index is completely unique across all layout sections (hero_image, masked_image, about_image, services_image, testimonials_slideshow, project_posts). No single image_index should be reused.
-- RELEVANCY: Ensure all selected images showcase premium, finished work of the business (e.g., finished custom cabinets, custom kitchens/bathrooms, dining tables). Avoid raw material piles, tools on floor, trucks, or office maps.
-- HIGH-QUALITY GENERATION PROMPTS: When "action" is "generate", write a highly detailed, professional photography prompt specifying lighting, composition, texture, and style (e.g., "A high-end professional architectural photograph of custom built-in cabinets...").
-
-If any of the Google Maps/Reviews photos are suitable, map them to the corresponding section by setting "action": "use_existing" and providing the "image_index" (0-based index matching the order of the images provided).
-If none of the provided photos are suitable or relevant, or if no images were provided, mark "action": "generate" and write a highly descriptive, detailed image generation prompt ("generation_prompt") tailored to the business category and location context for the model "gemini-3-pro-image-preview". The prompt should describe a premium, high-quality photograph, setting, lighting, and detail.
-
-Return ONLY a JSON response in the following format:
-{
-  "hero_image": { "action": "use_existing" or "generate", "image_index": 0, "generation_prompt": "..." },
-  "masked_image": { "action": "use_existing" or "generate", "image_index": 1, "generation_prompt": "..." },
-  "about_image": { "action": "use_existing" or "generate", "image_index": 2, "generation_prompt": "..." },
-  "services_image": { "action": "use_existing" or "generate", "image_index": 3, "generation_prompt": "..." },
-  "testimonials_slideshow": [
-    { "action": "use_existing" or "generate", "image_index": 4, "generation_prompt": "..." },
-    { "action": "use_existing" or "generate", "image_index": 5, "generation_prompt": "..." },
-    { "action": "use_existing" or "generate", "image_index": 6, "generation_prompt": "..." }
-  ],
-  "project_posts": [
-    { "action": "use_existing" or "generate", "image_index": 7, "post_title": "Custom Walnut Kitchen Cabinets", "generation_prompt": "..." },
-    { "action": "use_existing" or "generate", "image_index": 8, "post_title": "Minimalist Oak TV Console", "generation_prompt": "..." }
-  ]
-}`;
-
-	const parts: any[] = [{ text: promptText }];
-	if (hasImages) {
-		parts.push(...base64Parts);
-	}
-
-	try {
-		log(`[ImageAnalyzer] Calling Gemini to analyze images...`);
-		const responseText = await generateWithFallback(
-			[{ role: "user", parts }],
-			{ temperature: 0.1, responseMimeType: "application/json" },
+	return {
+		hero_image: {
+			action: "generate",
+			generation_prompt: `A high-end professional commercial architectural photograph of custom kitchen cabinetry built by ${name} in ${city}, premium finished walnut and oak cabinets, modern kitchen design, warm soft lighting, clean composition, 8k, detailed wood grain texture.`
+		},
+		masked_image: {
+			action: "generate",
+			generation_prompt: `A detailed close-up shot of a perfect dovetail joint in custom woodwork cabinetry by ${name}, premium craftsmanship, soft depth of field, warm lighting.`
+		},
+		about_image: {
+			action: "generate",
+			generation_prompt: `A professional photograph of a clean, modern woodworking workshop of ${name}, cabinetmaker craftsman building custom cabinets, sawdust in warm sunlight, high-end tools.`
+		},
+		services_image: {
+			action: "generate",
+			generation_prompt: `A beautiful custom built-in entertainment center bookcase cabinet installation in a luxurious living room, premium finished wood, clean modern architecture.`
+		},
+		testimonials_slideshow: [
 			{
-				logStderr: log,
-				debugSession: options?.debugSession,
-				throttleGemini: options?.throttleGemini || (async () => {}),
-				contextLabel: "image-analysis",
+				action: "generate",
+				generation_prompt: `Elegant modern custom bathroom vanity cabinet with marble top, gold fixtures, clean design.`
+			},
+			{
+				action: "generate",
+				generation_prompt: `Custom walk-in closet shelving system, premium white finish, organized drawers and hangers.`
+			},
+			{
+				action: "generate",
+				generation_prompt: `A custom handcrafted oak dining table detail shot, smooth finish, luxury dining room setting.`
 			}
-		);
-
-		let jsonString = responseText.trim();
-		if (jsonString.startsWith("```")) {
-			jsonString = jsonString
-				.replace(/^```[a-zA-Z]*\n/, "")
-				.replace(/\n```$/, "");
-		}
-
-		log(`[ImageAnalyzer] Parse result: ${jsonString}`);
-		const result = JSON.parse(jsonString) as ImageAnalysisResult;
-
-		// Map image_index to original URLs
-		const mapIndexToUrl = (mapping: ImageAnalysisMapping): ImageAnalysisMapping => {
-			if (mapping.action === "use_existing" && typeof mapping.image_index === "number" && images[mapping.image_index]) {
-				return { ...mapping, url: images[mapping.image_index] };
+		],
+		project_posts: [
+			{
+				action: "generate",
+				post_title: "Custom Kitchen Cabinetry",
+				generation_prompt: `A high-end professional commercial photograph of custom walnut kitchen cabinets, modern design, premium hardware.`
+			},
+			{
+				action: "generate",
+				post_title: "Minimalist Oak TV Console",
+				generation_prompt: `A sleek modern minimalist oak TV console cabinet, clean lines, floating design.`
+			},
+			{
+				action: "generate",
+				post_title: "Luxury Walk-In Closet",
+				generation_prompt: `A premium custom walk-in closet organization system, white wood finish, warm LED shelf lighting.`
+			},
+			{
+				action: "generate",
+				post_title: "Bespoke Home Office Shelving",
+				generation_prompt: `A professional home office setup with bespoke built-in shelves and executive desk, dark oak finish.`
 			}
-			return { ...mapping, action: "generate" }; // Fallback to generate if index is invalid
-		};
-
-		return {
-			hero_image: mapIndexToUrl(result.hero_image),
-			masked_image: mapIndexToUrl(result.masked_image),
-			about_image: mapIndexToUrl(result.about_image),
-			services_image: mapIndexToUrl(result.services_image),
-			testimonials_slideshow: (result.testimonials_slideshow || []).map(mapIndexToUrl),
-			project_posts: (result.project_posts || []).map((p: any) => ({
-				...mapIndexToUrl(p),
-				post_title: p.post_title || "Custom Project",
-			})),
-		};
-	} catch (error) {
-		log(`[ImageAnalyzer] Analysis failed: ${error instanceof Error ? error.message : String(error)}. Falling back to full generation prompts.`);
-		// If analysis fails or there are no images, construct default fallback prompts programmatically
-		const getFallbackPrompt = (role: string) => {
-			return `A high-end professional commercial photograph of a ${business.category || "local business"} related to ${business.name}, representing ${role}, clean composition, dramatic soft warm lighting, depth of field, 8k, detailed texture.`;
-		};
-
-		return {
-			hero_image: { action: "generate", generation_prompt: getFallbackPrompt("hero background showcase") },
-			masked_image: { action: "generate", generation_prompt: getFallbackPrompt("close up detail shot") },
-			about_image: { action: "generate", generation_prompt: getFallbackPrompt("workspace environment or team action") },
-			services_image: { action: "generate", generation_prompt: getFallbackPrompt("services in action") },
-			testimonials_slideshow: [
-				{ action: "generate", generation_prompt: getFallbackPrompt("project outcome detail 1") },
-				{ action: "generate", generation_prompt: getFallbackPrompt("project outcome detail 2") },
-				{ action: "generate", generation_prompt: getFallbackPrompt("project outcome detail 3") },
-			],
-			project_posts: [
-				{ action: "generate", post_title: "Custom Kitchen Cabinetry", generation_prompt: getFallbackPrompt("custom kitchen cabinetry installation") },
-				{ action: "generate", post_title: "Bespoke Built-in Wardrobe", generation_prompt: getFallbackPrompt("bespoke built-in wardrobe detail") },
-				{ action: "generate", post_title: "Handcrafted Dining Table", generation_prompt: getFallbackPrompt("handcrafted solid wood dining table") },
-				{ action: "generate", post_title: "Modern Wooden TV Console", generation_prompt: getFallbackPrompt("modern minimalist wooden tv console") },
-			],
-		};
-	}
+		]
+	};
 }
 
 export async function detectOrGenerateLogo(
@@ -258,67 +186,8 @@ export async function detectOrGenerateLogo(
 		debugSession?: any;
 	}
 ): Promise<{ action: "use_existing" | "generate"; url?: string; generation_prompt?: string }> {
-	log(`[LogoDetector] Analyzing Google Photos to find an existing business logo...`);
-	const images = collectBusinessImages(business);
-	const numImages = Math.min(images.length, 12);
-	const base64Parts: any[] = [];
-
-	for (let i = 0; i < numImages; i++) {
-		const part = await downloadImageAsBase64(images[i]);
-		if (part) {
-			base64Parts.push({
-				inlineData: {
-					mimeType: part.mimeType,
-					data: part.data,
-				}
-			});
-		}
-	}
-
-	const promptText = `You are a branding designer.
-Analyze these ${base64Parts.length} photos from Google Maps/Reviews for the business "${business.name}" (Category: "${business.category || business.businessType}").
-Determine if any of these photos is the official business logo, emblem, or clean storefront signage containing the logo.
-If you find one, return a JSON response with:
-{ "action": "use_existing", "logo_index": <0-based index of the photo> }
-
-If no clear logo exists in the photos, return:
-{ "action": "generate", "generation_prompt": "A premium minimalist text-based typography logo featuring the business name \\"${business.name}\\", clean modern flat design, solid white background, sharp vector shapes" }
-
-Return ONLY valid JSON:`;
-
-	const parts: any[] = [{ text: promptText }];
-	if (base64Parts.length > 0) {
-		parts.push(...base64Parts);
-	}
-
-	try {
-		const responseText = await generateWithFallback(
-			[{ role: "user", parts }],
-			{ temperature: 0.1, responseMimeType: "application/json" },
-			{
-				logStderr: log,
-				debugSession: options?.debugSession,
-				throttleGemini: options?.throttleGemini || (async () => {}),
-				contextLabel: "logo-detection",
-			}
-		);
-
-		let jsonString = responseText.trim();
-		if (jsonString.startsWith("```")) {
-			jsonString = jsonString.replace(/^```[a-zA-Z]*\n/, "").replace(/\n```$/, "");
-		}
-
-		const parsed = JSON.parse(jsonString);
-		if (parsed.action === "use_existing" && typeof parsed.logo_index === "number" && images[parsed.logo_index]) {
-			log(`[LogoDetector] Found logo in Google photos at index ${parsed.logo_index}`);
-			return { action: "use_existing", url: images[parsed.logo_index] };
-		}
-	} catch (e) {
-		log(`[LogoDetector] Logo detection failed or no logo found: ${e}`);
-	}
-
-	log(`[LogoDetector] No logo found in Google photos. Generating a custom one.`);
-	const defaultPrompt = `A premium minimalist text-based typography logo featuring the business name "${business.name}", clean modern flat design, solid white background, sharp vector lines`;
+	log(`[LogoDetector] Cabinetry focus: Returning custom cabinetry logo generation prompt for: ${business.name}`);
+	const defaultPrompt = `A premium minimalist text-based typography logo featuring the business name "${business.name}" with a elegant modern wood chisel or fine tree icon, clean modern flat design, solid white background, sharp vector lines, high-end lettermark`;
 	return { action: "generate", generation_prompt: defaultPrompt };
 }
 
@@ -345,6 +214,32 @@ export async function resolveSectionImages(
 		logo_image: "",
 	};
 
+	const getFallbackPlaceholder = (role: string): string => {
+		const fallbacks: Record<string, string> = {
+			hero: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1200&q=80", // Premium kitchen cabinetry
+			masked: "https://images.unsplash.com/photo-1533090161767-e6ffed986c88?w=800&q=80", // Wood grain texture
+			about: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1200&q=80", // Woodworking workshop
+			services: "https://images.unsplash.com/photo-1539922980492-38f6673af8dd?w=1200&q=80", // Finished cabinetry
+			logo: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=400&q=80" // Fallback logo emblem
+		};
+
+		if (role.startsWith("testimonial_")) {
+			return "https://images.unsplash.com/photo-1558882224-cca166733360?w=800&q=80"; // Custom built-in closets
+		}
+		if (role.startsWith("project_")) {
+			const projectPics = [
+				"https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&q=80",
+				"https://images.unsplash.com/photo-1539922980492-38f6673af8dd?w=800&q=80",
+				"https://images.unsplash.com/photo-1558882224-cca166733360?w=800&q=80",
+				"https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&q=80"
+			];
+			const idx = parseInt(role.split("_")[1], 10) - 1 || 0;
+			return projectPics[idx % projectPics.length] || projectPics[0];
+		}
+
+		return fallbacks[role] || "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1200&q=80";
+	};
+
 	const generateAndSave = async (prompt: string, role: string, aspectRatio: "1:1" | "3:4" | "4:3" | "9:16" | "16:9" = "16:9"): Promise<string> => {
 		try {
 			const base64Bytes = await generateCustomImage(prompt, { aspectRatio, logStderr: log });
@@ -362,9 +257,8 @@ export async function resolveSectionImages(
 			log(`[ImageGenerator] Saved generated image for ${role} to ${fileUrl}`);
 			return fileUrl;
 		} catch (err: any) {
-			log(`[ImageGenerator] Error generating image for ${role}: ${err.message || err}. Falling back to default placeholder.`);
-			// fallback placeholder
-			return "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800";
+			log(`[ImageGenerator] Error generating image for ${role}: ${err.message || err}. Falling back to default cabinetry placeholder.`);
+			return getFallbackPlaceholder(role);
 		}
 	};
 
@@ -458,26 +352,24 @@ export async function resolveSectionImages(
 			}
 		});
 	} else {
-		resultUrls.logo_image = "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800"; // fallback
+		resultUrls.logo_image = "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=400&q=80"; // fallback
 	}
 
-	// Run tasks with concurrency limit of 3 to avoid hitting API rate limits while significantly speeding up generation
+	// Run tasks sequentially with a small delay to avoid hitting API rate limits
 	if (taskList.length > 0) {
-		log(`[ImageGenerator] Queueing ${taskList.length} AI image generation tasks with concurrency limit of 3...`);
-		let nextIndex = 0;
-		const worker = async () => {
-			while (nextIndex < taskList.length) {
-				const index = nextIndex++;
-				try {
-					await taskList[index].run();
-				} catch (err: any) {
-					log(`[ImageGenerator] Worker task error: ${err.message || err}`);
-				}
+		log(`[ImageGenerator] Running ${taskList.length} AI image generation tasks sequentially with a delay to avoid rate limits...`);
+		for (let i = 0; i < taskList.length; i++) {
+			if (i > 0) {
+				const delayMs = 3000;
+				log(`[ImageGenerator] Waiting ${delayMs / 1000}s before next image generation...`);
+				await new Promise((resolve) => setTimeout(resolve, delayMs));
 			}
-		};
-		const limit = 3;
-		const workers = Array.from({ length: Math.min(limit, taskList.length) }, worker);
-		await Promise.all(workers);
+			try {
+				await taskList[i].run();
+			} catch (err: any) {
+				log(`[ImageGenerator] Task error at index ${i}: ${err.message || err}`);
+			}
+		}
 	}
 
 	return resultUrls;
