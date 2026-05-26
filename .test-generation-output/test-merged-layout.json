@@ -445,7 +445,7 @@
           {
             "id": "524d28e4",
             "settings": {
-              "text": "Book Appointment ➔",
+              "text": "Book Appointment",
               "text_padding": {
                 "unit": "px",
                 "top": "0",
@@ -1212,7 +1212,7 @@
           {
             "id": "3f08a8fe",
             "settings": {
-              "text": "Meet the Doctors ➔",
+              "text": "Meet the Doctors",
               "text_padding": {
                 "unit": "px",
                 "top": "0",
@@ -3541,7 +3541,7 @@
           {
             "id": "4500c934",
             "settings": {
-              "text": "Contact Us ➔",
+              "text": "Contact Us",
               "text_padding": {
                 "unit": "px",
                 "top": "0",

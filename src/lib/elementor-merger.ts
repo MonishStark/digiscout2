@@ -161,7 +161,7 @@ export function mergeElementorTemplate(
 					widgets["text-editor"][0].settings.editor = `<p>${aiContent.about?.description || ""}</p>`;
 				}
 				if (widgets.button?.[0] && widgets.button[0].settings) {
-					widgets.button[0].settings.text = `${aiContent.about?.button_text || "Learn More"} ➔`;
+					widgets.button[0].settings.text = `${aiContent.about?.button_text || "Learn More"}`;
 					widgets.button[0].settings.link = {
 						url: "#products",
 						is_external: "",
@@ -190,7 +190,7 @@ export function mergeElementorTemplate(
 					widgets["text-editor"][0].settings.editor = `<p>${aiContent.services?.description || ""}</p>`;
 				}
 				if (widgets.button?.[0] && widgets.button[0].settings) {
-					widgets.button[0].settings.text = `Our Services ➔`;
+					widgets.button[0].settings.text = `Our Services`;
 					widgets.button[0].settings.link = {
 						url: "#products",
 						is_external: "",
@@ -222,7 +222,7 @@ export function mergeElementorTemplate(
 					};
 				}
 				if (widgets.button?.[0] && widgets.button[0].settings) {
-					widgets.button[0].settings.text = `Contact Us ➔`;
+					widgets.button[0].settings.text = `Contact Us`;
 					widgets.button[0].settings.link = {
 						url: "#contact",
 						is_external: "",
@@ -258,7 +258,7 @@ export function mergeElementorTemplate(
 					widgets["text-editor"][0].settings.editor = `<p>${processText}</p>`;
 				}
 				if (widgets.button?.[0] && widgets.button[0].settings) {
-					widgets.button[0].settings.text = `Get a Quote ➔`;
+					widgets.button[0].settings.text = `Get a Quote`;
 					widgets.button[0].settings.link = {
 						url: "#contact",
 						is_external: "",
@@ -381,7 +381,7 @@ export function mergeElementorTemplate(
 				}
 				// Button
 				if (widgets.button?.[0] && widgets.button[0].settings) {
-					widgets.button[0].settings.text = `${aiContent.hero?.button_text || "Get Started"} ➔`;
+					widgets.button[0].settings.text = `${aiContent.hero?.button_text || "Get Started"}`;
 					widgets.button[0].settings.link = {
 						url: "#services",
 						is_external: "",
@@ -452,7 +452,7 @@ export function mergeElementorTemplate(
 				}
 				// About button
 				if (widgets.button?.[0] && widgets.button[0].settings) {
-					widgets.button[0].settings.text = `${aiContent.about?.button_text || "Learn More"} ➔`;
+					widgets.button[0].settings.text = `${aiContent.about?.button_text || "Learn More"}`;
 					widgets.button[0].settings.link = {
 						url: "#services",
 						is_external: "",
@@ -600,7 +600,7 @@ export function mergeElementorTemplate(
 				}
 				// Button
 				if (widgets.button?.[0] && widgets.button[0].settings) {
-					widgets.button[0].settings.text = `Contact Us ➔`;
+					widgets.button[0].settings.text = `Contact Us`;
 					widgets.button[0].settings.link = {
 						url: "#contact",
 						is_external: "",

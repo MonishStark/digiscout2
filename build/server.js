@@ -3453,7 +3453,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
           widgets["text-editor"][0].settings.editor = `<p>${aiContent.about?.description || ""}</p>`;
         }
         if (widgets.button?.[0] && widgets.button[0].settings) {
-          widgets.button[0].settings.text = `${aiContent.about?.button_text || "Learn More"} \u2794`;
+          widgets.button[0].settings.text = `${aiContent.about?.button_text || "Learn More"}`;
           widgets.button[0].settings.link = {
             url: "#products",
             is_external: "",
@@ -3481,7 +3481,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
           widgets["text-editor"][0].settings.editor = `<p>${aiContent.services?.description || ""}</p>`;
         }
         if (widgets.button?.[0] && widgets.button[0].settings) {
-          widgets.button[0].settings.text = `Our Services \u2794`;
+          widgets.button[0].settings.text = `Our Services`;
           widgets.button[0].settings.link = {
             url: "#products",
             is_external: "",
@@ -3511,7 +3511,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
           };
         }
         if (widgets.button?.[0] && widgets.button[0].settings) {
-          widgets.button[0].settings.text = `Contact Us \u2794`;
+          widgets.button[0].settings.text = `Contact Us`;
           widgets.button[0].settings.link = {
             url: "#contact",
             is_external: "",
@@ -3545,7 +3545,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
           widgets["text-editor"][0].settings.editor = `<p>${processText}</p>`;
         }
         if (widgets.button?.[0] && widgets.button[0].settings) {
-          widgets.button[0].settings.text = `Get a Quote \u2794`;
+          widgets.button[0].settings.text = `Get a Quote`;
           widgets.button[0].settings.link = {
             url: "#contact",
             is_external: "",
@@ -3650,7 +3650,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
           widgets.heading[0].settings.title = aiContent.hero?.heading || "";
         }
         if (widgets.button?.[0] && widgets.button[0].settings) {
-          widgets.button[0].settings.text = `${aiContent.hero?.button_text || "Get Started"} \u2794`;
+          widgets.button[0].settings.text = `${aiContent.hero?.button_text || "Get Started"}`;
           widgets.button[0].settings.link = {
             url: "#services",
             is_external: "",
@@ -3704,7 +3704,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
           widgets["text-editor"][0].settings.editor = `<p>${aiContent.about?.description || ""}</p>`;
         }
         if (widgets.button?.[0] && widgets.button[0].settings) {
-          widgets.button[0].settings.text = `${aiContent.about?.button_text || "Learn More"} \u2794`;
+          widgets.button[0].settings.text = `${aiContent.about?.button_text || "Learn More"}`;
           widgets.button[0].settings.link = {
             url: "#services",
             is_external: "",
@@ -3834,7 +3834,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
           widgets["text-editor"][0].settings.editor = `<p>Don\u2019t hesitate to contact us. We\u2019ll be happy to discuss your needs, provide estimates, and answer all your questions.</p>`;
         }
         if (widgets.button?.[0] && widgets.button[0].settings) {
-          widgets.button[0].settings.text = `Contact Us \u2794`;
+          widgets.button[0].settings.text = `Contact Us`;
           widgets.button[0].settings.link = {
             url: "#contact",
             is_external: "",
