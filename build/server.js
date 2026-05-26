@@ -4917,9 +4917,6 @@ $global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !imp
 	'.elementor-widget-theme-site-logo img { mix-blend-mode: multiply !important; height: auto !important; max-height: 45px !important; width: auto !important; } ' .
 	'.elementor-element-1b226200, .elementor-element-1b226200 .elementor-widget-text-editor, .elementor-element-1b226200 .elementor-widget-text-editor p { color: #E9E8E6 !important; } ' .
 	'.elementor-element-1b226200 .elementor-widget-text-editor strong { color: #FFFFFF !important; } ' .
-	'.elementor-element-4d1645d0 .elementor-background-overlay { background-color: rgba(233, 232, 230, 0.75) !important; opacity: 1 !important; } ' .
-	'.elementor-element-4d1645d0::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(233, 232, 230, 0.75) !important; z-index: 0; pointer-events: none; } ' .
-	'.elementor-element-4d1645d0 > * { position: relative; z-index: 1; } ' .
 	'.elementor-element-51305b21 .elementor-background-overlay { background-color: rgba(12, 40, 53, 0.6) !important; opacity: 1 !important; } ' .
 	'.elementor-element-51305b21::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(12, 40, 53, 0.6) !important; z-index: 0; pointer-events: none; } ' .
 	'.elementor-element-51305b21 > * { position: relative; z-index: 1; } ' .
@@ -4962,9 +4959,6 @@ add_action("wp_head", function() {
     .elementor-widget-theme-site-logo img { mix-blend-mode: multiply !important; height: auto !important; max-height: 45px !important; width: auto !important; }
     .elementor-element-1b226200, .elementor-element-1b226200 .elementor-widget-text-editor, .elementor-element-1b226200 .elementor-widget-text-editor p { color: #E9E8E6 !important; }
     .elementor-element-1b226200 .elementor-widget-text-editor strong { color: #FFFFFF !important; }
-    .elementor-element-4d1645d0 .elementor-background-overlay { background-color: rgba(233, 232, 230, 0.75) !important; opacity: 1 !important; }
-    .elementor-element-4d1645d0::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(233, 232, 230, 0.75) !important; z-index: 0; pointer-events: none; }
-    .elementor-element-4d1645d0 > * { position: relative; z-index: 1; }
     .elementor-element-51305b21 .elementor-background-overlay { background-color: rgba(12, 40, 53, 0.6) !important; opacity: 1 !important; }
     .elementor-element-51305b21::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(12, 40, 53, 0.6) !important; z-index: 0; pointer-events: none; }
     .elementor-element-51305b21 > * { position: relative; z-index: 1; }
