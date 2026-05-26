@@ -16,8 +16,11 @@ export function mergeElementorTemplate(
 		address: string;
 		phone: string;
 		email: string;
+		hours?: string | string[];
 	},
 	menuId?: string | number,
+	footerMenuId?: string | number,
+	custServiceMenuId?: string | number,
 ): string {
 	const isKit2 = fs.existsSync(path.join(templateDir, "templates", "49.json"));
 	// Paths to templates
@@ -292,20 +295,49 @@ export function mergeElementorTemplate(
 				// Contact info list
 				const contactList = widgets["icon-list"]?.[0];
 				if (contactList && Array.isArray(contactList.settings.icon_list)) {
-					if (contactList.settings.icon_list[0]) {
-						contactList.settings.icon_list[0].text = businessInfo.address;
+					const originalItems = contactList.settings.icon_list;
+					const newItems = [];
+					
+					// Address
+					if (businessInfo.address && originalItems[0]) {
+						const item = JSON.parse(JSON.stringify(originalItems[0]));
+						item.text = businessInfo.address;
+						newItems.push(item);
 					}
-					if (contactList.settings.icon_list[1]) {
-						contactList.settings.icon_list[1].text = `Phone: ${businessInfo.phone}`;
-						contactList.settings.icon_list[1].link = { url: `tel:${businessInfo.phone.replace(/[^0-9+]/g, "")}` };
+					
+					// Available hours / timing (placed after address and before phone)
+					if (businessInfo.hours && originalItems[0]) {
+						const item = JSON.parse(JSON.stringify(originalItems[0]));
+						item.text = Array.isArray(businessInfo.hours) ? businessInfo.hours.join(", ") : String(businessInfo.hours);
+						newItems.push(item);
 					}
-					if (contactList.settings.icon_list[2]) {
-						contactList.settings.icon_list[2].text = businessInfo.email;
-						contactList.settings.icon_list[2].link = { url: `mailto:${businessInfo.email}` };
+					
+					// Phone
+					const phoneProto = originalItems.find((itm: any) => 
+						String(itm.text).toLowerCase().includes("phone") || 
+						String(itm.icon?.value).includes("phone")
+					) || originalItems[1] || originalItems[0];
+					if (businessInfo.phone && phoneProto) {
+						const item = JSON.parse(JSON.stringify(phoneProto));
+						item.text = `Phone: ${businessInfo.phone}`;
+						item.link = { url: `tel:${businessInfo.phone.replace(/[^0-9+]/g, "")}` };
+						newItems.push(item);
 					}
-					if (contactList.settings.icon_list[3]) {
-						contactList.settings.icon_list[3].text = "";
+					
+					// Email
+					const emailProto = originalItems.find((itm: any) => 
+						String(itm.text).toLowerCase().includes("@") || 
+						String(itm.text).toLowerCase().includes("email") || 
+						String(itm.icon?.value).includes("envelope")
+					) || originalItems[2] || originalItems[0];
+					if (businessInfo.email && emailProto) {
+						const item = JSON.parse(JSON.stringify(emailProto));
+						item.text = businessInfo.email;
+						item.link = { url: `mailto:${businessInfo.email}` };
+						newItems.push(item);
 					}
+					
+					contactList.settings.icon_list = newItems;
 				}
 				// Map the footer logo image
 				if (widgets.image?.[0] && widgets.image[0].settings) {
@@ -316,6 +348,15 @@ export function mergeElementorTemplate(
 							url: local.url,
 							id: String(local.id),
 						};
+					}
+				}
+				// Assign menus
+				if (widgets["nav-menu"]) {
+					if (widgets["nav-menu"][0] && widgets["nav-menu"][0].settings && custServiceMenuId) {
+						widgets["nav-menu"][0].settings.menu = String(custServiceMenuId);
+					}
+					if (widgets["nav-menu"][1] && widgets["nav-menu"][1].settings && footerMenuId) {
+						widgets["nav-menu"][1].settings.menu = String(footerMenuId);
 					}
 				}
 				// Clear ceramic page links on headings by setting link.url = "#"

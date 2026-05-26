@@ -629,7 +629,8 @@
               "_offset_y_mobile": {
                 "size": "-20",
                 "unit": "%"
-              }
+              },
+              "image_size": "full"
             },
             "elements": [],
             "isInner": false,
@@ -3752,7 +3753,7 @@
           {
             "id": "7dea45b0",
             "settings": {
-              "title": "Super Smile Dental © 2026 All Rights Reserved.",
+              "title": "© 2026 Super Smile Dental. All Rights Reserved.",
               "align": "left",
               "align_mobile": "center",
               "__globals__": {
@@ -4114,6 +4115,16 @@
         ],
         "isInner": "",
         "elType": "column"
+      },
+      {
+        "id": "ds_custom_footer_css",
+        "settings": {
+          "html": "<style>\n/* Force all text inside footer to be white */\n[data-elementor-type=\"footer\"] *, \n.elementor-element-29c6e791 *, \n.elementor-element-28f7602f *, \nfooter *, \n.site-footer *, \n.elementor-location-footer * { \n    color: #ffffff !important; \n} \n/* Force all icons inside footer to be white */\n[data-elementor-type=\"footer\"] svg, \n[data-elementor-type=\"footer\"] path, \n.elementor-element-29c6e791 svg, \n.elementor-element-29c6e791 path, \n.elementor-element-28f7602f svg,\n.elementor-element-28f7602f path,\nfooter svg, \nfooter path, \n.site-footer svg, \n.site-footer path,\n.elementor-location-footer svg,\n.elementor-location-footer path { \n    fill: #ffffff !important; \n} \n/* Hover states for links inside footer */\n[data-elementor-type=\"footer\"] a:hover, \n[data-elementor-type=\"footer\"] a:hover *, \n.elementor-element-29c6e791 a:hover, \n.elementor-element-29c6e791 a:hover *, \n.elementor-element-28f7602f a:hover,\n.elementor-element-28f7602f a:hover *,\nfooter a:hover, \nfooter a:hover *, \n.site-footer a:hover, \n.site-footer a:hover *,\n.elementor-location-footer a:hover,\n.elementor-location-footer a:hover * { \n    color: #ffffff !important; \n    opacity: 0.8 !important; \n} \n/* Placeholder styling for subscription form */\n[data-elementor-type=\"footer\"] ::placeholder, \n.elementor-element-29c6e791 ::placeholder, \n.elementor-element-28f7602f ::placeholder,\nfooter ::placeholder, \n.site-footer ::placeholder,\n.elementor-location-footer ::placeholder { \n    color: rgba(255, 255, 255, 0.6) !important; \n}\n\n/* Call to Action Content Centering */\n.elementor-widget-call-to-action .elementor-cta__content,\n.elementor-widget-call-to-action .elementor-cta__title,\n.elementor-widget-call-to-action .elementor-cta__description,\n.elementor-widget-call-to-action .elementor-cta__button-wrapper {\n    text-align: center !important;\n}\n.elementor-widget-call-to-action .elementor-cta__button-wrapper {\n    display: flex !important;\n    justify-content: center !important;\n}\n\n/* Logo Widget Container Transparency */\n.elementor-element-3b58bec7,\n.elementor-element-69be47e,\n.elementor-element-5a62107a,\n.elementor-element-44b1aa0b,\n.elementor-element-3b58bec7 .elementor-widget-container,\n.elementor-element-69be47e .elementor-widget-container,\n.elementor-element-5a62107a .elementor-widget-container,\n.elementor-element-44b1aa0b .elementor-widget-container {\n    background-color: transparent !important;\n    background: transparent !important;\n}\n\n/* Header Logo (Key out white background on light header) */\n.elementor-element-3b58bec7 img,\n.elementor-element-69be47e img,\n.elementor-widget-theme-site-logo img,\n.elementor-widget-image img[src*=\"gen_logo\"],\nheader img[src*=\"gen_logo\"],\n.site-header img[src*=\"gen_logo\"] {\n    mix-blend-mode: multiply !important;\n    background-color: transparent !important;\n}\n\n/* Footer Logo (Invert to white on transparent for dark footer) */\n.elementor-element-5a62107a img,\n.elementor-element-44b1aa0b img,\n[data-elementor-type=\"footer\"] img[src*=\"gen_logo\"],\nfooter img[src*=\"gen_logo\"],\n.site-footer img[src*=\"gen_logo\"] {\n    filter: invert(1) !important;\n    mix-blend-mode: screen !important;\n    background-color: transparent !important;\n}\n</style>"
+        },
+        "elements": [],
+        "isInner": false,
+        "widgetType": "html",
+        "elType": "widget"
       }
     ],
     "isInner": "",

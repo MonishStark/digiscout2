@@ -770,12 +770,14 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 					let imported = false;
 
 					// 1. Try local generated image transfer first
-					if (imgUrl.includes("/public/generated-images/")) {
-						const parts = imgUrl.split("/public/generated-images/");
-						const filename = parts[parts.length - 1];
-						const localPath = path.join(process.cwd(), "public", "generated-images", filename);
+					if (imgUrl.includes("/public/generated-images/") || imgUrl.includes("/public/default/")) {
+						const isDefault = imgUrl.includes("/public/default/");
+						const marker = isDefault ? "/public/default/" : "/public/generated-images/";
+						const parts = imgUrl.split(marker);
+						const filename = decodeURIComponent(parts[parts.length - 1]);
+						const localPath = path.join(process.cwd(), "public", isDefault ? "default" : "generated-images", filename);
 						if (fs.existsSync(localPath)) {
-							await logCallback(`Detected local generated image: ${filename}. Copying to remote server...`);
+							await logCallback(`Detected local image: ${filename}. Copying to remote server...`);
 							const ext = filename.toLowerCase().endsWith(".png") ? "png" : "jpg";
 							const remoteTmpMedia = `/tmp/ds_local_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
 							try {
@@ -940,22 +942,16 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 
 			// Create navigation menu
 			let menuId = "";
+			let footerMenuId = "";
+			let custServiceMenuId = "";
+
 			try {
 				await logCallback("Creating Main Menu...");
 				const menuCreateOut = await runWpCommand(
 					`menu create "Main Menu" --porcelain`,
 					docRoot,
 					logCallback,
-				).catch(async () => {
-					const out = await runWpCommand(
-						`menu list --fields=term_id,name --format=json`,
-						docRoot,
-						logCallback,
-					);
-					const menus = JSON.parse(out.stdout.trim() || "[]");
-					const found = menus.find((m: any) => m.name === "Main Menu");
-					return { stdout: found ? String(found.term_id) : "" };
-				});
+				);
 				menuId = menuCreateOut.stdout.trim();
 				await logCallback(`Main Menu ID: ${menuId}`);
 
@@ -964,8 +960,8 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 						`menu location assign "Main Menu" menu-1`,
 						docRoot,
 						logCallback,
-					).catch(() => {});
-
+					);
+					// Clear existing items in Main Menu to prevent accumulation on re-runs
 					try {
 						const itemsOut = await runWpCommand(
 							`menu item list "${menuId}" --format=ids`,
@@ -980,7 +976,7 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 								logCallback,
 							);
 						}
-					} catch (e) {
+					} catch (clearErr) {
 						// no items or delete failed
 					}
 
@@ -1008,12 +1004,76 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 			} catch (menuErr: any) {
 				await logCallback(`Warning during menu creation: ${menuErr.message}`);
 			}
+
+			// Create Footer Menu (Legal & Privacy)
+			try {
+				await logCallback("Creating Footer Menu (Legal & Privacy)...");
+				const fmCreateOut = await runWpCommand(
+					`menu create "Footer Menu" --porcelain`,
+					docRoot,
+					logCallback,
+				);
+				footerMenuId = fmCreateOut.stdout.trim();
+				if (footerMenuId) {
+					// Clear existing items
+					try {
+						const itemsOut = await runWpCommand(
+							`menu item list "${footerMenuId}" --format=ids`,
+							docRoot,
+							logCallback,
+						);
+						const itemIds = itemsOut.stdout.trim().replace(/\s+/g, " ");
+						if (itemIds) {
+							await runWpCommand(`menu item delete ${itemIds}`, docRoot, logCallback);
+						}
+					} catch (clearErr) {}
+
+					await runWpCommand(`menu item add-custom "${footerMenuId}" "Terms of Use" "#"`, docRoot, logCallback);
+					await runWpCommand(`menu item add-custom "${footerMenuId}" "Privacy" "#"`, docRoot, logCallback);
+					await runWpCommand(`menu item add-custom "${footerMenuId}" "Cookie" "#"`, docRoot, logCallback);
+				}
+			} catch (fmErr: any) {
+				await logCallback(`Warning during footer menu creation: ${fmErr.message}`);
+			}
+
+			// Create Customer Service Menu
+			try {
+				await logCallback("Creating Customer Service Menu...");
+				const csCreateOut = await runWpCommand(
+					`menu create "Customer Service" --porcelain`,
+					docRoot,
+					logCallback,
+				);
+				custServiceMenuId = csCreateOut.stdout.trim();
+				if (custServiceMenuId) {
+					// Clear existing items
+					try {
+						const itemsOut = await runWpCommand(
+							`menu item list "${custServiceMenuId}" --format=ids`,
+							docRoot,
+							logCallback,
+						);
+						const itemIds = itemsOut.stdout.trim().replace(/\s+/g, " ");
+						if (itemIds) {
+							await runWpCommand(`menu item delete ${itemIds}`, docRoot, logCallback);
+						}
+					} catch (clearErr) {}
+
+					await runWpCommand(`menu item add-custom "${custServiceMenuId}" "Home" "#"`, docRoot, logCallback);
+					await runWpCommand(`menu item add-custom "${custServiceMenuId}" "Services" "#services"`, docRoot, logCallback);
+					await runWpCommand(`menu item add-custom "${custServiceMenuId}" "Contact" "#contact"`, docRoot, logCallback);
+				}
+			} catch (csErr: any) {
+				await logCallback(`Warning during customer service menu creation: ${csErr.message}`);
+			}
+
 			// Call mergeElementorTemplate
 			const businessInfo = {
 				name: schema.brand?.businessName || "Business",
 				address: schema.brand?.address || "",
 				phone: schema.brand?.phone || "",
 				email: schema.brand?.email || "",
+				hours: schema.brand?.hours || "",
 			};
 
 			await logCallback("Merging Elementor template layouts...");
@@ -1023,6 +1083,8 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 				mediaMap,
 				businessInfo,
 				menuId,
+				footerMenuId,
+				custServiceMenuId,
 			);
 
 			// Create Home page

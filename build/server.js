@@ -1803,6 +1803,65 @@ async function resolveSectionImages(analysis, log, logoAnalysis, business) {
     logo_image: ""
   };
   const getFallbackPlaceholder = (role) => {
+    if (role.startsWith("project_")) {
+      const projectPics = [
+        "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&q=80",
+        "https://images.unsplash.com/photo-1539922980492-38f6673af8dd?w=800&q=80",
+        "https://images.unsplash.com/photo-1558882224-cca166733360?w=800&q=80",
+        "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&q=80"
+      ];
+      const idx = parseInt(role.split("_")[1], 10) - 1 || 0;
+      return projectPics[idx % projectPics.length] || projectPics[0];
+    }
+    try {
+      const rootDefaultDir = path4.join(process.cwd(), "default");
+      const publicDefaultDir = path4.join(process.cwd(), "public", "default");
+      if (!fs5.existsSync(publicDefaultDir)) {
+        fs5.mkdirSync(publicDefaultDir, { recursive: true });
+      }
+      if (fs5.existsSync(rootDefaultDir)) {
+        const files = fs5.readdirSync(rootDefaultDir).filter(
+          (f) => f.toLowerCase().endsWith(".png") || f.toLowerCase().endsWith(".jpg") || f.toLowerCase().endsWith(".jpeg")
+        );
+        for (const file of files) {
+          const srcPath = path4.join(rootDefaultDir, file);
+          const destPath = path4.join(publicDefaultDir, file);
+          if (!fs5.existsSync(destPath)) {
+            fs5.copyFileSync(srcPath, destPath);
+          }
+        }
+      }
+      if (fs5.existsSync(publicDefaultDir)) {
+        const files = fs5.readdirSync(publicDefaultDir).filter(
+          (f) => f.toLowerCase().endsWith(".png") || f.toLowerCase().endsWith(".jpg") || f.toLowerCase().endsWith(".jpeg")
+        );
+        if (files.length > 0) {
+          let selectedFile = files[0];
+          if (role.toLowerCase().includes("hero")) {
+            selectedFile = files[0 % files.length];
+          } else if (role.toLowerCase().includes("about")) {
+            selectedFile = files[1 % files.length];
+          } else if (role.toLowerCase().includes("service")) {
+            selectedFile = files[2 % files.length];
+          } else if (role.toLowerCase().includes("masked")) {
+            selectedFile = files[3 % files.length];
+          } else {
+            let hash = 0;
+            for (let i = 0; i < role.length; i++) {
+              hash = role.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const index = Math.abs(hash) % files.length;
+            selectedFile = files[index];
+          }
+          const baseUrl = process.env.API_URL || "https://api.digiscout.online";
+          const localUrl = `${baseUrl}/public/default/${selectedFile}`;
+          log(`[ImageGenerator] Found local default fallback image for ${role}: ${localUrl}`);
+          return localUrl;
+        }
+      }
+    } catch (err) {
+      log(`[ImageGenerator] Error scanning public/default directory: ${err.message}`);
+    }
     const fallbacks = {
       hero: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1200&q=80",
       // Premium kitchen cabinetry
@@ -1817,16 +1876,6 @@ async function resolveSectionImages(analysis, log, logoAnalysis, business) {
     };
     if (role.startsWith("testimonial_")) {
       return "https://images.unsplash.com/photo-1558882224-cca166733360?w=800&q=80";
-    }
-    if (role.startsWith("project_")) {
-      const projectPics = [
-        "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&q=80",
-        "https://images.unsplash.com/photo-1539922980492-38f6673af8dd?w=800&q=80",
-        "https://images.unsplash.com/photo-1558882224-cca166733360?w=800&q=80",
-        "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&q=80"
-      ];
-      const idx = parseInt(role.split("_")[1], 10) - 1 || 0;
-      return projectPics[idx % projectPics.length] || projectPics[0];
     }
     return fallbacks[role] || "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1200&q=80";
   };
@@ -1936,7 +1985,7 @@ async function resolveSectionImages(analysis, log, logoAnalysis, business) {
       }
     });
   } else {
-    resultUrls.logo_image = "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=400&q=80";
+    resultUrls.logo_image = getFallbackPlaceholder("logo");
   }
   if (taskList.length > 0) {
     log(`[ImageGenerator] Queueing ${taskList.length} AI image generation tasks with concurrency limit of 2...`);
@@ -2176,7 +2225,8 @@ async function generateHomepageViaDirectVertexPrompt(business, options) {
         phone: business.phoneNumber || "",
         email: business.email || "",
         websiteUri: business.websiteUri || "",
-        logo: resolvedImages.logo_image || business.logo || ""
+        logo: resolvedImages.logo_image || business.logo || "",
+        hours: business.hours || business.businessHours || ""
       },
       seo: {
         title: `${business.name || "Business"} | Preview`,
@@ -3281,7 +3331,7 @@ async function copyFileToRemote(localPath, remotePath, logCallback) {
 // src/lib/elementor-merger.ts
 import fs3 from "fs";
 import path2 from "path";
-function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, menuId) {
+function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, menuId, footerMenuId, custServiceMenuId) {
   const isKit2 = fs3.existsSync(path2.join(templateDir, "templates", "49.json"));
   const homePath = path2.join(templateDir, "content", "page", "2.json");
   const headerPath = path2.join(templateDir, "templates", isKit2 ? "49.json" : "15.json");
@@ -3531,20 +3581,37 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
         }
         const contactList = widgets["icon-list"]?.[0];
         if (contactList && Array.isArray(contactList.settings.icon_list)) {
-          if (contactList.settings.icon_list[0]) {
-            contactList.settings.icon_list[0].text = businessInfo.address;
+          const originalItems = contactList.settings.icon_list;
+          const newItems = [];
+          if (businessInfo.address && originalItems[0]) {
+            const item = JSON.parse(JSON.stringify(originalItems[0]));
+            item.text = businessInfo.address;
+            newItems.push(item);
           }
-          if (contactList.settings.icon_list[1]) {
-            contactList.settings.icon_list[1].text = `Phone: ${businessInfo.phone}`;
-            contactList.settings.icon_list[1].link = { url: `tel:${businessInfo.phone.replace(/[^0-9+]/g, "")}` };
+          if (businessInfo.hours && originalItems[0]) {
+            const item = JSON.parse(JSON.stringify(originalItems[0]));
+            item.text = Array.isArray(businessInfo.hours) ? businessInfo.hours.join(", ") : String(businessInfo.hours);
+            newItems.push(item);
           }
-          if (contactList.settings.icon_list[2]) {
-            contactList.settings.icon_list[2].text = businessInfo.email;
-            contactList.settings.icon_list[2].link = { url: `mailto:${businessInfo.email}` };
+          const phoneProto = originalItems.find(
+            (itm) => String(itm.text).toLowerCase().includes("phone") || String(itm.icon?.value).includes("phone")
+          ) || originalItems[1] || originalItems[0];
+          if (businessInfo.phone && phoneProto) {
+            const item = JSON.parse(JSON.stringify(phoneProto));
+            item.text = `Phone: ${businessInfo.phone}`;
+            item.link = { url: `tel:${businessInfo.phone.replace(/[^0-9+]/g, "")}` };
+            newItems.push(item);
           }
-          if (contactList.settings.icon_list[3]) {
-            contactList.settings.icon_list[3].text = "";
+          const emailProto = originalItems.find(
+            (itm) => String(itm.text).toLowerCase().includes("@") || String(itm.text).toLowerCase().includes("email") || String(itm.icon?.value).includes("envelope")
+          ) || originalItems[2] || originalItems[0];
+          if (businessInfo.email && emailProto) {
+            const item = JSON.parse(JSON.stringify(emailProto));
+            item.text = businessInfo.email;
+            item.link = { url: `mailto:${businessInfo.email}` };
+            newItems.push(item);
           }
+          contactList.settings.icon_list = newItems;
         }
         if (widgets.image?.[0] && widgets.image[0].settings) {
           const targetUrl = aiContent.logo_image || "";
@@ -3554,6 +3621,14 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
               url: local.url,
               id: String(local.id)
             };
+          }
+        }
+        if (widgets["nav-menu"]) {
+          if (widgets["nav-menu"][0] && widgets["nav-menu"][0].settings && custServiceMenuId) {
+            widgets["nav-menu"][0].settings.menu = String(custServiceMenuId);
+          }
+          if (widgets["nav-menu"][1] && widgets["nav-menu"][1].settings && footerMenuId) {
+            widgets["nav-menu"][1].settings.menu = String(footerMenuId);
           }
         }
         if (widgets.heading && Array.isArray(widgets.heading)) {
@@ -4535,12 +4610,14 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
         try {
           let mediaId = "";
           let imported = false;
-          if (imgUrl.includes("/public/generated-images/")) {
-            const parts = imgUrl.split("/public/generated-images/");
-            const filename = parts[parts.length - 1];
-            const localPath = path3.join(process.cwd(), "public", "generated-images", filename);
+          if (imgUrl.includes("/public/generated-images/") || imgUrl.includes("/public/default/")) {
+            const isDefault = imgUrl.includes("/public/default/");
+            const marker = isDefault ? "/public/default/" : "/public/generated-images/";
+            const parts = imgUrl.split(marker);
+            const filename = decodeURIComponent(parts[parts.length - 1]);
+            const localPath = path3.join(process.cwd(), "public", isDefault ? "default" : "generated-images", filename);
             if (fs4.existsSync(localPath)) {
-              await logCallback(`Detected local generated image: ${filename}. Copying to remote server...`);
+              await logCallback(`Detected local image: ${filename}. Copying to remote server...`);
               const ext = filename.toLowerCase().endsWith(".png") ? "png" : "jpg";
               const remoteTmpMedia = `/tmp/ds_local_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
               try {
@@ -4691,22 +4768,15 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
         }
       }
       let menuId = "";
+      let footerMenuId = "";
+      let custServiceMenuId = "";
       try {
         await logCallback("Creating Main Menu...");
         const menuCreateOut = await runWpCommand(
           `menu create "Main Menu" --porcelain`,
           docRoot,
           logCallback
-        ).catch(async () => {
-          const out = await runWpCommand(
-            `menu list --fields=term_id,name --format=json`,
-            docRoot,
-            logCallback
-          );
-          const menus = JSON.parse(out.stdout.trim() || "[]");
-          const found = menus.find((m) => m.name === "Main Menu");
-          return { stdout: found ? String(found.term_id) : "" };
-        });
+        );
         menuId = menuCreateOut.stdout.trim();
         await logCallback(`Main Menu ID: ${menuId}`);
         if (menuId) {
@@ -4714,8 +4784,7 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
             `menu location assign "Main Menu" menu-1`,
             docRoot,
             logCallback
-          ).catch(() => {
-          });
+          );
           try {
             const itemsOut = await runWpCommand(
               `menu item list "${menuId}" --format=ids`,
@@ -4730,7 +4799,7 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
                 logCallback
               );
             }
-          } catch (e) {
+          } catch (clearErr) {
           }
           await runWpCommand(
             `menu item add-custom "${menuId}" "Home" "#"`,
@@ -4756,11 +4825,68 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
       } catch (menuErr) {
         await logCallback(`Warning during menu creation: ${menuErr.message}`);
       }
+      try {
+        await logCallback("Creating Footer Menu (Legal & Privacy)...");
+        const fmCreateOut = await runWpCommand(
+          `menu create "Footer Menu" --porcelain`,
+          docRoot,
+          logCallback
+        );
+        footerMenuId = fmCreateOut.stdout.trim();
+        if (footerMenuId) {
+          try {
+            const itemsOut = await runWpCommand(
+              `menu item list "${footerMenuId}" --format=ids`,
+              docRoot,
+              logCallback
+            );
+            const itemIds = itemsOut.stdout.trim().replace(/\s+/g, " ");
+            if (itemIds) {
+              await runWpCommand(`menu item delete ${itemIds}`, docRoot, logCallback);
+            }
+          } catch (clearErr) {
+          }
+          await runWpCommand(`menu item add-custom "${footerMenuId}" "Terms of Use" "#"`, docRoot, logCallback);
+          await runWpCommand(`menu item add-custom "${footerMenuId}" "Privacy" "#"`, docRoot, logCallback);
+          await runWpCommand(`menu item add-custom "${footerMenuId}" "Cookie" "#"`, docRoot, logCallback);
+        }
+      } catch (fmErr) {
+        await logCallback(`Warning during footer menu creation: ${fmErr.message}`);
+      }
+      try {
+        await logCallback("Creating Customer Service Menu...");
+        const csCreateOut = await runWpCommand(
+          `menu create "Customer Service" --porcelain`,
+          docRoot,
+          logCallback
+        );
+        custServiceMenuId = csCreateOut.stdout.trim();
+        if (custServiceMenuId) {
+          try {
+            const itemsOut = await runWpCommand(
+              `menu item list "${custServiceMenuId}" --format=ids`,
+              docRoot,
+              logCallback
+            );
+            const itemIds = itemsOut.stdout.trim().replace(/\s+/g, " ");
+            if (itemIds) {
+              await runWpCommand(`menu item delete ${itemIds}`, docRoot, logCallback);
+            }
+          } catch (clearErr) {
+          }
+          await runWpCommand(`menu item add-custom "${custServiceMenuId}" "Home" "#"`, docRoot, logCallback);
+          await runWpCommand(`menu item add-custom "${custServiceMenuId}" "Services" "#services"`, docRoot, logCallback);
+          await runWpCommand(`menu item add-custom "${custServiceMenuId}" "Contact" "#contact"`, docRoot, logCallback);
+        }
+      } catch (csErr) {
+        await logCallback(`Warning during customer service menu creation: ${csErr.message}`);
+      }
       const businessInfo = {
         name: schema.brand?.businessName || "Business",
         address: schema.brand?.address || "",
         phone: schema.brand?.phone || "",
-        email: schema.brand?.email || ""
+        email: schema.brand?.email || "",
+        hours: schema.brand?.hours || ""
       };
       await logCallback("Merging Elementor template layouts...");
       const mergedJson = mergeElementorTemplate(
@@ -4768,7 +4894,9 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
         aiContent,
         mediaMap,
         businessInfo,
-        menuId
+        menuId,
+        footerMenuId,
+        custServiceMenuId
       );
       await logCallback("Creating Home page post in WordPress for Elementor...");
       const homePageIdOut2 = await runWpCommand(

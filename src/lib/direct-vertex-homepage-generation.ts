@@ -216,6 +216,80 @@ export async function resolveSectionImages(
 	};
 
 	const getFallbackPlaceholder = (role: string): string => {
+		// For the recent project section (project_ posts), do not use the local default folder.
+		// Instead, fall back to our high-quality cabinetry/woodworking URLs.
+		if (role.startsWith("project_")) {
+			const projectPics = [
+				"https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&q=80",
+				"https://images.unsplash.com/photo-1539922980492-38f6673af8dd?w=800&q=80",
+				"https://images.unsplash.com/photo-1558882224-cca166733360?w=800&q=80",
+				"https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&q=80"
+			];
+			const idx = parseInt(role.split("_")[1], 10) - 1 || 0;
+			return projectPics[idx % projectPics.length] || projectPics[0];
+		}
+
+		// 1. Try to look for local default images on the server under /public/default/ or copy from root/default/
+		try {
+			const rootDefaultDir = path.join(process.cwd(), "default");
+			const publicDefaultDir = path.join(process.cwd(), "public", "default");
+			if (!fs.existsSync(publicDefaultDir)) {
+				fs.mkdirSync(publicDefaultDir, { recursive: true });
+			}
+			if (fs.existsSync(rootDefaultDir)) {
+				const files = fs.readdirSync(rootDefaultDir).filter(f => 
+					f.toLowerCase().endsWith(".png") || 
+					f.toLowerCase().endsWith(".jpg") || 
+					f.toLowerCase().endsWith(".jpeg")
+				);
+				for (const file of files) {
+					const srcPath = path.join(rootDefaultDir, file);
+					const destPath = path.join(publicDefaultDir, file);
+					if (!fs.existsSync(destPath)) {
+						fs.copyFileSync(srcPath, destPath);
+					}
+				}
+			}
+
+			if (fs.existsSync(publicDefaultDir)) {
+				const files = fs.readdirSync(publicDefaultDir).filter(f => 
+					f.toLowerCase().endsWith(".png") || 
+					f.toLowerCase().endsWith(".jpg") || 
+					f.toLowerCase().endsWith(".jpeg")
+				);
+				
+				if (files.length > 0) {
+					// Try to find a file containing the role name (e.g. hero, about, services, masked, logo)
+					let selectedFile = files[0];
+					if (role.toLowerCase().includes("hero")) {
+						selectedFile = files[0 % files.length];
+					} else if (role.toLowerCase().includes("about")) {
+						selectedFile = files[1 % files.length];
+					} else if (role.toLowerCase().includes("service")) {
+						selectedFile = files[2 % files.length];
+					} else if (role.toLowerCase().includes("masked")) {
+						selectedFile = files[3 % files.length];
+					} else {
+						// Deterministic hash based on role name
+						let hash = 0;
+						for (let i = 0; i < role.length; i++) {
+							hash = role.charCodeAt(i) + ((hash << 5) - hash);
+						}
+						const index = Math.abs(hash) % files.length;
+						selectedFile = files[index];
+					}
+
+					const baseUrl = process.env.API_URL || "https://api.digiscout.online";
+					const localUrl = `${baseUrl}/public/default/${selectedFile}`;
+					log(`[ImageGenerator] Found local default fallback image for ${role}: ${localUrl}`);
+					return localUrl;
+				}
+			}
+		} catch (err: any) {
+			log(`[ImageGenerator] Error scanning public/default directory: ${err.message}`);
+		}
+
+		// 2. Otherwise, fall back to our premium Unsplash cabinetry/woodworking URLs
 		const fallbacks: Record<string, string> = {
 			hero: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1200&q=80", // Premium kitchen cabinetry
 			masked: "https://images.unsplash.com/photo-1533090161767-e6ffed986c88?w=800&q=80", // Wood grain texture
@@ -226,16 +300,6 @@ export async function resolveSectionImages(
 
 		if (role.startsWith("testimonial_")) {
 			return "https://images.unsplash.com/photo-1558882224-cca166733360?w=800&q=80"; // Custom built-in closets
-		}
-		if (role.startsWith("project_")) {
-			const projectPics = [
-				"https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&q=80",
-				"https://images.unsplash.com/photo-1539922980492-38f6673af8dd?w=800&q=80",
-				"https://images.unsplash.com/photo-1558882224-cca166733360?w=800&q=80",
-				"https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&q=80"
-			];
-			const idx = parseInt(role.split("_")[1], 10) - 1 || 0;
-			return projectPics[idx % projectPics.length] || projectPics[0];
 		}
 
 		return fallbacks[role] || "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1200&q=80";
@@ -366,7 +430,7 @@ export async function resolveSectionImages(
 			}
 		});
 	} else {
-		resultUrls.logo_image = "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=400&q=80"; // fallback
+		resultUrls.logo_image = getFallbackPlaceholder("logo");
 	}
 
 	// Run remaining 5 image tasks with a concurrency limit of 2 to keep speed high and stay safe from rate limits
@@ -716,6 +780,7 @@ export async function generateHomepageViaDirectVertexPrompt(
 				email: business.email || "",
 				websiteUri: business.websiteUri || "",
 				logo: resolvedImages.logo_image || business.logo || "",
+				hours: business.hours || business.businessHours || "",
 			},
 			seo: {
 				title: `${business.name || "Business"} | Preview`,
