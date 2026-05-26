@@ -613,14 +613,26 @@ export function mergeElementorTemplate(
 	// Inject CSS style widget into the footer container to ensure visibility
 	if (footerSections.length > 0) {
 		const lastSection = footerSections[footerSections.length - 1];
-		let targetContainer = lastSection;
 		
-		// If it's a legacy section, find the last column
-		if (lastSection.elType === "section" && lastSection.elements && lastSection.elements.length > 0) {
-			const columns = lastSection.elements;
-			targetContainer = columns[columns.length - 1];
-		}
-		
+		// Helper to find a leaf container or column (where widgets can reside)
+		const findLeafContainer = (el: any): any => {
+			if (!el) return null;
+			if (el.elType === "column") return el;
+			if (el.elType === "container") {
+				const hasNested = el.elements && el.elements.some((child: any) => child.elType === "container" || child.elType === "column");
+				if (!hasNested) {
+					return el;
+				}
+				for (let i = el.elements.length - 1; i >= 0; i--) {
+					const found = findLeafContainer(el.elements[i]);
+					if (found) return found;
+				}
+			}
+			return null;
+		};
+
+		let targetContainer = findLeafContainer(lastSection) || lastSection;
+
 		if (targetContainer && targetContainer.elements) {
 			targetContainer.elements.push({
 				id: "ds_custom_footer_css",
@@ -676,7 +688,34 @@ footer ::placeholder,
     color: rgba(255, 255, 255, 0.6) !important; 
 }
 
+/* Call to Action Content Centering */
+.elementor-widget-call-to-action .elementor-cta__content,
+.elementor-widget-call-to-action .elementor-cta__title,
+.elementor-widget-call-to-action .elementor-cta__description,
+.elementor-widget-call-to-action .elementor-cta__button-wrapper {
+    text-align: center !important;
+}
+.elementor-widget-call-to-action .elementor-cta__button-wrapper {
+    display: flex !important;
+    justify-content: center !important;
+}
+
+/* Logo Widget Container Transparency */
+.elementor-element-3b58bec7,
+.elementor-element-69be47e,
+.elementor-element-5a62107a,
+.elementor-element-44b1aa0b,
+.elementor-element-3b58bec7 .elementor-widget-container,
+.elementor-element-69be47e .elementor-widget-container,
+.elementor-element-5a62107a .elementor-widget-container,
+.elementor-element-44b1aa0b .elementor-widget-container {
+    background-color: transparent !important;
+    background: transparent !important;
+}
+
 /* Header Logo (Key out white background on light header) */
+.elementor-element-3b58bec7 img,
+.elementor-element-69be47e img,
 .elementor-widget-theme-site-logo img,
 .elementor-widget-image img[src*="gen_logo"],
 header img[src*="gen_logo"],
@@ -686,6 +725,8 @@ header img[src*="gen_logo"],
 }
 
 /* Footer Logo (Invert to white on transparent for dark footer) */
+.elementor-element-5a62107a img,
+.elementor-element-44b1aa0b img,
 [data-elementor-type="footer"] img[src*="gen_logo"],
 footer img[src*="gen_logo"],
 .site-footer img[src*="gen_logo"] {
