@@ -1,9 +1,7 @@
 /** @format */
 
 import "./src/lib/env";
-import fetch from "cross-fetch";
-(global as any).fetch = fetch;
-(globalThis as any).fetch = fetch;
+import crossFetch from "cross-fetch";
 import fs from "fs";
 // Low-level write to stderr to bypass console redirection
 fs.writeSync(
@@ -3624,7 +3622,7 @@ app.post(
 					.replace(/^-+|-+$/g, "") || "digital-scout"
 			}-${Date.now()}`;
 
-			const siteResponse = await fetch("https://api.netlify.com/api/v1/sites", {
+			const siteResponse = await crossFetch("https://api.netlify.com/api/v1/sites", {
 				method: "POST",
 				headers: {
 					Authorization: `Bearer ${NETLIFY_TOKEN}`,
@@ -3651,7 +3649,7 @@ app.post(
 				.update(websiteContent)
 				.digest("hex");
 
-			const deployResponse = await fetch(
+			const deployResponse = await crossFetch(
 				`https://api.netlify.com/api/v1/sites/${siteId}/deploys`,
 				{
 					method: "POST",
@@ -3678,7 +3676,7 @@ app.post(
 			const deployData = (await deployResponse.json()) as any;
 			const deployId = deployData.id;
 
-			const uploadResponse = await fetch(
+			const uploadResponse = await crossFetch(
 				`https://api.netlify.com/api/v1/deploys/${deployId}/files/index.html`,
 				{
 					method: "PUT",
@@ -3771,7 +3769,7 @@ app.post(
 				});
 			}
 
-			const response = await fetch(websiteUri, {
+			const response = await crossFetch(websiteUri, {
 				headers: {
 					"User-Agent": "Mozilla/5.0 (compatible; DigitalScout/1.0)",
 				},
@@ -4593,7 +4591,7 @@ app.delete("/api/sites/:siteId", async (req: Request, res: Response) => {
 			return res.status(400).json({ error: "Missing siteId" });
 		}
 
-		const response = await fetch(
+		const response = await crossFetch(
 			`https://api.netlify.com/api/v1/sites/${siteId}`,
 			{
 				method: "DELETE",

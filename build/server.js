@@ -1697,6 +1697,7 @@ __export(direct_vertex_homepage_generation_exports, {
 });
 import fs5 from "fs";
 import path4 from "path";
+import crossFetch2 from "cross-fetch";
 function optimizeGooglePhotoUrl(url, size = 1600) {
   if (!url || typeof url !== "string") return url;
   if (url.includes("googleusercontent.com/places/") || url.includes("googleusercontent.com/p/")) {
@@ -1730,7 +1731,7 @@ function collectBusinessImages(business) {
 async function downloadImageAsBase64(url) {
   try {
     const lowResUrl = optimizeGooglePhotoUrl(url, 400);
-    const res = await fetch(lowResUrl);
+    const res = await crossFetch2(lowResUrl);
     if (!res.ok) return null;
     const buffer = await res.arrayBuffer();
     const base64Data = Buffer.from(buffer).toString("base64");
@@ -2594,7 +2595,7 @@ if (!process.env.DB_USER) {
 var env_default = process.env;
 
 // server.ts
-import fetch2 from "cross-fetch";
+import crossFetch3 from "cross-fetch";
 import crypto2 from "crypto";
 import cors from "cors";
 import express from "express";
@@ -2959,6 +2960,7 @@ async function initializeDatabase() {
 import * as crypto from "crypto";
 import * as fs4 from "fs";
 import * as path3 from "path";
+import crossFetch from "cross-fetch";
 
 // src/lib/cpanel-uapi.ts
 import { exec } from "child_process";
@@ -4661,7 +4663,7 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
                 fs4.mkdirSync(tempLocalDir, { recursive: true });
               }
               const tempLocalPath = path3.join(tempLocalDir, `dl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`);
-              const response = await fetch(imgUrl);
+              const response = await crossFetch(imgUrl);
               if (response.ok) {
                 const arrayBuffer = await response.arrayBuffer();
                 fs4.writeFileSync(tempLocalPath, Buffer.from(arrayBuffer));
@@ -5261,7 +5263,7 @@ ${content}
         await logCallback(
           `Fetching final rendered site at ${siteUrl} for debug capture...`
         );
-        const resp = await fetch(siteUrl);
+        const resp = await crossFetch(siteUrl);
         const finalDom = await resp.text().catch(() => "");
         const traceId2 = schema?.meta?.traceId || schema?._validation?.traceId;
         if (traceId2 && finalDom) {
@@ -5842,8 +5844,6 @@ The DigitalScout Team`;
 }
 
 // server.ts
-global.fetch = fetch2;
-globalThis.fetch = fetch2;
 fs7.writeSync(
   2,
   `[BOOT] Server process starting at ${(/* @__PURE__ */ new Date()).toISOString()}
@@ -6696,7 +6696,7 @@ app.post(
         return res.status(400).json({ error: "Missing websiteContent or businessName" });
       }
       const siteName = `${businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "digital-scout"}-${Date.now()}`;
-      const siteResponse = await fetch2("https://api.netlify.com/api/v1/sites", {
+      const siteResponse = await crossFetch3("https://api.netlify.com/api/v1/sites", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${NETLIFY_TOKEN}`,
@@ -6715,7 +6715,7 @@ app.post(
       const siteId = siteData.id;
       const deployedUrl = siteData.ssl_url || siteData.url || siteData.deploy_url;
       const sha1 = crypto2.createHash("sha1").update(websiteContent).digest("hex");
-      const deployResponse = await fetch2(
+      const deployResponse = await crossFetch3(
         `https://api.netlify.com/api/v1/sites/${siteId}/deploys`,
         {
           method: "POST",
@@ -6739,7 +6739,7 @@ app.post(
       }
       const deployData = await deployResponse.json();
       const deployId = deployData.id;
-      const uploadResponse = await fetch2(
+      const uploadResponse = await crossFetch3(
         `https://api.netlify.com/api/v1/deploys/${deployId}/files/index.html`,
         {
           method: "PUT",
@@ -6819,7 +6819,7 @@ app.post(
           imageSuggestions: categoryImageSuggestions(category, businessName)
         });
       }
-      const response = await fetch2(websiteUri, {
+      const response = await crossFetch3(websiteUri, {
         headers: {
           "User-Agent": "Mozilla/5.0 (compatible; DigitalScout/1.0)"
         }
@@ -7358,7 +7358,7 @@ Rules for your responses:
           },
           tools: [{ googleSearch: {} }]
         };
-        const res2 = await fetch2(vertexUrl, {
+        const res2 = await fetch(vertexUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(vertexPayload)
@@ -7431,7 +7431,7 @@ Rules for your responses:
         tools: [{ googleSearch: {} }]
       };
       await throttleGemini();
-      const fetchResponse = await fetch2(url, {
+      const fetchResponse = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody)
@@ -7489,7 +7489,7 @@ app.delete("/api/sites/:siteId", async (req, res) => {
     if (!siteId) {
       return res.status(400).json({ error: "Missing siteId" });
     }
-    const response = await fetch2(
+    const response = await crossFetch3(
       `https://api.netlify.com/api/v1/sites/${siteId}`,
       {
         method: "DELETE",

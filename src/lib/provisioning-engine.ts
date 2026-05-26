@@ -3,6 +3,7 @@
 import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
+import crossFetch from "cross-fetch";
 import { pool } from "./db";
 import {
 	addSubdomain,
@@ -809,7 +810,7 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 							}
 							const tempLocalPath = path.join(tempLocalDir, `dl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`);
 							
-							const response = await fetch(imgUrl);
+							const response = await crossFetch(imgUrl);
 							if (response.ok) {
 								const arrayBuffer = await response.arrayBuffer();
 								fs.writeFileSync(tempLocalPath, Buffer.from(arrayBuffer));
@@ -1473,7 +1474,7 @@ echo "MU_PLUGIN_CREATED\n";
 				await logCallback(
 					`Fetching final rendered site at ${siteUrl} for debug capture...`,
 				);
-				const resp = await fetch(siteUrl);
+				const resp = await crossFetch(siteUrl);
 				const finalDom = await resp.text().catch(() => "");
 				const traceId = schema?.meta?.traceId || schema?._validation?.traceId;
 				if (traceId && finalDom) {

@@ -18,6 +18,7 @@ import {
 } from "./vertex-homepage-generation-prompt";
 import { WebsiteSchema } from "../types";
 import { generateCustomImage, generateWithFallback } from "./gemini";
+import crossFetch from "cross-fetch";
 
 const GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
 
@@ -69,7 +70,7 @@ async function downloadImageAsBase64(url: string): Promise<{ mimeType: string; d
 	try {
 		// Use s400 for analysis to save tokens and speed up
 		const lowResUrl = optimizeGooglePhotoUrl(url, 400);
-		const res = await fetch(lowResUrl);
+		const res = await crossFetch(lowResUrl);
 		if (!res.ok) return null;
 		const buffer = await res.arrayBuffer();
 		const base64Data = Buffer.from(buffer).toString("base64");
