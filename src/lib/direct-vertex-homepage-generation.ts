@@ -429,7 +429,7 @@ export async function resolveSectionImages(
 	if (logoAnalysis && logoAnalysis.action === "use_existing" && logoAnalysis.url) {
 		resultUrls.logo_image = logoAnalysis.url;
 	} else if (logoAnalysis && logoAnalysis.generation_prompt) {
-		resultUrls.logo_image = await generateAndSave(logoAnalysis.generation_prompt, "logo", "1:1");
+		resultUrls.logo_image = await generateAndSave(logoAnalysis.generation_prompt, "logo", "16:9");
 	} else {
 		resultUrls.logo_image = "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800"; // fallback
 	}

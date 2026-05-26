@@ -1998,7 +1998,7 @@ async function resolveSectionImages(analysis, log, logoAnalysis) {
   if (logoAnalysis && logoAnalysis.action === "use_existing" && logoAnalysis.url) {
     resultUrls.logo_image = logoAnalysis.url;
   } else if (logoAnalysis && logoAnalysis.generation_prompt) {
-    resultUrls.logo_image = await generateAndSave(logoAnalysis.generation_prompt, "logo", "1:1");
+    resultUrls.logo_image = await generateAndSave(logoAnalysis.generation_prompt, "logo", "16:9");
   } else {
     resultUrls.logo_image = "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800";
   }
@@ -3565,9 +3565,9 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
               id: String(local.id)
             };
           }
-          widgets["theme-site-logo"][0].settings.height = { unit: "px", size: 55, sizes: [] };
-          widgets["theme-site-logo"][0].settings.height_tablet = { unit: "px", size: 50, sizes: [] };
-          widgets["theme-site-logo"][0].settings.height_mobile = { unit: "px", size: 45, sizes: [] };
+          widgets["theme-site-logo"][0].settings.height = { unit: "px", size: 85, sizes: [] };
+          widgets["theme-site-logo"][0].settings.height_tablet = { unit: "px", size: 75, sizes: [] };
+          widgets["theme-site-logo"][0].settings.height_mobile = { unit: "px", size: 65, sizes: [] };
           widgets["theme-site-logo"][0].settings.width = { unit: "%", size: 100, sizes: [] };
         }
       } else if (title === "Footer") {
@@ -4914,7 +4914,7 @@ if ($logo_attachment_id) {
 // Inject global CSS to fix horizontal scroll and ensure circle images render correctly.
 // This runs inside WP context so no shell-escaping issues.
 $global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !important; } .elementor-section, .e-container, .elementor-column { max-width: 100% !important; } .elementor-widget-image img { object-fit: cover !important; } ' .
-	'.elementor-widget-theme-site-logo img { mix-blend-mode: multiply !important; height: auto !important; max-height: 45px !important; width: auto !important; } ' .
+	'.elementor-widget-theme-site-logo img { mix-blend-mode: multiply !important; height: auto !important; max-height: 85px !important; width: auto !important; } ' .
 	'.elementor-element-1b226200, .elementor-element-1b226200 .elementor-widget-text-editor, .elementor-element-1b226200 .elementor-widget-text-editor p { color: #E9E8E6 !important; } ' .
 	'.elementor-element-1b226200 .elementor-widget-text-editor strong { color: #FFFFFF !important; } ' .
 	'.elementor-element-51305b21 .elementor-background-overlay { background-color: rgba(12, 40, 53, 0.6) !important; opacity: 1 !important; } ' .
@@ -4956,7 +4956,7 @@ add_action("wp_head", function() {
     html, body { overflow-x: hidden !important; max-width: 100vw !important; }
     .elementor-section, .e-container, .elementor-column { max-width: 100% !important; }
     .elementor-widget-image img { object-fit: cover !important; }
-    .elementor-widget-theme-site-logo img { mix-blend-mode: multiply !important; height: auto !important; max-height: 45px !important; width: auto !important; }
+    .elementor-widget-theme-site-logo img { mix-blend-mode: multiply !important; height: auto !important; max-height: 85px !important; width: auto !important; }
     .elementor-element-1b226200, .elementor-element-1b226200 .elementor-widget-text-editor, .elementor-element-1b226200 .elementor-widget-text-editor p { color: #E9E8E6 !important; }
     .elementor-element-1b226200 .elementor-widget-text-editor strong { color: #FFFFFF !important; }
     .elementor-element-51305b21 .elementor-background-overlay { background-color: rgba(12, 40, 53, 0.6) !important; opacity: 1 !important; }

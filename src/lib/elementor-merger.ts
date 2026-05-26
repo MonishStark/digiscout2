@@ -280,9 +280,9 @@ export function mergeElementorTemplate(
 							id: String(local.id),
 						};
 					}
-					widgets["theme-site-logo"][0].settings.height = { unit: "px", size: 55, sizes: [] };
-					widgets["theme-site-logo"][0].settings.height_tablet = { unit: "px", size: 50, sizes: [] };
-					widgets["theme-site-logo"][0].settings.height_mobile = { unit: "px", size: 45, sizes: [] };
+					widgets["theme-site-logo"][0].settings.height = { unit: "px", size: 85, sizes: [] };
+					widgets["theme-site-logo"][0].settings.height_tablet = { unit: "px", size: 75, sizes: [] };
+					widgets["theme-site-logo"][0].settings.height_mobile = { unit: "px", size: 65, sizes: [] };
 					widgets["theme-site-logo"][0].settings.width = { unit: "%", size: 100, sizes: [] };
 				}
 			} else if (title === "Footer") {
