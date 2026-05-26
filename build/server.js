@@ -772,7 +772,8 @@ Your JSON output must have exactly these keys and structure:
 
 {
   "hero": {
-    "heading": "Headline for the hero section, maximum 12 words, incorporating business category and city/neighborhood name.",
+    "heading": "Headline for the hero section, maximum 8 words, incorporating business category and city/neighborhood name.",
+    "description": "A very short, punchy 1-sentence tagline or subheading, maximum 10 words, describing the core value proposition.",
     "button_text": "Text for the hero primary button, e.g., 'View Our Projects' or 'Book Appointment'.",
     "hero_image": "Absolute image URL selected from the business images to serve as the main hero background.",
     "masked_image": "Absolute image URL selected from the business images to serve as the supporting circular/masked hero image."
@@ -1883,7 +1884,7 @@ If you find one, return a JSON response with:
 { "action": "use_existing", "logo_index": <0-based index of the photo> }
 
 If no clear logo exists in the photos, return:
-{ "action": "generate", "generation_prompt": "A premium professional minimalist vector logo for ${business.name}, representing custom cabinetry/woodworking, clean flat design, solid white background, sharp vector shapes" }
+{ "action": "generate", "generation_prompt": "A premium minimalist text-based typography logo featuring the business name \\"${business.name}\\", clean modern flat design, solid white background, sharp vector shapes" }
 
 Return ONLY valid JSON:`;
   const parts = [{ text: promptText }];
@@ -1915,7 +1916,7 @@ Return ONLY valid JSON:`;
     log(`[LogoDetector] Logo detection failed or no logo found: ${e}`);
   }
   log(`[LogoDetector] No logo found in Google photos. Generating a custom one.`);
-  const defaultPrompt = `A premium professional minimalist vector logo for ${business.name}, representing custom cabinetry and high-end woodworking, clean flat design, solid white background, sharp vector lines`;
+  const defaultPrompt = `A premium minimalist text-based typography logo featuring the business name "${business.name}", clean modern flat design, solid white background, sharp vector lines`;
   return { action: "generate", generation_prompt: defaultPrompt };
 }
 async function resolveSectionImages(analysis, log, logoAnalysis) {
@@ -3416,7 +3417,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
         if (widgets["call-to-action"]?.[0] && widgets["call-to-action"][0].settings) {
           const cta = widgets["call-to-action"][0];
           cta.settings.title = aiContent.hero?.heading || "";
-          cta.settings.description = aiContent.about?.description || "";
+          cta.settings.description = aiContent.hero?.description || aiContent.about?.description || "";
           cta.settings.button = `${aiContent.hero?.button_text || "Shop Now"} \u2794`;
           cta.settings.link = {
             url: "#products",
@@ -3562,9 +3563,9 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
               id: String(local.id)
             };
           }
-          widgets["theme-site-logo"][0].settings.height = { unit: "px", size: 45, sizes: [] };
-          widgets["theme-site-logo"][0].settings.height_tablet = { unit: "px", size: 40, sizes: [] };
-          widgets["theme-site-logo"][0].settings.height_mobile = { unit: "px", size: 35, sizes: [] };
+          widgets["theme-site-logo"][0].settings.height = { unit: "px", size: 55, sizes: [] };
+          widgets["theme-site-logo"][0].settings.height_tablet = { unit: "px", size: 50, sizes: [] };
+          widgets["theme-site-logo"][0].settings.height_mobile = { unit: "px", size: 45, sizes: [] };
           widgets["theme-site-logo"][0].settings.width = { unit: "%", size: 100, sizes: [] };
         }
       } else if (title === "Footer") {
@@ -3907,6 +3908,24 @@ footer ::placeholder,
 .site-footer ::placeholder,
 .elementor-location-footer ::placeholder { 
     color: rgba(255, 255, 255, 0.6) !important; 
+}
+
+/* Header Logo (Key out white background on light header) */
+.elementor-widget-theme-site-logo img,
+.elementor-widget-image img[src*="gen_logo"],
+header img[src*="gen_logo"],
+.site-header img[src*="gen_logo"] {
+    mix-blend-mode: multiply !important;
+    background-color: transparent !important;
+}
+
+/* Footer Logo (Invert to white on transparent for dark footer) */
+[data-elementor-type="footer"] img[src*="gen_logo"],
+footer img[src*="gen_logo"],
+.site-footer img[src*="gen_logo"] {
+    filter: invert(1) !important;
+    mix-blend-mode: screen !important;
+    background-color: transparent !important;
 }
 </style>`
         },

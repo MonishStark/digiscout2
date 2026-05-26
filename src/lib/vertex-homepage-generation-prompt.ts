@@ -34,7 +34,8 @@ Your JSON output must have exactly these keys and structure:
 
 {
   "hero": {
-    "heading": "Headline for the hero section, maximum 12 words, incorporating business category and city/neighborhood name.",
+    "heading": "Headline for the hero section, maximum 8 words, incorporating business category and city/neighborhood name.",
+    "description": "A very short, punchy 1-sentence tagline or subheading, maximum 10 words, describing the core value proposition.",
     "button_text": "Text for the hero primary button, e.g., 'View Our Projects' or 'Book Appointment'.",
     "hero_image": "Absolute image URL selected from the business images to serve as the main hero background.",
     "masked_image": "Absolute image URL selected from the business images to serve as the supporting circular/masked hero image."
@@ -149,6 +150,7 @@ RULES FOR CONTENT GENERATION
 export interface ElementorHomepageContent {
 	hero: {
 		heading: string;
+		description: string;
 		button_text: string;
 		hero_image: string;
 		masked_image: string;

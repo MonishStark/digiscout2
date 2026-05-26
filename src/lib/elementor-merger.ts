@@ -126,7 +126,7 @@ export function mergeElementorTemplate(
 				if (widgets["call-to-action"]?.[0] && widgets["call-to-action"][0].settings) {
 					const cta = widgets["call-to-action"][0];
 					cta.settings.title = aiContent.hero?.heading || "";
-					cta.settings.description = aiContent.about?.description || "";
+					cta.settings.description = aiContent.hero?.description || aiContent.about?.description || "";
 					cta.settings.button = `${aiContent.hero?.button_text || "Shop Now"} ➔`;
 					cta.settings.link = {
 						url: "#products",
@@ -278,9 +278,9 @@ export function mergeElementorTemplate(
 							id: String(local.id),
 						};
 					}
-					widgets["theme-site-logo"][0].settings.height = { unit: "px", size: 45, sizes: [] };
-					widgets["theme-site-logo"][0].settings.height_tablet = { unit: "px", size: 40, sizes: [] };
-					widgets["theme-site-logo"][0].settings.height_mobile = { unit: "px", size: 35, sizes: [] };
+					widgets["theme-site-logo"][0].settings.height = { unit: "px", size: 55, sizes: [] };
+					widgets["theme-site-logo"][0].settings.height_tablet = { unit: "px", size: 50, sizes: [] };
+					widgets["theme-site-logo"][0].settings.height_mobile = { unit: "px", size: 45, sizes: [] };
 					widgets["theme-site-logo"][0].settings.width = { unit: "%", size: 100, sizes: [] };
 				}
 			} else if (title === "Footer") {
@@ -674,6 +674,24 @@ footer ::placeholder,
 .site-footer ::placeholder,
 .elementor-location-footer ::placeholder { 
     color: rgba(255, 255, 255, 0.6) !important; 
+}
+
+/* Header Logo (Key out white background on light header) */
+.elementor-widget-theme-site-logo img,
+.elementor-widget-image img[src*="gen_logo"],
+header img[src*="gen_logo"],
+.site-header img[src*="gen_logo"] {
+    mix-blend-mode: multiply !important;
+    background-color: transparent !important;
+}
+
+/* Footer Logo (Invert to white on transparent for dark footer) */
+[data-elementor-type="footer"] img[src*="gen_logo"],
+footer img[src*="gen_logo"],
+.site-footer img[src*="gen_logo"] {
+    filter: invert(1) !important;
+    mix-blend-mode: screen !important;
+    background-color: transparent !important;
 }
 </style>`
 				},

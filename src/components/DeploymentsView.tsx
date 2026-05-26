@@ -712,12 +712,12 @@ export default function DeploymentsView({
 													{project.wordpressPassword && (
 														<div className='mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 space-y-1.5 max-w-md'>
 															<p className='font-bold mb-1'>WordPress Admin Credentials</p>
-															<div className='flex items-center gap-1.5'>
-																<span>User:</span>
-																<span className='font-mono bg-white/50 px-1.5 py-0.5 rounded'>{project.wordpressOwnerUsername}</span>
+															<div className='flex items-start gap-1.5 min-w-0'>
+																<span className='flex-shrink-0 mt-0.5'>User:</span>
+																<span className='font-mono bg-white/50 px-1.5 py-0.5 rounded break-all min-w-0 flex-1'>{project.wordpressOwnerUsername}</span>
 																<button
 																	onClick={() => handleCopy(project.wordpressOwnerUsername || "", `${project.id}-user`)}
-																	className='text-amber-700 hover:text-amber-900 p-1 rounded hover:bg-amber-100/50 transition-colors flex items-center justify-center'
+																	className='text-amber-700 hover:text-amber-900 p-1 rounded hover:bg-amber-100/50 transition-colors flex items-center justify-center flex-shrink-0'
 																	title='Copy Username'>
 																	{copiedId === `${project.id}-user` ? (
 																		<Check className='h-3.5 w-3.5 text-emerald-600' />
@@ -726,9 +726,9 @@ export default function DeploymentsView({
 																	)}
 																</button>
 															</div>
-															<div className='flex items-center gap-1.5 flex-wrap min-w-0'>
-																<span className='flex-shrink-0'>Pass:</span>
-																<span className='font-mono bg-white/50 px-1.5 py-0.5 rounded break-all min-w-0'>{project.wordpressPassword}</span>
+															<div className='flex items-start gap-1.5 min-w-0'>
+																<span className='flex-shrink-0 mt-0.5'>Pass:</span>
+																<span className='font-mono bg-white/50 px-1.5 py-0.5 rounded break-all min-w-0 flex-1'>{project.wordpressPassword}</span>
 																<button
 																	onClick={() => handleCopy(project.wordpressPassword || "", `${project.id}-pass`)}
 																	className='text-amber-700 hover:text-amber-900 p-1 rounded hover:bg-amber-100/50 transition-colors flex items-center justify-center flex-shrink-0'

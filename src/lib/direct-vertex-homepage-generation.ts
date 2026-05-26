@@ -281,7 +281,7 @@ If you find one, return a JSON response with:
 { "action": "use_existing", "logo_index": <0-based index of the photo> }
 
 If no clear logo exists in the photos, return:
-{ "action": "generate", "generation_prompt": "A premium professional minimalist vector logo for ${business.name}, representing custom cabinetry/woodworking, clean flat design, solid white background, sharp vector shapes" }
+{ "action": "generate", "generation_prompt": "A premium minimalist text-based typography logo featuring the business name \\"${business.name}\\", clean modern flat design, solid white background, sharp vector shapes" }
 
 Return ONLY valid JSON:`;
 
@@ -317,7 +317,7 @@ Return ONLY valid JSON:`;
 	}
 
 	log(`[LogoDetector] No logo found in Google photos. Generating a custom one.`);
-	const defaultPrompt = `A premium professional minimalist vector logo for ${business.name}, representing custom cabinetry and high-end woodworking, clean flat design, solid white background, sharp vector lines`;
+	const defaultPrompt = `A premium minimalist text-based typography logo featuring the business name "${business.name}", clean modern flat design, solid white background, sharp vector lines`;
 	return { action: "generate", generation_prompt: defaultPrompt };
 }
 
