@@ -4620,7 +4620,10 @@ app.delete("/api/sites/:siteId", async (req: Request, res: Response) => {
 async function pollSslStatus() {
 	try {
 		const [deployments]: any = await pool.query(
-			`SELECT * FROM isolated_deployments WHERE ssl_status = 'pending' LIMIT 5`,
+			`SELECT * FROM isolated_deployments 
+			 WHERE ssl_status = 'pending' 
+			 ORDER BY last_ssl_check IS NULL DESC, last_ssl_check ASC 
+			 LIMIT 5`,
 		);
 
 		for (const dep of deployments) {
@@ -4660,6 +4663,10 @@ async function pollSslStatus() {
 			} catch (error) {
 				// SSL not ready yet
 				console.log(`[SSL Worker] SSL not ready for ${host}`);
+				await pool.query(
+					`UPDATE isolated_deployments SET last_ssl_check = NOW() WHERE id = ?`,
+					[dep.id],
+				).catch(() => {});
 			}
 		}
 	} catch (error) {
