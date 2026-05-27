@@ -174,60 +174,59 @@ export async function analyzeAndFilterImages(
 ): Promise<ImageAnalysisResult> {
 	log(`[ImageAnalyzer] Cabinetry focus: Returning custom cabinetry generation prompts for: ${business.name}`);
 
-	const city = business.city || "Houston";
-	const name = business.name || "Cabinetree";
+	const globalStyle = "Scandinavian luxury editorial photography, Japandi-inspired interiors, soft natural daylight, matte walnut/oak textures, calm minimal compositions, realistic architectural photography, muted neutral palette, clean negative space, airy atmosphere, shallow depth of field, premium interior magazine aesthetic, avoid clutter, avoid construction-site feeling, avoid glossy CGI look, avoid oversaturated wood, avoid harsh lighting, avoid busy backgrounds, reserve whitespace for text overlays, cinematic but understated, emotionally calm visual tone, consistent warm-beige color grading, charcoal shadows instead of pure black, matte surfaces only, soft contrast, minimal props, same lighting direction across sections, avoid visual density spikes, maintain editorial pacing between sections";
 
 	return {
 		hero_image: {
 			action: "generate",
-			generation_prompt: `A high-end professional commercial architectural photograph of custom kitchen cabinetry built by ${name} in ${city}, premium finished walnut and oak cabinets, modern kitchen design, warm soft lighting, clean composition, 8k, detailed wood grain texture.`
+			generation_prompt: `Luxury modern walnut kitchen interior, ${globalStyle}. Scandinavian editorial aesthetic, soft morning daylight, clean architectural composition, minimal decor styling, warm beige and walnut tones, negative space for typography, realistic interior photography, calm premium atmosphere, matte finishes, luxury cabinetry integrated naturally into the environment. Wide cinematic framing, no clutter, avoid multiple focal points, leave overlay-safe region.`
 		},
 		masked_image: {
 			action: "generate",
-			generation_prompt: `A detailed close-up shot of a perfect dovetail joint in custom woodwork cabinetry by ${name}, premium craftsmanship, soft depth of field, warm lighting.`
+			generation_prompt: `Close-up luxury cabinetry detail with walnut wood grain and soft stone countertop, ${globalStyle}. Minimalist editorial composition, soft daylight shadows, Japandi interior styling, clean neutral background, matte textures, architectural photography aesthetic, elegant cabinet proportions, spacious composition with breathing room. Centered object, large negative space, simple geometry, calm framing.`
 		},
 		about_image: {
 			action: "generate",
-			generation_prompt: `A professional photograph of a clean, modern woodworking workshop of ${name}, cabinetmaker craftsman building custom cabinets, sawdust in warm sunlight, high-end tools.`
+			generation_prompt: `Luxury cabinetry material flat lay featuring walnut panels, brushed hardware, marble and stone samples, ${globalStyle}. Soft directional daylight, editorial texture photography, architectural materials composition, Scandinavian luxury aesthetic, muted earth tones, tactile surfaces, calm premium atmosphere. Top-down or angled composition, layered materials, abstract luxury feel, cinematic texture emphasis.`
 		},
 		services_image: {
 			action: "generate",
-			generation_prompt: `A beautiful custom built-in entertainment center bookcase cabinet installation in a luxurious living room, premium finished wood, clean modern architecture.`
+			generation_prompt: `Luxury built-in walnut shelving wall in modern living room, ${globalStyle}. Soft ambient lighting, Scandinavian interior design aesthetic, calm cinematic atmosphere, minimal furniture styling, realistic architectural photography, elegant composition with dark overlay-safe region for text. Immersive environment, one dominant architectural feature, soft lighting gradients, darker side reserved for overlay text.`
 		},
 		testimonials_slideshow: [
 			{
 				action: "generate",
-				generation_prompt: `Elegant modern custom bathroom vanity cabinet with marble top, gold fixtures, clean design.`
+				generation_prompt: `Luxury minimalist custom walk-in closet drawers with matte walnut paneling and brushed bronze pull handles, ${globalStyle}. Muted earth tones, spacious design layout.`
 			},
 			{
 				action: "generate",
-				generation_prompt: `Custom walk-in closet shelving system, premium white finish, organized drawers and hangers.`
+				generation_prompt: `Modern minimal bathroom vanity cabinet detail, matte oak panels with natural stone basin, ${globalStyle}. Clean lines, directional morning light.`
 			},
 			{
 				action: "generate",
-				generation_prompt: `A custom handcrafted oak dining table detail shot, smooth finish, luxury dining room setting.`
+				generation_prompt: `Bespoke walnut kitchen island detail featuring integrated cabinet doors, ${globalStyle}. Clean joints, editorial cabinetry details.`
 			}
 		],
 		project_posts: [
 			{
 				action: "generate",
 				post_title: "Custom Kitchen Cabinetry",
-				generation_prompt: `A high-end professional commercial photograph of custom walnut kitchen cabinets, modern design, premium hardware.`
+				generation_prompt: `Luxury modern walnut kitchen cabinets detail shot, ${globalStyle}. Muted neutral palette, matte wood finishes.`
 			},
 			{
 				action: "generate",
 				post_title: "Minimalist Oak TV Console",
-				generation_prompt: `A sleek modern minimalist oak TV console cabinet, clean lines, floating design.`
+				generation_prompt: `Modern sleek floating oak console detail, ${globalStyle}. Clean scandinavian aesthetic, simple geometric lines.`
 			},
 			{
 				action: "generate",
 				post_title: "Luxury Walk-In Closet",
-				generation_prompt: `A premium custom walk-in closet organization system, white wood finish, warm LED shelf lighting.`
+				generation_prompt: `Bespoke walk-in wardrobe storage setup with natural oak details, ${globalStyle}. Airy atmosphere, minimal clutter.`
 			},
 			{
 				action: "generate",
 				post_title: "Bespoke Home Office Shelving",
-				generation_prompt: `A professional home office setup with bespoke built-in shelves and executive desk, dark oak finish.`
+				generation_prompt: `Handcrafted built-in home office shelving system in matte walnut finish, ${globalStyle}. Spacious styling, calm atmosphere.`
 			}
 		]
 	};
