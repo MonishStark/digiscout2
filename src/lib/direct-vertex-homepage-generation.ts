@@ -187,7 +187,7 @@ export async function analyzeAndFilterImages(
 		},
 		about_image: {
 			action: "generate",
-			generation_prompt: `A professional studio photograph of a premium custom cabinet or modern wooden furniture piece, Scandinavian luxury editorial aesthetic, calm Japandi style, matte finish, ${globalStyle}. The top half of the entire image must be a completely plain, solid, blank, clean warm-beige or light-gray background with absolute negative space and zero objects. The cabinet/furniture piece must be positioned solely in the lower half of the image. Soft natural daylight, minimal styling, realistic architectural interior style. Muted neutral color palette.`
+			generation_prompt: `A professional studio flat lay photograph of luxury cabinetry materials and hardware, Scandinavian luxury editorial aesthetic, Japandi styling, matte finishes, ${globalStyle}. The cabinetry components, walnut wood panels, and handles are arranged solely on the left and right edges of the frame. The entire center of the image must be a completely plain, solid, blank warm-beige negative space with no objects. Soft natural daylight, clean composition, muted neutral palette.`
 		},
 		services_image: {
 			action: "generate",
