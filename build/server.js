@@ -1801,7 +1801,7 @@ async function analyzeAndFilterImages(business, log, options) {
     },
     about_image: {
       action: "generate",
-      generation_prompt: `Luxury cabinetry material flat lay featuring walnut panels, brushed hardware, marble and stone samples, ${globalStyle}. Soft directional daylight, editorial texture photography, architectural materials composition, Scandinavian luxury aesthetic, muted earth tones, tactile surfaces, calm premium atmosphere. Top-down or angled composition, layered materials, abstract luxury feel, cinematic texture emphasis.`
+      generation_prompt: `A professional studio photograph of a premium custom cabinet or modern wooden furniture piece, Scandinavian luxury editorial aesthetic, calm Japandi style, matte finish, ${globalStyle}. The top half of the entire image must be a completely plain, solid, blank, clean warm-beige or light-gray background with absolute negative space and zero objects. The cabinet/furniture piece must be positioned solely in the lower half of the image. Soft natural daylight, minimal styling, realistic architectural interior style. Muted neutral color palette.`
     },
     services_image: {
       action: "generate",
@@ -3471,14 +3471,9 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
           }
         }
         if (containers[1] && containers[1].settings) {
-          const targetUrl = aiContent.hero?.masked_image || "";
-          const local = getLocalMedia(targetUrl);
-          if (local) {
-            containers[1].settings.background_image = {
-              url: local.url,
-              id: String(local.id),
-              source: "library"
-            };
+          delete containers[1].settings.background_image;
+          if (containers[1].settings.__globals__) {
+            delete containers[1].settings.__globals__.background_image;
           }
         }
         if (widgets["call-to-action"]?.[0] && widgets["call-to-action"][0].settings) {
@@ -3507,9 +3502,9 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
               source: "library"
             };
           }
-          mainContainer.settings.background_overlay_background = "classic";
-          mainContainer.settings.background_overlay_color = "#E8E6DF";
-          mainContainer.settings.background_overlay_opacity = { unit: "px", size: 0.85, sizes: [] };
+          delete mainContainer.settings.background_overlay_background;
+          delete mainContainer.settings.background_overlay_color;
+          delete mainContainer.settings.background_overlay_opacity;
           if (mainContainer.settings.__globals__) {
             delete mainContainer.settings.__globals__.background_overlay_color;
             delete mainContainer.settings.__globals__.background_overlay_image;

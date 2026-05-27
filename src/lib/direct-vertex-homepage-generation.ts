@@ -187,7 +187,7 @@ export async function analyzeAndFilterImages(
 		},
 		about_image: {
 			action: "generate",
-			generation_prompt: `Luxury cabinetry material flat lay featuring walnut panels, brushed hardware, marble and stone samples, ${globalStyle}. Soft directional daylight, editorial texture photography, architectural materials composition, Scandinavian luxury aesthetic, muted earth tones, tactile surfaces, calm premium atmosphere. Top-down or angled composition, layered materials, abstract luxury feel, cinematic texture emphasis.`
+			generation_prompt: `A professional studio photograph of a premium custom cabinet or modern wooden furniture piece, Scandinavian luxury editorial aesthetic, calm Japandi style, matte finish, ${globalStyle}. The top half of the entire image must be a completely plain, solid, blank, clean warm-beige or light-gray background with absolute negative space and zero objects. The cabinet/furniture piece must be positioned solely in the lower half of the image. Soft natural daylight, minimal styling, realistic architectural interior style. Muted neutral color palette.`
 		},
 		services_image: {
 			action: "generate",

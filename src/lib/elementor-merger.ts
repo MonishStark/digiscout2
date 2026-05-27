@@ -113,16 +113,11 @@ export function mergeElementorTemplate(
 						};
 					}
 				}
-				// Hero Container 2 background image
+				// Hero Container 2 background image - removed background_image to keep only one image in Hero section
 				if (containers[1] && containers[1].settings) {
-					const targetUrl = aiContent.hero?.masked_image || "";
-					const local = getLocalMedia(targetUrl);
-					if (local) {
-						containers[1].settings.background_image = {
-							url: local.url,
-							id: String(local.id),
-							source: "library"
-						};
+					delete containers[1].settings.background_image;
+					if (containers[1].settings.__globals__) {
+						delete containers[1].settings.__globals__.background_image;
 					}
 				}
 				// Hero Call to Action widget
@@ -153,10 +148,10 @@ export function mergeElementorTemplate(
 							source: "library"
 						};
 					}
-					// Readability improvement: Set a clean, beige backdrop overlay
-					mainContainer.settings.background_overlay_background = "classic";
-					mainContainer.settings.background_overlay_color = "#E8E6DF"; // Use brand neutral beige
-					mainContainer.settings.background_overlay_opacity = { unit: "px", size: 0.85, sizes: [] }; // 85% opacity
+					// Remove background overlay classic layer so that image and text sit natively
+					delete mainContainer.settings.background_overlay_background;
+					delete mainContainer.settings.background_overlay_color;
+					delete mainContainer.settings.background_overlay_opacity;
 					
 					// Clear global background overlay overrides if they exist
 					if (mainContainer.settings.__globals__) {
