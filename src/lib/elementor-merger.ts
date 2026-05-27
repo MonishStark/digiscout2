@@ -113,11 +113,16 @@ export function mergeElementorTemplate(
 						};
 					}
 				}
-				// Hero Container 2 background image - removed background_image to keep only one image in Hero section
+				// Hero Container 2 background image
 				if (containers[1] && containers[1].settings) {
-					delete containers[1].settings.background_image;
-					if (containers[1].settings.__globals__) {
-						delete containers[1].settings.__globals__.background_image;
+					const targetUrl = aiContent.hero?.masked_image || "";
+					const local = getLocalMedia(targetUrl);
+					if (local) {
+						containers[1].settings.background_image = {
+							url: local.url,
+							id: String(local.id),
+							source: "library"
+						};
 					}
 				}
 				// Hero Call to Action widget

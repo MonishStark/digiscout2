@@ -1793,11 +1793,11 @@ async function analyzeAndFilterImages(business, log, options) {
   return {
     hero_image: {
       action: "generate",
-      generation_prompt: `Luxury modern walnut kitchen interior, ${globalStyle}. Scandinavian editorial aesthetic, soft morning daylight, clean architectural composition, minimal decor styling, warm beige and walnut tones, negative space for typography, realistic interior photography, calm premium atmosphere, matte finishes, luxury cabinetry integrated naturally into the environment. Wide cinematic framing, no clutter, avoid multiple focal points, leave overlay-safe region.`
+      generation_prompt: `A single minimalistic custom kitchen cabinet photograph, single continuous view, no grid, no collage, no multiple frames, no split screen, ${globalStyle}. Scandinavian editorial aesthetic, soft morning daylight, clean architectural composition, minimal decor styling, warm beige and walnut tones, realistic interior photography, calm premium atmosphere, matte finishes, luxury cabinetry integrated naturally into the environment. Wide cinematic framing, single visual focal point.`
     },
     masked_image: {
       action: "generate",
-      generation_prompt: `Close-up luxury cabinetry detail with walnut wood grain and soft stone countertop, ${globalStyle}. Minimalist editorial composition, soft daylight shadows, Japandi interior styling, clean neutral background, matte textures, architectural photography aesthetic, elegant cabinet proportions, spacious composition with breathing room. Centered object, large negative space, simple geometry, calm framing.`
+      generation_prompt: `A different single professional architectural photograph of a luxury modern cabinet corner or elegant storage sideboard cupboard, single continuous view, no grid, no collage, no multiple angles, no split screen, ${globalStyle}. Soft morning daylight, clean Scandinavian editorial aesthetic, realistic photo, Japandi interior styling, clean neutral background, matte textures, elegant cabinet proportions.`
     },
     about_image: {
       action: "generate",
@@ -3471,9 +3471,14 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
           }
         }
         if (containers[1] && containers[1].settings) {
-          delete containers[1].settings.background_image;
-          if (containers[1].settings.__globals__) {
-            delete containers[1].settings.__globals__.background_image;
+          const targetUrl = aiContent.hero?.masked_image || "";
+          const local = getLocalMedia(targetUrl);
+          if (local) {
+            containers[1].settings.background_image = {
+              url: local.url,
+              id: String(local.id),
+              source: "library"
+            };
           }
         }
         if (widgets["call-to-action"]?.[0] && widgets["call-to-action"][0].settings) {
