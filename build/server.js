@@ -267,7 +267,7 @@ async function analyzeProjectImage(url, fallbackTitle, log, options) {
 }
 async function analyzeAndFilterImages(business, log, options) {
   log(`[ImageAnalyzer] Cabinetry focus: Returning custom cabinetry generation prompts for: ${business.name}`);
-  const globalStyle = "Scandinavian luxury editorial photography, Japandi-inspired interiors, soft natural daylight, matte walnut/oak textures, calm minimal compositions, realistic architectural photography, muted neutral palette, clean negative space, airy atmosphere, shallow depth of field, premium interior magazine aesthetic, avoid clutter, avoid construction-site feeling, avoid glossy CGI look, avoid oversaturated wood, avoid harsh lighting, avoid busy backgrounds, reserve whitespace for text overlays, cinematic but understated, emotionally calm visual tone, consistent warm-beige color grading, charcoal shadows instead of pure black, matte surfaces only, soft contrast, minimal props, same lighting direction across sections, avoid visual density spikes, maintain editorial pacing between sections";
+  const globalStyle = "Scandinavian luxury editorial photography, Japandi-inspired interiors, soft natural daylight, matte walnut/oak textures, calm minimal compositions, realistic architectural photography, muted neutral palette, clean negative space, airy atmosphere, shallow depth of field, premium interior magazine aesthetic, avoid clutter, avoid construction-site feeling, avoid glossy CGI look, avoid oversaturated wood, avoid harsh lighting, avoid busy backgrounds, fully rendered scene showing the complete cabinetry, no blank vertical columns, no plain blocking walls, cinematic but understated, emotionally calm visual tone, consistent warm-beige color grading, charcoal shadows instead of pure black, matte surfaces only, soft contrast, minimal props, same lighting direction across sections, avoid visual density spikes, maintain editorial pacing between sections";
   return {
     hero_image: {
       action: "generate",
@@ -4466,6 +4466,14 @@ html, body {
         aspect-ratio: auto !important;
         min-height: 450px !important;
     }
+    .elementor-element-7c6a7a2 {
+        position: relative !important;
+        margin: 30px auto 0 auto !important;
+        left: auto !important;
+        transform: none !important;
+        display: block !important;
+        clear: both !important;
+    }
 }
 </style>`
         },
@@ -5652,7 +5660,7 @@ $global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !imp
 	'/* KIT 2 CTA Stretch */ ' .
 	'.elementor-element-1b226200 { display: flex !important; flex-direction: row !important; justify-content: flex-end !important; align-items: stretch !important; padding-top: 0 !important; padding-bottom: 0 !important; aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; } ' .
 	'.elementor-element-56a3deab { height: 100% !important; min-height: 100% !important; align-self: stretch !important; margin-top: 0 !important; margin-bottom: 0 !important; } ' .
-	'@media (max-width: 767px) { .elementor-element-1b226200 { flex-direction: column !important; aspect-ratio: auto !important; min-height: 450px !important; } }';
+	'@media (max-width: 767px) { .elementor-element-1b226200 { flex-direction: column !important; aspect-ratio: auto !important; min-height: 450px !important; } .elementor-element-7c6a7a2 { position: relative !important; margin: 30px auto 0 auto !important; left: auto !important; transform: none !important; display: block !important; clear: both !important; } }';
 update_option('elementor_custom_css', $global_css);
 echo "GLOBAL_CSS_SET
 ";
@@ -5764,7 +5772,7 @@ add_action("wp_head", function() {
     /* KIT 2 CTA Card Stretch */
     .elementor-element-1b226200 { display: flex !important; flex-direction: row !important; justify-content: flex-end !important; align-items: stretch !important; padding-top: 0 !important; padding-bottom: 0 !important; aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
     .elementor-element-56a3deab { height: 100% !important; min-height: 100% !important; align-self: stretch !important; margin-top: 0 !important; margin-bottom: 0 !important; }
-    @media (max-width: 767px) { .elementor-element-1b226200 { flex-direction: column !important; aspect-ratio: auto !important; min-height: 450px !important; } }
+    @media (max-width: 767px) { .elementor-element-1b226200 { flex-direction: column !important; aspect-ratio: auto !important; min-height: 450px !important; } .elementor-element-7c6a7a2 { position: relative !important; margin: 30px auto 0 auto !important; left: auto !important; transform: none !important; display: block !important; clear: both !important; } }
     </style>
     <?php
 });';

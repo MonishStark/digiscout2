@@ -1141,6 +1141,14 @@ html, body {
         aspect-ratio: auto !important;
         min-height: 450px !important;
     }
+    .elementor-element-7c6a7a2 {
+        position: relative !important;
+        margin: 30px auto 0 auto !important;
+        left: auto !important;
+        transform: none !important;
+        display: block !important;
+        clear: both !important;
+    }
 }
 </style>`
 				},

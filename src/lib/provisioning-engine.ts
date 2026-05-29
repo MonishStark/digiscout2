@@ -1399,7 +1399,7 @@ $global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !imp
 	'/* KIT 2 CTA Stretch */ ' .
 	'.elementor-element-1b226200 { display: flex !important; flex-direction: row !important; justify-content: flex-end !important; align-items: stretch !important; padding-top: 0 !important; padding-bottom: 0 !important; aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; } ' .
 	'.elementor-element-56a3deab { height: 100% !important; min-height: 100% !important; align-self: stretch !important; margin-top: 0 !important; margin-bottom: 0 !important; } ' .
-	'@media (max-width: 767px) { .elementor-element-1b226200 { flex-direction: column !important; aspect-ratio: auto !important; min-height: 450px !important; } }';
+	'@media (max-width: 767px) { .elementor-element-1b226200 { flex-direction: column !important; aspect-ratio: auto !important; min-height: 450px !important; } .elementor-element-7c6a7a2 { position: relative !important; margin: 30px auto 0 auto !important; left: auto !important; transform: none !important; display: block !important; clear: both !important; } }';
 update_option('elementor_custom_css', $global_css);
 echo "GLOBAL_CSS_SET\n";
 
@@ -1510,7 +1510,7 @@ add_action("wp_head", function() {
     /* KIT 2 CTA Card Stretch */
     .elementor-element-1b226200 { display: flex !important; flex-direction: row !important; justify-content: flex-end !important; align-items: stretch !important; padding-top: 0 !important; padding-bottom: 0 !important; aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
     .elementor-element-56a3deab { height: 100% !important; min-height: 100% !important; align-self: stretch !important; margin-top: 0 !important; margin-bottom: 0 !important; }
-    @media (max-width: 767px) { .elementor-element-1b226200 { flex-direction: column !important; aspect-ratio: auto !important; min-height: 450px !important; } }
+    @media (max-width: 767px) { .elementor-element-1b226200 { flex-direction: column !important; aspect-ratio: auto !important; min-height: 450px !important; } .elementor-element-7c6a7a2 { position: relative !important; margin: 30px auto 0 auto !important; left: auto !important; transform: none !important; display: block !important; clear: both !important; } }
     </style>
     <?php
 });';
