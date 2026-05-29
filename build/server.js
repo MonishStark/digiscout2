@@ -279,11 +279,11 @@ async function analyzeAndFilterImages(business, log, options) {
     },
     about_image: {
       action: "generate",
-      generation_prompt: `A premium professional studio flat lay photograph of luxury cabinet design details, samples and hardware on a solid, completely plain, blank pure white background. On the far left, a vertical arrangement of cabinetry sample boards (walnut wood panel with a gold/brass handle, smaller neutral tile), and on the far right, a vertical arrangement of cabinetry sample boards (light oak panel with a black knob handle, linen cloth folded), arranged solely on the left and right sides. Crucially, all items and objects on the left and right must be fully self-contained inside the frame, maintaining clean white margins/padding at the top and bottom of the image, without touching or extending to the top or bottom edges of the photo. The entire center 60% of the image must be a completely empty, solid, plain pure white negative space with no shadows, objects, or text. Soft natural daylight, clean Japandi/Scandinavian design aesthetic, matte finishes only.`
+      generation_prompt: `A premium professional studio flat lay photograph of luxury cabinet design details, samples and hardware on a solid, completely plain, blank pure white background. On the far left, a vertical arrangement of cabinetry sample boards (walnut wood panel with a gold/brass handle, smaller neutral tile), and on the far right, a vertical arrangement of cabinetry sample boards (light oak panel with a black knob handle, linen cloth folded), arranged solely on the left and right sides. Crucially, the wooden sample boards and all items on the left and right must be vertically compressed and centered, leaving a very large and generous empty white margin/padding (at least 20% to 25% of the image height) at both the top and bottom of the image frame. The wooden samples must be short and self-contained, completely surrounded by pure white empty space, and must never touch or run off the top or bottom edges of the image. The entire center 60% of the image must be a completely empty, solid, plain pure white negative space with no shadows, objects, or text. Soft natural daylight, clean Japandi/Scandinavian design aesthetic, matte finishes only.`
     },
     services_image: {
       action: "generate",
-      generation_prompt: `Luxury built-in walnut shelving wall in modern living room, ${globalStyle}. Soft ambient lighting, Scandinavian interior design aesthetic, calm cinematic atmosphere, minimal furniture styling, realistic architectural photography, elegant composition with dark overlay-safe region for text. Immersive environment, one dominant architectural feature, soft lighting gradients, darker side reserved for overlay text.`
+      generation_prompt: `Luxury built-in walnut shelving wall in modern living room, ${globalStyle}. Soft ambient lighting, Scandinavian interior design aesthetic, calm cinematic atmosphere, minimal furniture styling, realistic architectural photography, elegant minimal composition with empty space on one side.`
     },
     testimonials_slideshow: [
       {
@@ -417,7 +417,11 @@ async function resolveSectionImages(analysis, log, logoAnalysis, business, optio
   };
   const generateAndSave = async (prompt, role, aspectRatio = "16:9") => {
     try {
-      const base64Bytes = await generateCustomImage(prompt, { aspectRatio, logStderr: log });
+      let finalPrompt = prompt;
+      if (role !== "logo") {
+        finalPrompt = `${prompt} Crucially, the image must be a pure, clean photograph with absolutely NO text, NO logos, NO labels, NO buttons, NO overlays, NO icons, and NO watermarks.`;
+      }
+      const base64Bytes = await generateCustomImage(finalPrompt, { aspectRatio, logStderr: log });
       const filename = `gen_${role}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.png`;
       const publicDir2 = path3.join(process.cwd(), "public");
       const imagesDir2 = path3.join(publicDir2, "generated-images");
@@ -441,7 +445,7 @@ async function resolveSectionImages(analysis, log, logoAnalysis, business, optio
   } else {
     taskList.push({
       run: async () => {
-        resultUrls.hero_image = await generateAndSave(analysis.hero_image.generation_prompt || "wooden chair chair modern", "hero", "1:1");
+        resultUrls.hero_image = await generateAndSave(analysis.hero_image.generation_prompt || "wooden chair chair modern", "hero", "3:4");
       }
     });
   }
@@ -450,7 +454,7 @@ async function resolveSectionImages(analysis, log, logoAnalysis, business, optio
   } else {
     taskList.push({
       run: async () => {
-        resultUrls.masked_image = await generateAndSave(analysis.masked_image.generation_prompt || "wood grain pattern detail close-up", "masked", "1:1");
+        resultUrls.masked_image = await generateAndSave(analysis.masked_image.generation_prompt || "wood grain pattern detail close-up", "masked", "3:4");
       }
     });
   }
@@ -459,7 +463,7 @@ async function resolveSectionImages(analysis, log, logoAnalysis, business, optio
   } else {
     taskList.push({
       run: async () => {
-        resultUrls.about_image = await generateAndSave(analysis.about_image.generation_prompt || "woodworking craftsman work", "about", "4:3");
+        resultUrls.about_image = await generateAndSave(analysis.about_image.generation_prompt || "woodworking craftsman work", "about", "16:9");
       }
     });
   }
@@ -3514,6 +3518,12 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
               id: String(local.id),
               source: "library"
             };
+          } else if (targetUrl) {
+            containers[0].settings.background_image = {
+              url: targetUrl,
+              id: "",
+              source: "library"
+            };
           }
           containers[0].settings.background_size = "cover";
           containers[0].settings.background_repeat = "no-repeat";
@@ -3527,6 +3537,12 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
             containers[1].settings.background_image = {
               url: local.url,
               id: String(local.id),
+              source: "library"
+            };
+          } else if (targetUrl) {
+            containers[1].settings.background_image = {
+              url: targetUrl,
+              id: "",
               source: "library"
             };
           }
@@ -3558,6 +3574,12 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
             mainContainer.settings.background_image = {
               url: local.url,
               id: String(local.id),
+              source: "library"
+            };
+          } else if (targetUrl) {
+            mainContainer.settings.background_image = {
+              url: targetUrl,
+              id: "",
               source: "library"
             };
           }
@@ -3605,6 +3627,12 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
             mainContainer.settings.background_image = {
               url: local.url,
               id: String(local.id),
+              source: "library"
+            };
+          } else if (targetUrl) {
+            mainContainer.settings.background_image = {
+              url: targetUrl,
+              id: "",
               source: "library"
             };
           }
@@ -3669,11 +3697,24 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
               id: String(local.id),
               source: "library"
             };
+          } else if (targetUrl) {
+            mainContainer.settings.background_image = {
+              url: targetUrl,
+              id: "",
+              source: "library"
+            };
           }
           mainContainer.settings.background_size = "cover";
           mainContainer.settings.background_repeat = "no-repeat";
           mainContainer.settings.background_position = "center center";
           mainContainer.settings.background_color = "#E8E6DF";
+          mainContainer.settings.flex_align_items = "stretch";
+          if (!mainContainer.settings.padding) {
+            mainContainer.settings.padding = { unit: "%", top: "0", right: "0", bottom: "0", left: "50" };
+          } else {
+            mainContainer.settings.padding.top = "0";
+            mainContainer.settings.padding.bottom = "0";
+          }
         }
         if (widgets.heading?.[0] && widgets.heading[0].settings) {
           widgets.heading[0].settings.title = aiContent.process?.heading || "Our Work Process";
@@ -3696,6 +3737,19 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
             custom_attributes: ""
           };
         }
+        if (containers[0] && containers[0].settings) {
+          containers[0].settings.height = { unit: "%", size: 100 };
+          containers[0].settings.min_height = { unit: "px", size: 0 };
+          containers[0].settings.align_self = "stretch";
+          containers[0].settings.margin = {
+            unit: "px",
+            top: "0",
+            right: "0",
+            bottom: "0",
+            left: "0",
+            isLinked: "1"
+          };
+        }
       } else if (title === "Banner") {
         if (widgets["icon-list"]?.[0] && widgets["icon-list"][0].settings?.icon_list?.[0]) {
           widgets["icon-list"][0].settings.icon_list[0].text = `Call Us: ${businessInfo.phone}`;
@@ -3711,6 +3765,11 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
             widgets["theme-site-logo"][0].settings.image = {
               url: local.url,
               id: String(local.id)
+            };
+          } else if (targetUrl) {
+            widgets["theme-site-logo"][0].settings.image = {
+              url: targetUrl,
+              id: ""
             };
           }
           widgets["theme-site-logo"][0].settings.height = { unit: "px", size: 85, sizes: [] };
@@ -3764,6 +3823,11 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
               url: local.url,
               id: String(local.id)
             };
+          } else if (targetUrl) {
+            widgets.image[0].settings.image = {
+              url: targetUrl,
+              id: ""
+            };
           }
         }
         if (widgets["nav-menu"]) {
@@ -3805,24 +3869,36 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
         if (!bgCol && columns.length > 1) {
           bgCol = columns[1];
         }
-        if (bgCol && bgCol.settings?.background_image) {
+        if (bgCol && bgCol.settings) {
           const targetUrl = aiContent.hero?.hero_image || "";
           const local = getLocalMedia(targetUrl);
+          if (!bgCol.settings.background_image) {
+            bgCol.settings.background_image = { url: "", id: "" };
+          }
           if (local) {
             bgCol.settings.background_image.url = local.url;
             bgCol.settings.background_image.id = String(local.id);
+          } else if (targetUrl) {
+            bgCol.settings.background_image.url = targetUrl;
+            bgCol.settings.background_image.id = "";
           }
           bgCol.settings.background_size = "cover";
           bgCol.settings.background_repeat = "no-repeat";
           bgCol.settings.background_position = "center center";
           bgCol.settings.background_color = "#E8E6DF";
         }
-        if (widgets.image?.[0] && widgets.image[0].settings?.image) {
+        if (widgets.image?.[0] && widgets.image[0].settings) {
           const targetUrl = aiContent.hero?.masked_image || "";
           const local = getLocalMedia(targetUrl);
+          if (!widgets.image[0].settings.image) {
+            widgets.image[0].settings.image = { url: "", id: "" };
+          }
           if (local) {
             widgets.image[0].settings.image.url = local.url;
             widgets.image[0].settings.image.id = String(local.id);
+          } else if (targetUrl) {
+            widgets.image[0].settings.image.url = targetUrl;
+            widgets.image[0].settings.image.id = "";
           }
           widgets.image[0].settings["object-fit"] = "cover";
           widgets.image[0].settings.image_size = "full";
@@ -3836,12 +3912,18 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
           };
         }
       } else if (title === "Highest level") {
-        if (widgets.image?.[0] && widgets.image[0].settings?.image) {
+        if (widgets.image?.[0] && widgets.image[0].settings) {
           const targetUrl = aiContent.about?.image || "";
           const local = getLocalMedia(targetUrl);
+          if (!widgets.image[0].settings.image) {
+            widgets.image[0].settings.image = { url: "", id: "" };
+          }
           if (local) {
             widgets.image[0].settings.image.url = local.url;
             widgets.image[0].settings.image.id = String(local.id);
+          } else if (targetUrl) {
+            widgets.image[0].settings.image.url = targetUrl;
+            widgets.image[0].settings.image.id = "";
           }
         }
         if (widgets.heading?.[0] && widgets.heading[0].settings) {
@@ -3886,12 +3968,18 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
         if (!bgCol && columns.length > 1) {
           bgCol = columns[1];
         }
-        if (bgCol && bgCol.settings?.background_image) {
+        if (bgCol && bgCol.settings) {
           const targetUrl = aiContent.services?.image || "";
           const local = getLocalMedia(targetUrl);
+          if (!bgCol.settings.background_image) {
+            bgCol.settings.background_image = { url: "", id: "" };
+          }
           if (local) {
             bgCol.settings.background_image.url = local.url;
             bgCol.settings.background_image.id = String(local.id);
+          } else if (targetUrl) {
+            bgCol.settings.background_image.url = targetUrl;
+            bgCol.settings.background_image.id = "";
           }
           bgCol.settings.background_size = "cover";
           bgCol.settings.background_repeat = "no-repeat";
@@ -3931,7 +4019,10 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
         }
       } else if (title === "Client testimonials") {
         const slideshowCol = columns.find((c) => c.settings?.background_background === "slideshow");
-        if (slideshowCol && slideshowCol.settings && Array.isArray(slideshowCol.settings.background_slideshow_gallery)) {
+        if (slideshowCol && slideshowCol.settings) {
+          if (!Array.isArray(slideshowCol.settings.background_slideshow_gallery)) {
+            slideshowCol.settings.background_slideshow_gallery = [];
+          }
           const localSlideshow = [];
           const slideshowUrls = aiContent.testimonials?.slideshow || [];
           for (let i = 0; i < Math.min(3, slideshowUrls.length); i++) {
@@ -3941,6 +4032,11 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
               localSlideshow.push({
                 id: String(local.id),
                 url: local.url
+              });
+            } else if (targetUrl) {
+              localSlideshow.push({
+                id: "",
+                url: targetUrl
               });
             }
           }

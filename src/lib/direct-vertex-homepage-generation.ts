@@ -187,11 +187,11 @@ export async function analyzeAndFilterImages(
 		},
 		about_image: {
 			action: "generate",
-			generation_prompt: `A premium professional studio flat lay photograph of luxury cabinet design details, samples and hardware on a solid, completely plain, blank pure white background. On the far left, a vertical arrangement of cabinetry sample boards (walnut wood panel with a gold/brass handle, smaller neutral tile), and on the far right, a vertical arrangement of cabinetry sample boards (light oak panel with a black knob handle, linen cloth folded), arranged solely on the left and right sides. Crucially, all items and objects on the left and right must be fully self-contained inside the frame, maintaining clean white margins/padding at the top and bottom of the image, without touching or extending to the top or bottom edges of the photo. The entire center 60% of the image must be a completely empty, solid, plain pure white negative space with no shadows, objects, or text. Soft natural daylight, clean Japandi/Scandinavian design aesthetic, matte finishes only.`
+			generation_prompt: `A premium professional studio flat lay photograph of luxury cabinet design details, samples and hardware on a solid, completely plain, blank pure white background. On the far left, a vertical arrangement of cabinetry sample boards (walnut wood panel with a gold/brass handle, smaller neutral tile), and on the far right, a vertical arrangement of cabinetry sample boards (light oak panel with a black knob handle, linen cloth folded), arranged solely on the left and right sides. Crucially, the wooden sample boards and all items on the left and right must be vertically compressed and centered, leaving a very large and generous empty white margin/padding (at least 20% to 25% of the image height) at both the top and bottom of the image frame. The wooden samples must be short and self-contained, completely surrounded by pure white empty space, and must never touch or run off the top or bottom edges of the image. The entire center 60% of the image must be a completely empty, solid, plain pure white negative space with no shadows, objects, or text. Soft natural daylight, clean Japandi/Scandinavian design aesthetic, matte finishes only.`
 		},
 		services_image: {
 			action: "generate",
-			generation_prompt: `Luxury built-in walnut shelving wall in modern living room, ${globalStyle}. Soft ambient lighting, Scandinavian interior design aesthetic, calm cinematic atmosphere, minimal furniture styling, realistic architectural photography, elegant composition with dark overlay-safe region for text. Immersive environment, one dominant architectural feature, soft lighting gradients, darker side reserved for overlay text.`
+			generation_prompt: `Luxury built-in walnut shelving wall in modern living room, ${globalStyle}. Soft ambient lighting, Scandinavian interior design aesthetic, calm cinematic atmosphere, minimal furniture styling, realistic architectural photography, elegant minimal composition with empty space on one side.`
 		},
 		testimonials_slideshow: [
 			{
@@ -365,7 +365,11 @@ export async function resolveSectionImages(
 
 	const generateAndSave = async (prompt: string, role: string, aspectRatio: "1:1" | "3:4" | "4:3" | "9:16" | "16:9" = "16:9"): Promise<string> => {
 		try {
-			const base64Bytes = await generateCustomImage(prompt, { aspectRatio, logStderr: log });
+			let finalPrompt = prompt;
+			if (role !== "logo") {
+				finalPrompt = `${prompt} Crucially, the image must be a pure, clean photograph with absolutely NO text, NO logos, NO labels, NO buttons, NO overlays, NO icons, and NO watermarks.`;
+			}
+			const base64Bytes = await generateCustomImage(finalPrompt, { aspectRatio, logStderr: log });
 			const filename = `gen_${role}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.png`;
 			const publicDir = path.join(process.cwd(), "public");
 			const imagesDir = path.join(publicDir, "generated-images");
@@ -393,7 +397,7 @@ export async function resolveSectionImages(
 	} else {
 		taskList.push({
 			run: async () => {
-				resultUrls.hero_image = await generateAndSave(analysis.hero_image.generation_prompt || "wooden chair chair modern", "hero", "1:1");
+				resultUrls.hero_image = await generateAndSave(analysis.hero_image.generation_prompt || "wooden chair chair modern", "hero", "3:4");
 			}
 		});
 	}
@@ -404,7 +408,7 @@ export async function resolveSectionImages(
 	} else {
 		taskList.push({
 			run: async () => {
-				resultUrls.masked_image = await generateAndSave(analysis.masked_image.generation_prompt || "wood grain pattern detail close-up", "masked", "1:1");
+				resultUrls.masked_image = await generateAndSave(analysis.masked_image.generation_prompt || "wood grain pattern detail close-up", "masked", "3:4");
 			}
 		});
 	}
@@ -415,7 +419,7 @@ export async function resolveSectionImages(
 	} else {
 		taskList.push({
 			run: async () => {
-				resultUrls.about_image = await generateAndSave(analysis.about_image.generation_prompt || "woodworking craftsman work", "about", "4:3");
+				resultUrls.about_image = await generateAndSave(analysis.about_image.generation_prompt || "woodworking craftsman work", "about", "16:9");
 			}
 		});
 	}

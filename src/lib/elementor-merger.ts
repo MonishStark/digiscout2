@@ -111,6 +111,12 @@ export function mergeElementorTemplate(
 							id: String(local.id),
 							source: "library"
 						};
+					} else if (targetUrl) {
+						containers[0].settings.background_image = {
+							url: targetUrl,
+							id: "",
+							source: "library"
+						};
 					}
 					containers[0].settings.background_size = "cover";
 					containers[0].settings.background_repeat = "no-repeat";
@@ -125,6 +131,12 @@ export function mergeElementorTemplate(
 						containers[1].settings.background_image = {
 							url: local.url,
 							id: String(local.id),
+							source: "library"
+						};
+					} else if (targetUrl) {
+						containers[1].settings.background_image = {
+							url: targetUrl,
+							id: "",
 							source: "library"
 						};
 					}
@@ -158,6 +170,12 @@ export function mergeElementorTemplate(
 						mainContainer.settings.background_image = {
 							url: local.url,
 							id: String(local.id),
+							source: "library"
+						};
+					} else if (targetUrl) {
+						mainContainer.settings.background_image = {
+							url: targetUrl,
+							id: "",
 							source: "library"
 						};
 					}
@@ -209,6 +227,12 @@ export function mergeElementorTemplate(
 						mainContainer.settings.background_image = {
 							url: local.url,
 							id: String(local.id),
+							source: "library"
+						};
+					} else if (targetUrl) {
+						mainContainer.settings.background_image = {
+							url: targetUrl,
+							id: "",
 							source: "library"
 						};
 					}
@@ -276,11 +300,28 @@ export function mergeElementorTemplate(
 							id: String(local.id),
 							source: "library"
 						};
+					} else if (targetUrl) {
+						mainContainer.settings.background_image = {
+							url: targetUrl,
+							id: "",
+							source: "library"
+						};
 					}
 					mainContainer.settings.background_size = "cover";
 					mainContainer.settings.background_repeat = "no-repeat";
 					mainContainer.settings.background_position = "center center";
 					mainContainer.settings.background_color = "#E8E6DF";
+					
+					// Force the parent container to stretch its children vertically
+					mainContainer.settings.flex_align_items = "stretch";
+					
+					// Clear top/bottom padding on parent container to avoid vertical gaps
+					if (!mainContainer.settings.padding) {
+						mainContainer.settings.padding = { unit: "%", top: "0", right: "0", bottom: "0", left: "50" };
+					} else {
+						mainContainer.settings.padding.top = "0";
+						mainContainer.settings.padding.bottom = "0";
+					}
 				}
 				// Inside the dark overlay box:
 				if (widgets.heading?.[0] && widgets.heading[0].settings) {
@@ -304,6 +345,21 @@ export function mergeElementorTemplate(
 						custom_attributes: "",
 					};
 				}
+				
+				// Force the child container to stretch to 100% height and remove margin
+				if (containers[0] && containers[0].settings) {
+					containers[0].settings.height = { unit: "%", size: 100 };
+					containers[0].settings.min_height = { unit: "px", size: 0 }; // override fixed min_height to stretch
+					containers[0].settings.align_self = "stretch";
+					containers[0].settings.margin = {
+						unit: "px",
+						top: "0",
+						right: "0",
+						bottom: "0",
+						left: "0",
+						isLinked: "1"
+					};
+				}
 			} else if (title === "Banner") {
 				if (widgets["icon-list"]?.[0] && widgets["icon-list"][0].settings?.icon_list?.[0]) {
 					widgets["icon-list"][0].settings.icon_list[0].text = `Call Us: ${businessInfo.phone}`;
@@ -319,6 +375,11 @@ export function mergeElementorTemplate(
 						widgets["theme-site-logo"][0].settings.image = {
 							url: local.url,
 							id: String(local.id),
+						};
+					} else if (targetUrl) {
+						widgets["theme-site-logo"][0].settings.image = {
+							url: targetUrl,
+							id: "",
 						};
 					}
 					widgets["theme-site-logo"][0].settings.height = { unit: "px", size: 85, sizes: [] };
@@ -386,6 +447,11 @@ export function mergeElementorTemplate(
 							url: local.url,
 							id: String(local.id),
 						};
+					} else if (targetUrl) {
+						widgets.image[0].settings.image = {
+							url: targetUrl,
+							id: "",
+						};
 					}
 				}
 				// Assign menus
@@ -432,12 +498,18 @@ export function mergeElementorTemplate(
 				if (!bgCol && columns.length > 1) {
 					bgCol = columns[1];
 				}
-				if (bgCol && bgCol.settings?.background_image) {
+				if (bgCol && bgCol.settings) {
 					const targetUrl = aiContent.hero?.hero_image || "";
 					const local = getLocalMedia(targetUrl);
+					if (!bgCol.settings.background_image) {
+						bgCol.settings.background_image = { url: "", id: "" };
+					}
 					if (local) {
 						bgCol.settings.background_image.url = local.url;
 						bgCol.settings.background_image.id = String(local.id);
+					} else if (targetUrl) {
+						bgCol.settings.background_image.url = targetUrl;
+						bgCol.settings.background_image.id = "";
 					}
 					bgCol.settings.background_size = "cover";
 					bgCol.settings.background_repeat = "no-repeat";
@@ -449,12 +521,18 @@ export function mergeElementorTemplate(
 				// and absolute positioning with correct _offset_x/_offset_y values.
 				// "fill" (the template default) stretches non-square photos into ovals.
 				// "cover" crops to fill the square container → perfect circle.
-				if (widgets.image?.[0] && widgets.image[0].settings?.image) {
+				if (widgets.image?.[0] && widgets.image[0].settings) {
 					const targetUrl = aiContent.hero?.masked_image || "";
 					const local = getLocalMedia(targetUrl);
+					if (!widgets.image[0].settings.image) {
+						widgets.image[0].settings.image = { url: "", id: "" };
+					}
 					if (local) {
 						widgets.image[0].settings.image.url = local.url;
 						widgets.image[0].settings.image.id = String(local.id);
+					} else if (targetUrl) {
+						widgets.image[0].settings.image.url = targetUrl;
+						widgets.image[0].settings.image.id = "";
 					}
 					// THE critical fix: "cover" keeps aspect ratio and crops; "fill" stretches → oval
 					widgets.image[0].settings["object-fit"] = "cover";
@@ -476,12 +554,18 @@ export function mergeElementorTemplate(
 
 			} else if (title === "Highest level") {
 				// About image
-				if (widgets.image?.[0] && widgets.image[0].settings?.image) {
+				if (widgets.image?.[0] && widgets.image[0].settings) {
 					const targetUrl = aiContent.about?.image || "";
 					const local = getLocalMedia(targetUrl);
+					if (!widgets.image[0].settings.image) {
+						widgets.image[0].settings.image = { url: "", id: "" };
+					}
 					if (local) {
 						widgets.image[0].settings.image.url = local.url;
 						widgets.image[0].settings.image.id = String(local.id);
+					} else if (targetUrl) {
+						widgets.image[0].settings.image.url = targetUrl;
+						widgets.image[0].settings.image.id = "";
 					}
 				}
 				// About title
@@ -533,12 +617,18 @@ export function mergeElementorTemplate(
 				if (!bgCol && columns.length > 1) {
 					bgCol = columns[1];
 				}
-				if (bgCol && bgCol.settings?.background_image) {
+				if (bgCol && bgCol.settings) {
 					const targetUrl = aiContent.services?.image || "";
 					const local = getLocalMedia(targetUrl);
+					if (!bgCol.settings.background_image) {
+						bgCol.settings.background_image = { url: "", id: "" };
+					}
 					if (local) {
 						bgCol.settings.background_image.url = local.url;
 						bgCol.settings.background_image.id = String(local.id);
+					} else if (targetUrl) {
+						bgCol.settings.background_image.url = targetUrl;
+						bgCol.settings.background_image.id = "";
 					}
 					bgCol.settings.background_size = "cover";
 					bgCol.settings.background_repeat = "no-repeat";
@@ -585,7 +675,10 @@ export function mergeElementorTemplate(
 			} else if (title === "Client testimonials") {
 				// Slideshow background
 				const slideshowCol = columns.find((c: any) => c.settings?.background_background === "slideshow");
-				if (slideshowCol && slideshowCol.settings && Array.isArray(slideshowCol.settings.background_slideshow_gallery)) {
+				if (slideshowCol && slideshowCol.settings) {
+					if (!Array.isArray(slideshowCol.settings.background_slideshow_gallery)) {
+						slideshowCol.settings.background_slideshow_gallery = [];
+					}
 					const localSlideshow: any[] = [];
 					const slideshowUrls = aiContent.testimonials?.slideshow || [];
 					for (let i = 0; i < Math.min(3, slideshowUrls.length); i++) {
@@ -595,6 +688,11 @@ export function mergeElementorTemplate(
 							localSlideshow.push({
 								id: String(local.id),
 								url: local.url,
+							});
+						} else if (targetUrl) {
+							localSlideshow.push({
+								id: "",
+								url: targetUrl,
 							});
 						}
 					}
