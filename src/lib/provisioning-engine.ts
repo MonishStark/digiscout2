@@ -13,6 +13,8 @@ import {
 	setDatabasePrivileges,
 	deleteDatabase,
 	deleteDatabaseUser,
+	checkSubdomainExists,
+	remoteDirectoryExists,
 } from "./cpanel-uapi";
 import {
 	checkWpCliAvailable,
@@ -25,6 +27,7 @@ import {
 	copyFileToRemote,
 } from "./wp-cli";
 import { mergeElementorTemplate } from "./elementor-merger";
+import { generateWithFallback } from "./gemini";
 
 // NOTE: No local `fs` import — all filesystem operations are remote via SSH.
 
@@ -138,6 +141,54 @@ async function generateUniqueSubdomain(businessName: string): Promise<string> {
 	));
 }
 
+/**
+ * Calls Vertex/Gemini to suggest a professional and semantic alternative subdomain name
+ * when the primary candidate is already taken on cPanel.
+ */
+async function suggestAlternativeSubdomainViaVertex(
+	businessName: string,
+	existingSubdomain: string,
+	attemptNumber: number,
+	log: (msg: string) => void,
+): Promise<string> {
+	try {
+		log(`[cPanel-Subdomain] Querying Vertex for an alternative subdomain for "${businessName}" because "${existingSubdomain}" is taken.`);
+		const prompt = `You are a professional local business web hosting setup assistant.
+The business name is "${businessName}".
+The primary subdomain candidate "${existingSubdomain}" is already taken on our server.
+Please suggest one alternative, professional, clean, DNS-safe subdomain name that is highly relevant to this business.
+Follow these rules strictly:
+1. ONLY lowercase letters, numbers, and hyphens are allowed. No other characters.
+2. Max 45 characters long.
+3. It must be different from "${existingSubdomain}".
+4. It must NOT contain suffixes like "-1" or random numbers. Make it semantic and professional (e.g., adding words like "cabinetry", "woodwork", "shop", "builders", or local keywords if relevant).
+5. Attempt number: ${attemptNumber}. If attempt is greater than 1, make it more unique.
+6. Return ONLY the alternative subdomain name string itself, with no explanation, no formatting, no markdown, and no punctuation.`;
+
+		const responseText = await generateWithFallback(
+			prompt,
+			{ temperature: 0.7 },
+			{
+				logStderr: log,
+				throttleGemini: async () => {},
+				contextLabel: "alternative-subdomain-generation"
+			}
+		);
+
+		const result = responseText?.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+		if (result && result.length > 2 && result !== existingSubdomain) {
+			log(`[cPanel-Subdomain] Vertex suggested alternative subdomain: "${result}"`);
+			return result;
+		}
+	} catch (e: any) {
+		log(`[cPanel-Subdomain] Vertex error suggesting subdomain: ${e.message || e}`);
+	}
+
+	// Fallback to simple random suffix if Vertex fails
+	const suffix = crypto.randomBytes(3).toString("hex");
+	return cleanSubdomain(`${sanitizeSubdomainBase(businessName)}-${suffix}`.substring(0, MAX_SUBDOMAIN_LENGTH));
+}
+
 function generateSecurePassword() {
 	return crypto.randomBytes(16).toString("hex") + "!aA1";
 }
@@ -240,15 +291,90 @@ async function executeStateMachine(job: any) {
 			);
 		}
 
-		const fullDocRoot = `${docRootBase}/${subdomain}`;
-		await appendLog(job.id, `Remote doc root will be: ${fullDocRoot}`);
+		let subdomainOk = false;
+		let attempts = 0;
+		const maxSubdomainAttempts = 3;
 
-		// Create subdomain via cPanel UAPI on the remote WP server
-		await addSubdomain(subdomain, rootDomain, fullDocRoot);
-		await appendLog(
-			job.id,
-			`Created subdomain: ${subdomain}.${rootDomain} → ${fullDocRoot}`,
-		);
+		while (!subdomainOk && attempts < maxSubdomainAttempts) {
+			attempts++;
+			const fullDocRoot = `${docRootBase}/${subdomain}`;
+			await appendLog(job.id, `Remote doc root will be: ${fullDocRoot}`);
+
+			// Pre-check: Check if the subdomain already exists in cPanel or if the remote directory exists
+			let existsOnServer = false;
+			try {
+				const subExists = await checkSubdomainExists(subdomain, rootDomain);
+				const dirExists = await remoteDirectoryExists(fullDocRoot);
+				if (subExists || dirExists) {
+					existsOnServer = true;
+					await appendLog(
+						job.id,
+						`Subdomain "${subdomain}.${rootDomain}" or remote directory "${fullDocRoot}" already exists on Namecheap/cPanel server.`,
+					);
+				}
+			} catch (chkErr: any) {
+				await appendLog(
+					job.id,
+					`Warning during subdomain existence pre-check: ${chkErr.message || chkErr}`,
+				);
+			}
+
+			if (existsOnServer) {
+				if (attempts < maxSubdomainAttempts) {
+					const prevSubdomain = subdomain;
+					subdomain = await suggestAlternativeSubdomainViaVertex(
+						job.business_name || job.project_id,
+						prevSubdomain,
+						attempts,
+						(msg) => appendLog(job.id, msg),
+					);
+					await appendLog(job.id, `Retrying subdomain check with Vertex suggested alternative: "${subdomain}"`);
+					await pool.query(
+						`UPDATE provisioning_jobs SET subdomain = ? WHERE id = ?`,
+						[subdomain, job.id],
+					);
+					continue; // Try again in the loop with the new subdomain
+				} else {
+					throw new Error(`Failed to find a unique subdomain after ${maxSubdomainAttempts} attempts. Last tried: "${subdomain}"`);
+				}
+			}
+
+			// Create subdomain via cPanel UAPI on the remote WP server
+			try {
+				await addSubdomain(subdomain, rootDomain, fullDocRoot);
+				await appendLog(
+					job.id,
+					`Created subdomain: ${subdomain}.${rootDomain} → ${fullDocRoot}`,
+				);
+				subdomainOk = true;
+			} catch (subErr: any) {
+				const errMsg = subErr.message || String(subErr);
+				if (errMsg.includes("already exists") || errMsg.includes("exists") || errMsg.includes("closed by remote host")) {
+					await appendLog(
+						job.id,
+						`Subdomain "${subdomain}.${rootDomain}" collision or connection closure detected: "${errMsg}"`,
+					);
+					if (attempts < maxSubdomainAttempts) {
+						const prevSubdomain = subdomain;
+						subdomain = await suggestAlternativeSubdomainViaVertex(
+							job.business_name || job.project_id,
+							prevSubdomain,
+							attempts,
+							(msg) => appendLog(job.id, msg),
+						);
+						await appendLog(job.id, `Retrying subdomain creation with Vertex suggested alternative: "${subdomain}"`);
+						await pool.query(
+							`UPDATE provisioning_jobs SET subdomain = ? WHERE id = ?`,
+							[subdomain, job.id],
+						);
+					} else {
+						throw new Error(`Failed to create a unique subdomain after ${maxSubdomainAttempts} attempts. Last tried: "${subdomain}"`);
+					}
+				} else {
+					throw subErr;
+				}
+			}
+		}
 
 		job.status = "creating_database";
 	}

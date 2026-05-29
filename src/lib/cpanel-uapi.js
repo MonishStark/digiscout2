@@ -243,3 +243,54 @@ export async function setDatabasePrivileges(dbUser, dbName, privileges = "ALL PR
         privileges: privileges,
     });
 }
+
+export async function checkSubdomainExists(subdomain, rootDomain) {
+    const fullDomain = `${subdomain}.${rootDomain}`;
+    try {
+        const data = await callUapiRemote("DomainInfo", "list_domains", {});
+        if (data) {
+            const subdomains = data.sub_domains || [];
+            const mainDomain = data.main_domain || "";
+            const addonDomains = data.addon_domains || [];
+            const parkedDomains = data.parked_domains || [];
+            const all = [mainDomain, ...subdomains, ...addonDomains, ...parkedDomains]
+                .filter(Boolean)
+                .map(d => d.toLowerCase());
+            if (all.includes(fullDomain.toLowerCase())) {
+                return true;
+            }
+        }
+    }
+    catch (e) {
+        process.stderr.write(`[cPanel-SSH] DomainInfo::list_domains failed: ${e.message}. Trying SubDomain::listsubdomains...\n`);
+        try {
+            const data = await callUapiRemote("SubDomain", "listsubdomains", {});
+            if (Array.isArray(data)) {
+                const found = data.some((sub) => {
+                    const dom = (sub.domain || "").toLowerCase();
+                    const subD = (sub.subdomain || "").toLowerCase();
+                    return dom === fullDomain.toLowerCase() || subD === subdomain.toLowerCase();
+                });
+                if (found)
+                    return true;
+            }
+        }
+        catch (e2) {
+            process.stderr.write(`[cPanel-SSH] SubDomain::listsubdomains failed: ${e2.message}.\n`);
+        }
+    }
+    return false;
+}
+
+export async function remoteDirectoryExists(dirPath) {
+    const sshPrefix = getSshPrefix();
+    const cmd = `${sshPrefix} 'test -d "${dirPath}" && echo "exists" || echo "not_exists"'`;
+    try {
+        const { stdout } = await execAsync(cmd, { timeout: 15000 });
+        return stdout.trim() === "exists";
+    }
+    catch (e) {
+        process.stderr.write(`[cPanel-SSH] Check remote directory exists failed: ${e.message}\n`);
+        return false;
+    }
+}

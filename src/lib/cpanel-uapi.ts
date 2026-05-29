@@ -309,3 +309,54 @@ export async function setDatabasePrivileges(
 		privileges: privileges,
 	});
 }
+
+export async function checkSubdomainExists(subdomain: string, rootDomain: string): Promise<boolean> {
+	const fullDomain = `${subdomain}.${rootDomain}`;
+	try {
+		// Try DomainInfo list_domains UAPI
+		const data = await callUapiRemote("DomainInfo", "list_domains", {});
+		if (data) {
+			const subdomains = data.sub_domains || [];
+			const mainDomain = data.main_domain || "";
+			const addonDomains = data.addon_domains || [];
+			const parkedDomains = data.parked_domains || [];
+			
+			const all = [mainDomain, ...subdomains, ...addonDomains, ...parkedDomains]
+				.filter(Boolean)
+				.map((d: string) => d.toLowerCase());
+				
+			if (all.includes(fullDomain.toLowerCase())) {
+				return true;
+			}
+		}
+	} catch (e: any) {
+		process.stderr.write(`[cPanel-SSH] DomainInfo::list_domains failed: ${e.message}. Trying SubDomain::listsubdomains...\n`);
+		try {
+			// Try SubDomain listsubdomains UAPI
+			const data = await callUapiRemote("SubDomain", "listsubdomains", {});
+			if (Array.isArray(data)) {
+				const found = data.some((sub: any) => {
+					const dom = (sub.domain || "").toLowerCase();
+					const subD = (sub.subdomain || "").toLowerCase();
+					return dom === fullDomain.toLowerCase() || subD === subdomain.toLowerCase();
+				});
+				if (found) return true;
+			}
+		} catch (e2: any) {
+			process.stderr.write(`[cPanel-SSH] SubDomain::listsubdomains failed: ${e2.message}.\n`);
+		}
+	}
+	return false;
+}
+
+export async function remoteDirectoryExists(dirPath: string): Promise<boolean> {
+	const sshPrefix = getSshPrefix();
+	const cmd = `${sshPrefix} 'test -d "${dirPath}" && echo "exists" || echo "not_exists"'`;
+	try {
+		const { stdout } = await execAsync(cmd, { timeout: 15000 });
+		return stdout.trim() === "exists";
+	} catch (e: any) {
+		process.stderr.write(`[cPanel-SSH] Check remote directory exists failed: ${e.message}\n`);
+		return false;
+	}
+}

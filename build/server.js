@@ -8,730 +8,6 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// src/lib/wordpress.ts
-var wordpress_exports = {};
-__export(wordpress_exports, {
-  buildWordPressProvisioningPlan: () => buildWordPressProvisioningPlan,
-  buildWordPressSitePages: () => buildWordPressSitePages,
-  collectWordPressMediaAssets: () => collectWordPressMediaAssets,
-  schemaToGutenbergBlocks: () => schemaToGutenbergBlocks
-});
-function escapeHtml(value) {
-  return (value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#39;");
-}
-function slugify(value) {
-  return (value || "client-site").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-}
-function renderNavBlocks(schema) {
-  const voice = getSiteVoice(schema);
-  const links = [
-    { title: "Home", href: "/" },
-    { title: "About", href: "/about/" },
-    { title: voice.featuresTitle, href: "/services/" },
-    { title: voice.galleryTitle, href: "/gallery/" },
-    { title: voice.faqTitle, href: "/faq/" },
-    { title: voice.contactTitle, href: "/contact/" }
-  ];
-  return `<!-- wp:navigation {"layout":{"type":"flex","justifyContent":"center"}} -->
-<nav class="wp-block-navigation">${links.map((link) => `<a class="wp-block-navigation-item__content" href="${link.href}">${escapeHtml(link.title)}</a>`).join("")}</nav>
-<!-- /wp:navigation -->`;
-}
-function getSiteVoice(schema) {
-  const category = (schema.brand.category || "").toLowerCase();
-  const businessName = schema.brand.businessName || "The Brand";
-  if (category.includes("restaurant") || category.includes("cafe") || category.includes("bakery")) {
-    return {
-      featuresTitle: "Signature Dishes & Experiences",
-      galleryTitle: "Dining Room & Detail",
-      testimonialsTitle: "Guest Impressions",
-      faqTitle: "Dining Questions",
-      contactTitle: `Visit ${businessName}`,
-      aboutTitle: `The Story Behind ${businessName}`,
-      ctaButton: "Reserve Your Table"
-    };
-  }
-  if (category.includes("salon") || category.includes("spa") || category.includes("wellness")) {
-    return {
-      featuresTitle: "Signature Rituals",
-      galleryTitle: "Studio Atmosphere",
-      testimonialsTitle: "Client Notes",
-      faqTitle: "Treatment Questions",
-      contactTitle: `Book ${businessName}`,
-      aboutTitle: `About ${businessName}`,
-      ctaButton: "Schedule Your Appointment"
-    };
-  }
-  if (category.includes("gym") || category.includes("fitness") || category.includes("training")) {
-    return {
-      featuresTitle: "Training Programs",
-      galleryTitle: "Progress & Environment",
-      testimonialsTitle: "Member Wins",
-      faqTitle: "Training Questions",
-      contactTitle: `Start Training at ${businessName}`,
-      aboutTitle: `About ${businessName}`,
-      ctaButton: "Start Your Program"
-    };
-  }
-  return {
-    featuresTitle: "Capabilities Built For Growth",
-    galleryTitle: "Selected Work",
-    testimonialsTitle: "Trusted By Real Customers",
-    faqTitle: "Questions, Answered Clearly",
-    contactTitle: `Let's Build Your Next Version`,
-    aboutTitle: `About ${businessName}`,
-    ctaButton: "Book A Consultation"
-  };
-}
-function getSection(schema, type) {
-  return schema.sections.find((section) => section.type === type);
-}
-function wrapHtmlBlock(content) {
-  return `<!-- wp:html -->
-${content}
-<!-- /wp:html -->`;
-}
-function getSectionLayout(section) {
-  return (section.layout || section.variant || "standard").toLowerCase();
-}
-function getSectionTitle(section, fallback) {
-  return section?.headline || section?.title || fallback;
-}
-function renderStructuredHeroSection(schema) {
-  const hero = getSection(schema, "hero");
-  if (!hero) return "";
-  const layout = getSectionLayout(hero);
-  const title = getSectionTitle(hero, schema.brand.businessName || "Welcome");
-  const subheadline = hero.subheadline || `${schema.brand.businessName || "This business"} deserves a more distinctive digital presence.`;
-  const primaryCta = hero.primaryCta || hero.ctaPrimary || { label: "Learn More", href: "#contact" };
-  const secondaryCta = hero.secondaryCta || hero.ctaSecondary;
-  const mediaUrl = hero.media?.url || hero.media?.src || "";
-  const mediaAlt = hero.media?.alt || schema.brand.businessName;
-  const badge = hero.badge || schema.brand.category;
-  if (layout === "immersive") {
-    return wrapHtmlBlock(`
-<section class="wp-section wp-hero wp-hero--immersive" id="top" data-layout="immersive">
-	<div class="wp-hero__media">
-		${mediaUrl ? `<img src="${escapeHtml(mediaUrl)}" alt="${escapeHtml(mediaAlt)}" />` : ""}
-		<div class="wp-hero__overlay"></div>
-	</div>
-	<div class="wp-hero__content">
-		<p class="wp-hero__badge">${escapeHtml(badge)}</p>
-		<h1>${escapeHtml(title)}</h1>
-		<p>${escapeHtml(subheadline)}</p>
-		<div class="wp-hero__actions">
-			<a class="wp-button wp-button--primary" href="${escapeHtml(primaryCta.href)}">${escapeHtml(primaryCta.label)}</a>
-			${secondaryCta ? `<a class="wp-button wp-button--secondary" href="${escapeHtml(secondaryCta.href)}">${escapeHtml(secondaryCta.label)}</a>` : ""}
-		</div>
-	</div>
-</section>`);
-  }
-  if (layout === "centered") {
-    return wrapHtmlBlock(`
-<section class="wp-section wp-hero wp-hero--centered" id="top" data-layout="centered">
-	<div class="wp-hero__content wp-hero__content--centered">
-		<p class="wp-hero__badge">${escapeHtml(badge)}</p>
-		<h1>${escapeHtml(title)}</h1>
-		<p>${escapeHtml(subheadline)}</p>
-		<div class="wp-hero__actions wp-hero__actions--centered">
-			<a class="wp-button wp-button--primary" href="${escapeHtml(primaryCta.href)}">${escapeHtml(primaryCta.label)}</a>
-			${secondaryCta ? `<a class="wp-button wp-button--secondary" href="${escapeHtml(secondaryCta.href)}">${escapeHtml(secondaryCta.label)}</a>` : ""}
-		</div>
-	</div>
-	${mediaUrl ? `<figure class="wp-hero__figure"><img src="${escapeHtml(mediaUrl)}" alt="${escapeHtml(mediaAlt)}" /></figure>` : ""}
-</section>`);
-  }
-  return wrapHtmlBlock(`
-<section class="wp-section wp-hero wp-hero--split" id="top" data-layout="${escapeHtml(layout)}">
-	<div class="wp-hero__content">
-		<p class="wp-hero__badge">${escapeHtml(badge)}</p>
-		<h1>${escapeHtml(title)}</h1>
-		<p>${escapeHtml(subheadline)}</p>
-		<div class="wp-hero__actions">
-			<a class="wp-button wp-button--primary" href="${escapeHtml(primaryCta.href)}">${escapeHtml(primaryCta.label)}</a>
-			${secondaryCta ? `<a class="wp-button wp-button--secondary" href="${escapeHtml(secondaryCta.href)}">${escapeHtml(secondaryCta.label)}</a>` : ""}
-		</div>
-	</div>
-	${mediaUrl ? `<figure class="wp-hero__figure"><img src="${escapeHtml(mediaUrl)}" alt="${escapeHtml(mediaAlt)}" /></figure>` : ""}
-</section>`);
-}
-function renderStructuredFeaturesSection(schema) {
-  const features = getSection(schema, "features");
-  if (!features || !Array.isArray(features.items) || features.items.length === 0) {
-    return "";
-  }
-  const layout = getSectionLayout(features);
-  const title = getSectionTitle(features, getSiteVoice(schema).featuresTitle);
-  const items = features.items;
-  if (layout === "list") {
-    return wrapHtmlBlock(`
-<section class="wp-section wp-features wp-features--list" id="services" data-layout="list">
-	<header class="wp-section__header">
-		<p class="wp-section__eyebrow">Services</p>
-		<h2>${escapeHtml(title)}</h2>
-	</header>
-	<div class="wp-features__list">
-		${items.map(
-      (item, index) => `
-		<article class="wp-feature wp-feature--row">
-			<span class="wp-feature__index">${String(index + 1).padStart(2, "0")}</span>
-			<div>
-				<h3>${escapeHtml(item.title)}</h3>
-				<p>${escapeHtml(item.description)}</p>
-			</div>
-		</article>`
-    ).join("")}
-	</div>
-</section>`);
-  }
-  if (layout === "alternating-grid") {
-    return wrapHtmlBlock(`
-<section class="wp-section wp-features wp-features--alternating" id="services" data-layout="alternating-grid">
-	<header class="wp-section__header">
-		<p class="wp-section__eyebrow">Services</p>
-		<h2>${escapeHtml(title)}</h2>
-	</header>
-	<div class="wp-features__grid wp-features__grid--alternating">
-		${items.map(
-      (item, index) => `
-		<article class="wp-feature wp-feature--${index % 2 === 0 ? "tall" : "wide"}">
-			<span class="wp-feature__index">${String(index + 1).padStart(2, "0")}</span>
-			<h3>${escapeHtml(item.title)}</h3>
-			<p>${escapeHtml(item.description)}</p>
-		</article>`
-    ).join("")}
-	</div>
-</section>`);
-  }
-  return wrapHtmlBlock(`
-<section class="wp-section wp-features wp-features--bento" id="services" data-layout="${escapeHtml(layout)}">
-	<header class="wp-section__header">
-		<p class="wp-section__eyebrow">Services</p>
-		<h2>${escapeHtml(title)}</h2>
-	</header>
-	<div class="wp-features__grid wp-features__grid--bento">
-		${items.map(
-    (item, index) => `
-		<article class="wp-feature wp-feature--card wp-feature--${index === 0 ? "lead" : "support"}">
-			<span class="wp-feature__index">${String(index + 1).padStart(2, "0")}</span>
-			<h3>${escapeHtml(item.title)}</h3>
-			<p>${escapeHtml(item.description)}</p>
-		</article>`
-  ).join("")}
-	</div>
-</section>`);
-}
-function renderStructuredGallerySection(schema) {
-  const gallery = getSection(schema, "gallery");
-  if (!gallery || !Array.isArray(gallery.items) || gallery.items.length === 0) {
-    return "";
-  }
-  const layout = getSectionLayout(gallery);
-  const title = getSectionTitle(gallery, getSiteVoice(schema).galleryTitle);
-  if (layout === "masonry") {
-    return wrapHtmlBlock(`
-<section class="wp-section wp-gallery wp-gallery--masonry" id="gallery" data-layout="masonry">
-	<header class="wp-section__header">
-		<p class="wp-section__eyebrow">Gallery</p>
-		<h2>${escapeHtml(title)}</h2>
-	</header>
-	<div class="wp-gallery__masonry">
-		${gallery.items.map(
-      (item, index) => `
-		<figure class="wp-gallery__item wp-gallery__item--${index % 3 + 1}">
-			<img src="${escapeHtml(item.src)}" alt="${escapeHtml(item.alt)}" />
-		</figure>`
-    ).join("")}
-	</div>
-</section>`);
-  }
-  if (layout === "asymmetrical") {
-    return wrapHtmlBlock(`
-<section class="wp-section wp-gallery wp-gallery--asymmetrical" id="gallery" data-layout="asymmetrical">
-	<header class="wp-section__header">
-		<p class="wp-section__eyebrow">Gallery</p>
-		<h2>${escapeHtml(title)}</h2>
-	</header>
-	<div class="wp-gallery__asymmetrical">
-		${gallery.items.map(
-      (item, index) => `
-		<figure class="wp-gallery__panel wp-gallery__panel--${index === 0 ? "hero" : index % 2 === 0 ? "stack" : "rail"}">
-			<img src="${escapeHtml(item.src)}" alt="${escapeHtml(item.alt)}" />
-		</figure>`
-    ).join("")}
-	</div>
-</section>`);
-  }
-  return wrapHtmlBlock(`
-<section class="wp-section wp-gallery wp-gallery--grid" id="gallery" data-layout="${escapeHtml(layout)}">
-	<header class="wp-section__header">
-		<p class="wp-section__eyebrow">Gallery</p>
-		<h2>${escapeHtml(title)}</h2>
-	</header>
-	<div class="wp-gallery__grid">
-		${gallery.items.map(
-    (item) => `
-		<figure class="wp-gallery__item">
-			<img src="${escapeHtml(item.src)}" alt="${escapeHtml(item.alt)}" />
-		</figure>`
-  ).join("")}
-	</div>
-</section>`);
-}
-function renderStructuredTestimonialsSection(schema) {
-  const testimonials = getSection(schema, "testimonials");
-  if (!testimonials || !Array.isArray(testimonials.items) || testimonials.items.length === 0) {
-    return "";
-  }
-  const layout = getSectionLayout(testimonials);
-  const title = getSectionTitle(
-    testimonials,
-    getSiteVoice(schema).testimonialsTitle
-  );
-  if (layout === "timeline") {
-    return wrapHtmlBlock(`
-<section class="wp-section wp-testimonials wp-testimonials--timeline" id="testimonials" data-layout="timeline">
-	<header class="wp-section__header">
-		<p class="wp-section__eyebrow">Testimonials</p>
-		<h2>${escapeHtml(title)}</h2>
-	</header>
-	<div class="wp-testimonials__timeline">
-		${testimonials.items.map(
-      (item, index) => `
-		<article class="wp-testimonial wp-testimonial--timeline">
-			<span class="wp-testimonial__index">${String(index + 1).padStart(2, "0")}</span>
-			<blockquote><p>${escapeHtml(item.quote)}</p></blockquote>
-			<footer><strong>${escapeHtml(item.author)}</strong>${item.role ? `<span>${escapeHtml(item.role)}</span>` : ""}</footer>
-		</article>`
-    ).join("")}
-	</div>
-</section>`);
-  }
-  return wrapHtmlBlock(`
-<section class="wp-section wp-testimonials wp-testimonials--cards" id="testimonials" data-layout="${escapeHtml(layout)}">
-	<header class="wp-section__header">
-		<p class="wp-section__eyebrow">Testimonials</p>
-		<h2>${escapeHtml(title)}</h2>
-	</header>
-	<div class="wp-testimonials__grid">
-		${testimonials.items.map(
-    (item) => `
-		<article class="wp-testimonial wp-testimonial--card">
-			<blockquote><p>${escapeHtml(item.quote)}</p></blockquote>
-			<footer><strong>${escapeHtml(item.author)}</strong>${item.role ? `<span>${escapeHtml(item.role)}</span>` : ""}</footer>
-		</article>`
-  ).join("")}
-	</div>
-</section>`);
-}
-function renderStructuredFaqSection(schema) {
-  const faq = getSection(schema, "faq");
-  if (!faq || !Array.isArray(faq.items) || faq.items.length === 0) {
-    return "";
-  }
-  const title = getSectionTitle(faq, getSiteVoice(schema).faqTitle);
-  return wrapHtmlBlock(`
-<section class="wp-section wp-faq" id="faq" data-layout="${escapeHtml(getSectionLayout(faq))}">
-	<header class="wp-section__header">
-		<p class="wp-section__eyebrow">FAQ</p>
-		<h2>${escapeHtml(title)}</h2>
-	</header>
-	<div class="wp-faq__list">
-		${faq.items.map(
-    (item) => `
-		<details class="wp-faq__item">
-			<summary>${escapeHtml(item.question)}</summary>
-			<p>${escapeHtml(item.answer)}</p>
-		</details>`
-  ).join("")}
-	</div>
-</section>`);
-}
-function renderStructuredContactSection(schema) {
-  const contact = getSection(schema, "contact");
-  const title = getSectionTitle(contact, getSiteVoice(schema).contactTitle);
-  const layout = getSectionLayout(contact || {});
-  const email = schema.brand.email || "";
-  return wrapHtmlBlock(`
-<section class="wp-section wp-contact wp-contact--${escapeHtml(layout)}" id="contact" data-layout="${escapeHtml(layout)}">
-	<header class="wp-section__header">
-		<p class="wp-section__eyebrow">Contact</p>
-		<h2>${escapeHtml(title)}</h2>
-	</header>
-	<div class="wp-contact__grid">
-		<article class="wp-contact__details">
-			<h3>${escapeHtml(schema.brand.businessName)}</h3>
-			<p>${escapeHtml(schema.brand.address || "")}</p>
-			${schema.brand.phone ? `<p><strong>Phone:</strong> ${escapeHtml(schema.brand.phone)}</p>` : ""}
-			${email ? `<p><strong>Email:</strong> ${escapeHtml(email)}</p>` : ""}
-		</article>
-		<article class="wp-contact__card">
-			<div class="wp-contact__map">${escapeHtml(schema.brand.address || "")}</div>
-			${email ? `<a class="wp-button wp-button--primary" href="mailto:${escapeHtml(email)}">Book A Conversation</a>` : ""}
-		</article>
-	</div>
-</section>`);
-}
-function renderStructuredCtaSection(schema) {
-  const cta = getSection(schema, "cta");
-  if (!cta) return "";
-  const layout = getSectionLayout(cta);
-  const title = getSectionTitle(cta, getSiteVoice(schema).ctaTitle);
-  const body = cta.body || "";
-  const buttonLabel = cta.buttonLabel || cta.primaryCta?.label || getSiteVoice(schema).ctaButton;
-  const buttonHref = cta.buttonHref || cta.primaryCta?.href || "#contact";
-  if (layout === "side-by-side") {
-    return wrapHtmlBlock(`
-<section class="wp-section wp-cta wp-cta--split" data-layout="side-by-side">
-	<div class="wp-cta__split">
-		<div>
-			<p class="wp-section__eyebrow">Call To Action</p>
-			<h2>${escapeHtml(title)}</h2>
-			<p>${escapeHtml(body)}</p>
-		</div>
-		<div class="wp-cta__actions">
-			<a class="wp-button wp-button--primary" href="${escapeHtml(buttonHref)}">${escapeHtml(buttonLabel)}</a>
-		</div>
-	</div>
-</section>`);
-  }
-  return wrapHtmlBlock(`
-<section class="wp-section wp-cta wp-cta--centered" data-layout="${escapeHtml(layout)}">
-	<div class="wp-cta__card">
-		<p class="wp-section__eyebrow">Call To Action</p>
-		<h2>${escapeHtml(title)}</h2>
-		<p>${escapeHtml(body)}</p>
-		<a class="wp-button wp-button--primary" href="${escapeHtml(buttonHref)}">${escapeHtml(buttonLabel)}</a>
-	</div>
-</section>`);
-}
-function renderStructuredSection(schema, section) {
-  switch (section?.type) {
-    case "hero":
-      return renderStructuredHeroSection(schema);
-    case "features":
-      return renderStructuredFeaturesSection(schema);
-    case "gallery":
-      return renderStructuredGallerySection(schema);
-    case "testimonials":
-      return renderStructuredTestimonialsSection(schema);
-    case "faq":
-      return renderStructuredFaqSection(schema);
-    case "contact":
-      return renderStructuredContactSection(schema);
-    case "cta":
-      return renderStructuredCtaSection(schema);
-    default:
-      return "";
-  }
-}
-function buildHomePageBlocks(schema) {
-  return [
-    renderNavBlocks(schema),
-    ...(Array.isArray(schema.sections) ? schema.sections : []).map(
-      (section) => renderStructuredSection(schema, section)
-    )
-  ].filter(Boolean).join("\n\n");
-}
-function buildAboutPageBlocks(schema) {
-  const hero = getSection(schema, "hero");
-  const voice = getSiteVoice(schema);
-  const intro = hero?.subheadline || schema.seo.description || `${schema.brand.businessName} is a modern ${schema.brand.category} brand.`;
-  const highlights = [
-    `Category: ${schema.brand.category}`,
-    `Style Direction: ${schema.theme.name}`,
-    `Experience Focus: ${schema.theme.style}`
-  ];
-  return [
-    renderNavBlocks(schema),
-    wrapHtmlBlock(`
-<section class="wp-section wp-about" data-layout="editorial">
-  <header class="wp-section__header">
-    <p class="wp-section__eyebrow">About</p>
-    <h1>${escapeHtml(voice.aboutTitle)}</h1>
-  </header>
-  <div class="wp-about__content">
-    <p>${escapeHtml(intro)}</p>
-    <ul>
-      ${highlights.map((item) => `<li>${escapeHtml(item)}</li>`).join("\n      ")}
-    </ul>
-  </div>
-</section>`),
-    renderStructuredTestimonialsSection(schema)
-  ].filter(Boolean).join("\n\n");
-}
-function buildServicesPageBlocks(schema) {
-  const voice = getSiteVoice(schema);
-  return [
-    renderNavBlocks(schema),
-    wrapHtmlBlock(`
-<section class="wp-section wp-services" data-layout="editorial">
-  <header class="wp-section__header">
-    <p class="wp-section__eyebrow">Services</p>
-    <h1>${escapeHtml(voice.featuresTitle)}</h1>
-  </header>
-</section>`),
-    renderStructuredFeaturesSection(schema),
-    renderStructuredCtaSection(schema)
-  ].filter(Boolean).join("\n\n");
-}
-function buildGalleryPageBlocks(schema) {
-  const voice = getSiteVoice(schema);
-  return [
-    renderNavBlocks(schema),
-    wrapHtmlBlock(`
-<section class="wp-section wp-gallery-page" data-layout="editorial">
-  <header class="wp-section__header">
-    <p class="wp-section__eyebrow">Gallery</p>
-    <h1>${escapeHtml(voice.galleryTitle)}</h1>
-  </header>
-</section>`),
-    renderStructuredGallerySection(schema)
-  ].filter(Boolean).join("\n\n");
-}
-function buildFaqPageBlocks(schema) {
-  const voice = getSiteVoice(schema);
-  return [
-    renderNavBlocks(schema),
-    wrapHtmlBlock(`
-<section class="wp-section wp-faq-page" data-layout="editorial">
-  <header class="wp-section__header">
-    <p class="wp-section__eyebrow">FAQ</p>
-    <h1>${escapeHtml(voice.faqTitle)}</h1>
-  </header>
-</section>`),
-    renderStructuredFaqSection(schema)
-  ].filter(Boolean).join("\n\n");
-}
-function buildContactPageBlocks(schema) {
-  const voice = getSiteVoice(schema);
-  return [
-    renderNavBlocks(schema),
-    wrapHtmlBlock(`
-<section class="wp-section wp-contact-page" data-layout="split">
-  <header class="wp-section__header">
-    <p class="wp-section__eyebrow">Contact</p>
-    <h1>${escapeHtml(voice.contactTitle)}</h1>
-  </header>
-</section>`),
-    renderStructuredContactSection(schema)
-  ].filter(Boolean).join("\n\n");
-}
-function schemaToGutenbergBlocks(schema) {
-  if (!schema) {
-    return "";
-  }
-  return buildHomePageBlocks(schema);
-}
-function collectWordPressMediaAssets(schema) {
-  const assets = [];
-  for (const section of schema.sections) {
-    if (section.type === "hero" && section.media?.src) {
-      assets.push({
-        sourceUrl: section.media.src,
-        alt: section.media.alt || schema.brand.businessName,
-        preferredFilename: `${schema.meta.slug}-hero`
-      });
-    }
-    if (section.type === "gallery" && Array.isArray(section.items)) {
-      for (const [index, item] of section.items.entries()) {
-        assets.push({
-          sourceUrl: item.src,
-          alt: item.alt || `${schema.brand.businessName} gallery ${index + 1}`,
-          preferredFilename: `${schema.meta.slug}-gallery-${index + 1}`
-        });
-      }
-    }
-  }
-  const unique = /* @__PURE__ */ new Map();
-  for (const asset of assets) {
-    if (asset.sourceUrl) {
-      unique.set(asset.sourceUrl, asset);
-    }
-  }
-  return Array.from(unique.values());
-}
-function buildWordPressSitePages(schema) {
-  const pages = [
-    {
-      title: schema.brand.businessName || "Home",
-      slug: "home",
-      content: buildHomePageBlocks(schema),
-      isHomepage: true
-    },
-    {
-      title: "About",
-      slug: "about",
-      content: buildAboutPageBlocks(schema)
-    },
-    {
-      title: "Services",
-      slug: "services",
-      content: buildServicesPageBlocks(schema)
-    },
-    {
-      title: "Gallery",
-      slug: "gallery",
-      content: buildGalleryPageBlocks(schema)
-    },
-    {
-      title: "FAQ",
-      slug: "faq",
-      content: buildFaqPageBlocks(schema)
-    },
-    {
-      title: "Contact",
-      slug: "contact",
-      content: buildContactPageBlocks(schema)
-    }
-  ];
-  return pages;
-}
-function buildWordPressProvisioningPlan(schema, business, options) {
-  const schemaMeta = schema.meta || {};
-  const siteSlug = slugify(schemaMeta.slug || business.name || "client-site");
-  const emailSlug = slugify(
-    business.name || schema.brand.businessName || "client"
-  );
-  const ownerEmail = options?.ownerEmail || business.email || `${emailSlug}@example-client.test`;
-  const ownerUsername = options?.ownerUsername || slugify(`${emailSlug}-${schemaMeta.businessId || business.id || "lead"}`);
-  return {
-    siteTitle: schema.brand.businessName || business.name || schema.seo.title || "Client Site",
-    siteSlug,
-    ownerEmail,
-    ownerUsername,
-    ownerDisplayName: schema.brand.businessName || business.name || ownerUsername,
-    baseTheme: options?.baseTheme || "digital-scout-base-theme",
-    pages: buildWordPressSitePages(schema),
-    media: collectWordPressMediaAssets(schema),
-    themeSettings: {
-      palette: schema.theme.palette,
-      typography: schema.theme.typography,
-      radius: schema.theme.radius,
-      style: schema.theme.style,
-      name: schema.theme.name
-    }
-  };
-}
-var init_wordpress = __esm({
-  "src/lib/wordpress.ts"() {
-  }
-});
-
-// src/lib/direct-homepage-renderer.ts
-function escapeHtml2(s) {
-  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-function pickHeroImage(schema) {
-  const photos = schema.brand && schema.brand.photos || schema.photos || [];
-  if (photos && photos.length) return photos[0];
-  const src = (schema.sections || []).map(
-    (s) => s.media && s.media.src || s.items && s.items[0] && s.items[0].src
-  ).find(Boolean);
-  return src || "";
-}
-function renderBusinessHomepage(schema) {
-  const brand = schema.brand || {};
-  const name = escapeHtml2(brand.businessName || "Your Business");
-  const category = escapeHtml2(brand.category || "Local Service");
-  const address = escapeHtml2(brand.address || "");
-  const phone = escapeHtml2(brand.phone || "");
-  const heroImage = pickHeroImage(schema);
-  const css = `:root{--bg:#fafafa;--surface:#ffffff;--muted:#6b7280;--accent:#1e40af;--radius:16px;--gap:24px}
-body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,-apple-system,Helvetica,Arial;color:#0f172a;background:var(--bg)}
-.site{max-width:1200px;margin:0 auto;padding:40px 20px}
-.hero{display:grid;grid-template-columns:1fr 520px;gap:var(--gap);align-items:center;padding:48px 0}
-.hero__content{padding:28px;background:var(--surface);border-radius:var(--radius);box-shadow:0 10px 30px rgba(2,6,23,0.06)}
-.hero__eyebrow{color:var(--accent);font-weight:700;letter-spacing:0.08em;font-size:0.85rem;margin-bottom:8px}
-.hero__title{font-size:clamp(2rem,4vw,3.6rem);margin:0 0 12px;line-height:1.02}
-.hero__lead{color:var(--muted);margin:0 0 18px;max-width:44ch}
-.cta-row{display:flex;gap:12px}
-.btn{display:inline-block;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:700}
-.btn--primary{background:var(--accent);color:#fff}
-.btn--secondary{background:transparent;border:2px solid rgba(15,23,42,0.06);color:var(--accent)}
-.hero__visual{border-radius:var(--radius);overflow:hidden;height:440px;background-size:cover;background-position:center;box-shadow:0 18px 50px rgba(2,6,23,0.08)}
-.section{display:grid;grid-template-columns:1fr 1fr;gap:32px;padding:64px 0;align-items:start}
-.section--stack{grid-template-columns:1fr}
-.services{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
-.service{background:var(--surface);padding:18px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.04)}
-.gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.gallery img{width:100%;height:160px;object-fit:cover;border-radius:12px}
-.trust-cards{display:flex;gap:12px;flex-wrap:wrap}
-.trust{background:var(--surface);padding:16px;border-radius:10px;min-width:180px}
-.contact{background:linear-gradient(180deg,#fff,#f8fafc);padding:20px;border-radius:12px}
-@media(max-width:980px){.hero{grid-template-columns:1fr;gap:18px}.hero__visual{height:320px}.section{grid-template-columns:1fr}.gallery{grid-template-columns:repeat(2,1fr)}}`;
-  const heroHtml = `
-  <header class="hero">
-    <div class="hero__content">
-      <div class="hero__eyebrow">${category}</div>
-      <h1 class="hero__title">${name}</h1>
-      <p class="hero__lead">Museum-quality restoration and meticulous workshop craftsmanship. We repair, restore and preserve heirlooms with visible provenance and local authenticity.</p>
-      <div class="cta-row">
-        <a class="btn btn--primary" href="#contact">Book a consultation</a>
-        <a class="btn btn--secondary" href="#gallery">View the work</a>
-      </div>
-      <div style="margin-top:18px;color:var(--muted);font-size:0.95rem">${address}${phone ? ` \u2022 ${phone}` : ""}</div>
-    </div>
-    <div class="hero__visual" style="background-image:url('${escapeHtml2(heroImage)}')"></div>
-  </header>`;
-  const servicesSection = (schema.sections || []).find(
-    (s) => s.type === "features" || s.type === "service"
-  );
-  const services = servicesSection && Array.isArray(servicesSection.items) ? servicesSection.items.slice(0, 4).map(
-    (it) => `<div class="service"><strong>${escapeHtml2(it.title || it.name || "Service")}</strong><p style="margin:8px 0 0;color:var(--muted)">${escapeHtml2(it.description || it.copy || "Professional service delivered with care.")}</p></div>`
-  ).join("") : [
-    `<div class="service"><strong>Conservation & Restoration</strong><p style="margin:8px 0 0;color:var(--muted)">Museum-grade restoration for antiques and heirlooms.</p></div>`,
-    `<div class="service"><strong>Refinishing & Repair</strong><p style="margin:8px 0 0;color:var(--muted)">Structural repairs and surface refinishing to restore integrity.</p></div>`
-  ].join("");
-  const servicesHtml = `<section class="section"><div><h2>What we do</h2><div class="services">${services}</div></div><aside><h3>Why choose us</h3><p style="color:var(--muted)">Local workshop with decades of experience, transparent process, and visible before/after evidence.</p><div class="trust-cards"><div class="trust"><strong>4.9/5</strong><div style="color:var(--muted)">Average client rating</div></div><div class="trust"><strong>Certified</strong><div style="color:var(--muted)">Conservation-grade materials</div></div></div></aside></section>`;
-  const galleryImages = ((schema.sections || []).filter((s) => s.type === "gallery").flatMap((g) => g.items || []) || []).slice(0, 6).map((it) => it.src).filter(Boolean);
-  const galleryHtml = `<section id="gallery" class="section section--stack"><div><h2>Selected work</h2><div class="gallery">${(galleryImages.length ? galleryImages : [""]).map((src) => `<img src="${escapeHtml2(src || "")}">`).join("")}</div></div></section>`;
-  const testimonials = ((schema.sections || []).find((s) => s.type === "testimonials") || {}).items || [];
-  const testimonialsHtml = testimonials.length ? `<section class="section"><div><h2>What clients say</h2><div>${testimonials.slice(0, 3).map(
-    (t) => `<div class="service"><blockquote style="margin:0 0 8px">${escapeHtml2(t.copy || t.content || t.text || "Great work.")}</blockquote><footer style="color:var(--muted);font-size:0.9rem">\u2014 ${escapeHtml2(t.author || "Client")}</footer></div>`
-  ).join("")}</div></div></section>` : "";
-  const contactHtml = `<section id="contact" class="section"><div><h2>Contact</h2><div class="contact"><p style="margin:0 0 8px;color:var(--muted)">Ready to start? Book an in-workshop consultation.</p><p style="margin:0"><strong>${name}</strong><br/>${address}<br/>${phone ? `<a href="tel:${phone}">${phone}</a>` : ""}</p></div></div><aside><h3>Request a quote</h3><p style="color:var(--muted)">Send images of your piece and we'll follow up with next steps.</p></aside></section>`;
-  const html = `<main class="site">${heroHtml}${servicesHtml}${galleryHtml}${testimonialsHtml}${contactHtml}</main>`;
-  return { html, css };
-}
-var init_direct_homepage_renderer = __esm({
-  "src/lib/direct-homepage-renderer.ts"() {
-  }
-});
-
-// src/lib/premium-site-builder.ts
-var premium_site_builder_exports = {};
-__export(premium_site_builder_exports, {
-  buildPremiumPageContent: () => buildPremiumPageContent,
-  esc: () => esc
-});
-function esc(str) {
-  return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-function buildPremiumPageContent(schema) {
-  if (schema && schema._wordpressHtml) {
-    return schema._wordpressHtml;
-  }
-  const result = renderBusinessHomepage(schema);
-  const cssBlock = `<!-- wp:html -->
-<style>
-${result.css}
-</style>
-<!-- /wp:html -->`;
-  const wrappedHtml = `<!-- wp:group {"align":"full","layout":{"type":"constrained"}} -->
-<div class="wp-block-group alignfull">
-${result.html}
-</div>
-<!-- /wp:group -->`;
-  return `${cssBlock}
-
-${wrappedHtml}`;
-}
-var init_premium_site_builder = __esm({
-  "src/lib/premium-site-builder.ts"() {
-    init_direct_homepage_renderer();
-  }
-});
-
 // src/lib/vertex-homepage-generation-prompt.ts
 var VERTEX_HOMEPAGE_GENERATION_PROMPT;
 var init_vertex_homepage_generation_prompt = __esm({
@@ -884,6 +160,685 @@ RULES FOR CONTENT GENERATION
    - Generate exactly 4 steps.
    - Generate exactly 3 testimonials and exactly 3 testimonial slideshow URLs.
 `;
+  }
+});
+
+// src/lib/direct-vertex-homepage-generation.ts
+var direct_vertex_homepage_generation_exports = {};
+__export(direct_vertex_homepage_generation_exports, {
+  analyzeAndFilterImages: () => analyzeAndFilterImages,
+  buildHomepageGenerationRequest: () => buildHomepageGenerationRequest,
+  default: () => direct_vertex_homepage_generation_default,
+  detectOrGenerateLogo: () => detectOrGenerateLogo,
+  generateHomepageViaDirectVertexPrompt: () => generateHomepageViaDirectVertexPrompt,
+  resolveSectionImages: () => resolveSectionImages
+});
+import fs4 from "fs";
+import path3 from "path";
+import crossFetch from "cross-fetch";
+function optimizeGooglePhotoUrl(url, size = 1600) {
+  if (!url || typeof url !== "string") return url;
+  if (url.includes("googleusercontent.com/places/") || url.includes("googleusercontent.com/p/")) {
+    const baseUrl = url.split("=")[0];
+    return `${baseUrl}=s${size}`;
+  }
+  return url;
+}
+function collectBusinessImages(business) {
+  const sources = [];
+  if (Array.isArray(business.photos)) {
+    sources.push(...business.photos.map((url) => optimizeGooglePhotoUrl(url, 1600)));
+  }
+  if (Array.isArray(business.imageSuggestions)) {
+    sources.push(...business.imageSuggestions.map((url) => optimizeGooglePhotoUrl(url, 1600)));
+  }
+  if (business.logo) {
+    sources.push(optimizeGooglePhotoUrl(business.logo, 400));
+  }
+  if (Array.isArray(business.reviews)) {
+    business.reviews.forEach((r) => {
+      if (Array.isArray(r.photos)) {
+        sources.push(...r.photos.map((url) => typeof url === "string" ? optimizeGooglePhotoUrl(url, 1600) : ""));
+      } else if (Array.isArray(r.images)) {
+        sources.push(...r.images.map((url) => typeof url === "string" ? optimizeGooglePhotoUrl(url, 1600) : ""));
+      }
+    });
+  }
+  return [...new Set(sources.filter(Boolean))];
+}
+async function downloadImageAsBase64(url) {
+  try {
+    const lowResUrl = optimizeGooglePhotoUrl(url, 400);
+    const res = await crossFetch(lowResUrl);
+    if (!res.ok) return null;
+    const buffer = await res.arrayBuffer();
+    const base64Data = Buffer.from(buffer).toString("base64");
+    let mimeType = res.headers.get("content-type") || "image/jpeg";
+    if (mimeType.includes(";")) {
+      mimeType = mimeType.split(";")[0];
+    }
+    return { mimeType, data: base64Data };
+  } catch (e) {
+    return null;
+  }
+}
+async function analyzeProjectImage(url, fallbackTitle, log, options) {
+  log(`[ImageAnalyzer] Downloading and analyzing Google Maps project image: ${url}`);
+  const imgObj = await downloadImageAsBase64(url);
+  if (!imgObj) {
+    log(`[ImageAnalyzer] Failed to download or convert image: ${url}. Using fallback title: ${fallbackTitle}`);
+    return fallbackTitle;
+  }
+  try {
+    log(`[ImageAnalyzer] Running Gemini Vision analysis on image...`);
+    const prompt = `This photo was uploaded to Google Maps for a cabinetry/woodworking business. Identify the specific cabinetry, furniture, or woodwork item shown in this photo (e.g., kitchen cabinets, closet shelving, wooden dining table, bathroom vanity, TV console, bookshelf, etc.). Respond with a short, professional, human-sounding project title (2 to 4 words maximum, capitalized) describing what the photo shows. Do not use generic words like 'Recent Project' or 'Woodworking'. Return ONLY the title itself, with no explanation or punctuation.`;
+    const responseText = await generateWithFallback(
+      [
+        {
+          role: "user",
+          parts: [
+            { inlineData: { mimeType: imgObj.mimeType, data: imgObj.data } },
+            { text: prompt }
+          ]
+        }
+      ],
+      {
+        temperature: 0.2
+      },
+      {
+        logStderr: log,
+        debugSession: options?.debugSession,
+        throttleGemini: options?.throttleGemini || (async () => {
+        }),
+        contextLabel: "project-image-caption"
+      }
+    );
+    const title = responseText?.trim();
+    if (title && title.length > 2 && title.length < 50) {
+      log(`[ImageAnalyzer] Successfully analyzed image. Title: "${title}"`);
+      return title;
+    }
+    log(`[ImageAnalyzer] Gemini response was empty or invalid. Response: "${responseText}". Using fallback: ${fallbackTitle}`);
+    return fallbackTitle;
+  } catch (e) {
+    log(`[ImageAnalyzer] Error analyzing image: ${e.message || e}. Using fallback: ${fallbackTitle}`);
+    return fallbackTitle;
+  }
+}
+async function analyzeAndFilterImages(business, log, options) {
+  log(`[ImageAnalyzer] Cabinetry focus: Returning custom cabinetry generation prompts for: ${business.name}`);
+  const globalStyle = "Scandinavian luxury editorial photography, Japandi-inspired interiors, soft natural daylight, matte walnut/oak textures, calm minimal compositions, realistic architectural photography, muted neutral palette, clean negative space, airy atmosphere, shallow depth of field, premium interior magazine aesthetic, avoid clutter, avoid construction-site feeling, avoid glossy CGI look, avoid oversaturated wood, avoid harsh lighting, avoid busy backgrounds, reserve whitespace for text overlays, cinematic but understated, emotionally calm visual tone, consistent warm-beige color grading, charcoal shadows instead of pure black, matte surfaces only, soft contrast, minimal props, same lighting direction across sections, avoid visual density spikes, maintain editorial pacing between sections";
+  return {
+    hero_image: {
+      action: "generate",
+      generation_prompt: `A single minimalistic custom kitchen cabinet photograph, single continuous view, no grid, no collage, no multiple frames, no split screen, ${globalStyle}. Scandinavian editorial aesthetic, soft morning daylight, clean architectural composition, minimal decor styling, warm beige and walnut tones, realistic interior photography, calm premium atmosphere, matte finishes, luxury cabinetry integrated naturally into the environment. Wide cinematic framing, single visual focal point.`
+    },
+    masked_image: {
+      action: "generate",
+      generation_prompt: `A different single professional architectural photograph of a luxury modern cabinet corner or elegant storage sideboard cupboard, single continuous view, no grid, no collage, no multiple angles, no split screen, ${globalStyle}. Soft morning daylight, clean Scandinavian editorial aesthetic, realistic photo, Japandi interior styling, clean neutral background, matte textures, elegant cabinet proportions.`
+    },
+    about_image: {
+      action: "generate",
+      generation_prompt: `A premium professional studio flat lay photograph of luxury cabinet design details, samples and hardware on a solid, completely plain, blank pure white background. On the far left, a vertical arrangement of cabinetry sample boards (walnut wood panel with a gold/brass handle, smaller neutral tile), and on the far right, a vertical arrangement of cabinetry sample boards (light oak panel with a black knob handle, linen cloth folded), arranged solely on the left and right sides. Crucially, all items and objects on the left and right must be fully self-contained inside the frame, maintaining clean white margins/padding at the top and bottom of the image, without touching or extending to the top or bottom edges of the photo. The entire center 60% of the image must be a completely empty, solid, plain pure white negative space with no shadows, objects, or text. Soft natural daylight, clean Japandi/Scandinavian design aesthetic, matte finishes only.`
+    },
+    services_image: {
+      action: "generate",
+      generation_prompt: `Luxury built-in walnut shelving wall in modern living room, ${globalStyle}. Soft ambient lighting, Scandinavian interior design aesthetic, calm cinematic atmosphere, minimal furniture styling, realistic architectural photography, elegant composition with dark overlay-safe region for text. Immersive environment, one dominant architectural feature, soft lighting gradients, darker side reserved for overlay text.`
+    },
+    testimonials_slideshow: [
+      {
+        action: "generate",
+        generation_prompt: `Luxury minimalist custom walk-in closet drawers with matte walnut paneling and brushed bronze pull handles, ${globalStyle}. Muted earth tones, spacious design layout.`
+      },
+      {
+        action: "generate",
+        generation_prompt: `Modern minimal bathroom vanity cabinet detail, matte oak panels with natural stone basin, ${globalStyle}. Clean lines, directional morning light.`
+      },
+      {
+        action: "generate",
+        generation_prompt: `Bespoke walnut kitchen island detail featuring integrated cabinet doors, ${globalStyle}. Clean joints, editorial cabinetry details.`
+      }
+    ],
+    project_posts: [
+      {
+        action: "generate",
+        post_title: "Custom Kitchen Cabinetry",
+        generation_prompt: `Luxury modern walnut kitchen cabinets detail shot, ${globalStyle}. Muted neutral palette, matte wood finishes.`
+      },
+      {
+        action: "generate",
+        post_title: "Minimalist Oak TV Console",
+        generation_prompt: `Modern sleek floating oak console detail, ${globalStyle}. Clean scandinavian aesthetic, simple geometric lines.`
+      },
+      {
+        action: "generate",
+        post_title: "Luxury Walk-In Closet",
+        generation_prompt: `Bespoke walk-in wardrobe storage setup with natural oak details, ${globalStyle}. Airy atmosphere, minimal clutter.`
+      },
+      {
+        action: "generate",
+        post_title: "Bespoke Home Office Shelving",
+        generation_prompt: `Handcrafted built-in home office shelving system in matte walnut finish, ${globalStyle}. Spacious styling, calm atmosphere.`
+      }
+    ]
+  };
+}
+async function detectOrGenerateLogo(business, log, options) {
+  log(`[LogoDetector] Cabinetry focus: Returning custom cabinetry logo generation prompt for: ${business.name}`);
+  const defaultPrompt = `A premium minimalist text-based typography logo featuring the business name "${business.name}" with a elegant modern wood chisel or fine tree icon, clean modern flat design, solid white background, sharp vector lines, high-end lettermark`;
+  return { action: "generate", generation_prompt: defaultPrompt };
+}
+async function resolveSectionImages(analysis, log, logoAnalysis, business, options) {
+  const resultUrls = {
+    hero_image: "",
+    masked_image: "",
+    about_image: "",
+    services_image: "",
+    testimonials_slideshow: [],
+    project_posts: [],
+    logo_image: ""
+  };
+  const getFallbackPlaceholder = (role) => {
+    if (role.startsWith("project_")) {
+      const projectPics = [
+        "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&q=80",
+        "https://images.unsplash.com/photo-1539922980492-38f6673af8dd?w=800&q=80",
+        "https://images.unsplash.com/photo-1558882224-cca166733360?w=800&q=80",
+        "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&q=80"
+      ];
+      const idx = parseInt(role.split("_")[1], 10) - 1 || 0;
+      return projectPics[idx % projectPics.length] || projectPics[0];
+    }
+    try {
+      const rootDefaultDir = path3.join(process.cwd(), "default");
+      const publicDefaultDir = path3.join(process.cwd(), "public", "default");
+      if (!fs4.existsSync(publicDefaultDir)) {
+        fs4.mkdirSync(publicDefaultDir, { recursive: true });
+      }
+      if (fs4.existsSync(rootDefaultDir)) {
+        const files = fs4.readdirSync(rootDefaultDir).filter(
+          (f) => f.toLowerCase().endsWith(".png") || f.toLowerCase().endsWith(".jpg") || f.toLowerCase().endsWith(".jpeg")
+        );
+        for (const file of files) {
+          const srcPath = path3.join(rootDefaultDir, file);
+          const destPath = path3.join(publicDefaultDir, file);
+          if (!fs4.existsSync(destPath)) {
+            fs4.copyFileSync(srcPath, destPath);
+          }
+        }
+      }
+      if (fs4.existsSync(publicDefaultDir)) {
+        const files = fs4.readdirSync(publicDefaultDir).filter(
+          (f) => f.toLowerCase().endsWith(".png") || f.toLowerCase().endsWith(".jpg") || f.toLowerCase().endsWith(".jpeg")
+        );
+        if (files.length > 0) {
+          let selectedFile = files[0];
+          if (role.toLowerCase().includes("hero")) {
+            selectedFile = files[0 % files.length];
+          } else if (role.toLowerCase().includes("about")) {
+            selectedFile = files[1 % files.length];
+          } else if (role.toLowerCase().includes("service")) {
+            selectedFile = files[2 % files.length];
+          } else if (role.toLowerCase().includes("masked")) {
+            selectedFile = files[3 % files.length];
+          } else {
+            let hash = 0;
+            for (let i = 0; i < role.length; i++) {
+              hash = role.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const index = Math.abs(hash) % files.length;
+            selectedFile = files[index];
+          }
+          const baseUrl = process.env.API_URL || "https://api.digiscout.online";
+          const localUrl = `${baseUrl}/public/default/${selectedFile}`;
+          log(`[ImageGenerator] Found local default fallback image for ${role}: ${localUrl}`);
+          return localUrl;
+        }
+      }
+    } catch (err) {
+      log(`[ImageGenerator] Error scanning public/default directory: ${err.message}`);
+    }
+    const fallbacks = {
+      hero: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1200&q=80",
+      // Premium kitchen cabinetry
+      masked: "https://images.unsplash.com/photo-1533090161767-e6ffed986c88?w=800&q=80",
+      // Wood grain texture
+      about: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1200&q=80",
+      // Woodworking workshop
+      services: "https://images.unsplash.com/photo-1539922980492-38f6673af8dd?w=1200&q=80",
+      // Finished cabinetry
+      logo: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=400&q=80"
+      // Fallback logo emblem
+    };
+    if (role.startsWith("testimonial_")) {
+      return "https://images.unsplash.com/photo-1558882224-cca166733360?w=800&q=80";
+    }
+    return fallbacks[role] || "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1200&q=80";
+  };
+  const generateAndSave = async (prompt, role, aspectRatio = "16:9") => {
+    try {
+      const base64Bytes = await generateCustomImage(prompt, { aspectRatio, logStderr: log });
+      const filename = `gen_${role}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.png`;
+      const publicDir2 = path3.join(process.cwd(), "public");
+      const imagesDir2 = path3.join(publicDir2, "generated-images");
+      if (!fs4.existsSync(imagesDir2)) {
+        fs4.mkdirSync(imagesDir2, { recursive: true });
+      }
+      const filePath = path3.join(imagesDir2, filename);
+      fs4.writeFileSync(filePath, Buffer.from(base64Bytes, "base64"));
+      const baseUrl = process.env.API_URL || "https://api.digiscout.online";
+      const fileUrl = `${baseUrl}/public/generated-images/${filename}`;
+      log(`[ImageGenerator] Saved generated image for ${role} to ${fileUrl}`);
+      return fileUrl;
+    } catch (err) {
+      log(`[ImageGenerator] Error generating image for ${role}: ${err.message || err}. Falling back to default cabinetry placeholder.`);
+      return getFallbackPlaceholder(role);
+    }
+  };
+  const taskList = [];
+  if (analysis.hero_image.action === "use_existing" && analysis.hero_image.url) {
+    resultUrls.hero_image = analysis.hero_image.url;
+  } else {
+    taskList.push({
+      run: async () => {
+        resultUrls.hero_image = await generateAndSave(analysis.hero_image.generation_prompt || "wooden chair chair modern", "hero", "1:1");
+      }
+    });
+  }
+  if (analysis.masked_image.action === "use_existing" && analysis.masked_image.url) {
+    resultUrls.masked_image = analysis.masked_image.url;
+  } else {
+    taskList.push({
+      run: async () => {
+        resultUrls.masked_image = await generateAndSave(analysis.masked_image.generation_prompt || "wood grain pattern detail close-up", "masked", "1:1");
+      }
+    });
+  }
+  if (analysis.about_image.action === "use_existing" && analysis.about_image.url) {
+    resultUrls.about_image = analysis.about_image.url;
+  } else {
+    taskList.push({
+      run: async () => {
+        resultUrls.about_image = await generateAndSave(analysis.about_image.generation_prompt || "woodworking craftsman work", "about", "4:3");
+      }
+    });
+  }
+  if (analysis.services_image.action === "use_existing" && analysis.services_image.url) {
+    resultUrls.services_image = analysis.services_image.url;
+  } else {
+    taskList.push({
+      run: async () => {
+        resultUrls.services_image = await generateAndSave(analysis.services_image.generation_prompt || "carpentry workshop background", "services", "16:9");
+      }
+    });
+  }
+  for (let i = 0; i < 3; i++) {
+    resultUrls.testimonials_slideshow[i] = getFallbackPlaceholder(`testimonial_${i + 1}`);
+  }
+  const projectPhotos = [];
+  if (business) {
+    if (Array.isArray(business.photos)) {
+      projectPhotos.push(...business.photos.map((url) => optimizeGooglePhotoUrl(url, 1600)));
+    }
+    if (Array.isArray(business.imageSuggestions)) {
+      projectPhotos.push(...business.imageSuggestions.map((url) => optimizeGooglePhotoUrl(url, 1600)));
+    }
+    if (Array.isArray(business.reviews)) {
+      business.reviews.forEach((r) => {
+        if (Array.isArray(r.photos)) {
+          projectPhotos.push(...r.photos.map((url) => typeof url === "string" ? optimizeGooglePhotoUrl(url, 1600) : ""));
+        } else if (Array.isArray(r.images)) {
+          projectPhotos.push(...r.images.map((url) => typeof url === "string" ? optimizeGooglePhotoUrl(url, 1600) : ""));
+        }
+      });
+    }
+  }
+  const uniqueProjectPhotos = [...new Set(projectPhotos.filter(Boolean))];
+  const projectsList = analysis.project_posts || [];
+  for (let i = 0; i < Math.min(4, projectsList.length); i++) {
+    const item = projectsList[i];
+    const title = item.post_title || `Project ${i + 1}`;
+    if (uniqueProjectPhotos[i]) {
+      log(`[ImageGenerator] Project "${title}": Using actual Google Maps photo: ${uniqueProjectPhotos[i]}`);
+      const analyzedTitle = await analyzeProjectImage(uniqueProjectPhotos[i], title, log, options);
+      resultUrls.project_posts[i] = {
+        title: analyzedTitle,
+        url: uniqueProjectPhotos[i]
+      };
+    } else {
+      log(`[ImageGenerator] Project "${title}": No Google Maps photo found, using cabinet fallback`);
+      resultUrls.project_posts[i] = {
+        title,
+        url: getFallbackPlaceholder(`project_${i + 1}`)
+      };
+    }
+  }
+  if (logoAnalysis && logoAnalysis.action === "use_existing" && logoAnalysis.url) {
+    resultUrls.logo_image = logoAnalysis.url;
+  } else if (logoAnalysis && logoAnalysis.generation_prompt) {
+    taskList.push({
+      run: async () => {
+        resultUrls.logo_image = await generateAndSave(logoAnalysis.generation_prompt, "logo", "16:9");
+      }
+    });
+  } else {
+    resultUrls.logo_image = getFallbackPlaceholder("logo");
+  }
+  if (taskList.length > 0) {
+    log(`[ImageGenerator] Queueing ${taskList.length} AI image generation tasks with concurrency limit of 2...`);
+    let nextIndex = 0;
+    const worker = async () => {
+      while (nextIndex < taskList.length) {
+        const index = nextIndex++;
+        try {
+          await taskList[index].run();
+        } catch (err) {
+          log(`[ImageGenerator] Worker task error: ${err.message || err}`);
+        }
+      }
+    };
+    const limit = 2;
+    const workers = Array.from({ length: Math.min(limit, taskList.length) }, worker);
+    await Promise.all(workers);
+  }
+  return resultUrls;
+}
+function pickDesignProfile(category) {
+  return {
+    name: "Bespoke Woodworking",
+    palette: {
+      background: "#E8E6DF",
+      surface: "#ffffff",
+      primary: "#141111",
+      accent: "#80311B",
+      text: "#141111",
+      muted: "#6B6661",
+      outline: "rgba(20, 17, 17, 0.12)"
+    },
+    typography: { heading: "Spartan", body: "Inter" }
+  };
+}
+function buildHomepageGenerationRequest(business) {
+  const images = collectBusinessImages(business);
+  const [hero, service1, service2, ...gallery] = images;
+  const design = pickDesignProfile(business.category || business.businessType || "");
+  return {
+    business_name: business.name || "Untitled Business",
+    business_category: business.category || business.businessType || "Local Service",
+    short_tagline: business.tagline || business.shortTagline || `${business.category || "Service"} in ${business.neighborhood || business.city || "Your Area"}`,
+    one_sentence_summary: business.summary || business.oneSentenceSummary || `Trusted ${business.category || "service provider"} serving the ${business.neighborhood || business.city || "local"} community.`,
+    primary_cta_text: business.cta_primary_text || "Get Started Today",
+    primary_cta_url: business.cta_primary_url || business.websiteUri || "#contact",
+    secondary_cta_text: business.cta_secondary_text || "Learn More",
+    secondary_cta_url: business.cta_secondary_url || business.websiteUri || "#services",
+    phone: business.phoneNumber || business.phone || "Contact for availability",
+    address: business.address || business.location || "See directions on map",
+    maps_url: business.mapsUrl || `https://maps.google.com/?q=${encodeURIComponent(business.name || "location")}`,
+    hours: business.hours || business.businessHours || "Call for hours of operation",
+    services: business.services && Array.isArray(business.services) ? business.services.slice(0, 5).map((s) => ({
+      title: typeof s === "string" ? s : s.title || s.name || "Service",
+      short_description: typeof s === "string" ? `Professional ${s} service` : s.description || s.short_description || `Professional ${s.title} service`,
+      image_url: s.image_url || s.photo || service1
+    })) : [],
+    categories: business.categories || [business.category],
+    reviews: business.reviews && Array.isArray(business.reviews) ? business.reviews.slice(0, 6).map((r) => ({
+      author: r.author || r.author_name || r.authorName || r.reviewerName || "Customer",
+      rating: r.rating || r.stars || 5,
+      text: r.text || r.review || r.comment || "Excellent service and highly recommended",
+      date: r.date || r.reviewDate || r.relative_time_description || (r.time ? new Date(r.time * 1e3).toLocaleDateString() : void 0)
+    })) : [],
+    images: {
+      hero,
+      service1,
+      service2,
+      gallery: gallery || []
+    },
+    colors: {
+      primary: design.palette.primary,
+      accent: design.palette.accent,
+      neutral: design.palette.background
+    },
+    logo_url: business.logo,
+    local_context: `${business.neighborhood || business.area || business.city || "Local area"}, serving the ${business.city || "community"}`,
+    competitors: business.competitors,
+    trust_logos: business.trustLogos
+  };
+}
+async function callVertexHomepageGeneration(prompt, request, debugLog, options) {
+  const log = debugLog || ((msg) => console.error(msg));
+  log(`[Vertex] Calling unified homepage generation via generateWithFallback...`);
+  log(`[Vertex] Business: ${request.business_name}`);
+  log(`[Vertex] Category: ${request.business_category}`);
+  try {
+    const { generateWithFallback: generateWithFallback2 } = await Promise.resolve().then(() => (init_gemini(), gemini_exports));
+    const responseText = await generateWithFallback2(
+      [
+        {
+          role: "user",
+          parts: [
+            { text: prompt },
+            { text: `
+
+Business Context (JSON):
+${JSON.stringify(request, null, 2)}` }
+          ]
+        }
+      ],
+      {
+        temperature: 0.1,
+        responseMimeType: "application/json"
+      },
+      {
+        logStderr: log,
+        debugSession: options?.debugSession,
+        throttleGemini: options?.throttleGemini || (async () => {
+        }),
+        persistGenerationDebugFile: options?.persistFile ? (session, filename, content) => options.persistFile(filename, content) : void 0,
+        contextLabel: "direct-vertex-prompt"
+      }
+    );
+    if (!responseText) {
+      throw new Error("Vertex returned empty response");
+    }
+    log(`[Vertex] Response received (${responseText.length} characters)`);
+    let jsonString = responseText.trim();
+    if (jsonString.startsWith("```")) {
+      jsonString = jsonString.replace(/^```[a-zA-Z]*\n/, "").replace(/\n```$/, "");
+    }
+    log(`[RAW VERTEX RESPONSE]: ${jsonString}`);
+    let parsed = JSON.parse(jsonString);
+    if (parsed && parsed.hero && parsed.about && parsed.services && !parsed.elementorContent) {
+      log("[Vertex] Detected direct root sections; wrapping under elementorContent");
+      parsed = {
+        elementorContent: {
+          hero: parsed.hero,
+          about: parsed.about,
+          services: parsed.services,
+          features: parsed.features,
+          projects: parsed.projects,
+          process: parsed.process,
+          testimonials: parsed.testimonials
+        },
+        notes: parsed.notes || "Auto-wrapped from direct root sections"
+      };
+    }
+    if (!parsed || !parsed.elementorContent || !parsed.elementorContent.hero || !parsed.elementorContent.about || !parsed.elementorContent.services) {
+      throw new Error(
+        "Invalid response structure: missing elementorContent or required sections (hero, about, services)"
+      );
+    }
+    log(`[Vertex] Parsed response successfully`);
+    log(
+      `[Vertex] Generated Hero Heading: "${parsed.elementorContent.hero.heading}"`
+    );
+    return parsed;
+  } catch (error) {
+    log(
+      `[Vertex] Generation failed: ${error instanceof Error ? error.message : String(error)}`
+    );
+    throw error;
+  }
+}
+function wrapForWordPress(homepageResult) {
+  const cssBlock = `<!-- wp:html -->
+<style>
+${homepageResult.css}
+</style>
+<!-- /wp:html -->`;
+  const htmlBlock = `<!-- wp:group {"align":"full","layout":{"type":"constrained"}} -->
+<div class="wp-block-group alignfull">
+${homepageResult.html}
+</div>
+<!-- /wp:group -->`;
+  return `${cssBlock}
+
+${htmlBlock}`;
+}
+async function generateHomepageViaDirectVertexPrompt(business, options) {
+  const log = options?.debugLog || ((msg) => console.error(msg));
+  const persist = options?.persistFile || ((filename, content) => {
+  });
+  try {
+    log(`[DirectVertex] Starting image pre-filtering and resolution...`);
+    const imageAnalysis = await analyzeAndFilterImages(business, log, {
+      throttleGemini: options?.throttleGemini,
+      debugSession: options?.debugSession
+    });
+    persist("01a-image-analysis.json", imageAnalysis);
+    const logoAnalysis = await detectOrGenerateLogo(business, log, {
+      throttleGemini: options?.throttleGemini,
+      debugSession: options?.debugSession
+    });
+    persist("01logo-analysis.json", logoAnalysis);
+    const resolvedImages = await resolveSectionImages(imageAnalysis, log, logoAnalysis, business, {
+      throttleGemini: options?.throttleGemini,
+      debugSession: options?.debugSession
+    });
+    persist("01b-resolved-images.json", resolvedImages);
+    const request = buildHomepageGenerationRequest(business);
+    request.images = {
+      hero: resolvedImages.hero_image,
+      service1: resolvedImages.services_image,
+      service2: resolvedImages.about_image,
+      gallery: [resolvedImages.masked_image, ...resolvedImages.testimonials_slideshow]
+    };
+    persist("01-homepage-generation-request.json", request);
+    log(`[DirectVertex] Starting deterministic homepage generation...`);
+    const response = await callVertexHomepageGeneration(
+      VERTEX_HOMEPAGE_GENERATION_PROMPT,
+      request,
+      log,
+      options
+    );
+    if (response.elementorContent) {
+      if (!response.elementorContent.hero) response.elementorContent.hero = {};
+      response.elementorContent.hero.hero_image = resolvedImages.hero_image;
+      response.elementorContent.hero.masked_image = resolvedImages.masked_image;
+      if (!response.elementorContent.about) response.elementorContent.about = {};
+      response.elementorContent.about.image = resolvedImages.about_image;
+      if (!response.elementorContent.services) response.elementorContent.services = {};
+      response.elementorContent.services.image = resolvedImages.services_image;
+      if (!response.elementorContent.testimonials) response.elementorContent.testimonials = {};
+      response.elementorContent.testimonials.slideshow = resolvedImages.testimonials_slideshow;
+      if (!response.elementorContent.projects) response.elementorContent.projects = {};
+      response.elementorContent.projects.posts = resolvedImages.project_posts;
+      response.elementorContent.logo_image = resolvedImages.logo_image;
+    }
+    persist("02-vertex-response.json", response);
+    const schema = {
+      id: business.id || `homepage-${Date.now()}`,
+      businessId: business.id,
+      businessName: business.name || "Untitled",
+      schemaVersion: "1.0",
+      meta: {
+        businessId: business.id || `biz-${Date.now()}`,
+        siteId: `site-${business.id || "business"}-${Date.now()}`,
+        slug: (business.name || "site").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+        version: 1,
+        target: "wordpress",
+        traceId: options?.debugSession?.traceId
+      },
+      brand: {
+        businessName: business.name || "Business",
+        category: business.category || "Local Business",
+        address: business.address || "",
+        phone: business.phoneNumber || "",
+        email: business.email || "",
+        websiteUri: business.websiteUri || "",
+        logo: resolvedImages.logo_image || business.logo || "",
+        hours: business.hours || business.businessHours || ""
+      },
+      seo: {
+        title: `${business.name || "Business"} | Preview`,
+        description: business.tagline || `Bespoke web presentation for ${business.name || "our client"}.`,
+        keywords: [business.category || "Local Business"]
+      },
+      theme: (() => {
+        const design = pickDesignProfile(business.category || business.businessType || "");
+        const primary = request.colors?.primary || design.palette.primary;
+        const accent = request.colors?.accent || design.palette.accent;
+        const neutral = request.colors?.neutral || design.palette.background;
+        return {
+          primaryColor: primary,
+          accentColor: accent,
+          neutralColor: neutral,
+          name: "modern-agency",
+          mode: "light",
+          palette: {
+            primary,
+            surface: design.palette.surface,
+            background: neutral,
+            accent,
+            text: design.palette.text,
+            muted: design.palette.muted,
+            outline: design.palette.outline
+          },
+          typography: {
+            heading: design.typography.heading,
+            body: design.typography.body
+          }
+        };
+      })(),
+      sections: [],
+      createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+      _wordpressHtml: "",
+      _renderSource: "direct-vertex-prompt",
+      _generatedHomepage: response,
+      elementorContent: response.elementorContent,
+      notes: response.notes,
+      _validation: {
+        rating: business.rating || 0,
+        reviewCount: business.reviewCount || 0,
+        repairs: [],
+        validatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        traceId: options?.debugSession?.traceId,
+        photos: business.photos || [],
+        imageSuggestions: business.imageSuggestions || [],
+        logo: business.logo || ""
+      }
+    };
+    persist("04-minimal-schema.json", schema);
+    log(`[DirectVertex] Homepage generation complete`);
+    return schema;
+  } catch (error) {
+    log(
+      `[DirectVertex] Failed: ${error instanceof Error ? error.message : String(error)}`
+    );
+    throw error;
+  }
+}
+var GENAI_KEY, direct_vertex_homepage_generation_default;
+var init_direct_vertex_homepage_generation = __esm({
+  "src/lib/direct-vertex-homepage-generation.ts"() {
+    init_vertex_homepage_generation_prompt();
+    init_gemini();
+    GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
+    direct_vertex_homepage_generation_default = {
+      generateHomepageViaDirectVertexPrompt,
+      buildHomepageGenerationRequest,
+      callVertexHomepageGeneration,
+      wrapForWordPress
+    };
   }
 });
 
@@ -1685,682 +1640,727 @@ var init_gemini = __esm({
   }
 });
 
-// src/lib/direct-vertex-homepage-generation.ts
-var direct_vertex_homepage_generation_exports = {};
-__export(direct_vertex_homepage_generation_exports, {
-  analyzeAndFilterImages: () => analyzeAndFilterImages,
-  buildHomepageGenerationRequest: () => buildHomepageGenerationRequest,
-  default: () => direct_vertex_homepage_generation_default,
-  detectOrGenerateLogo: () => detectOrGenerateLogo,
-  generateHomepageViaDirectVertexPrompt: () => generateHomepageViaDirectVertexPrompt,
-  resolveSectionImages: () => resolveSectionImages
+// src/lib/wordpress.ts
+var wordpress_exports = {};
+__export(wordpress_exports, {
+  buildWordPressProvisioningPlan: () => buildWordPressProvisioningPlan,
+  buildWordPressSitePages: () => buildWordPressSitePages,
+  collectWordPressMediaAssets: () => collectWordPressMediaAssets,
+  schemaToGutenbergBlocks: () => schemaToGutenbergBlocks
 });
-import fs5 from "fs";
-import path4 from "path";
-import crossFetch2 from "cross-fetch";
-function optimizeGooglePhotoUrl(url, size = 1600) {
-  if (!url || typeof url !== "string") return url;
-  if (url.includes("googleusercontent.com/places/") || url.includes("googleusercontent.com/p/")) {
-    const baseUrl = url.split("=")[0];
-    return `${baseUrl}=s${size}`;
-  }
-  return url;
+function escapeHtml(value) {
+  return (value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#39;");
 }
-function collectBusinessImages(business) {
-  const sources = [];
-  if (Array.isArray(business.photos)) {
-    sources.push(...business.photos.map((url) => optimizeGooglePhotoUrl(url, 1600)));
-  }
-  if (Array.isArray(business.imageSuggestions)) {
-    sources.push(...business.imageSuggestions.map((url) => optimizeGooglePhotoUrl(url, 1600)));
-  }
-  if (business.logo) {
-    sources.push(optimizeGooglePhotoUrl(business.logo, 400));
-  }
-  if (Array.isArray(business.reviews)) {
-    business.reviews.forEach((r) => {
-      if (Array.isArray(r.photos)) {
-        sources.push(...r.photos.map((url) => typeof url === "string" ? optimizeGooglePhotoUrl(url, 1600) : ""));
-      } else if (Array.isArray(r.images)) {
-        sources.push(...r.images.map((url) => typeof url === "string" ? optimizeGooglePhotoUrl(url, 1600) : ""));
-      }
-    });
-  }
-  return [...new Set(sources.filter(Boolean))];
+function slugify(value) {
+  return (value || "client-site").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
-async function downloadImageAsBase64(url) {
-  try {
-    const lowResUrl = optimizeGooglePhotoUrl(url, 400);
-    const res = await crossFetch2(lowResUrl);
-    if (!res.ok) return null;
-    const buffer = await res.arrayBuffer();
-    const base64Data = Buffer.from(buffer).toString("base64");
-    let mimeType = res.headers.get("content-type") || "image/jpeg";
-    if (mimeType.includes(";")) {
-      mimeType = mimeType.split(";")[0];
-    }
-    return { mimeType, data: base64Data };
-  } catch (e) {
-    return null;
-  }
+function renderNavBlocks(schema) {
+  const voice = getSiteVoice(schema);
+  const links = [
+    { title: "Home", href: "/" },
+    { title: "About", href: "/about/" },
+    { title: voice.featuresTitle, href: "/services/" },
+    { title: voice.galleryTitle, href: "/gallery/" },
+    { title: voice.faqTitle, href: "/faq/" },
+    { title: voice.contactTitle, href: "/contact/" }
+  ];
+  return `<!-- wp:navigation {"layout":{"type":"flex","justifyContent":"center"}} -->
+<nav class="wp-block-navigation">${links.map((link) => `<a class="wp-block-navigation-item__content" href="${link.href}">${escapeHtml(link.title)}</a>`).join("")}</nav>
+<!-- /wp:navigation -->`;
 }
-async function analyzeProjectImage(url, fallbackTitle, log, options) {
-  log(`[ImageAnalyzer] Downloading and analyzing Google Maps project image: ${url}`);
-  const imgObj = await downloadImageAsBase64(url);
-  if (!imgObj) {
-    log(`[ImageAnalyzer] Failed to download or convert image: ${url}. Using fallback title: ${fallbackTitle}`);
-    return fallbackTitle;
-  }
-  try {
-    log(`[ImageAnalyzer] Running Gemini Vision analysis on image...`);
-    const prompt = `This photo was uploaded to Google Maps for a cabinetry/woodworking business. Identify the specific cabinetry, furniture, or woodwork item shown in this photo (e.g., kitchen cabinets, closet shelving, wooden dining table, bathroom vanity, TV console, bookshelf, etc.). Respond with a short, professional, human-sounding project title (2 to 4 words maximum, capitalized) describing what the photo shows. Do not use generic words like 'Recent Project' or 'Woodworking'. Return ONLY the title itself, with no explanation or punctuation.`;
-    const responseText = await generateWithFallback(
-      [
-        {
-          role: "user",
-          parts: [
-            { inlineData: { mimeType: imgObj.mimeType, data: imgObj.data } },
-            { text: prompt }
-          ]
-        }
-      ],
-      {
-        temperature: 0.2
-      },
-      {
-        logStderr: log,
-        debugSession: options?.debugSession,
-        throttleGemini: options?.throttleGemini || (async () => {
-        }),
-        contextLabel: "project-image-caption"
-      }
-    );
-    const title = responseText?.trim();
-    if (title && title.length > 2 && title.length < 50) {
-      log(`[ImageAnalyzer] Successfully analyzed image. Title: "${title}"`);
-      return title;
-    }
-    log(`[ImageAnalyzer] Gemini response was empty or invalid. Response: "${responseText}". Using fallback: ${fallbackTitle}`);
-    return fallbackTitle;
-  } catch (e) {
-    log(`[ImageAnalyzer] Error analyzing image: ${e.message || e}. Using fallback: ${fallbackTitle}`);
-    return fallbackTitle;
-  }
-}
-async function analyzeAndFilterImages(business, log, options) {
-  log(`[ImageAnalyzer] Cabinetry focus: Returning custom cabinetry generation prompts for: ${business.name}`);
-  const globalStyle = "Scandinavian luxury editorial photography, Japandi-inspired interiors, soft natural daylight, matte walnut/oak textures, calm minimal compositions, realistic architectural photography, muted neutral palette, clean negative space, airy atmosphere, shallow depth of field, premium interior magazine aesthetic, avoid clutter, avoid construction-site feeling, avoid glossy CGI look, avoid oversaturated wood, avoid harsh lighting, avoid busy backgrounds, reserve whitespace for text overlays, cinematic but understated, emotionally calm visual tone, consistent warm-beige color grading, charcoal shadows instead of pure black, matte surfaces only, soft contrast, minimal props, same lighting direction across sections, avoid visual density spikes, maintain editorial pacing between sections";
-  return {
-    hero_image: {
-      action: "generate",
-      generation_prompt: `A single minimalistic custom kitchen cabinet photograph, single continuous view, no grid, no collage, no multiple frames, no split screen, ${globalStyle}. Scandinavian editorial aesthetic, soft morning daylight, clean architectural composition, minimal decor styling, warm beige and walnut tones, realistic interior photography, calm premium atmosphere, matte finishes, luxury cabinetry integrated naturally into the environment. Wide cinematic framing, single visual focal point.`
-    },
-    masked_image: {
-      action: "generate",
-      generation_prompt: `A different single professional architectural photograph of a luxury modern cabinet corner or elegant storage sideboard cupboard, single continuous view, no grid, no collage, no multiple angles, no split screen, ${globalStyle}. Soft morning daylight, clean Scandinavian editorial aesthetic, realistic photo, Japandi interior styling, clean neutral background, matte textures, elegant cabinet proportions.`
-    },
-    about_image: {
-      action: "generate",
-      generation_prompt: `A premium professional studio flat lay photograph of luxury cabinet design details, samples and hardware on a solid, completely plain, blank pure white background. On the far left, a vertical arrangement of cabinetry sample boards (walnut wood panel with a gold/brass handle, smaller neutral tile), and on the far right, a vertical arrangement of cabinetry sample boards (light oak panel with a black knob handle, linen cloth folded), arranged solely on the left and right sides. Crucially, all items and objects on the left and right must be fully self-contained inside the frame, maintaining clean white margins/padding at the top and bottom of the image, without touching or extending to the top or bottom edges of the photo. The entire center 60% of the image must be a completely empty, solid, plain pure white negative space with no shadows, objects, or text. Soft natural daylight, clean Japandi/Scandinavian design aesthetic, matte finishes only.`
-    },
-    services_image: {
-      action: "generate",
-      generation_prompt: `Luxury built-in walnut shelving wall in modern living room, ${globalStyle}. Soft ambient lighting, Scandinavian interior design aesthetic, calm cinematic atmosphere, minimal furniture styling, realistic architectural photography, elegant composition with dark overlay-safe region for text. Immersive environment, one dominant architectural feature, soft lighting gradients, darker side reserved for overlay text.`
-    },
-    testimonials_slideshow: [
-      {
-        action: "generate",
-        generation_prompt: `Luxury minimalist custom walk-in closet drawers with matte walnut paneling and brushed bronze pull handles, ${globalStyle}. Muted earth tones, spacious design layout.`
-      },
-      {
-        action: "generate",
-        generation_prompt: `Modern minimal bathroom vanity cabinet detail, matte oak panels with natural stone basin, ${globalStyle}. Clean lines, directional morning light.`
-      },
-      {
-        action: "generate",
-        generation_prompt: `Bespoke walnut kitchen island detail featuring integrated cabinet doors, ${globalStyle}. Clean joints, editorial cabinetry details.`
-      }
-    ],
-    project_posts: [
-      {
-        action: "generate",
-        post_title: "Custom Kitchen Cabinetry",
-        generation_prompt: `Luxury modern walnut kitchen cabinets detail shot, ${globalStyle}. Muted neutral palette, matte wood finishes.`
-      },
-      {
-        action: "generate",
-        post_title: "Minimalist Oak TV Console",
-        generation_prompt: `Modern sleek floating oak console detail, ${globalStyle}. Clean scandinavian aesthetic, simple geometric lines.`
-      },
-      {
-        action: "generate",
-        post_title: "Luxury Walk-In Closet",
-        generation_prompt: `Bespoke walk-in wardrobe storage setup with natural oak details, ${globalStyle}. Airy atmosphere, minimal clutter.`
-      },
-      {
-        action: "generate",
-        post_title: "Bespoke Home Office Shelving",
-        generation_prompt: `Handcrafted built-in home office shelving system in matte walnut finish, ${globalStyle}. Spacious styling, calm atmosphere.`
-      }
-    ]
-  };
-}
-async function detectOrGenerateLogo(business, log, options) {
-  log(`[LogoDetector] Cabinetry focus: Returning custom cabinetry logo generation prompt for: ${business.name}`);
-  const defaultPrompt = `A premium minimalist text-based typography logo featuring the business name "${business.name}" with a elegant modern wood chisel or fine tree icon, clean modern flat design, solid white background, sharp vector lines, high-end lettermark`;
-  return { action: "generate", generation_prompt: defaultPrompt };
-}
-async function resolveSectionImages(analysis, log, logoAnalysis, business, options) {
-  const resultUrls = {
-    hero_image: "",
-    masked_image: "",
-    about_image: "",
-    services_image: "",
-    testimonials_slideshow: [],
-    project_posts: [],
-    logo_image: ""
-  };
-  const getFallbackPlaceholder = (role) => {
-    if (role.startsWith("project_")) {
-      const projectPics = [
-        "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&q=80",
-        "https://images.unsplash.com/photo-1539922980492-38f6673af8dd?w=800&q=80",
-        "https://images.unsplash.com/photo-1558882224-cca166733360?w=800&q=80",
-        "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&q=80"
-      ];
-      const idx = parseInt(role.split("_")[1], 10) - 1 || 0;
-      return projectPics[idx % projectPics.length] || projectPics[0];
-    }
-    try {
-      const rootDefaultDir = path4.join(process.cwd(), "default");
-      const publicDefaultDir = path4.join(process.cwd(), "public", "default");
-      if (!fs5.existsSync(publicDefaultDir)) {
-        fs5.mkdirSync(publicDefaultDir, { recursive: true });
-      }
-      if (fs5.existsSync(rootDefaultDir)) {
-        const files = fs5.readdirSync(rootDefaultDir).filter(
-          (f) => f.toLowerCase().endsWith(".png") || f.toLowerCase().endsWith(".jpg") || f.toLowerCase().endsWith(".jpeg")
-        );
-        for (const file of files) {
-          const srcPath = path4.join(rootDefaultDir, file);
-          const destPath = path4.join(publicDefaultDir, file);
-          if (!fs5.existsSync(destPath)) {
-            fs5.copyFileSync(srcPath, destPath);
-          }
-        }
-      }
-      if (fs5.existsSync(publicDefaultDir)) {
-        const files = fs5.readdirSync(publicDefaultDir).filter(
-          (f) => f.toLowerCase().endsWith(".png") || f.toLowerCase().endsWith(".jpg") || f.toLowerCase().endsWith(".jpeg")
-        );
-        if (files.length > 0) {
-          let selectedFile = files[0];
-          if (role.toLowerCase().includes("hero")) {
-            selectedFile = files[0 % files.length];
-          } else if (role.toLowerCase().includes("about")) {
-            selectedFile = files[1 % files.length];
-          } else if (role.toLowerCase().includes("service")) {
-            selectedFile = files[2 % files.length];
-          } else if (role.toLowerCase().includes("masked")) {
-            selectedFile = files[3 % files.length];
-          } else {
-            let hash = 0;
-            for (let i = 0; i < role.length; i++) {
-              hash = role.charCodeAt(i) + ((hash << 5) - hash);
-            }
-            const index = Math.abs(hash) % files.length;
-            selectedFile = files[index];
-          }
-          const baseUrl = process.env.API_URL || "https://api.digiscout.online";
-          const localUrl = `${baseUrl}/public/default/${selectedFile}`;
-          log(`[ImageGenerator] Found local default fallback image for ${role}: ${localUrl}`);
-          return localUrl;
-        }
-      }
-    } catch (err) {
-      log(`[ImageGenerator] Error scanning public/default directory: ${err.message}`);
-    }
-    const fallbacks = {
-      hero: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1200&q=80",
-      // Premium kitchen cabinetry
-      masked: "https://images.unsplash.com/photo-1533090161767-e6ffed986c88?w=800&q=80",
-      // Wood grain texture
-      about: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1200&q=80",
-      // Woodworking workshop
-      services: "https://images.unsplash.com/photo-1539922980492-38f6673af8dd?w=1200&q=80",
-      // Finished cabinetry
-      logo: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=400&q=80"
-      // Fallback logo emblem
+function getSiteVoice(schema) {
+  const category = (schema.brand.category || "").toLowerCase();
+  const businessName = schema.brand.businessName || "The Brand";
+  if (category.includes("restaurant") || category.includes("cafe") || category.includes("bakery")) {
+    return {
+      featuresTitle: "Signature Dishes & Experiences",
+      galleryTitle: "Dining Room & Detail",
+      testimonialsTitle: "Guest Impressions",
+      faqTitle: "Dining Questions",
+      contactTitle: `Visit ${businessName}`,
+      aboutTitle: `The Story Behind ${businessName}`,
+      ctaButton: "Reserve Your Table"
     };
-    if (role.startsWith("testimonial_")) {
-      return "https://images.unsplash.com/photo-1558882224-cca166733360?w=800&q=80";
-    }
-    return fallbacks[role] || "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1200&q=80";
+  }
+  if (category.includes("salon") || category.includes("spa") || category.includes("wellness")) {
+    return {
+      featuresTitle: "Signature Rituals",
+      galleryTitle: "Studio Atmosphere",
+      testimonialsTitle: "Client Notes",
+      faqTitle: "Treatment Questions",
+      contactTitle: `Book ${businessName}`,
+      aboutTitle: `About ${businessName}`,
+      ctaButton: "Schedule Your Appointment"
+    };
+  }
+  if (category.includes("gym") || category.includes("fitness") || category.includes("training")) {
+    return {
+      featuresTitle: "Training Programs",
+      galleryTitle: "Progress & Environment",
+      testimonialsTitle: "Member Wins",
+      faqTitle: "Training Questions",
+      contactTitle: `Start Training at ${businessName}`,
+      aboutTitle: `About ${businessName}`,
+      ctaButton: "Start Your Program"
+    };
+  }
+  return {
+    featuresTitle: "Capabilities Built For Growth",
+    galleryTitle: "Selected Work",
+    testimonialsTitle: "Trusted By Real Customers",
+    faqTitle: "Questions, Answered Clearly",
+    contactTitle: `Let's Build Your Next Version`,
+    aboutTitle: `About ${businessName}`,
+    ctaButton: "Book A Consultation"
   };
-  const generateAndSave = async (prompt, role, aspectRatio = "16:9") => {
-    try {
-      const base64Bytes = await generateCustomImage(prompt, { aspectRatio, logStderr: log });
-      const filename = `gen_${role}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.png`;
-      const publicDir2 = path4.join(process.cwd(), "public");
-      const imagesDir2 = path4.join(publicDir2, "generated-images");
-      if (!fs5.existsSync(imagesDir2)) {
-        fs5.mkdirSync(imagesDir2, { recursive: true });
-      }
-      const filePath = path4.join(imagesDir2, filename);
-      fs5.writeFileSync(filePath, Buffer.from(base64Bytes, "base64"));
-      const baseUrl = process.env.API_URL || "https://api.digiscout.online";
-      const fileUrl = `${baseUrl}/public/generated-images/${filename}`;
-      log(`[ImageGenerator] Saved generated image for ${role} to ${fileUrl}`);
-      return fileUrl;
-    } catch (err) {
-      log(`[ImageGenerator] Error generating image for ${role}: ${err.message || err}. Falling back to default cabinetry placeholder.`);
-      return getFallbackPlaceholder(role);
-    }
-  };
-  const taskList = [];
-  if (analysis.hero_image.action === "use_existing" && analysis.hero_image.url) {
-    resultUrls.hero_image = analysis.hero_image.url;
-  } else {
-    taskList.push({
-      run: async () => {
-        resultUrls.hero_image = await generateAndSave(analysis.hero_image.generation_prompt || "wooden chair chair modern", "hero", "1:1");
-      }
-    });
+}
+function getSection(schema, type) {
+  return schema.sections.find((section) => section.type === type);
+}
+function wrapHtmlBlock(content) {
+  return `<!-- wp:html -->
+${content}
+<!-- /wp:html -->`;
+}
+function getSectionLayout(section) {
+  return (section.layout || section.variant || "standard").toLowerCase();
+}
+function getSectionTitle(section, fallback) {
+  return section?.headline || section?.title || fallback;
+}
+function renderStructuredHeroSection(schema) {
+  const hero = getSection(schema, "hero");
+  if (!hero) return "";
+  const layout = getSectionLayout(hero);
+  const title = getSectionTitle(hero, schema.brand.businessName || "Welcome");
+  const subheadline = hero.subheadline || `${schema.brand.businessName || "This business"} deserves a more distinctive digital presence.`;
+  const primaryCta = hero.primaryCta || hero.ctaPrimary || { label: "Learn More", href: "#contact" };
+  const secondaryCta = hero.secondaryCta || hero.ctaSecondary;
+  const mediaUrl = hero.media?.url || hero.media?.src || "";
+  const mediaAlt = hero.media?.alt || schema.brand.businessName;
+  const badge = hero.badge || schema.brand.category;
+  if (layout === "immersive") {
+    return wrapHtmlBlock(`
+<section class="wp-section wp-hero wp-hero--immersive" id="top" data-layout="immersive">
+	<div class="wp-hero__media">
+		${mediaUrl ? `<img src="${escapeHtml(mediaUrl)}" alt="${escapeHtml(mediaAlt)}" />` : ""}
+		<div class="wp-hero__overlay"></div>
+	</div>
+	<div class="wp-hero__content">
+		<p class="wp-hero__badge">${escapeHtml(badge)}</p>
+		<h1>${escapeHtml(title)}</h1>
+		<p>${escapeHtml(subheadline)}</p>
+		<div class="wp-hero__actions">
+			<a class="wp-button wp-button--primary" href="${escapeHtml(primaryCta.href)}">${escapeHtml(primaryCta.label)}</a>
+			${secondaryCta ? `<a class="wp-button wp-button--secondary" href="${escapeHtml(secondaryCta.href)}">${escapeHtml(secondaryCta.label)}</a>` : ""}
+		</div>
+	</div>
+</section>`);
   }
-  if (analysis.masked_image.action === "use_existing" && analysis.masked_image.url) {
-    resultUrls.masked_image = analysis.masked_image.url;
-  } else {
-    taskList.push({
-      run: async () => {
-        resultUrls.masked_image = await generateAndSave(analysis.masked_image.generation_prompt || "wood grain pattern detail close-up", "masked", "1:1");
-      }
-    });
+  if (layout === "centered") {
+    return wrapHtmlBlock(`
+<section class="wp-section wp-hero wp-hero--centered" id="top" data-layout="centered">
+	<div class="wp-hero__content wp-hero__content--centered">
+		<p class="wp-hero__badge">${escapeHtml(badge)}</p>
+		<h1>${escapeHtml(title)}</h1>
+		<p>${escapeHtml(subheadline)}</p>
+		<div class="wp-hero__actions wp-hero__actions--centered">
+			<a class="wp-button wp-button--primary" href="${escapeHtml(primaryCta.href)}">${escapeHtml(primaryCta.label)}</a>
+			${secondaryCta ? `<a class="wp-button wp-button--secondary" href="${escapeHtml(secondaryCta.href)}">${escapeHtml(secondaryCta.label)}</a>` : ""}
+		</div>
+	</div>
+	${mediaUrl ? `<figure class="wp-hero__figure"><img src="${escapeHtml(mediaUrl)}" alt="${escapeHtml(mediaAlt)}" /></figure>` : ""}
+</section>`);
   }
-  if (analysis.about_image.action === "use_existing" && analysis.about_image.url) {
-    resultUrls.about_image = analysis.about_image.url;
-  } else {
-    taskList.push({
-      run: async () => {
-        resultUrls.about_image = await generateAndSave(analysis.about_image.generation_prompt || "woodworking craftsman work", "about", "4:3");
-      }
-    });
+  return wrapHtmlBlock(`
+<section class="wp-section wp-hero wp-hero--split" id="top" data-layout="${escapeHtml(layout)}">
+	<div class="wp-hero__content">
+		<p class="wp-hero__badge">${escapeHtml(badge)}</p>
+		<h1>${escapeHtml(title)}</h1>
+		<p>${escapeHtml(subheadline)}</p>
+		<div class="wp-hero__actions">
+			<a class="wp-button wp-button--primary" href="${escapeHtml(primaryCta.href)}">${escapeHtml(primaryCta.label)}</a>
+			${secondaryCta ? `<a class="wp-button wp-button--secondary" href="${escapeHtml(secondaryCta.href)}">${escapeHtml(secondaryCta.label)}</a>` : ""}
+		</div>
+	</div>
+	${mediaUrl ? `<figure class="wp-hero__figure"><img src="${escapeHtml(mediaUrl)}" alt="${escapeHtml(mediaAlt)}" /></figure>` : ""}
+</section>`);
+}
+function renderStructuredFeaturesSection(schema) {
+  const features = getSection(schema, "features");
+  if (!features || !Array.isArray(features.items) || features.items.length === 0) {
+    return "";
   }
-  if (analysis.services_image.action === "use_existing" && analysis.services_image.url) {
-    resultUrls.services_image = analysis.services_image.url;
-  } else {
-    taskList.push({
-      run: async () => {
-        resultUrls.services_image = await generateAndSave(analysis.services_image.generation_prompt || "carpentry workshop background", "services", "16:9");
-      }
-    });
+  const layout = getSectionLayout(features);
+  const title = getSectionTitle(features, getSiteVoice(schema).featuresTitle);
+  const items = features.items;
+  if (layout === "list") {
+    return wrapHtmlBlock(`
+<section class="wp-section wp-features wp-features--list" id="services" data-layout="list">
+	<header class="wp-section__header">
+		<p class="wp-section__eyebrow">Services</p>
+		<h2>${escapeHtml(title)}</h2>
+	</header>
+	<div class="wp-features__list">
+		${items.map(
+      (item, index) => `
+		<article class="wp-feature wp-feature--row">
+			<span class="wp-feature__index">${String(index + 1).padStart(2, "0")}</span>
+			<div>
+				<h3>${escapeHtml(item.title)}</h3>
+				<p>${escapeHtml(item.description)}</p>
+			</div>
+		</article>`
+    ).join("")}
+	</div>
+</section>`);
   }
-  for (let i = 0; i < 3; i++) {
-    resultUrls.testimonials_slideshow[i] = getFallbackPlaceholder(`testimonial_${i + 1}`);
+  if (layout === "alternating-grid") {
+    return wrapHtmlBlock(`
+<section class="wp-section wp-features wp-features--alternating" id="services" data-layout="alternating-grid">
+	<header class="wp-section__header">
+		<p class="wp-section__eyebrow">Services</p>
+		<h2>${escapeHtml(title)}</h2>
+	</header>
+	<div class="wp-features__grid wp-features__grid--alternating">
+		${items.map(
+      (item, index) => `
+		<article class="wp-feature wp-feature--${index % 2 === 0 ? "tall" : "wide"}">
+			<span class="wp-feature__index">${String(index + 1).padStart(2, "0")}</span>
+			<h3>${escapeHtml(item.title)}</h3>
+			<p>${escapeHtml(item.description)}</p>
+		</article>`
+    ).join("")}
+	</div>
+</section>`);
   }
-  const projectPhotos = [];
-  if (business) {
-    if (Array.isArray(business.photos)) {
-      projectPhotos.push(...business.photos.map((url) => optimizeGooglePhotoUrl(url, 1600)));
-    }
-    if (Array.isArray(business.imageSuggestions)) {
-      projectPhotos.push(...business.imageSuggestions.map((url) => optimizeGooglePhotoUrl(url, 1600)));
-    }
-    if (Array.isArray(business.reviews)) {
-      business.reviews.forEach((r) => {
-        if (Array.isArray(r.photos)) {
-          projectPhotos.push(...r.photos.map((url) => typeof url === "string" ? optimizeGooglePhotoUrl(url, 1600) : ""));
-        } else if (Array.isArray(r.images)) {
-          projectPhotos.push(...r.images.map((url) => typeof url === "string" ? optimizeGooglePhotoUrl(url, 1600) : ""));
-        }
+  return wrapHtmlBlock(`
+<section class="wp-section wp-features wp-features--bento" id="services" data-layout="${escapeHtml(layout)}">
+	<header class="wp-section__header">
+		<p class="wp-section__eyebrow">Services</p>
+		<h2>${escapeHtml(title)}</h2>
+	</header>
+	<div class="wp-features__grid wp-features__grid--bento">
+		${items.map(
+    (item, index) => `
+		<article class="wp-feature wp-feature--card wp-feature--${index === 0 ? "lead" : "support"}">
+			<span class="wp-feature__index">${String(index + 1).padStart(2, "0")}</span>
+			<h3>${escapeHtml(item.title)}</h3>
+			<p>${escapeHtml(item.description)}</p>
+		</article>`
+  ).join("")}
+	</div>
+</section>`);
+}
+function renderStructuredGallerySection(schema) {
+  const gallery = getSection(schema, "gallery");
+  if (!gallery || !Array.isArray(gallery.items) || gallery.items.length === 0) {
+    return "";
+  }
+  const layout = getSectionLayout(gallery);
+  const title = getSectionTitle(gallery, getSiteVoice(schema).galleryTitle);
+  if (layout === "masonry") {
+    return wrapHtmlBlock(`
+<section class="wp-section wp-gallery wp-gallery--masonry" id="gallery" data-layout="masonry">
+	<header class="wp-section__header">
+		<p class="wp-section__eyebrow">Gallery</p>
+		<h2>${escapeHtml(title)}</h2>
+	</header>
+	<div class="wp-gallery__masonry">
+		${gallery.items.map(
+      (item, index) => `
+		<figure class="wp-gallery__item wp-gallery__item--${index % 3 + 1}">
+			<img src="${escapeHtml(item.src)}" alt="${escapeHtml(item.alt)}" />
+		</figure>`
+    ).join("")}
+	</div>
+</section>`);
+  }
+  if (layout === "asymmetrical") {
+    return wrapHtmlBlock(`
+<section class="wp-section wp-gallery wp-gallery--asymmetrical" id="gallery" data-layout="asymmetrical">
+	<header class="wp-section__header">
+		<p class="wp-section__eyebrow">Gallery</p>
+		<h2>${escapeHtml(title)}</h2>
+	</header>
+	<div class="wp-gallery__asymmetrical">
+		${gallery.items.map(
+      (item, index) => `
+		<figure class="wp-gallery__panel wp-gallery__panel--${index === 0 ? "hero" : index % 2 === 0 ? "stack" : "rail"}">
+			<img src="${escapeHtml(item.src)}" alt="${escapeHtml(item.alt)}" />
+		</figure>`
+    ).join("")}
+	</div>
+</section>`);
+  }
+  return wrapHtmlBlock(`
+<section class="wp-section wp-gallery wp-gallery--grid" id="gallery" data-layout="${escapeHtml(layout)}">
+	<header class="wp-section__header">
+		<p class="wp-section__eyebrow">Gallery</p>
+		<h2>${escapeHtml(title)}</h2>
+	</header>
+	<div class="wp-gallery__grid">
+		${gallery.items.map(
+    (item) => `
+		<figure class="wp-gallery__item">
+			<img src="${escapeHtml(item.src)}" alt="${escapeHtml(item.alt)}" />
+		</figure>`
+  ).join("")}
+	</div>
+</section>`);
+}
+function renderStructuredTestimonialsSection(schema) {
+  const testimonials = getSection(schema, "testimonials");
+  if (!testimonials || !Array.isArray(testimonials.items) || testimonials.items.length === 0) {
+    return "";
+  }
+  const layout = getSectionLayout(testimonials);
+  const title = getSectionTitle(
+    testimonials,
+    getSiteVoice(schema).testimonialsTitle
+  );
+  if (layout === "timeline") {
+    return wrapHtmlBlock(`
+<section class="wp-section wp-testimonials wp-testimonials--timeline" id="testimonials" data-layout="timeline">
+	<header class="wp-section__header">
+		<p class="wp-section__eyebrow">Testimonials</p>
+		<h2>${escapeHtml(title)}</h2>
+	</header>
+	<div class="wp-testimonials__timeline">
+		${testimonials.items.map(
+      (item, index) => `
+		<article class="wp-testimonial wp-testimonial--timeline">
+			<span class="wp-testimonial__index">${String(index + 1).padStart(2, "0")}</span>
+			<blockquote><p>${escapeHtml(item.quote)}</p></blockquote>
+			<footer><strong>${escapeHtml(item.author)}</strong>${item.role ? `<span>${escapeHtml(item.role)}</span>` : ""}</footer>
+		</article>`
+    ).join("")}
+	</div>
+</section>`);
+  }
+  return wrapHtmlBlock(`
+<section class="wp-section wp-testimonials wp-testimonials--cards" id="testimonials" data-layout="${escapeHtml(layout)}">
+	<header class="wp-section__header">
+		<p class="wp-section__eyebrow">Testimonials</p>
+		<h2>${escapeHtml(title)}</h2>
+	</header>
+	<div class="wp-testimonials__grid">
+		${testimonials.items.map(
+    (item) => `
+		<article class="wp-testimonial wp-testimonial--card">
+			<blockquote><p>${escapeHtml(item.quote)}</p></blockquote>
+			<footer><strong>${escapeHtml(item.author)}</strong>${item.role ? `<span>${escapeHtml(item.role)}</span>` : ""}</footer>
+		</article>`
+  ).join("")}
+	</div>
+</section>`);
+}
+function renderStructuredFaqSection(schema) {
+  const faq = getSection(schema, "faq");
+  if (!faq || !Array.isArray(faq.items) || faq.items.length === 0) {
+    return "";
+  }
+  const title = getSectionTitle(faq, getSiteVoice(schema).faqTitle);
+  return wrapHtmlBlock(`
+<section class="wp-section wp-faq" id="faq" data-layout="${escapeHtml(getSectionLayout(faq))}">
+	<header class="wp-section__header">
+		<p class="wp-section__eyebrow">FAQ</p>
+		<h2>${escapeHtml(title)}</h2>
+	</header>
+	<div class="wp-faq__list">
+		${faq.items.map(
+    (item) => `
+		<details class="wp-faq__item">
+			<summary>${escapeHtml(item.question)}</summary>
+			<p>${escapeHtml(item.answer)}</p>
+		</details>`
+  ).join("")}
+	</div>
+</section>`);
+}
+function renderStructuredContactSection(schema) {
+  const contact = getSection(schema, "contact");
+  const title = getSectionTitle(contact, getSiteVoice(schema).contactTitle);
+  const layout = getSectionLayout(contact || {});
+  const email = schema.brand.email || "";
+  return wrapHtmlBlock(`
+<section class="wp-section wp-contact wp-contact--${escapeHtml(layout)}" id="contact" data-layout="${escapeHtml(layout)}">
+	<header class="wp-section__header">
+		<p class="wp-section__eyebrow">Contact</p>
+		<h2>${escapeHtml(title)}</h2>
+	</header>
+	<div class="wp-contact__grid">
+		<article class="wp-contact__details">
+			<h3>${escapeHtml(schema.brand.businessName)}</h3>
+			<p>${escapeHtml(schema.brand.address || "")}</p>
+			${schema.brand.phone ? `<p><strong>Phone:</strong> ${escapeHtml(schema.brand.phone)}</p>` : ""}
+			${email ? `<p><strong>Email:</strong> ${escapeHtml(email)}</p>` : ""}
+		</article>
+		<article class="wp-contact__card">
+			<div class="wp-contact__map">${escapeHtml(schema.brand.address || "")}</div>
+			${email ? `<a class="wp-button wp-button--primary" href="mailto:${escapeHtml(email)}">Book A Conversation</a>` : ""}
+		</article>
+	</div>
+</section>`);
+}
+function renderStructuredCtaSection(schema) {
+  const cta = getSection(schema, "cta");
+  if (!cta) return "";
+  const layout = getSectionLayout(cta);
+  const title = getSectionTitle(cta, getSiteVoice(schema).ctaTitle);
+  const body = cta.body || "";
+  const buttonLabel = cta.buttonLabel || cta.primaryCta?.label || getSiteVoice(schema).ctaButton;
+  const buttonHref = cta.buttonHref || cta.primaryCta?.href || "#contact";
+  if (layout === "side-by-side") {
+    return wrapHtmlBlock(`
+<section class="wp-section wp-cta wp-cta--split" data-layout="side-by-side">
+	<div class="wp-cta__split">
+		<div>
+			<p class="wp-section__eyebrow">Call To Action</p>
+			<h2>${escapeHtml(title)}</h2>
+			<p>${escapeHtml(body)}</p>
+		</div>
+		<div class="wp-cta__actions">
+			<a class="wp-button wp-button--primary" href="${escapeHtml(buttonHref)}">${escapeHtml(buttonLabel)}</a>
+		</div>
+	</div>
+</section>`);
+  }
+  return wrapHtmlBlock(`
+<section class="wp-section wp-cta wp-cta--centered" data-layout="${escapeHtml(layout)}">
+	<div class="wp-cta__card">
+		<p class="wp-section__eyebrow">Call To Action</p>
+		<h2>${escapeHtml(title)}</h2>
+		<p>${escapeHtml(body)}</p>
+		<a class="wp-button wp-button--primary" href="${escapeHtml(buttonHref)}">${escapeHtml(buttonLabel)}</a>
+	</div>
+</section>`);
+}
+function renderStructuredSection(schema, section) {
+  switch (section?.type) {
+    case "hero":
+      return renderStructuredHeroSection(schema);
+    case "features":
+      return renderStructuredFeaturesSection(schema);
+    case "gallery":
+      return renderStructuredGallerySection(schema);
+    case "testimonials":
+      return renderStructuredTestimonialsSection(schema);
+    case "faq":
+      return renderStructuredFaqSection(schema);
+    case "contact":
+      return renderStructuredContactSection(schema);
+    case "cta":
+      return renderStructuredCtaSection(schema);
+    default:
+      return "";
+  }
+}
+function buildHomePageBlocks(schema) {
+  return [
+    renderNavBlocks(schema),
+    ...(Array.isArray(schema.sections) ? schema.sections : []).map(
+      (section) => renderStructuredSection(schema, section)
+    )
+  ].filter(Boolean).join("\n\n");
+}
+function buildAboutPageBlocks(schema) {
+  const hero = getSection(schema, "hero");
+  const voice = getSiteVoice(schema);
+  const intro = hero?.subheadline || schema.seo.description || `${schema.brand.businessName} is a modern ${schema.brand.category} brand.`;
+  const highlights = [
+    `Category: ${schema.brand.category}`,
+    `Style Direction: ${schema.theme.name}`,
+    `Experience Focus: ${schema.theme.style}`
+  ];
+  return [
+    renderNavBlocks(schema),
+    wrapHtmlBlock(`
+<section class="wp-section wp-about" data-layout="editorial">
+  <header class="wp-section__header">
+    <p class="wp-section__eyebrow">About</p>
+    <h1>${escapeHtml(voice.aboutTitle)}</h1>
+  </header>
+  <div class="wp-about__content">
+    <p>${escapeHtml(intro)}</p>
+    <ul>
+      ${highlights.map((item) => `<li>${escapeHtml(item)}</li>`).join("\n      ")}
+    </ul>
+  </div>
+</section>`),
+    renderStructuredTestimonialsSection(schema)
+  ].filter(Boolean).join("\n\n");
+}
+function buildServicesPageBlocks(schema) {
+  const voice = getSiteVoice(schema);
+  return [
+    renderNavBlocks(schema),
+    wrapHtmlBlock(`
+<section class="wp-section wp-services" data-layout="editorial">
+  <header class="wp-section__header">
+    <p class="wp-section__eyebrow">Services</p>
+    <h1>${escapeHtml(voice.featuresTitle)}</h1>
+  </header>
+</section>`),
+    renderStructuredFeaturesSection(schema),
+    renderStructuredCtaSection(schema)
+  ].filter(Boolean).join("\n\n");
+}
+function buildGalleryPageBlocks(schema) {
+  const voice = getSiteVoice(schema);
+  return [
+    renderNavBlocks(schema),
+    wrapHtmlBlock(`
+<section class="wp-section wp-gallery-page" data-layout="editorial">
+  <header class="wp-section__header">
+    <p class="wp-section__eyebrow">Gallery</p>
+    <h1>${escapeHtml(voice.galleryTitle)}</h1>
+  </header>
+</section>`),
+    renderStructuredGallerySection(schema)
+  ].filter(Boolean).join("\n\n");
+}
+function buildFaqPageBlocks(schema) {
+  const voice = getSiteVoice(schema);
+  return [
+    renderNavBlocks(schema),
+    wrapHtmlBlock(`
+<section class="wp-section wp-faq-page" data-layout="editorial">
+  <header class="wp-section__header">
+    <p class="wp-section__eyebrow">FAQ</p>
+    <h1>${escapeHtml(voice.faqTitle)}</h1>
+  </header>
+</section>`),
+    renderStructuredFaqSection(schema)
+  ].filter(Boolean).join("\n\n");
+}
+function buildContactPageBlocks(schema) {
+  const voice = getSiteVoice(schema);
+  return [
+    renderNavBlocks(schema),
+    wrapHtmlBlock(`
+<section class="wp-section wp-contact-page" data-layout="split">
+  <header class="wp-section__header">
+    <p class="wp-section__eyebrow">Contact</p>
+    <h1>${escapeHtml(voice.contactTitle)}</h1>
+  </header>
+</section>`),
+    renderStructuredContactSection(schema)
+  ].filter(Boolean).join("\n\n");
+}
+function schemaToGutenbergBlocks(schema) {
+  if (!schema) {
+    return "";
+  }
+  return buildHomePageBlocks(schema);
+}
+function collectWordPressMediaAssets(schema) {
+  const assets = [];
+  for (const section of schema.sections) {
+    if (section.type === "hero" && section.media?.src) {
+      assets.push({
+        sourceUrl: section.media.src,
+        alt: section.media.alt || schema.brand.businessName,
+        preferredFilename: `${schema.meta.slug}-hero`
       });
     }
-  }
-  const uniqueProjectPhotos = [...new Set(projectPhotos.filter(Boolean))];
-  const projectsList = analysis.project_posts || [];
-  for (let i = 0; i < Math.min(4, projectsList.length); i++) {
-    const item = projectsList[i];
-    const title = item.post_title || `Project ${i + 1}`;
-    if (uniqueProjectPhotos[i]) {
-      log(`[ImageGenerator] Project "${title}": Using actual Google Maps photo: ${uniqueProjectPhotos[i]}`);
-      const analyzedTitle = await analyzeProjectImage(uniqueProjectPhotos[i], title, log, options);
-      resultUrls.project_posts[i] = {
-        title: analyzedTitle,
-        url: uniqueProjectPhotos[i]
-      };
-    } else {
-      log(`[ImageGenerator] Project "${title}": No Google Maps photo found, using cabinet fallback`);
-      resultUrls.project_posts[i] = {
-        title,
-        url: getFallbackPlaceholder(`project_${i + 1}`)
-      };
+    if (section.type === "gallery" && Array.isArray(section.items)) {
+      for (const [index, item] of section.items.entries()) {
+        assets.push({
+          sourceUrl: item.src,
+          alt: item.alt || `${schema.brand.businessName} gallery ${index + 1}`,
+          preferredFilename: `${schema.meta.slug}-gallery-${index + 1}`
+        });
+      }
     }
   }
-  if (logoAnalysis && logoAnalysis.action === "use_existing" && logoAnalysis.url) {
-    resultUrls.logo_image = logoAnalysis.url;
-  } else if (logoAnalysis && logoAnalysis.generation_prompt) {
-    taskList.push({
-      run: async () => {
-        resultUrls.logo_image = await generateAndSave(logoAnalysis.generation_prompt, "logo", "16:9");
-      }
-    });
-  } else {
-    resultUrls.logo_image = getFallbackPlaceholder("logo");
+  const unique = /* @__PURE__ */ new Map();
+  for (const asset of assets) {
+    if (asset.sourceUrl) {
+      unique.set(asset.sourceUrl, asset);
+    }
   }
-  if (taskList.length > 0) {
-    log(`[ImageGenerator] Queueing ${taskList.length} AI image generation tasks with concurrency limit of 2...`);
-    let nextIndex = 0;
-    const worker = async () => {
-      while (nextIndex < taskList.length) {
-        const index = nextIndex++;
-        try {
-          await taskList[index].run();
-        } catch (err) {
-          log(`[ImageGenerator] Worker task error: ${err.message || err}`);
-        }
-      }
-    };
-    const limit = 2;
-    const workers = Array.from({ length: Math.min(limit, taskList.length) }, worker);
-    await Promise.all(workers);
-  }
-  return resultUrls;
+  return Array.from(unique.values());
 }
-function pickDesignProfile(category) {
-  return {
-    name: "Bespoke Woodworking",
-    palette: {
-      background: "#E8E6DF",
-      surface: "#ffffff",
-      primary: "#141111",
-      accent: "#80311B",
-      text: "#141111",
-      muted: "#6B6661",
-      outline: "rgba(20, 17, 17, 0.12)"
+function buildWordPressSitePages(schema) {
+  const pages = [
+    {
+      title: schema.brand.businessName || "Home",
+      slug: "home",
+      content: buildHomePageBlocks(schema),
+      isHomepage: true
     },
-    typography: { heading: "Spartan", body: "Inter" }
+    {
+      title: "About",
+      slug: "about",
+      content: buildAboutPageBlocks(schema)
+    },
+    {
+      title: "Services",
+      slug: "services",
+      content: buildServicesPageBlocks(schema)
+    },
+    {
+      title: "Gallery",
+      slug: "gallery",
+      content: buildGalleryPageBlocks(schema)
+    },
+    {
+      title: "FAQ",
+      slug: "faq",
+      content: buildFaqPageBlocks(schema)
+    },
+    {
+      title: "Contact",
+      slug: "contact",
+      content: buildContactPageBlocks(schema)
+    }
+  ];
+  return pages;
+}
+function buildWordPressProvisioningPlan(schema, business, options) {
+  const schemaMeta = schema.meta || {};
+  const siteSlug = slugify(schemaMeta.slug || business.name || "client-site");
+  const emailSlug = slugify(
+    business.name || schema.brand.businessName || "client"
+  );
+  const ownerEmail = options?.ownerEmail || business.email || `${emailSlug}@example-client.test`;
+  const ownerUsername = options?.ownerUsername || slugify(`${emailSlug}-${schemaMeta.businessId || business.id || "lead"}`);
+  return {
+    siteTitle: schema.brand.businessName || business.name || schema.seo.title || "Client Site",
+    siteSlug,
+    ownerEmail,
+    ownerUsername,
+    ownerDisplayName: schema.brand.businessName || business.name || ownerUsername,
+    baseTheme: options?.baseTheme || "digital-scout-base-theme",
+    pages: buildWordPressSitePages(schema),
+    media: collectWordPressMediaAssets(schema),
+    themeSettings: {
+      palette: schema.theme.palette,
+      typography: schema.theme.typography,
+      radius: schema.theme.radius,
+      style: schema.theme.style,
+      name: schema.theme.name
+    }
   };
 }
-function buildHomepageGenerationRequest(business) {
-  const images = collectBusinessImages(business);
-  const [hero, service1, service2, ...gallery] = images;
-  const design = pickDesignProfile(business.category || business.businessType || "");
-  return {
-    business_name: business.name || "Untitled Business",
-    business_category: business.category || business.businessType || "Local Service",
-    short_tagline: business.tagline || business.shortTagline || `${business.category || "Service"} in ${business.neighborhood || business.city || "Your Area"}`,
-    one_sentence_summary: business.summary || business.oneSentenceSummary || `Trusted ${business.category || "service provider"} serving the ${business.neighborhood || business.city || "local"} community.`,
-    primary_cta_text: business.cta_primary_text || "Get Started Today",
-    primary_cta_url: business.cta_primary_url || business.websiteUri || "#contact",
-    secondary_cta_text: business.cta_secondary_text || "Learn More",
-    secondary_cta_url: business.cta_secondary_url || business.websiteUri || "#services",
-    phone: business.phoneNumber || business.phone || "Contact for availability",
-    address: business.address || business.location || "See directions on map",
-    maps_url: business.mapsUrl || `https://maps.google.com/?q=${encodeURIComponent(business.name || "location")}`,
-    hours: business.hours || business.businessHours || "Call for hours of operation",
-    services: business.services && Array.isArray(business.services) ? business.services.slice(0, 5).map((s) => ({
-      title: typeof s === "string" ? s : s.title || s.name || "Service",
-      short_description: typeof s === "string" ? `Professional ${s} service` : s.description || s.short_description || `Professional ${s.title} service`,
-      image_url: s.image_url || s.photo || service1
-    })) : [],
-    categories: business.categories || [business.category],
-    reviews: business.reviews && Array.isArray(business.reviews) ? business.reviews.slice(0, 6).map((r) => ({
-      author: r.author || r.author_name || r.authorName || r.reviewerName || "Customer",
-      rating: r.rating || r.stars || 5,
-      text: r.text || r.review || r.comment || "Excellent service and highly recommended",
-      date: r.date || r.reviewDate || r.relative_time_description || (r.time ? new Date(r.time * 1e3).toLocaleDateString() : void 0)
-    })) : [],
-    images: {
-      hero,
-      service1,
-      service2,
-      gallery: gallery || []
-    },
-    colors: {
-      primary: design.palette.primary,
-      accent: design.palette.accent,
-      neutral: design.palette.background
-    },
-    logo_url: business.logo,
-    local_context: `${business.neighborhood || business.area || business.city || "Local area"}, serving the ${business.city || "community"}`,
-    competitors: business.competitors,
-    trust_logos: business.trustLogos
-  };
-}
-async function callVertexHomepageGeneration(prompt, request, debugLog, options) {
-  const log = debugLog || ((msg) => console.error(msg));
-  log(`[Vertex] Calling unified homepage generation via generateWithFallback...`);
-  log(`[Vertex] Business: ${request.business_name}`);
-  log(`[Vertex] Category: ${request.business_category}`);
-  try {
-    const { generateWithFallback: generateWithFallback2 } = await Promise.resolve().then(() => (init_gemini(), gemini_exports));
-    const responseText = await generateWithFallback2(
-      [
-        {
-          role: "user",
-          parts: [
-            { text: prompt },
-            { text: `
+var init_wordpress = __esm({
+  "src/lib/wordpress.ts"() {
+  }
+});
 
-Business Context (JSON):
-${JSON.stringify(request, null, 2)}` }
-          ]
-        }
-      ],
-      {
-        temperature: 0.1,
-        responseMimeType: "application/json"
-      },
-      {
-        logStderr: log,
-        debugSession: options?.debugSession,
-        throttleGemini: options?.throttleGemini || (async () => {
-        }),
-        persistGenerationDebugFile: options?.persistFile ? (session, filename, content) => options.persistFile(filename, content) : void 0,
-        contextLabel: "direct-vertex-prompt"
-      }
-    );
-    if (!responseText) {
-      throw new Error("Vertex returned empty response");
-    }
-    log(`[Vertex] Response received (${responseText.length} characters)`);
-    let jsonString = responseText.trim();
-    if (jsonString.startsWith("```")) {
-      jsonString = jsonString.replace(/^```[a-zA-Z]*\n/, "").replace(/\n```$/, "");
-    }
-    log(`[RAW VERTEX RESPONSE]: ${jsonString}`);
-    let parsed = JSON.parse(jsonString);
-    if (parsed && parsed.hero && parsed.about && parsed.services && !parsed.elementorContent) {
-      log("[Vertex] Detected direct root sections; wrapping under elementorContent");
-      parsed = {
-        elementorContent: {
-          hero: parsed.hero,
-          about: parsed.about,
-          services: parsed.services,
-          features: parsed.features,
-          projects: parsed.projects,
-          process: parsed.process,
-          testimonials: parsed.testimonials
-        },
-        notes: parsed.notes || "Auto-wrapped from direct root sections"
-      };
-    }
-    if (!parsed || !parsed.elementorContent || !parsed.elementorContent.hero || !parsed.elementorContent.about || !parsed.elementorContent.services) {
-      throw new Error(
-        "Invalid response structure: missing elementorContent or required sections (hero, about, services)"
-      );
-    }
-    log(`[Vertex] Parsed response successfully`);
-    log(
-      `[Vertex] Generated Hero Heading: "${parsed.elementorContent.hero.heading}"`
-    );
-    return parsed;
-  } catch (error) {
-    log(
-      `[Vertex] Generation failed: ${error instanceof Error ? error.message : String(error)}`
-    );
-    throw error;
-  }
+// src/lib/direct-homepage-renderer.ts
+function escapeHtml2(s) {
+  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
-function wrapForWordPress(homepageResult) {
+function pickHeroImage(schema) {
+  const photos = schema.brand && schema.brand.photos || schema.photos || [];
+  if (photos && photos.length) return photos[0];
+  const src = (schema.sections || []).map(
+    (s) => s.media && s.media.src || s.items && s.items[0] && s.items[0].src
+  ).find(Boolean);
+  return src || "";
+}
+function renderBusinessHomepage(schema) {
+  const brand = schema.brand || {};
+  const name = escapeHtml2(brand.businessName || "Your Business");
+  const category = escapeHtml2(brand.category || "Local Service");
+  const address = escapeHtml2(brand.address || "");
+  const phone = escapeHtml2(brand.phone || "");
+  const heroImage = pickHeroImage(schema);
+  const css = `:root{--bg:#fafafa;--surface:#ffffff;--muted:#6b7280;--accent:#1e40af;--radius:16px;--gap:24px}
+body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,-apple-system,Helvetica,Arial;color:#0f172a;background:var(--bg)}
+.site{max-width:1200px;margin:0 auto;padding:40px 20px}
+.hero{display:grid;grid-template-columns:1fr 520px;gap:var(--gap);align-items:center;padding:48px 0}
+.hero__content{padding:28px;background:var(--surface);border-radius:var(--radius);box-shadow:0 10px 30px rgba(2,6,23,0.06)}
+.hero__eyebrow{color:var(--accent);font-weight:700;letter-spacing:0.08em;font-size:0.85rem;margin-bottom:8px}
+.hero__title{font-size:clamp(2rem,4vw,3.6rem);margin:0 0 12px;line-height:1.02}
+.hero__lead{color:var(--muted);margin:0 0 18px;max-width:44ch}
+.cta-row{display:flex;gap:12px}
+.btn{display:inline-block;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:700}
+.btn--primary{background:var(--accent);color:#fff}
+.btn--secondary{background:transparent;border:2px solid rgba(15,23,42,0.06);color:var(--accent)}
+.hero__visual{border-radius:var(--radius);overflow:hidden;height:440px;background-size:cover;background-position:center;box-shadow:0 18px 50px rgba(2,6,23,0.08)}
+.section{display:grid;grid-template-columns:1fr 1fr;gap:32px;padding:64px 0;align-items:start}
+.section--stack{grid-template-columns:1fr}
+.services{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.service{background:var(--surface);padding:18px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.04)}
+.gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.gallery img{width:100%;height:160px;object-fit:cover;border-radius:12px}
+.trust-cards{display:flex;gap:12px;flex-wrap:wrap}
+.trust{background:var(--surface);padding:16px;border-radius:10px;min-width:180px}
+.contact{background:linear-gradient(180deg,#fff,#f8fafc);padding:20px;border-radius:12px}
+@media(max-width:980px){.hero{grid-template-columns:1fr;gap:18px}.hero__visual{height:320px}.section{grid-template-columns:1fr}.gallery{grid-template-columns:repeat(2,1fr)}}`;
+  const heroHtml = `
+  <header class="hero">
+    <div class="hero__content">
+      <div class="hero__eyebrow">${category}</div>
+      <h1 class="hero__title">${name}</h1>
+      <p class="hero__lead">Museum-quality restoration and meticulous workshop craftsmanship. We repair, restore and preserve heirlooms with visible provenance and local authenticity.</p>
+      <div class="cta-row">
+        <a class="btn btn--primary" href="#contact">Book a consultation</a>
+        <a class="btn btn--secondary" href="#gallery">View the work</a>
+      </div>
+      <div style="margin-top:18px;color:var(--muted);font-size:0.95rem">${address}${phone ? ` \u2022 ${phone}` : ""}</div>
+    </div>
+    <div class="hero__visual" style="background-image:url('${escapeHtml2(heroImage)}')"></div>
+  </header>`;
+  const servicesSection = (schema.sections || []).find(
+    (s) => s.type === "features" || s.type === "service"
+  );
+  const services = servicesSection && Array.isArray(servicesSection.items) ? servicesSection.items.slice(0, 4).map(
+    (it) => `<div class="service"><strong>${escapeHtml2(it.title || it.name || "Service")}</strong><p style="margin:8px 0 0;color:var(--muted)">${escapeHtml2(it.description || it.copy || "Professional service delivered with care.")}</p></div>`
+  ).join("") : [
+    `<div class="service"><strong>Conservation & Restoration</strong><p style="margin:8px 0 0;color:var(--muted)">Museum-grade restoration for antiques and heirlooms.</p></div>`,
+    `<div class="service"><strong>Refinishing & Repair</strong><p style="margin:8px 0 0;color:var(--muted)">Structural repairs and surface refinishing to restore integrity.</p></div>`
+  ].join("");
+  const servicesHtml = `<section class="section"><div><h2>What we do</h2><div class="services">${services}</div></div><aside><h3>Why choose us</h3><p style="color:var(--muted)">Local workshop with decades of experience, transparent process, and visible before/after evidence.</p><div class="trust-cards"><div class="trust"><strong>4.9/5</strong><div style="color:var(--muted)">Average client rating</div></div><div class="trust"><strong>Certified</strong><div style="color:var(--muted)">Conservation-grade materials</div></div></div></aside></section>`;
+  const galleryImages = ((schema.sections || []).filter((s) => s.type === "gallery").flatMap((g) => g.items || []) || []).slice(0, 6).map((it) => it.src).filter(Boolean);
+  const galleryHtml = `<section id="gallery" class="section section--stack"><div><h2>Selected work</h2><div class="gallery">${(galleryImages.length ? galleryImages : [""]).map((src) => `<img src="${escapeHtml2(src || "")}">`).join("")}</div></div></section>`;
+  const testimonials = ((schema.sections || []).find((s) => s.type === "testimonials") || {}).items || [];
+  const testimonialsHtml = testimonials.length ? `<section class="section"><div><h2>What clients say</h2><div>${testimonials.slice(0, 3).map(
+    (t) => `<div class="service"><blockquote style="margin:0 0 8px">${escapeHtml2(t.copy || t.content || t.text || "Great work.")}</blockquote><footer style="color:var(--muted);font-size:0.9rem">\u2014 ${escapeHtml2(t.author || "Client")}</footer></div>`
+  ).join("")}</div></div></section>` : "";
+  const contactHtml = `<section id="contact" class="section"><div><h2>Contact</h2><div class="contact"><p style="margin:0 0 8px;color:var(--muted)">Ready to start? Book an in-workshop consultation.</p><p style="margin:0"><strong>${name}</strong><br/>${address}<br/>${phone ? `<a href="tel:${phone}">${phone}</a>` : ""}</p></div></div><aside><h3>Request a quote</h3><p style="color:var(--muted)">Send images of your piece and we'll follow up with next steps.</p></aside></section>`;
+  const html = `<main class="site">${heroHtml}${servicesHtml}${galleryHtml}${testimonialsHtml}${contactHtml}</main>`;
+  return { html, css };
+}
+var init_direct_homepage_renderer = __esm({
+  "src/lib/direct-homepage-renderer.ts"() {
+  }
+});
+
+// src/lib/premium-site-builder.ts
+var premium_site_builder_exports = {};
+__export(premium_site_builder_exports, {
+  buildPremiumPageContent: () => buildPremiumPageContent,
+  esc: () => esc
+});
+function esc(str) {
+  return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function buildPremiumPageContent(schema) {
+  if (schema && schema._wordpressHtml) {
+    return schema._wordpressHtml;
+  }
+  const result = renderBusinessHomepage(schema);
   const cssBlock = `<!-- wp:html -->
 <style>
-${homepageResult.css}
+${result.css}
 </style>
 <!-- /wp:html -->`;
-  const htmlBlock = `<!-- wp:group {"align":"full","layout":{"type":"constrained"}} -->
+  const wrappedHtml = `<!-- wp:group {"align":"full","layout":{"type":"constrained"}} -->
 <div class="wp-block-group alignfull">
-${homepageResult.html}
+${result.html}
 </div>
 <!-- /wp:group -->`;
   return `${cssBlock}
 
-${htmlBlock}`;
+${wrappedHtml}`;
 }
-async function generateHomepageViaDirectVertexPrompt(business, options) {
-  const log = options?.debugLog || ((msg) => console.error(msg));
-  const persist = options?.persistFile || ((filename, content) => {
-  });
-  try {
-    log(`[DirectVertex] Starting image pre-filtering and resolution...`);
-    const imageAnalysis = await analyzeAndFilterImages(business, log, {
-      throttleGemini: options?.throttleGemini,
-      debugSession: options?.debugSession
-    });
-    persist("01a-image-analysis.json", imageAnalysis);
-    const logoAnalysis = await detectOrGenerateLogo(business, log, {
-      throttleGemini: options?.throttleGemini,
-      debugSession: options?.debugSession
-    });
-    persist("01logo-analysis.json", logoAnalysis);
-    const resolvedImages = await resolveSectionImages(imageAnalysis, log, logoAnalysis, business, {
-      throttleGemini: options?.throttleGemini,
-      debugSession: options?.debugSession
-    });
-    persist("01b-resolved-images.json", resolvedImages);
-    const request = buildHomepageGenerationRequest(business);
-    request.images = {
-      hero: resolvedImages.hero_image,
-      service1: resolvedImages.services_image,
-      service2: resolvedImages.about_image,
-      gallery: [resolvedImages.masked_image, ...resolvedImages.testimonials_slideshow]
-    };
-    persist("01-homepage-generation-request.json", request);
-    log(`[DirectVertex] Starting deterministic homepage generation...`);
-    const response = await callVertexHomepageGeneration(
-      VERTEX_HOMEPAGE_GENERATION_PROMPT,
-      request,
-      log,
-      options
-    );
-    if (response.elementorContent) {
-      if (!response.elementorContent.hero) response.elementorContent.hero = {};
-      response.elementorContent.hero.hero_image = resolvedImages.hero_image;
-      response.elementorContent.hero.masked_image = resolvedImages.masked_image;
-      if (!response.elementorContent.about) response.elementorContent.about = {};
-      response.elementorContent.about.image = resolvedImages.about_image;
-      if (!response.elementorContent.services) response.elementorContent.services = {};
-      response.elementorContent.services.image = resolvedImages.services_image;
-      if (!response.elementorContent.testimonials) response.elementorContent.testimonials = {};
-      response.elementorContent.testimonials.slideshow = resolvedImages.testimonials_slideshow;
-      if (!response.elementorContent.projects) response.elementorContent.projects = {};
-      response.elementorContent.projects.posts = resolvedImages.project_posts;
-      response.elementorContent.logo_image = resolvedImages.logo_image;
-    }
-    persist("02-vertex-response.json", response);
-    const schema = {
-      id: business.id || `homepage-${Date.now()}`,
-      businessId: business.id,
-      businessName: business.name || "Untitled",
-      schemaVersion: "1.0",
-      meta: {
-        businessId: business.id || `biz-${Date.now()}`,
-        siteId: `site-${business.id || "business"}-${Date.now()}`,
-        slug: (business.name || "site").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
-        version: 1,
-        target: "wordpress",
-        traceId: options?.debugSession?.traceId
-      },
-      brand: {
-        businessName: business.name || "Business",
-        category: business.category || "Local Business",
-        address: business.address || "",
-        phone: business.phoneNumber || "",
-        email: business.email || "",
-        websiteUri: business.websiteUri || "",
-        logo: resolvedImages.logo_image || business.logo || "",
-        hours: business.hours || business.businessHours || ""
-      },
-      seo: {
-        title: `${business.name || "Business"} | Preview`,
-        description: business.tagline || `Bespoke web presentation for ${business.name || "our client"}.`,
-        keywords: [business.category || "Local Business"]
-      },
-      theme: (() => {
-        const design = pickDesignProfile(business.category || business.businessType || "");
-        const primary = request.colors?.primary || design.palette.primary;
-        const accent = request.colors?.accent || design.palette.accent;
-        const neutral = request.colors?.neutral || design.palette.background;
-        return {
-          primaryColor: primary,
-          accentColor: accent,
-          neutralColor: neutral,
-          name: "modern-agency",
-          mode: "light",
-          palette: {
-            primary,
-            surface: design.palette.surface,
-            background: neutral,
-            accent,
-            text: design.palette.text,
-            muted: design.palette.muted,
-            outline: design.palette.outline
-          },
-          typography: {
-            heading: design.typography.heading,
-            body: design.typography.body
-          }
-        };
-      })(),
-      sections: [],
-      createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-      _wordpressHtml: "",
-      _renderSource: "direct-vertex-prompt",
-      _generatedHomepage: response,
-      elementorContent: response.elementorContent,
-      notes: response.notes,
-      _validation: {
-        rating: business.rating || 0,
-        reviewCount: business.reviewCount || 0,
-        repairs: [],
-        validatedAt: (/* @__PURE__ */ new Date()).toISOString(),
-        traceId: options?.debugSession?.traceId,
-        photos: business.photos || [],
-        imageSuggestions: business.imageSuggestions || [],
-        logo: business.logo || ""
-      }
-    };
-    persist("04-minimal-schema.json", schema);
-    log(`[DirectVertex] Homepage generation complete`);
-    return schema;
-  } catch (error) {
-    log(
-      `[DirectVertex] Failed: ${error instanceof Error ? error.message : String(error)}`
-    );
-    throw error;
-  }
-}
-var GENAI_KEY, direct_vertex_homepage_generation_default;
-var init_direct_vertex_homepage_generation = __esm({
-  "src/lib/direct-vertex-homepage-generation.ts"() {
-    init_vertex_homepage_generation_prompt();
-    init_gemini();
-    GENAI_KEY = process.env.GEMINI_API_KEY || process.env.GENAI_KEY;
-    direct_vertex_homepage_generation_default = {
-      generateHomepageViaDirectVertexPrompt,
-      buildHomepageGenerationRequest,
-      callVertexHomepageGeneration,
-      wrapForWordPress
-    };
+var init_premium_site_builder = __esm({
+  "src/lib/premium-site-builder.ts"() {
+    init_direct_homepage_renderer();
   }
 });
 
@@ -2980,9 +2980,9 @@ async function initializeDatabase() {
 
 // src/lib/provisioning-engine.ts
 import * as crypto from "crypto";
-import * as fs4 from "fs";
-import * as path3 from "path";
-import crossFetch from "cross-fetch";
+import * as fs5 from "fs";
+import * as path4 from "path";
+import crossFetch2 from "cross-fetch";
 
 // src/lib/cpanel-uapi.ts
 import { exec } from "child_process";
@@ -3207,6 +3207,52 @@ async function setDatabasePrivileges(dbUser, dbName, privileges = "ALL PRIVILEGE
     database: dbName,
     privileges
   });
+}
+async function checkSubdomainExists(subdomain, rootDomain) {
+  const fullDomain = `${subdomain}.${rootDomain}`;
+  try {
+    const data = await callUapiRemote("DomainInfo", "list_domains", {});
+    if (data) {
+      const subdomains = data.sub_domains || [];
+      const mainDomain = data.main_domain || "";
+      const addonDomains = data.addon_domains || [];
+      const parkedDomains = data.parked_domains || [];
+      const all = [mainDomain, ...subdomains, ...addonDomains, ...parkedDomains].filter(Boolean).map((d) => d.toLowerCase());
+      if (all.includes(fullDomain.toLowerCase())) {
+        return true;
+      }
+    }
+  } catch (e) {
+    process.stderr.write(`[cPanel-SSH] DomainInfo::list_domains failed: ${e.message}. Trying SubDomain::listsubdomains...
+`);
+    try {
+      const data = await callUapiRemote("SubDomain", "listsubdomains", {});
+      if (Array.isArray(data)) {
+        const found = data.some((sub) => {
+          const dom = (sub.domain || "").toLowerCase();
+          const subD = (sub.subdomain || "").toLowerCase();
+          return dom === fullDomain.toLowerCase() || subD === subdomain.toLowerCase();
+        });
+        if (found) return true;
+      }
+    } catch (e2) {
+      process.stderr.write(`[cPanel-SSH] SubDomain::listsubdomains failed: ${e2.message}.
+`);
+    }
+  }
+  return false;
+}
+async function remoteDirectoryExists(dirPath) {
+  const sshPrefix = getSshPrefix();
+  const cmd = `${sshPrefix} 'test -d "${dirPath}" && echo "exists" || echo "not_exists"'`;
+  try {
+    const { stdout } = await execAsync(cmd, { timeout: 15e3 });
+    return stdout.trim() === "exists";
+  } catch (e) {
+    process.stderr.write(`[cPanel-SSH] Check remote directory exists failed: ${e.message}
+`);
+    return false;
+  }
 }
 
 // src/lib/wp-cli.ts
@@ -4195,8 +4241,9 @@ footer img[src*="gen_logo"],
 }
 
 // src/lib/provisioning-engine.ts
+init_gemini();
 var MAX_RETRIES = 3;
-var DEBUG_ROOT_DIR = path3.join(process.cwd(), ".debug-generation");
+var DEBUG_ROOT_DIR = path4.join(process.cwd(), ".debug-generation");
 var MAX_SUBDOMAIN_LENGTH = 45;
 var SUBDOMAIN_SEMANTIC_VARIANTS = [
   "-shop",
@@ -4252,6 +4299,41 @@ async function generateUniqueSubdomain(businessName) {
     MAX_SUBDOMAIN_LENGTH
   ));
 }
+async function suggestAlternativeSubdomainViaVertex(businessName, existingSubdomain, attemptNumber, log) {
+  try {
+    log(`[cPanel-Subdomain] Querying Vertex for an alternative subdomain for "${businessName}" because "${existingSubdomain}" is taken.`);
+    const prompt = `You are a professional local business web hosting setup assistant.
+The business name is "${businessName}".
+The primary subdomain candidate "${existingSubdomain}" is already taken on our server.
+Please suggest one alternative, professional, clean, DNS-safe subdomain name that is highly relevant to this business.
+Follow these rules strictly:
+1. ONLY lowercase letters, numbers, and hyphens are allowed. No other characters.
+2. Max 45 characters long.
+3. It must be different from "${existingSubdomain}".
+4. It must NOT contain suffixes like "-1" or random numbers. Make it semantic and professional (e.g., adding words like "cabinetry", "woodwork", "shop", "builders", or local keywords if relevant).
+5. Attempt number: ${attemptNumber}. If attempt is greater than 1, make it more unique.
+6. Return ONLY the alternative subdomain name string itself, with no explanation, no formatting, no markdown, and no punctuation.`;
+    const responseText = await generateWithFallback(
+      prompt,
+      { temperature: 0.7 },
+      {
+        logStderr: log,
+        throttleGemini: async () => {
+        },
+        contextLabel: "alternative-subdomain-generation"
+      }
+    );
+    const result = responseText?.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+    if (result && result.length > 2 && result !== existingSubdomain) {
+      log(`[cPanel-Subdomain] Vertex suggested alternative subdomain: "${result}"`);
+      return result;
+    }
+  } catch (e) {
+    log(`[cPanel-Subdomain] Vertex error suggesting subdomain: ${e.message || e}`);
+  }
+  const suffix = crypto.randomBytes(3).toString("hex");
+  return cleanSubdomain(`${sanitizeSubdomainBase(businessName)}-${suffix}`.substring(0, MAX_SUBDOMAIN_LENGTH));
+}
 function generateSecurePassword() {
   return crypto.randomBytes(16).toString("hex") + "!aA1";
 }
@@ -4279,7 +4361,7 @@ async function appendLog(jobId, message) {
   const timestamp = (/* @__PURE__ */ new Date()).toISOString();
   const logEntry = `[${timestamp}] ${message}`;
   console.log(`[Job ${jobId}] ${message}`);
-  fs4.writeSync(2, `[Job ${jobId}] ${message}
+  fs5.writeSync(2, `[Job ${jobId}] ${message}
 `);
   await pool.query(
     `UPDATE provisioning_jobs SET logs = JSON_ARRAY_APPEND(COALESCE(logs, JSON_ARRAY()), '$', ?) WHERE id = ?`,
@@ -4340,13 +4422,84 @@ async function executeStateMachine(job) {
         [subdomain, job.id]
       );
     }
-    const fullDocRoot = `${docRootBase}/${subdomain}`;
-    await appendLog(job.id, `Remote doc root will be: ${fullDocRoot}`);
-    await addSubdomain(subdomain, rootDomain, fullDocRoot);
-    await appendLog(
-      job.id,
-      `Created subdomain: ${subdomain}.${rootDomain} \u2192 ${fullDocRoot}`
-    );
+    let subdomainOk = false;
+    let attempts = 0;
+    const maxSubdomainAttempts = 3;
+    while (!subdomainOk && attempts < maxSubdomainAttempts) {
+      attempts++;
+      const fullDocRoot = `${docRootBase}/${subdomain}`;
+      await appendLog(job.id, `Remote doc root will be: ${fullDocRoot}`);
+      let existsOnServer = false;
+      try {
+        const subExists = await checkSubdomainExists(subdomain, rootDomain);
+        const dirExists = await remoteDirectoryExists(fullDocRoot);
+        if (subExists || dirExists) {
+          existsOnServer = true;
+          await appendLog(
+            job.id,
+            `Subdomain "${subdomain}.${rootDomain}" or remote directory "${fullDocRoot}" already exists on Namecheap/cPanel server.`
+          );
+        }
+      } catch (chkErr) {
+        await appendLog(
+          job.id,
+          `Warning during subdomain existence pre-check: ${chkErr.message || chkErr}`
+        );
+      }
+      if (existsOnServer) {
+        if (attempts < maxSubdomainAttempts) {
+          const prevSubdomain = subdomain;
+          subdomain = await suggestAlternativeSubdomainViaVertex(
+            job.business_name || job.project_id,
+            prevSubdomain,
+            attempts,
+            (msg) => appendLog(job.id, msg)
+          );
+          await appendLog(job.id, `Retrying subdomain check with Vertex suggested alternative: "${subdomain}"`);
+          await pool.query(
+            `UPDATE provisioning_jobs SET subdomain = ? WHERE id = ?`,
+            [subdomain, job.id]
+          );
+          continue;
+        } else {
+          throw new Error(`Failed to find a unique subdomain after ${maxSubdomainAttempts} attempts. Last tried: "${subdomain}"`);
+        }
+      }
+      try {
+        await addSubdomain(subdomain, rootDomain, fullDocRoot);
+        await appendLog(
+          job.id,
+          `Created subdomain: ${subdomain}.${rootDomain} \u2192 ${fullDocRoot}`
+        );
+        subdomainOk = true;
+      } catch (subErr) {
+        const errMsg = subErr.message || String(subErr);
+        if (errMsg.includes("already exists") || errMsg.includes("exists") || errMsg.includes("closed by remote host")) {
+          await appendLog(
+            job.id,
+            `Subdomain "${subdomain}.${rootDomain}" collision or connection closure detected: "${errMsg}"`
+          );
+          if (attempts < maxSubdomainAttempts) {
+            const prevSubdomain = subdomain;
+            subdomain = await suggestAlternativeSubdomainViaVertex(
+              job.business_name || job.project_id,
+              prevSubdomain,
+              attempts,
+              (msg) => appendLog(job.id, msg)
+            );
+            await appendLog(job.id, `Retrying subdomain creation with Vertex suggested alternative: "${subdomain}"`);
+            await pool.query(
+              `UPDATE provisioning_jobs SET subdomain = ? WHERE id = ?`,
+              [subdomain, job.id]
+            );
+          } else {
+            throw new Error(`Failed to create a unique subdomain after ${maxSubdomainAttempts} attempts. Last tried: "${subdomain}"`);
+          }
+        } else {
+          throw subErr;
+        }
+      }
+    }
     job.status = "creating_database";
   }
   if (job.status === "creating_database") {
@@ -4493,8 +4646,8 @@ async function executeStateMachine(job) {
         `Warning: Elementor plugin install failed (${e.message})`
       );
     }
-    const localProZipPath = path3.join(process.cwd(), "elementor-pro-4.0.4.zip");
-    if (fs4.existsSync(localProZipPath)) {
+    const localProZipPath = path4.join(process.cwd(), "elementor-pro-4.0.4.zip");
+    if (fs5.existsSync(localProZipPath)) {
       await appendLog(job.id, "Found Elementor Pro zip file. Uploading to remote server...");
       const remoteProZipPath = `/tmp/elementor-pro-4.0.4.zip`;
       try {
@@ -4726,16 +4879,16 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
       if (schema.brand?.logo) {
         imageSet.add(schema.brand.logo);
       }
-      const templateDir = path3.join(process.cwd(), "elementor-kit-2");
+      const templateDir = path4.join(process.cwd(), "elementor-kit-2");
       const templateFiles = [
-        path3.join(templateDir, "content", "page", "2.json"),
-        path3.join(templateDir, "templates", "49.json"),
-        path3.join(templateDir, "templates", "156.json")
+        path4.join(templateDir, "content", "page", "2.json"),
+        path4.join(templateDir, "templates", "49.json"),
+        path4.join(templateDir, "templates", "156.json")
       ];
       for (const file of templateFiles) {
-        if (fs4.existsSync(file)) {
+        if (fs5.existsSync(file)) {
           try {
-            const content2 = fs4.readFileSync(file, "utf8").replace(/\\/g, "");
+            const content2 = fs5.readFileSync(file, "utf8").replace(/\\/g, "");
             const matches = content2.match(/https?:\/\/library\.elementor\.com\/[^\s"'}]+/g);
             if (matches) {
               for (const match of matches) {
@@ -4757,8 +4910,8 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
             const marker = isDefault ? "/public/default/" : "/public/generated-images/";
             const parts = imgUrl.split(marker);
             const filename = decodeURIComponent(parts[parts.length - 1]);
-            const localPath = path3.join(process.cwd(), "public", isDefault ? "default" : "generated-images", filename);
-            if (fs4.existsSync(localPath)) {
+            const localPath = path4.join(process.cwd(), "public", isDefault ? "default" : "generated-images", filename);
+            if (fs5.existsSync(localPath)) {
               await logCallback(`Detected local image: ${filename}. Copying to remote server...`);
               const ext = filename.toLowerCase().endsWith(".png") ? "png" : "jpg";
               const remoteTmpMedia = `/tmp/ds_local_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
@@ -4787,19 +4940,19 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
             try {
               await logCallback(`Downloading image locally on Node server first: ${imgUrl}`);
               const ext = imgUrl.toLowerCase().includes(".png") ? "png" : "jpg";
-              const tempLocalDir = path3.join(process.cwd(), "scratch", "downloads");
-              if (!fs4.existsSync(tempLocalDir)) {
-                fs4.mkdirSync(tempLocalDir, { recursive: true });
+              const tempLocalDir = path4.join(process.cwd(), "scratch", "downloads");
+              if (!fs5.existsSync(tempLocalDir)) {
+                fs5.mkdirSync(tempLocalDir, { recursive: true });
               }
-              const tempLocalPath = path3.join(tempLocalDir, `dl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`);
-              const response = await crossFetch(imgUrl, {
+              const tempLocalPath = path4.join(tempLocalDir, `dl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`);
+              const response = await crossFetch2(imgUrl, {
                 headers: {
                   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                 }
               });
               if (response.ok) {
                 const arrayBuffer = await response.arrayBuffer();
-                fs4.writeFileSync(tempLocalPath, Buffer.from(arrayBuffer));
+                fs5.writeFileSync(tempLocalPath, Buffer.from(arrayBuffer));
                 await logCallback(`Copying downloaded file to remote server via SSH: ${tempLocalPath}`);
                 const remoteTmpMedia = `/tmp/ds_dl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
                 try {
@@ -4816,8 +4969,8 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
                 } finally {
                   await runRemoteShellCommand(`rm -f "${remoteTmpMedia}"`, logCallback).catch(() => {
                   });
-                  if (fs4.existsSync(tempLocalPath)) {
-                    fs4.unlinkSync(tempLocalPath);
+                  if (fs5.existsSync(tempLocalPath)) {
+                    fs5.unlinkSync(tempLocalPath);
                   }
                 }
               } else {
@@ -5073,9 +5226,9 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
         activeKitId = kitOut.stdout.trim();
         await logCallback(`Active Elementor kit ID: ${activeKitId}`);
         if (activeKitId) {
-          const kitSettingsPath = path3.join(process.cwd(), "elementor-kit-2", "site-settings.json");
-          if (fs4.existsSync(kitSettingsPath)) {
-            const rawKitSettings = JSON.parse(fs4.readFileSync(kitSettingsPath, "utf8"));
+          const kitSettingsPath = path4.join(process.cwd(), "elementor-kit-2", "site-settings.json");
+          if (fs5.existsSync(kitSettingsPath)) {
+            const rawKitSettings = JSON.parse(fs5.readFileSync(kitSettingsPath, "utf8"));
             const updatedKit = updateElementorKitSettings(rawKitSettings, schema);
             updatedKitSettingsJson = JSON.stringify(updatedKit.settings || {});
           } else {
@@ -5298,15 +5451,15 @@ ${content}
     const traceId = schema?.meta?.traceId || schema?._validation?.traceId;
     if (traceId) {
       try {
-        const traceDir = path3.join(DEBUG_ROOT_DIR, traceId);
-        fs4.mkdirSync(traceDir, { recursive: true });
-        fs4.writeFileSync(
-          path3.join(traceDir, "11-wp-injected.html"),
+        const traceDir = path4.join(DEBUG_ROOT_DIR, traceId);
+        fs5.mkdirSync(traceDir, { recursive: true });
+        fs5.writeFileSync(
+          path4.join(traceDir, "11-wp-injected.html"),
           content,
           "utf8"
         );
-        fs4.writeFileSync(
-          path3.join(traceDir, "11-wp-injected-meta.json"),
+        fs5.writeFileSync(
+          path4.join(traceDir, "11-wp-injected-meta.json"),
           JSON.stringify(
             {
               renderSource,
@@ -5380,8 +5533,8 @@ ${content}
         if (schema.brand.logo.includes("/public/generated-images/")) {
           const parts = schema.brand.logo.split("/public/generated-images/");
           const filename = parts[parts.length - 1];
-          const localPath = path3.join(process.cwd(), "public", "generated-images", filename);
-          if (fs4.existsSync(localPath)) {
+          const localPath = path4.join(process.cwd(), "public", "generated-images", filename);
+          if (fs5.existsSync(localPath)) {
             await logCallback(`Detected local generated logo: ${filename}. Copying to remote server...`);
             const ext = filename.toLowerCase().endsWith(".png") ? "png" : "jpg";
             const remoteTmpMedia = `/tmp/ds_logo_${Date.now()}.${ext}`;
@@ -5451,27 +5604,27 @@ ${content}
     }
     await logCallback("Premium WordPress site injection complete \u2713");
     try {
-      const subdomain = path3.basename(docRoot);
+      const subdomain = path4.basename(docRoot);
       const rootDomain = process.env.WP_ROOT_DOMAIN || "digiscoutwp.online";
       const siteUrl = `http://${subdomain}.${rootDomain}`;
       if (siteUrl) {
         await logCallback(
           `Fetching final rendered site at ${siteUrl} for debug capture...`
         );
-        const resp = await crossFetch(siteUrl);
+        const resp = await crossFetch2(siteUrl);
         const finalDom = await resp.text().catch(() => "");
         const traceId2 = schema?.meta?.traceId || schema?._validation?.traceId;
         if (traceId2 && finalDom) {
-          const traceDir = path3.join(DEBUG_ROOT_DIR, traceId2);
-          fs4.mkdirSync(traceDir, { recursive: true });
-          fs4.writeFileSync(
-            path3.join(traceDir, "12-wp-final-dom.html"),
+          const traceDir = path4.join(DEBUG_ROOT_DIR, traceId2);
+          fs5.mkdirSync(traceDir, { recursive: true });
+          fs5.writeFileSync(
+            path4.join(traceDir, "12-wp-final-dom.html"),
             finalDom,
             "utf8"
           );
           const stripped = finalDom.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/\sstyle="[^"]*"/gi, "");
-          fs4.writeFileSync(
-            path3.join(traceDir, "12-wp-final-dom-stripped.html"),
+          fs5.writeFileSync(
+            path4.join(traceDir, "12-wp-final-dom-stripped.html"),
             stripped,
             "utf8"
           );
@@ -5483,8 +5636,8 @@ ${content}
             ),
             length: finalDom.length
           };
-          fs4.writeFileSync(
-            path3.join(traceDir, "12-wp-final-mutations.json"),
+          fs5.writeFileSync(
+            path4.join(traceDir, "12-wp-final-mutations.json"),
             JSON.stringify(wpMutations, null, 2),
             "utf8"
           );
