@@ -1353,7 +1353,8 @@ $global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !imp
 	'  .elementor-element-49f8bd39, .elementor-element-35a4f6fb, .elementor-element-39f1fa01 { height: calc(100vh - 120px) !important; min-height: calc(100vh - 120px) !important; } ' .
 	'  .elementor-element-4d1645d0 { aspect-ratio: 4 / 3 !important; height: auto !important; min-height: auto !important; } ' .
 	'  .elementor-element-51305b21 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; } ' .
-	'  .elementor-element-1b226200 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; } ' .
+	'  .elementor-element-1b226200 { display: flex !important; flex-direction: column !important; justify-content: flex-start !important; align-items: stretch !important; padding-top: 0 !important; padding-bottom: 0 !important; aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; } ' .
+	'  .elementor-element-56a3deab { height: 100% !important; min-height: 100% !important; align-self: stretch !important; margin-top: 0 !important; margin-bottom: 0 !important; } ' .
 	'}';
 update_option('elementor_custom_css', $global_css);
 echo "GLOBAL_CSS_SET\n";
@@ -1415,7 +1416,8 @@ add_action("wp_head", function() {
         .elementor-element-49f8bd39, .elementor-element-35a4f6fb, .elementor-element-39f1fa01 { height: calc(100vh - 120px) !important; min-height: calc(100vh - 120px) !important; }
         .elementor-element-4d1645d0 { aspect-ratio: 4 / 3 !important; height: auto !important; min-height: auto !important; }
         .elementor-element-51305b21 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
-        .elementor-element-1b226200 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
+        .elementor-element-1b226200 { display: flex !important; flex-direction: column !important; justify-content: flex-start !important; align-items: stretch !important; padding-top: 0 !important; padding-bottom: 0 !important; aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
+        .elementor-element-56a3deab { height: 100% !important; min-height: 100% !important; align-self: stretch !important; margin-top: 0 !important; margin-bottom: 0 !important; }
     }
     </style>
     <?php

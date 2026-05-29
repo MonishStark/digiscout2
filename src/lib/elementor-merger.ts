@@ -946,9 +946,22 @@ footer img[src*="gen_logo"],
     
     /* CTA */
     .elementor-element-1b226200 {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: flex-start !important;
+        align-items: stretch !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
         aspect-ratio: 16 / 9 !important;
         height: auto !important;
         min-height: auto !important;
+    }
+    .elementor-element-56a3deab {
+        height: 100% !important;
+        min-height: 100% !important;
+        align-self: stretch !important;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
     }
 }
 </style>`
