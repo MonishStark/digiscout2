@@ -826,15 +826,10 @@ footer img[src*="gen_logo"],
 
 /* Responsive Aspect Ratio Scaling to prevent background cropping */
 @media (min-width: 768px) {
-    /* Hero split layout */
-    .elementor-element-49f8bd39 {
-        height: auto !important;
-        min-height: auto !important;
-    }
-    .elementor-element-35a4f6fb, .elementor-element-39f1fa01 {
-        aspect-ratio: 3 / 4 !important;
-        height: auto !important;
-        min-height: auto !important;
+    /* Hero split layout - Fit viewport height on load */
+    .elementor-element-49f8bd39, .elementor-element-35a4f6fb, .elementor-element-39f1fa01 {
+        height: calc(100vh - 120px) !important;
+        min-height: calc(100vh - 120px) !important;
     }
     
     /* Home Goods (About) */

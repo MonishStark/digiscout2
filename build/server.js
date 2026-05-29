@@ -1963,7 +1963,7 @@ async function resolveSectionImages(analysis, log, logoAnalysis, business, optio
   } else {
     taskList.push({
       run: async () => {
-        resultUrls.hero_image = await generateAndSave(analysis.hero_image.generation_prompt || "wooden chair chair modern", "hero", "3:4");
+        resultUrls.hero_image = await generateAndSave(analysis.hero_image.generation_prompt || "wooden chair chair modern", "hero", "1:1");
       }
     });
   }
@@ -1972,7 +1972,7 @@ async function resolveSectionImages(analysis, log, logoAnalysis, business, optio
   } else {
     taskList.push({
       run: async () => {
-        resultUrls.masked_image = await generateAndSave(analysis.masked_image.generation_prompt || "wood grain pattern detail close-up", "masked", "3:4");
+        resultUrls.masked_image = await generateAndSave(analysis.masked_image.generation_prompt || "wood grain pattern detail close-up", "masked", "1:1");
       }
     });
   }
@@ -4107,15 +4107,10 @@ footer img[src*="gen_logo"],
 
 /* Responsive Aspect Ratio Scaling to prevent background cropping */
 @media (min-width: 768px) {
-    /* Hero split layout */
-    .elementor-element-49f8bd39 {
-        height: auto !important;
-        min-height: auto !important;
-    }
-    .elementor-element-35a4f6fb, .elementor-element-39f1fa01 {
-        aspect-ratio: 3 / 4 !important;
-        height: auto !important;
-        min-height: auto !important;
+    /* Hero split layout - Fit viewport height on load */
+    .elementor-element-49f8bd39, .elementor-element-35a4f6fb, .elementor-element-39f1fa01 {
+        height: calc(100vh - 120px) !important;
+        min-height: calc(100vh - 120px) !important;
     }
     
     /* Home Goods (About) */
@@ -5168,8 +5163,7 @@ $global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !imp
 	'.elementor-element-3b58bec7 img, .elementor-element-69be47e img, .elementor-widget-theme-site-logo img, .elementor-widget-image img[src*="gen_logo"], header img[src*="gen_logo"], .site-header img[src*="gen_logo"] { mix-blend-mode: multiply !important; background-color: transparent !important; } ' .
 	'.elementor-element-5a62107a img, .elementor-element-44b1aa0b img, [data-elementor-type="footer"] img[src*="gen_logo"], footer img[src*="gen_logo"], .site-footer img[src*="gen_logo"] { filter: invert(1) !important; mix-blend-mode: screen !important; background-color: transparent !important; } ' .
 	'@media (min-width: 768px) { ' .
-	'  .elementor-element-49f8bd39 { height: auto !important; min-height: auto !important; } ' .
-	'  .elementor-element-35a4f6fb, .elementor-element-39f1fa01 { aspect-ratio: 3 / 4 !important; height: auto !important; min-height: auto !important; } ' .
+	'  .elementor-element-49f8bd39, .elementor-element-35a4f6fb, .elementor-element-39f1fa01 { height: calc(100vh - 120px) !important; min-height: calc(100vh - 120px) !important; } ' .
 	'  .elementor-element-4d1645d0 { aspect-ratio: 4 / 3 !important; height: auto !important; min-height: auto !important; } ' .
 	'  .elementor-element-51305b21 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; } ' .
 	'  .elementor-element-1b226200 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; } ' .
@@ -5232,8 +5226,7 @@ add_action("wp_head", function() {
     .elementor-element-5a62107a img, .elementor-element-44b1aa0b img, [data-elementor-type="footer"] img[src*="gen_logo"], footer img[src*="gen_logo"], .site-footer img[src*="gen_logo"] { filter: invert(1) !important; mix-blend-mode: screen !important; background-color: transparent !important; }
     
     @media (min-width: 768px) {
-        .elementor-element-49f8bd39 { height: auto !important; min-height: auto !important; }
-        .elementor-element-35a4f6fb, .elementor-element-39f1fa01 { aspect-ratio: 3 / 4 !important; height: auto !important; min-height: auto !important; }
+        .elementor-element-49f8bd39, .elementor-element-35a4f6fb, .elementor-element-39f1fa01 { height: calc(100vh - 120px) !important; min-height: calc(100vh - 120px) !important; }
         .elementor-element-4d1645d0 { aspect-ratio: 4 / 3 !important; height: auto !important; min-height: auto !important; }
         .elementor-element-51305b21 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
         .elementor-element-1b226200 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }

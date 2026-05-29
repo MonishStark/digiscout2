@@ -387,24 +387,24 @@ export async function resolveSectionImages(
 
 	const taskList: { run: () => Promise<void> }[] = [];
 
-	// 1. Hero Image (taller aspect ratio like 3:4 is great for this carpenter layout)
+	// 1. Hero Image (square aspect ratio matches the desktop split container half)
 	if (analysis.hero_image.action === "use_existing" && analysis.hero_image.url) {
 		resultUrls.hero_image = analysis.hero_image.url;
 	} else {
 		taskList.push({
 			run: async () => {
-				resultUrls.hero_image = await generateAndSave(analysis.hero_image.generation_prompt || "wooden chair chair modern", "hero", "3:4");
+				resultUrls.hero_image = await generateAndSave(analysis.hero_image.generation_prompt || "wooden chair chair modern", "hero", "1:1");
 			}
 		});
 	}
 
-	// 2. Masked Image (detail shot matching hero aspect ratio)
+	// 2. Masked Image (square detail shot matching hero aspect ratio)
 	if (analysis.masked_image.action === "use_existing" && analysis.masked_image.url) {
 		resultUrls.masked_image = analysis.masked_image.url;
 	} else {
 		taskList.push({
 			run: async () => {
-				resultUrls.masked_image = await generateAndSave(analysis.masked_image.generation_prompt || "wood grain pattern detail close-up", "masked", "3:4");
+				resultUrls.masked_image = await generateAndSave(analysis.masked_image.generation_prompt || "wood grain pattern detail close-up", "masked", "1:1");
 			}
 		});
 	}
