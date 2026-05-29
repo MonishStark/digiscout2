@@ -1075,7 +1075,10 @@ html, body {
         min-height: auto !important;
         flex-direction: column !important;
     }
-    .elementor-element-35a4f6fb, .elementor-element-39f1fa01 {
+    .elementor-element-35a4f6fb {
+        display: none !important;
+    }
+    .elementor-element-39f1fa01 {
         aspect-ratio: 1 / 1 !important;
         height: auto !important;
         min-height: auto !important;

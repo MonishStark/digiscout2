@@ -1388,7 +1388,8 @@ $global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !imp
 	'} ' .
 	'@media (max-width: 767px) { ' .
 	'  .elementor-element-49f8bd39 { height: auto !important; min-height: auto !important; flex-direction: column !important; } ' .
-	'  .elementor-element-35a4f6fb, .elementor-element-39f1fa01 { aspect-ratio: 1 / 1 !important; height: auto !important; min-height: auto !important; width: 100% !important; } ' .
+	'  .elementor-element-35a4f6fb { display: none !important; } ' .
+	'  .elementor-element-39f1fa01 { aspect-ratio: 1 / 1 !important; height: auto !important; min-height: auto !important; width: 100% !important; } ' .
 	'} ' .
 	'/* KIT 2 About & Services */ ' .
 	'.elementor-element-4d1645d0 { aspect-ratio: 4 / 3 !important; height: auto !important; min-height: auto !important; } ' .
@@ -1497,7 +1498,8 @@ add_action("wp_head", function() {
     }
     @media (max-width: 767px) {
         .elementor-element-49f8bd39 { height: auto !important; min-height: auto !important; flex-direction: column !important; }
-        .elementor-element-35a4f6fb, .elementor-element-39f1fa01 { aspect-ratio: 1 / 1 !important; height: auto !important; min-height: auto !important; width: 100% !important; }
+        .elementor-element-35a4f6fb { display: none !important; }
+        .elementor-element-39f1fa01 { aspect-ratio: 1 / 1 !important; height: auto !important; min-height: auto !important; width: 100% !important; }
     }
     .elementor-element-4d1645d0 { aspect-ratio: 4 / 3 !important; height: auto !important; min-height: auto !important; }
     @media (max-width: 767px) { .elementor-element-4d1645d0 { aspect-ratio: auto !important; min-height: 380px !important; padding-top: 40px !important; padding-bottom: 40px !important; } }
