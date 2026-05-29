@@ -923,45 +923,220 @@ footer img[src*="gen_logo"],
 }
 
 /* Responsive Aspect Ratio Scaling to prevent background cropping */
+html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+}
+.elementor-section, .e-container, .elementor-column {
+    max-width: 100% !important;
+}
+
+/* ==========================================
+   KIT 1 (Carpenter) Responsive Layout Fixes
+   ========================================== */
+
+/* Hero Section Height Overrides */
 @media (min-width: 768px) {
-    /* Hero split layout - Fit viewport height on load */
-    .elementor-element-49f8bd39, .elementor-element-35a4f6fb, .elementor-element-39f1fa01 {
-        height: calc(100vh - 120px) !important;
+    .elementor-element-40a06f6 {
+        height: auto !important;
+        min-height: auto !important;
+    }
+    .elementor-element-580cc436 {
         min-height: calc(100vh - 120px) !important;
-    }
-    
-    /* Home Goods (About) */
-    .elementor-element-4d1645d0 {
-        aspect-ratio: 4 / 3 !important;
-        height: auto !important;
-        min-height: auto !important;
-    }
-    
-    /* Tablewear (Services) */
-    .elementor-element-51305b21 {
-        aspect-ratio: 16 / 9 !important;
-        height: auto !important;
-        min-height: auto !important;
-    }
-    
-    /* CTA */
-    .elementor-element-1b226200 {
         display: flex !important;
         flex-direction: column !important;
-        justify-content: flex-start !important;
-        align-items: stretch !important;
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
+        justify-content: center !important;
+        padding-top: 8% !important;
+        padding-bottom: 5% !important;
+    }
+    .elementor-element-4fc28b13 {
+        aspect-ratio: 1 / 1 !important;
+        height: auto !important;
+        min-height: auto !important;
+        max-height: calc(100vh - 120px) !important;
+    }
+}
+@media (max-width: 767px) {
+    .elementor-element-40a06f6 {
+        height: auto !important;
+        min-height: auto !important;
+    }
+    .elementor-element-580cc436 {
+        padding: 50px 20px 30px 20px !important;
+        height: auto !important;
+        min-height: auto !important;
+    }
+    .elementor-element-4fc28b13 {
+        aspect-ratio: 1 / 1 !important;
+        height: auto !important;
+        min-height: auto !important;
+        width: 100% !important;
+    }
+    .elementor-element-1bc75a32 {
+        display: none !important;
+    }
+}
+
+/* Masked Image Positioning in Hero */
+.elementor-element-41484f27 {
+    object-fit: cover !important;
+    border-radius: 50% !important;
+}
+@media (min-width: 768px) {
+    .elementor-element-41484f27 {
+        left: -15% !important;
+    }
+}
+
+/* About Section ("Highest level") Image Scaling */
+.elementor-element-6f812967 img {
+    aspect-ratio: 4 / 3 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    object-fit: cover !important;
+}
+.elementor-element-6f812967 {
+    height: auto !important;
+    min-height: auto !important;
+}
+@media (max-width: 767px) {
+    .elementor-element-6f812967 {
+        margin-top: 0 !important;
+        margin-bottom: 20px !important;
+    }
+}
+
+/* Services Section ("What we do") Background Alignment */
+@media (min-width: 768px) {
+    .elementor-element-59b6e6d5 {
+        height: auto !important;
+        min-height: auto !important;
+    }
+    .elementor-element-42abf8aa {
         aspect-ratio: 16 / 9 !important;
         height: auto !important;
         min-height: auto !important;
     }
-    .elementor-element-56a3deab {
-        height: 100% !important;
-        min-height: 100% !important;
+}
+@media (max-width: 767px) {
+    .elementor-element-42abf8aa {
+        aspect-ratio: 16 / 9 !important;
+        height: auto !important;
+        min-height: auto !important;
+        width: 100% !important;
+    }
+    .elementor-element-63950d29 {
+        display: none !important;
+    }
+}
+
+/* Testimonials (Section 5) Height Alignment (Image and Quote Card) */
+@media (min-width: 768px) {
+    .elementor-element-331d0ffb {
+        display: flex !important;
+        align-items: stretch !important;
+    }
+    .elementor-element-6e5c11f9, .elementor-element-75ba3d29 {
+        height: auto !important;
         align-self: stretch !important;
-        margin-top: 0 !important;
-        margin-bottom: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    .elementor-element-6e5c11f9 .elementor-widget-wrap,
+    .elementor-element-75ba3d29 .elementor-widget-wrap {
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+    }
+}
+
+/* ==========================================
+   KIT 2 (Wooden Accessories) Responsive Fixes
+   ========================================== */
+
+/* Hero Container Viewport Limits */
+@media (min-width: 768px) {
+    .elementor-element-49f8bd39 {
+        height: auto !important;
+        min-height: auto !important;
+    }
+    .elementor-element-35a4f6fb, .elementor-element-39f1fa01 {
+        aspect-ratio: 1 / 1 !important;
+        height: auto !important;
+        min-height: auto !important;
+        max-height: calc(100vh - 120px) !important;
+    }
+}
+@media (max-width: 767px) {
+    .elementor-element-49f8bd39 {
+        height: auto !important;
+        min-height: auto !important;
+        flex-direction: column !important;
+    }
+    .elementor-element-35a4f6fb, .elementor-element-39f1fa01 {
+        aspect-ratio: 1 / 1 !important;
+        height: auto !important;
+        min-height: auto !important;
+        width: 100% !important;
+    }
+}
+
+/* Home Goods (About) */
+.elementor-element-4d1645d0 {
+    aspect-ratio: 4 / 3 !important;
+    height: auto !important;
+    min-height: auto !important;
+}
+@media (max-width: 767px) {
+    .elementor-element-4d1645d0 {
+        aspect-ratio: auto !important;
+        min-height: 380px !important;
+        padding-top: 40px !important;
+        padding-bottom: 40px !important;
+    }
+}
+
+/* Tablewear (Services) */
+.elementor-element-51305b21 {
+    aspect-ratio: 16 / 9 !important;
+    height: auto !important;
+    min-height: auto !important;
+}
+@media (max-width: 767px) {
+    .elementor-element-51305b21 {
+        aspect-ratio: auto !important;
+        min-height: 380px !important;
+        padding-top: 40px !important;
+        padding-bottom: 40px !important;
+    }
+}
+
+/* CTA (Section 5) Parent-Child Stretch to align Image and Quote Card heights */
+.elementor-element-1b226200 {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: flex-end !important;
+    align-items: stretch !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    aspect-ratio: 16 / 9 !important;
+    height: auto !important;
+    min-height: auto !important;
+}
+.elementor-element-56a3deab {
+    height: 100% !important;
+    min-height: 100% !important;
+    align-self: stretch !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+@media (max-width: 767px) {
+    .elementor-element-1b226200 {
+        flex-direction: column !important;
+        aspect-ratio: auto !important;
+        min-height: 450px !important;
     }
 }
 </style>`

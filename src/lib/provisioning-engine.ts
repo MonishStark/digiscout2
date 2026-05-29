@@ -1349,13 +1349,56 @@ $global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !imp
 	'.elementor-element-3b58bec7, .elementor-element-69be47e, .elementor-element-5a62107a, .elementor-element-44b1aa0b, .elementor-element-3b58bec7 .elementor-widget-container, .elementor-element-69be47e .elementor-widget-container, .elementor-element-5a62107a .elementor-widget-container, .elementor-element-44b1aa0b .elementor-widget-container { background-color: transparent !important; background: transparent !important; } ' .
 	'.elementor-element-3b58bec7 img, .elementor-element-69be47e img, .elementor-widget-theme-site-logo img, .elementor-widget-image img[src*="gen_logo"], header img[src*="gen_logo"], .site-header img[src*="gen_logo"] { mix-blend-mode: multiply !important; background-color: transparent !important; } ' .
 	'.elementor-element-5a62107a img, .elementor-element-44b1aa0b img, [data-elementor-type="footer"] img[src*="gen_logo"], footer img[src*="gen_logo"], .site-footer img[src*="gen_logo"] { filter: invert(1) !important; mix-blend-mode: screen !important; background-color: transparent !important; } ' .
+	'/* KIT 1 Hero overrides */ ' .
 	'@media (min-width: 768px) { ' .
-	'  .elementor-element-49f8bd39, .elementor-element-35a4f6fb, .elementor-element-39f1fa01 { height: calc(100vh - 120px) !important; min-height: calc(100vh - 120px) !important; } ' .
-	'  .elementor-element-4d1645d0 { aspect-ratio: 4 / 3 !important; height: auto !important; min-height: auto !important; } ' .
-	'  .elementor-element-51305b21 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; } ' .
-	'  .elementor-element-1b226200 { display: flex !important; flex-direction: column !important; justify-content: flex-start !important; align-items: stretch !important; padding-top: 0 !important; padding-bottom: 0 !important; aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; } ' .
-	'  .elementor-element-56a3deab { height: 100% !important; min-height: 100% !important; align-self: stretch !important; margin-top: 0 !important; margin-bottom: 0 !important; } ' .
-	'}';
+	'  .elementor-element-40a06f6 { height: auto !important; min-height: auto !important; } ' .
+	'  .elementor-element-580cc436 { min-height: calc(100vh - 120px) !important; display: flex !important; flex-direction: column !important; justify-content: center !important; padding-top: 8% !important; padding-bottom: 5% !important; } ' .
+	'  .elementor-element-4fc28b13 { aspect-ratio: 1 / 1 !important; height: auto !important; min-height: auto !important; max-height: calc(100vh - 120px) !important; } ' .
+	'} ' .
+	'@media (max-width: 767px) { ' .
+	'  .elementor-element-40a06f6 { height: auto !important; min-height: auto !important; } ' .
+	'  .elementor-element-580cc436 { padding: 50px 20px 30px 20px !important; height: auto !important; min-height: auto !important; } ' .
+	'  .elementor-element-4fc28b13 { aspect-ratio: 1 / 1 !important; height: auto !important; min-height: auto !important; width: 100% !important; } ' .
+	'  .elementor-element-1bc75a32 { display: none !important; } ' .
+	'} ' .
+	'.elementor-element-41484f27 { object-fit: cover !important; border-radius: 50% !important; } ' .
+	'@media (min-width: 768px) { .elementor-element-41484f27 { left: -15% !important; } } ' .
+	'/* KIT 1 About & Services overrides */ ' .
+	'.elementor-element-6f812967 img { aspect-ratio: 4 / 3 !important; width: 100% !important; height: auto !important; min-height: auto !important; object-fit: cover !important; } ' .
+	'.elementor-element-6f812967 { height: auto !important; min-height: auto !important; } ' .
+	'@media (max-width: 767px) { .elementor-element-6f812967 { margin-top: 0 !important; margin-bottom: 20px !important; } } ' .
+	'@media (min-width: 768px) { ' .
+	'  .elementor-element-59b6e6d5 { height: auto !important; min-height: auto !important; } ' .
+	'  .elementor-element-42abf8aa { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; } ' .
+	'} ' .
+	'@media (max-width: 767px) { ' .
+	'  .elementor-element-42abf8aa { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; width: 100% !important; } ' .
+	'  .elementor-element-63950d29 { display: none !important; } ' .
+	'} ' .
+	'/* KIT 1 Testimonials Stretch */ ' .
+	'@media (min-width: 768px) { ' .
+	'  .elementor-element-331d0ffb { display: flex !important; align-items: stretch !important; } ' .
+	'  .elementor-element-6e5c11f9, .elementor-element-75ba3d29 { height: auto !important; align-self: stretch !important; display: flex !important; flex-direction: column !important; } ' .
+	'  .elementor-element-6e5c11f9 .elementor-widget-wrap, .elementor-element-75ba3d29 .elementor-widget-wrap { height: 100% !important; display: flex !important; flex-direction: column !important; justify-content: center !important; } ' .
+	'} ' .
+	'/* KIT 2 Hero overrides */ ' .
+	'@media (min-width: 768px) { ' .
+	'  .elementor-element-49f8bd39 { height: auto !important; min-height: auto !important; } ' .
+	'  .elementor-element-35a4f6fb, .elementor-element-39f1fa01 { aspect-ratio: 1 / 1 !important; height: auto !important; min-height: auto !important; max-height: calc(100vh - 120px) !important; } ' .
+	'} ' .
+	'@media (max-width: 767px) { ' .
+	'  .elementor-element-49f8bd39 { height: auto !important; min-height: auto !important; flex-direction: column !important; } ' .
+	'  .elementor-element-35a4f6fb, .elementor-element-39f1fa01 { aspect-ratio: 1 / 1 !important; height: auto !important; min-height: auto !important; width: 100% !important; } ' .
+	'} ' .
+	'/* KIT 2 About & Services */ ' .
+	'.elementor-element-4d1645d0 { aspect-ratio: 4 / 3 !important; height: auto !important; min-height: auto !important; } ' .
+	'@media (max-width: 767px) { .elementor-element-4d1645d0 { aspect-ratio: auto !important; min-height: 380px !important; padding-top: 40px !important; padding-bottom: 40px !important; } } ' .
+	'.elementor-element-51305b21 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; } ' .
+	'@media (max-width: 767px) { .elementor-element-51305b21 { aspect-ratio: auto !important; min-height: 380px !important; padding-top: 40px !important; padding-bottom: 40px !important; } } ' .
+	'/* KIT 2 CTA Stretch */ ' .
+	'.elementor-element-1b226200 { display: flex !important; flex-direction: row !important; justify-content: flex-end !important; align-items: stretch !important; padding-top: 0 !important; padding-bottom: 0 !important; aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; } ' .
+	'.elementor-element-56a3deab { height: 100% !important; min-height: 100% !important; align-self: stretch !important; margin-top: 0 !important; margin-bottom: 0 !important; } ' .
+	'@media (max-width: 767px) { .elementor-element-1b226200 { flex-direction: column !important; aspect-ratio: auto !important; min-height: 450px !important; } }';
 update_option('elementor_custom_css', $global_css);
 echo "GLOBAL_CSS_SET\n";
 
@@ -1412,13 +1455,60 @@ add_action("wp_head", function() {
     .elementor-element-3b58bec7 img, .elementor-element-69be47e img, .elementor-widget-theme-site-logo img, .elementor-widget-image img[src*="gen_logo"], header img[src*="gen_logo"], .site-header img[src*="gen_logo"] { mix-blend-mode: multiply !important; background-color: transparent !important; }
     .elementor-element-5a62107a img, .elementor-element-44b1aa0b img, [data-elementor-type="footer"] img[src*="gen_logo"], footer img[src*="gen_logo"], .site-footer img[src*="gen_logo"] { filter: invert(1) !important; mix-blend-mode: screen !important; background-color: transparent !important; }
     
+    /* KIT 1 Hero overrides */
     @media (min-width: 768px) {
-        .elementor-element-49f8bd39, .elementor-element-35a4f6fb, .elementor-element-39f1fa01 { height: calc(100vh - 120px) !important; min-height: calc(100vh - 120px) !important; }
-        .elementor-element-4d1645d0 { aspect-ratio: 4 / 3 !important; height: auto !important; min-height: auto !important; }
-        .elementor-element-51305b21 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
-        .elementor-element-1b226200 { display: flex !important; flex-direction: column !important; justify-content: flex-start !important; align-items: stretch !important; padding-top: 0 !important; padding-bottom: 0 !important; aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
-        .elementor-element-56a3deab { height: 100% !important; min-height: 100% !important; align-self: stretch !important; margin-top: 0 !important; margin-bottom: 0 !important; }
+        .elementor-element-40a06f6 { height: auto !important; min-height: auto !important; }
+        .elementor-element-580cc436 { min-height: calc(100vh - 120px) !important; display: flex !important; flex-direction: column !important; justify-content: center !important; padding-top: 8% !important; padding-bottom: 5% !important; }
+        .elementor-element-4fc28b13 { aspect-ratio: 1 / 1 !important; height: auto !important; min-height: auto !important; max-height: calc(100vh - 120px) !important; }
     }
+    @media (max-width: 767px) {
+        .elementor-element-40a06f6 { height: auto !important; min-height: auto !important; }
+        .elementor-element-580cc436 { padding: 50px 20px 30px 20px !important; height: auto !important; min-height: auto !important; }
+        .elementor-element-4fc28b13 { aspect-ratio: 1 / 1 !important; height: auto !important; min-height: auto !important; width: 100% !important; }
+        .elementor-element-1bc75a32 { display: none !important; }
+    }
+    .elementor-element-41484f27 { object-fit: cover !important; border-radius: 50% !important; }
+    @media (min-width: 768px) { .elementor-element-41484f27 { left: -15% !important; } }
+    
+    /* KIT 1 About & Services overrides */
+    .elementor-element-6f812967 img { aspect-ratio: 4 / 3 !important; width: 100% !important; height: auto !important; min-height: auto !important; object-fit: cover !important; }
+    .elementor-element-6f812967 { height: auto !important; min-height: auto !important; }
+    @media (max-width: 767px) { .elementor-element-6f812967 { margin-top: 0 !important; margin-bottom: 20px !important; } }
+    @media (min-width: 768px) {
+        .elementor-element-59b6e6d5 { height: auto !important; min-height: auto !important; }
+        .elementor-element-42abf8aa { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
+    }
+    @media (max-width: 767px) {
+        .elementor-element-42abf8aa { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; width: 100% !important; }
+        .elementor-element-63950d29 { display: none !important; }
+    }
+    
+    /* KIT 1 Testimonials Stretch */
+    @media (min-width: 768px) {
+        .elementor-element-331d0ffb { display: flex !important; align-items: stretch !important; }
+        .elementor-element-6e5c11f9, .elementor-element-75ba3d29 { height: auto !important; align-self: stretch !important; display: flex !important; flex-direction: column !important; }
+        .elementor-element-6e5c11f9 .elementor-widget-wrap, .elementor-element-75ba3d29 .elementor-widget-wrap { height: 100% !important; display: flex !important; flex-direction: column !important; justify-content: center !important; }
+    }
+    
+    /* KIT 2 Viewport & Aspect overrides */
+    @media (min-width: 768px) {
+        .elementor-element-49f8bd39 { height: auto !important; min-height: auto !important; }
+        .elementor-element-35a4f6fb, .elementor-element-39f1fa01 { aspect-ratio: 1 / 1 !important; height: auto !important; min-height: auto !important; max-height: calc(100vh - 120px) !important; }
+    }
+    @media (max-width: 767px) {
+        .elementor-element-49f8bd39 { height: auto !important; min-height: auto !important; flex-direction: column !important; }
+        .elementor-element-35a4f6fb, .elementor-element-39f1fa01 { aspect-ratio: 1 / 1 !important; height: auto !important; min-height: auto !important; width: 100% !important; }
+    }
+    .elementor-element-4d1645d0 { aspect-ratio: 4 / 3 !important; height: auto !important; min-height: auto !important; }
+    @media (max-width: 767px) { .elementor-element-4d1645d0 { aspect-ratio: auto !important; min-height: 380px !important; padding-top: 40px !important; padding-bottom: 40px !important; } }
+    
+    .elementor-element-51305b21 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
+    @media (max-width: 767px) { .elementor-element-51305b21 { aspect-ratio: auto !important; min-height: 380px !important; padding-top: 40px !important; padding-bottom: 40px !important; } }
+    
+    /* KIT 2 CTA Card Stretch */
+    .elementor-element-1b226200 { display: flex !important; flex-direction: row !important; justify-content: flex-end !important; align-items: stretch !important; padding-top: 0 !important; padding-bottom: 0 !important; aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
+    .elementor-element-56a3deab { height: 100% !important; min-height: 100% !important; align-self: stretch !important; margin-top: 0 !important; margin-bottom: 0 !important; }
+    @media (max-width: 767px) { .elementor-element-1b226200 { flex-direction: column !important; aspect-ratio: auto !important; min-height: 450px !important; } }
     </style>
     <?php
 });';

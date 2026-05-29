@@ -397,7 +397,7 @@ export async function resolveSectionImages(
 	} else {
 		taskList.push({
 			run: async () => {
-				resultUrls.hero_image = await generateAndSave(analysis.hero_image.generation_prompt || "wooden chair chair modern", "hero", "3:4");
+				resultUrls.hero_image = await generateAndSave(analysis.hero_image.generation_prompt || "wooden chair chair modern", "hero", "1:1");
 			}
 		});
 	}
@@ -408,7 +408,7 @@ export async function resolveSectionImages(
 	} else {
 		taskList.push({
 			run: async () => {
-				resultUrls.masked_image = await generateAndSave(analysis.masked_image.generation_prompt || "wood grain pattern detail close-up", "masked", "3:4");
+				resultUrls.masked_image = await generateAndSave(analysis.masked_image.generation_prompt || "wood grain pattern detail close-up", "masked", "1:1");
 			}
 		});
 	}
@@ -419,7 +419,7 @@ export async function resolveSectionImages(
 	} else {
 		taskList.push({
 			run: async () => {
-				resultUrls.about_image = await generateAndSave(analysis.about_image.generation_prompt || "woodworking craftsman work", "about", "16:9");
+				resultUrls.about_image = await generateAndSave(analysis.about_image.generation_prompt || "woodworking craftsman work", "about", "4:3");
 			}
 		});
 	}
