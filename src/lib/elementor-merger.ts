@@ -1142,29 +1142,44 @@ html, body {
     }
 }
 
-/* Tablet view (768px to 1099px): row layout with dynamic height to prevent text overflow */
+/* Tablet view (768px to 1099px): vertically center card over image */
 @media (min-width: 768px) and (max-width: 1099px) {
     .elementor-element-1b226200 {
+        position: relative !important;
         display: flex !important;
         flex-direction: row !important;
+        align-items: center !important;
         justify-content: flex-end !important;
-        align-items: stretch !important;
-        padding-top: 40px !important;
-        padding-bottom: 40px !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
         aspect-ratio: auto !important;
         height: auto !important;
-        min-height: 600px !important;
+        min-height: 560px !important;
     }
-    .elementor-element-56a3deab,
-    .elementor-element-56a3deab .elementor-widget-wrap {
-        height: 100% !important;
-        min-height: 100% !important;
+    /* image column fills full height */
+    .elementor-element-6e5c11f9 {
+        flex: 1 1 50% !important;
         align-self: stretch !important;
+        height: 100% !important;
+        min-height: 560px !important;
+    }
+    /* text card: take 50% width and auto height, centred vertically by flex parent */
+    .elementor-element-56a3deab {
+        flex: 0 0 50% !important;
+        max-width: 50% !important;
+        align-self: center !important;
         display: flex !important;
         flex-direction: column !important;
         justify-content: center !important;
         margin-top: 0 !important;
         margin-bottom: 0 !important;
+    }
+    .elementor-element-56a3deab .elementor-widget-wrap {
+        height: auto !important;
+        min-height: auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
     }
 }
 @media (max-width: 767px) {
@@ -1190,6 +1205,7 @@ html, body {
         clear: both !important;
         height: auto !important;
         min-height: 1px !important;
+        position: relative !important;
     }
     .elementor-element-3c27eca4 article.elementor-post {
         position: relative !important;
@@ -1209,6 +1225,35 @@ html, body {
         transform: none !important;
         display: block !important;
         clear: both !important;
+        float: none !important;
+        z-index: 1 !important;
+    }
+}
+/* Mobile-only: ensure Contact Us button sits fully below the posts list */
+@media (max-width: 767px) {
+    .elementor-element-3acf57f7 {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    .elementor-element-3c27eca4 {
+        order: 1 !important;
+        position: relative !important;
+        width: 100% !important;
+    }
+    .elementor-element-7c6a7a2 {
+        order: 2 !important;
+        position: static !important;
+        display: block !important;
+        width: auto !important;
+        margin: 30px auto 0 auto !important;
+        left: auto !important;
+        right: auto !important;
+        top: auto !important;
+        bottom: auto !important;
+        transform: none !important;
+        float: none !important;
+        clear: both !important;
+        z-index: 1 !important;
     }
 }
 </style>`
