@@ -1416,6 +1416,7 @@ $global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !imp
 	'  .elementor-element-7c6a7a2 { position: relative !important; margin: 30px auto 0 auto !important; left: auto !important; transform: none !important; display: block !important; clear: both !important; } ' .
 	'}';
 update_option('elementor_custom_css', $global_css);
+update_option('elementor_css_print_method', 'internal');
 echo "GLOBAL_CSS_SET\n";
 
 // Create Must-Use plugin to inject styles dynamically
