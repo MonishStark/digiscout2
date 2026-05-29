@@ -1801,7 +1801,7 @@ async function analyzeAndFilterImages(business, log, options) {
     },
     about_image: {
       action: "generate",
-      generation_prompt: `A professional studio flat lay photograph of luxury cabinetry materials and hardware, Scandinavian luxury editorial aesthetic, Japandi styling, matte finishes, ${globalStyle}. The cabinetry components, walnut wood panels, and handles are arranged solely on the left and right edges of the frame. The entire center of the image must be a completely plain, solid, blank warm-beige negative space with no objects. Soft natural daylight, clean composition, muted neutral palette.`
+      generation_prompt: `A premium professional studio flat lay photograph of luxury cabinet design details, samples and hardware on a solid, completely plain, blank pure white background. On the far left, a vertical arrangement of cabinetry sample boards (walnut wood panel with a gold/brass handle, smaller neutral tile), and on the far right, a vertical arrangement of cabinetry sample boards (light oak panel with a black knob handle, linen cloth folded), arranged solely on the left and right sides. Crucially, all items and objects on the left and right must be fully self-contained inside the frame, maintaining clean white margins/padding at the top and bottom of the image, without touching or extending to the top or bottom edges of the photo. The entire center 60% of the image must be a completely empty, solid, plain pure white negative space with no shadows, objects, or text. Soft natural daylight, clean Japandi/Scandinavian design aesthetic, matte finishes only.`
     },
     services_image: {
       action: "generate",
@@ -3518,7 +3518,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
           mainContainer.settings.background_size = "cover";
           mainContainer.settings.background_repeat = "no-repeat";
           mainContainer.settings.background_position = "center center";
-          mainContainer.settings.background_color = "#E8E6DF";
+          mainContainer.settings.background_color = "#ffffff";
           delete mainContainer.settings.background_overlay_background;
           delete mainContainer.settings.background_overlay_color;
           delete mainContainer.settings.background_overlay_opacity;
@@ -4162,7 +4162,8 @@ footer img[src*="gen_logo"],
       obj.settings.background_size = "cover";
       obj.settings.background_repeat = "no-repeat";
       obj.settings.background_position = "center center";
-      obj.settings.background_color = "#E8E6DF";
+      const isAboutContainer = obj.settings?._title === "Home Goods" || obj.id === "4d1645d0";
+      obj.settings.background_color = isAboutContainer ? "#ffffff" : "#E8E6DF";
     }
     if (obj.url && typeof obj.url === "string" && obj.url.includes("library.elementor.com")) {
       const local = getLocalMedia(obj.url);

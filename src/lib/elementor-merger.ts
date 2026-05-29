@@ -164,7 +164,7 @@ export function mergeElementorTemplate(
 					mainContainer.settings.background_size = "cover";
 					mainContainer.settings.background_repeat = "no-repeat";
 					mainContainer.settings.background_position = "center center";
-					mainContainer.settings.background_color = "#E8E6DF";
+					mainContainer.settings.background_color = "#ffffff";
 					// Remove background overlay classic layer so that image and text sit natively
 					delete mainContainer.settings.background_overlay_background;
 					delete mainContainer.settings.background_overlay_color;
@@ -890,7 +890,10 @@ footer img[src*="gen_logo"],
 			obj.settings.background_size = "cover";
 			obj.settings.background_repeat = "no-repeat";
 			obj.settings.background_position = "center center";
-			obj.settings.background_color = "#E8E6DF";
+			
+			// Use white background for Home Goods (About) container to match its white flat lay image, and warm-beige for others
+			const isAboutContainer = obj.settings?._title === "Home Goods" || obj.id === "4d1645d0";
+			obj.settings.background_color = isAboutContainer ? "#ffffff" : "#E8E6DF";
 		}
 
 		// Handle object structure: { url: "...", id: "..." }
