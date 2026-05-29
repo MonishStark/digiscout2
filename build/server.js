@@ -4467,13 +4467,13 @@ html, body {
     }
 }
 
-/* Tablet view (768px to 1099px): vertically center card over image */
+/* Tablet view (768px to 1099px): full-height card, 75% wide */
 @media (min-width: 768px) and (max-width: 1099px) {
     .elementor-element-1b226200 {
         position: relative !important;
         display: flex !important;
         flex-direction: row !important;
-        align-items: center !important;
+        align-items: stretch !important;
         justify-content: flex-end !important;
         padding-top: 0 !important;
         padding-bottom: 0 !important;
@@ -4484,16 +4484,16 @@ html, body {
     /* image column: 25% \u2014 shows left edge of the photo */
     .elementor-element-6e5c11f9 {
         flex: 0 0 25% !important;
+        width: 25% !important;
         max-width: 25% !important;
         align-self: stretch !important;
-        height: 100% !important;
-        min-height: 560px !important;
     }
-    /* text card: 75% width, vertically centered by flex parent */
+    /* text card: 75% wide, full height, content centred inside */
     .elementor-element-56a3deab {
         flex: 0 0 75% !important;
+        width: 75% !important;
         max-width: 75% !important;
-        align-self: center !important;
+        align-self: stretch !important;
         display: flex !important;
         flex-direction: column !important;
         justify-content: center !important;
@@ -4501,8 +4501,8 @@ html, body {
         margin-bottom: 0 !important;
     }
     .elementor-element-56a3deab .elementor-widget-wrap {
-        height: auto !important;
-        min-height: auto !important;
+        height: 100% !important;
+        min-height: 100% !important;
         display: flex !important;
         flex-direction: column !important;
         justify-content: center !important;
