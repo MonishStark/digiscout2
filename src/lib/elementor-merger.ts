@@ -1116,30 +1116,65 @@ html, body {
     }
 }
 
-/* CTA (Section 5) Parent-Child Stretch to align Image and Quote Card heights */
-.elementor-element-1b226200 {
-    display: flex !important;
-    flex-direction: row !important;
-    justify-content: flex-end !important;
-    align-items: stretch !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    aspect-ratio: 16 / 9 !important;
-    height: auto !important;
-    min-height: auto !important;
-}
-.elementor-element-56a3deab {
-    height: 100% !important;
-    min-height: 100% !important;
-    align-self: stretch !important;
-    margin-top: 0 !important;
-    margin-bottom: 0 !important;
+/* CTA (Section 5) Parent-Child Stretch to align Image and Quote Card heights on Desktop/Tablet */
+@media (min-width: 768px) {
+    .elementor-element-1b226200 {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: flex-end !important;
+        align-items: stretch !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        aspect-ratio: 16 / 9 !important;
+        height: auto !important;
+        min-height: auto !important;
+    }
+    .elementor-element-56a3deab,
+    .elementor-element-56a3deab .elementor-widget-wrap {
+        height: 100% !important;
+        min-height: 100% !important;
+        align-self: stretch !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+    }
 }
 @media (max-width: 767px) {
     .elementor-element-1b226200 {
         flex-direction: column !important;
         aspect-ratio: auto !important;
         min-height: 450px !important;
+    }
+    .elementor-element-56a3deab {
+        height: auto !important;
+        min-height: auto !important;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+    }
+}
+
+/* KIT 2 Products (Recent Projects) Stack & Clear floats/absolute positioning on mobile/tablet */
+@media (max-width: 1024px) {
+    .elementor-element-3c27eca4 .elementor-posts-container {
+        display: flex !important;
+        flex-direction: column !important;
+        float: none !important;
+        clear: both !important;
+        height: auto !important;
+        min-height: 1px !important;
+    }
+    .elementor-element-3c27eca4 article.elementor-post {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        float: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-bottom: 30px !important;
+        display: block !important;
+        clear: both !important;
     }
     .elementor-element-7c6a7a2 {
         position: relative !important;
