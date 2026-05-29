@@ -3469,6 +3469,10 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
               source: "library"
             };
           }
+          containers[0].settings.background_size = "contain";
+          containers[0].settings.background_repeat = "no-repeat";
+          containers[0].settings.background_position = "center center";
+          containers[0].settings.background_color = "#E8E6DF";
         }
         if (containers[1] && containers[1].settings) {
           const targetUrl = aiContent.hero?.masked_image || "";
@@ -3480,6 +3484,10 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
               source: "library"
             };
           }
+          containers[1].settings.background_size = "contain";
+          containers[1].settings.background_repeat = "no-repeat";
+          containers[1].settings.background_position = "center center";
+          containers[1].settings.background_color = "#E8E6DF";
         }
         if (widgets["call-to-action"]?.[0] && widgets["call-to-action"][0].settings) {
           const cta = widgets["call-to-action"][0];
@@ -3507,6 +3515,10 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
               source: "library"
             };
           }
+          mainContainer.settings.background_size = "contain";
+          mainContainer.settings.background_repeat = "no-repeat";
+          mainContainer.settings.background_position = "center center";
+          mainContainer.settings.background_color = "#E8E6DF";
           delete mainContainer.settings.background_overlay_background;
           delete mainContainer.settings.background_overlay_color;
           delete mainContainer.settings.background_overlay_opacity;
@@ -3550,6 +3562,10 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
               source: "library"
             };
           }
+          mainContainer.settings.background_size = "contain";
+          mainContainer.settings.background_repeat = "no-repeat";
+          mainContainer.settings.background_position = "center center";
+          mainContainer.settings.background_color = "#E8E6DF";
         }
         if (widgets.heading?.[0] && widgets.heading[0].settings) {
           widgets.heading[0].settings.title = aiContent.services?.heading || "";
@@ -3608,6 +3624,10 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
               source: "library"
             };
           }
+          mainContainer.settings.background_size = "contain";
+          mainContainer.settings.background_repeat = "no-repeat";
+          mainContainer.settings.background_position = "center center";
+          mainContainer.settings.background_color = "#E8E6DF";
         }
         if (widgets.heading?.[0] && widgets.heading[0].settings) {
           widgets.heading[0].settings.title = aiContent.process?.heading || "Our Work Process";
@@ -3746,6 +3766,10 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
             bgCol.settings.background_image.url = local.url;
             bgCol.settings.background_image.id = String(local.id);
           }
+          bgCol.settings.background_size = "contain";
+          bgCol.settings.background_repeat = "no-repeat";
+          bgCol.settings.background_position = "center center";
+          bgCol.settings.background_color = "#E8E6DF";
         }
         if (widgets.image?.[0] && widgets.image[0].settings?.image) {
           const targetUrl = aiContent.hero?.masked_image || "";
@@ -3823,6 +3847,10 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
             bgCol.settings.background_image.url = local.url;
             bgCol.settings.background_image.id = String(local.id);
           }
+          bgCol.settings.background_size = "contain";
+          bgCol.settings.background_repeat = "no-repeat";
+          bgCol.settings.background_position = "center center";
+          bgCol.settings.background_color = "#E8E6DF";
         }
       } else if (title === "Exceptional quality") {
         if (widgets.heading?.[0] && widgets.heading[0].settings) {
@@ -4093,7 +4121,14 @@ footer img[src*="gen_logo"],
   const mapLibraryUrlsAndFixStretch = (obj) => {
     if (!obj || typeof obj !== "object") return;
     if (obj.elType === "widget" && obj.widgetType === "image" && obj.settings) {
-      obj.settings["object-fit"] = "cover";
+      const isCircular = obj.settings.image_border_radius?.top === "50" || obj.settings.image?.url && obj.settings.image.url.includes("masked");
+      obj.settings["object-fit"] = isCircular ? "cover" : "contain";
+    }
+    if (obj.settings && obj.settings.background_image && obj.settings.background_image.url) {
+      obj.settings.background_size = "contain";
+      obj.settings.background_repeat = "no-repeat";
+      obj.settings.background_position = "center center";
+      obj.settings.background_color = "#E8E6DF";
     }
     if (obj.url && typeof obj.url === "string" && obj.url.includes("library.elementor.com")) {
       const local = getLocalMedia(obj.url);
@@ -5076,7 +5111,7 @@ if ($logo_attachment_id) {
 
 // Inject global CSS to fix horizontal scroll and ensure circle images render correctly.
 // This runs inside WP context so no shell-escaping issues.
-$global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !important; } .elementor-section, .e-container, .elementor-column { max-width: 100% !important; } .elementor-widget-image img { object-fit: cover !important; } ' .
+$global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !important; } .elementor-section, .e-container, .elementor-column { max-width: 100% !important; } ' .
 	'.elementor-widget-theme-site-logo img { mix-blend-mode: multiply !important; height: auto !important; max-height: 85px !important; width: auto !important; } ' .
 	'.elementor-element-1b226200, .elementor-element-1b226200 .elementor-widget-text-editor, .elementor-element-1b226200 .elementor-widget-text-editor p { color: #E9E8E6 !important; } ' .
 	'.elementor-element-1b226200 .elementor-widget-text-editor strong { color: #FFFFFF !important; } ' .
@@ -5118,7 +5153,6 @@ add_action("wp_head", function() {
     /* Injected layout fixes */
     html, body { overflow-x: hidden !important; max-width: 100vw !important; }
     .elementor-section, .e-container, .elementor-column { max-width: 100% !important; }
-    .elementor-widget-image img { object-fit: cover !important; }
     .elementor-widget-theme-site-logo img { mix-blend-mode: multiply !important; height: auto !important; max-height: 85px !important; width: auto !important; }
     .elementor-element-1b226200, .elementor-element-1b226200 .elementor-widget-text-editor, .elementor-element-1b226200 .elementor-widget-text-editor p { color: #E9E8E6 !important; }
     .elementor-element-1b226200 .elementor-widget-text-editor strong { color: #FFFFFF !important; }

@@ -491,9 +491,9 @@
           },
           "_inline_size": "48",
           "_inline_size_tablet": "40",
-          "background_position": "top right",
+          "background_position": "center center",
           "background_repeat": "no-repeat",
-          "background_size": "cover",
+          "background_size": "contain",
           "background_bg_width_tablet": {
             "unit": "%",
             "size": "60",
@@ -531,7 +531,8 @@
             "left": "0",
             "isLinked": ""
           },
-          "background_position_mobile": "top center"
+          "background_position_mobile": "top center",
+          "background_color": "#E8E6DF"
         },
         "elements": [
           {
@@ -919,7 +920,7 @@
                 "size": "370",
                 "sizes": []
               },
-              "object-fit": "cover",
+              "object-fit": "contain",
               "_margin": {
                 "unit": "px",
                 "top": "-200",
@@ -1705,9 +1706,9 @@
           "background_background": "classic",
           "_inline_size": "49.986",
           "_inline_size_tablet": "40",
-          "background_position": "top left",
+          "background_position": "center center",
           "background_repeat": "no-repeat",
-          "background_size": "cover",
+          "background_size": "contain",
           "background_bg_width_tablet": {
             "unit": "%",
             "size": "200",
@@ -1759,7 +1760,8 @@
           "background_size_tablet": "initial",
           "background_size_mobile": "cover",
           "background_motion_fx_motion_fx_scrolling": "yes",
-          "background_motion_fx_translateY_effect": "yes"
+          "background_motion_fx_translateY_effect": "yes",
+          "background_color": "#E8E6DF"
         },
         "elements": [
           {

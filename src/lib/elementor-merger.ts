@@ -112,6 +112,10 @@ export function mergeElementorTemplate(
 							source: "library"
 						};
 					}
+					containers[0].settings.background_size = "contain";
+					containers[0].settings.background_repeat = "no-repeat";
+					containers[0].settings.background_position = "center center";
+					containers[0].settings.background_color = "#E8E6DF";
 				}
 				// Hero Container 2 background image
 				if (containers[1] && containers[1].settings) {
@@ -124,6 +128,10 @@ export function mergeElementorTemplate(
 							source: "library"
 						};
 					}
+					containers[1].settings.background_size = "contain";
+					containers[1].settings.background_repeat = "no-repeat";
+					containers[1].settings.background_position = "center center";
+					containers[1].settings.background_color = "#E8E6DF";
 				}
 				// Hero Call to Action widget
 				if (widgets["call-to-action"]?.[0] && widgets["call-to-action"][0].settings) {
@@ -153,6 +161,10 @@ export function mergeElementorTemplate(
 							source: "library"
 						};
 					}
+					mainContainer.settings.background_size = "contain";
+					mainContainer.settings.background_repeat = "no-repeat";
+					mainContainer.settings.background_position = "center center";
+					mainContainer.settings.background_color = "#E8E6DF";
 					// Remove background overlay classic layer so that image and text sit natively
 					delete mainContainer.settings.background_overlay_background;
 					delete mainContainer.settings.background_overlay_color;
@@ -200,6 +212,10 @@ export function mergeElementorTemplate(
 							source: "library"
 						};
 					}
+					mainContainer.settings.background_size = "contain";
+					mainContainer.settings.background_repeat = "no-repeat";
+					mainContainer.settings.background_position = "center center";
+					mainContainer.settings.background_color = "#E8E6DF";
 				}
 				if (widgets.heading?.[0] && widgets.heading[0].settings) {
 					widgets.heading[0].settings.title = aiContent.services?.heading || "";
@@ -261,6 +277,10 @@ export function mergeElementorTemplate(
 							source: "library"
 						};
 					}
+					mainContainer.settings.background_size = "contain";
+					mainContainer.settings.background_repeat = "no-repeat";
+					mainContainer.settings.background_position = "center center";
+					mainContainer.settings.background_color = "#E8E6DF";
 				}
 				// Inside the dark overlay box:
 				if (widgets.heading?.[0] && widgets.heading[0].settings) {
@@ -419,6 +439,10 @@ export function mergeElementorTemplate(
 						bgCol.settings.background_image.url = local.url;
 						bgCol.settings.background_image.id = String(local.id);
 					}
+					bgCol.settings.background_size = "contain";
+					bgCol.settings.background_repeat = "no-repeat";
+					bgCol.settings.background_position = "center center";
+					bgCol.settings.background_color = "#E8E6DF";
 				}
 				// Supporting circular image — ONLY fix: object-fit must be "cover" not "fill"
 				// The template already has: image_custom_dimension 260×260, border-radius 50%,
@@ -516,6 +540,10 @@ export function mergeElementorTemplate(
 						bgCol.settings.background_image.url = local.url;
 						bgCol.settings.background_image.id = String(local.id);
 					}
+					bgCol.settings.background_size = "contain";
+					bgCol.settings.background_repeat = "no-repeat";
+					bgCol.settings.background_position = "center center";
+					bgCol.settings.background_color = "#E8E6DF";
 				}
 			} else if (title === "Exceptional quality") {
 				// Features heading
@@ -813,13 +841,23 @@ footer img[src*="gen_logo"],
 		...footerSections,
 	];
 
-	// Recursively replace library.elementor.com URLs/IDs with local ones and force object-fit: cover on image widgets to prevent distortion.
+	// Recursively replace library.elementor.com URLs/IDs with local ones and adjust image styling to prevent distortion and cropping.
 	const mapLibraryUrlsAndFixStretch = (obj: any) => {
 		if (!obj || typeof obj !== "object") return;
 
-		// Force object-fit: cover on all image widgets
+		// Force object-fit on image widgets (cover only for circular/masked ones, contain for others)
 		if (obj.elType === "widget" && obj.widgetType === "image" && obj.settings) {
-			obj.settings["object-fit"] = "cover";
+			const isCircular = obj.settings.image_border_radius?.top === "50" || 
+			                   (obj.settings.image?.url && obj.settings.image.url.includes("masked"));
+			obj.settings["object-fit"] = isCircular ? "cover" : "contain";
+		}
+
+		// Force background-size: contain on all containers/columns/sections with background images
+		if (obj.settings && obj.settings.background_image && obj.settings.background_image.url) {
+			obj.settings.background_size = "contain";
+			obj.settings.background_repeat = "no-repeat";
+			obj.settings.background_position = "center center";
+			obj.settings.background_color = "#E8E6DF";
 		}
 
 		// Handle object structure: { url: "...", id: "..." }
