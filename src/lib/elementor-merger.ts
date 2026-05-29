@@ -1156,17 +1156,18 @@ html, body {
         height: auto !important;
         min-height: 560px !important;
     }
-    /* image column fills full height */
+    /* image column: 25% — shows left edge of the photo */
     .elementor-element-6e5c11f9 {
-        flex: 1 1 50% !important;
+        flex: 0 0 25% !important;
+        max-width: 25% !important;
         align-self: stretch !important;
         height: 100% !important;
         min-height: 560px !important;
     }
-    /* text card: take 50% width and auto height, centred vertically by flex parent */
+    /* text card: 75% width, vertically centered by flex parent */
     .elementor-element-56a3deab {
-        flex: 0 0 50% !important;
-        max-width: 50% !important;
+        flex: 0 0 75% !important;
+        max-width: 75% !important;
         align-self: center !important;
         display: flex !important;
         flex-direction: column !important;
