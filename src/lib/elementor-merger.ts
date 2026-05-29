@@ -1116,8 +1116,8 @@ html, body {
     }
 }
 
-/* CTA (Section 5) Parent-Child Stretch to align Image and Quote Card heights on Desktop/Tablet */
-@media (min-width: 768px) {
+/* CTA (Section 5) Parent-Child Stretch to align Image and Quote Card heights on Desktop (>=1100px) */
+@media (min-width: 1100px) {
     .elementor-element-1b226200 {
         display: flex !important;
         flex-direction: row !important;
@@ -1128,6 +1128,32 @@ html, body {
         aspect-ratio: 16 / 9 !important;
         height: auto !important;
         min-height: auto !important;
+    }
+    .elementor-element-56a3deab,
+    .elementor-element-56a3deab .elementor-widget-wrap {
+        height: 100% !important;
+        min-height: 100% !important;
+        align-self: stretch !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+    }
+}
+
+/* Tablet view (768px to 1099px): row layout with dynamic height to prevent text overflow */
+@media (min-width: 768px) and (max-width: 1099px) {
+    .elementor-element-1b226200 {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: flex-end !important;
+        align-items: stretch !important;
+        padding-top: 40px !important;
+        padding-bottom: 40px !important;
+        aspect-ratio: auto !important;
+        height: auto !important;
+        min-height: 600px !important;
     }
     .elementor-element-56a3deab,
     .elementor-element-56a3deab .elementor-widget-wrap {
