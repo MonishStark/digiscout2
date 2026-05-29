@@ -1972,7 +1972,7 @@ async function resolveSectionImages(analysis, log, logoAnalysis, business, optio
   } else {
     taskList.push({
       run: async () => {
-        resultUrls.masked_image = await generateAndSave(analysis.masked_image.generation_prompt || "wood grain pattern detail close-up", "masked", "1:1");
+        resultUrls.masked_image = await generateAndSave(analysis.masked_image.generation_prompt || "wood grain pattern detail close-up", "masked", "3:4");
       }
     });
   }
@@ -3469,7 +3469,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
               source: "library"
             };
           }
-          containers[0].settings.background_size = "contain";
+          containers[0].settings.background_size = "cover";
           containers[0].settings.background_repeat = "no-repeat";
           containers[0].settings.background_position = "center center";
           containers[0].settings.background_color = "#E8E6DF";
@@ -3484,7 +3484,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
               source: "library"
             };
           }
-          containers[1].settings.background_size = "contain";
+          containers[1].settings.background_size = "cover";
           containers[1].settings.background_repeat = "no-repeat";
           containers[1].settings.background_position = "center center";
           containers[1].settings.background_color = "#E8E6DF";
@@ -3515,7 +3515,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
               source: "library"
             };
           }
-          mainContainer.settings.background_size = "contain";
+          mainContainer.settings.background_size = "cover";
           mainContainer.settings.background_repeat = "no-repeat";
           mainContainer.settings.background_position = "center center";
           mainContainer.settings.background_color = "#E8E6DF";
@@ -3562,7 +3562,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
               source: "library"
             };
           }
-          mainContainer.settings.background_size = "contain";
+          mainContainer.settings.background_size = "cover";
           mainContainer.settings.background_repeat = "no-repeat";
           mainContainer.settings.background_position = "center center";
           mainContainer.settings.background_color = "#E8E6DF";
@@ -3624,7 +3624,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
               source: "library"
             };
           }
-          mainContainer.settings.background_size = "contain";
+          mainContainer.settings.background_size = "cover";
           mainContainer.settings.background_repeat = "no-repeat";
           mainContainer.settings.background_position = "center center";
           mainContainer.settings.background_color = "#E8E6DF";
@@ -3766,7 +3766,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
             bgCol.settings.background_image.url = local.url;
             bgCol.settings.background_image.id = String(local.id);
           }
-          bgCol.settings.background_size = "contain";
+          bgCol.settings.background_size = "cover";
           bgCol.settings.background_repeat = "no-repeat";
           bgCol.settings.background_position = "center center";
           bgCol.settings.background_color = "#E8E6DF";
@@ -3847,7 +3847,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
             bgCol.settings.background_image.url = local.url;
             bgCol.settings.background_image.id = String(local.id);
           }
-          bgCol.settings.background_size = "contain";
+          bgCol.settings.background_size = "cover";
           bgCol.settings.background_repeat = "no-repeat";
           bgCol.settings.background_position = "center center";
           bgCol.settings.background_color = "#E8E6DF";
@@ -4104,6 +4104,41 @@ footer img[src*="gen_logo"],
     mix-blend-mode: screen !important;
     background-color: transparent !important;
 }
+
+/* Responsive Aspect Ratio Scaling to prevent background cropping */
+@media (min-width: 768px) {
+    /* Hero split layout */
+    .elementor-element-49f8bd39 {
+        height: auto !important;
+        min-height: auto !important;
+    }
+    .elementor-element-35a4f6fb, .elementor-element-39f1fa01 {
+        aspect-ratio: 3 / 4 !important;
+        height: auto !important;
+        min-height: auto !important;
+    }
+    
+    /* Home Goods (About) */
+    .elementor-element-4d1645d0 {
+        aspect-ratio: 4 / 3 !important;
+        height: auto !important;
+        min-height: auto !important;
+    }
+    
+    /* Tablewear (Services) */
+    .elementor-element-51305b21 {
+        aspect-ratio: 16 / 9 !important;
+        height: auto !important;
+        min-height: auto !important;
+    }
+    
+    /* CTA */
+    .elementor-element-1b226200 {
+        aspect-ratio: 16 / 9 !important;
+        height: auto !important;
+        min-height: auto !important;
+    }
+}
 </style>`
         },
         elements: [],
@@ -4121,11 +4156,10 @@ footer img[src*="gen_logo"],
   const mapLibraryUrlsAndFixStretch = (obj) => {
     if (!obj || typeof obj !== "object") return;
     if (obj.elType === "widget" && obj.widgetType === "image" && obj.settings) {
-      const isCircular = obj.settings.image_border_radius?.top === "50" || obj.settings.image?.url && obj.settings.image.url.includes("masked");
-      obj.settings["object-fit"] = isCircular ? "cover" : "contain";
+      obj.settings["object-fit"] = "cover";
     }
     if (obj.settings && obj.settings.background_image && obj.settings.background_image.url) {
-      obj.settings.background_size = "contain";
+      obj.settings.background_size = "cover";
       obj.settings.background_repeat = "no-repeat";
       obj.settings.background_position = "center center";
       obj.settings.background_color = "#E8E6DF";
@@ -5131,7 +5165,14 @@ $global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !imp
 	'.elementor-widget-call-to-action .elementor-cta__button { margin: 0 auto !important; display: inline-block !important; } ' .
 	'.elementor-element-3b58bec7, .elementor-element-69be47e, .elementor-element-5a62107a, .elementor-element-44b1aa0b, .elementor-element-3b58bec7 .elementor-widget-container, .elementor-element-69be47e .elementor-widget-container, .elementor-element-5a62107a .elementor-widget-container, .elementor-element-44b1aa0b .elementor-widget-container { background-color: transparent !important; background: transparent !important; } ' .
 	'.elementor-element-3b58bec7 img, .elementor-element-69be47e img, .elementor-widget-theme-site-logo img, .elementor-widget-image img[src*="gen_logo"], header img[src*="gen_logo"], .site-header img[src*="gen_logo"] { mix-blend-mode: multiply !important; background-color: transparent !important; } ' .
-	'.elementor-element-5a62107a img, .elementor-element-44b1aa0b img, [data-elementor-type="footer"] img[src*="gen_logo"], footer img[src*="gen_logo"], .site-footer img[src*="gen_logo"] { filter: invert(1) !important; mix-blend-mode: screen !important; background-color: transparent !important; }';
+	'.elementor-element-5a62107a img, .elementor-element-44b1aa0b img, [data-elementor-type="footer"] img[src*="gen_logo"], footer img[src*="gen_logo"], .site-footer img[src*="gen_logo"] { filter: invert(1) !important; mix-blend-mode: screen !important; background-color: transparent !important; } ' .
+	'@media (min-width: 768px) { ' .
+	'  .elementor-element-49f8bd39 { height: auto !important; min-height: auto !important; } ' .
+	'  .elementor-element-35a4f6fb, .elementor-element-39f1fa01 { aspect-ratio: 3 / 4 !important; height: auto !important; min-height: auto !important; } ' .
+	'  .elementor-element-4d1645d0 { aspect-ratio: 4 / 3 !important; height: auto !important; min-height: auto !important; } ' .
+	'  .elementor-element-51305b21 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; } ' .
+	'  .elementor-element-1b226200 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; } ' .
+	'}';
 update_option('elementor_custom_css', $global_css);
 echo "GLOBAL_CSS_SET
 ";
@@ -5188,6 +5229,14 @@ add_action("wp_head", function() {
     .elementor-element-3b58bec7, .elementor-element-69be47e, .elementor-element-5a62107a, .elementor-element-44b1aa0b, .elementor-element-3b58bec7 .elementor-widget-container, .elementor-element-69be47e .elementor-widget-container, .elementor-element-5a62107a .elementor-widget-container, .elementor-element-44b1aa0b .elementor-widget-container { background-color: transparent !important; background: transparent !important; }
     .elementor-element-3b58bec7 img, .elementor-element-69be47e img, .elementor-widget-theme-site-logo img, .elementor-widget-image img[src*="gen_logo"], header img[src*="gen_logo"], .site-header img[src*="gen_logo"] { mix-blend-mode: multiply !important; background-color: transparent !important; }
     .elementor-element-5a62107a img, .elementor-element-44b1aa0b img, [data-elementor-type="footer"] img[src*="gen_logo"], footer img[src*="gen_logo"], .site-footer img[src*="gen_logo"] { filter: invert(1) !important; mix-blend-mode: screen !important; background-color: transparent !important; }
+    
+    @media (min-width: 768px) {
+        .elementor-element-49f8bd39 { height: auto !important; min-height: auto !important; }
+        .elementor-element-35a4f6fb, .elementor-element-39f1fa01 { aspect-ratio: 3 / 4 !important; height: auto !important; min-height: auto !important; }
+        .elementor-element-4d1645d0 { aspect-ratio: 4 / 3 !important; height: auto !important; min-height: auto !important; }
+        .elementor-element-51305b21 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
+        .elementor-element-1b226200 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
+    }
     </style>
     <?php
 });';

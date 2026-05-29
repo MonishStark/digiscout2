@@ -112,7 +112,7 @@ export function mergeElementorTemplate(
 							source: "library"
 						};
 					}
-					containers[0].settings.background_size = "contain";
+					containers[0].settings.background_size = "cover";
 					containers[0].settings.background_repeat = "no-repeat";
 					containers[0].settings.background_position = "center center";
 					containers[0].settings.background_color = "#E8E6DF";
@@ -128,7 +128,7 @@ export function mergeElementorTemplate(
 							source: "library"
 						};
 					}
-					containers[1].settings.background_size = "contain";
+					containers[1].settings.background_size = "cover";
 					containers[1].settings.background_repeat = "no-repeat";
 					containers[1].settings.background_position = "center center";
 					containers[1].settings.background_color = "#E8E6DF";
@@ -161,7 +161,7 @@ export function mergeElementorTemplate(
 							source: "library"
 						};
 					}
-					mainContainer.settings.background_size = "contain";
+					mainContainer.settings.background_size = "cover";
 					mainContainer.settings.background_repeat = "no-repeat";
 					mainContainer.settings.background_position = "center center";
 					mainContainer.settings.background_color = "#E8E6DF";
@@ -212,7 +212,7 @@ export function mergeElementorTemplate(
 							source: "library"
 						};
 					}
-					mainContainer.settings.background_size = "contain";
+					mainContainer.settings.background_size = "cover";
 					mainContainer.settings.background_repeat = "no-repeat";
 					mainContainer.settings.background_position = "center center";
 					mainContainer.settings.background_color = "#E8E6DF";
@@ -277,7 +277,7 @@ export function mergeElementorTemplate(
 							source: "library"
 						};
 					}
-					mainContainer.settings.background_size = "contain";
+					mainContainer.settings.background_size = "cover";
 					mainContainer.settings.background_repeat = "no-repeat";
 					mainContainer.settings.background_position = "center center";
 					mainContainer.settings.background_color = "#E8E6DF";
@@ -439,7 +439,7 @@ export function mergeElementorTemplate(
 						bgCol.settings.background_image.url = local.url;
 						bgCol.settings.background_image.id = String(local.id);
 					}
-					bgCol.settings.background_size = "contain";
+					bgCol.settings.background_size = "cover";
 					bgCol.settings.background_repeat = "no-repeat";
 					bgCol.settings.background_position = "center center";
 					bgCol.settings.background_color = "#E8E6DF";
@@ -540,7 +540,7 @@ export function mergeElementorTemplate(
 						bgCol.settings.background_image.url = local.url;
 						bgCol.settings.background_image.id = String(local.id);
 					}
-					bgCol.settings.background_size = "contain";
+					bgCol.settings.background_size = "cover";
 					bgCol.settings.background_repeat = "no-repeat";
 					bgCol.settings.background_position = "center center";
 					bgCol.settings.background_color = "#E8E6DF";
@@ -823,6 +823,41 @@ footer img[src*="gen_logo"],
     mix-blend-mode: screen !important;
     background-color: transparent !important;
 }
+
+/* Responsive Aspect Ratio Scaling to prevent background cropping */
+@media (min-width: 768px) {
+    /* Hero split layout */
+    .elementor-element-49f8bd39 {
+        height: auto !important;
+        min-height: auto !important;
+    }
+    .elementor-element-35a4f6fb, .elementor-element-39f1fa01 {
+        aspect-ratio: 3 / 4 !important;
+        height: auto !important;
+        min-height: auto !important;
+    }
+    
+    /* Home Goods (About) */
+    .elementor-element-4d1645d0 {
+        aspect-ratio: 4 / 3 !important;
+        height: auto !important;
+        min-height: auto !important;
+    }
+    
+    /* Tablewear (Services) */
+    .elementor-element-51305b21 {
+        aspect-ratio: 16 / 9 !important;
+        height: auto !important;
+        min-height: auto !important;
+    }
+    
+    /* CTA */
+    .elementor-element-1b226200 {
+        aspect-ratio: 16 / 9 !important;
+        height: auto !important;
+        min-height: auto !important;
+    }
+}
 </style>`
 				},
 				elements: [],
@@ -845,16 +880,14 @@ footer img[src*="gen_logo"],
 	const mapLibraryUrlsAndFixStretch = (obj: any) => {
 		if (!obj || typeof obj !== "object") return;
 
-		// Force object-fit on image widgets (cover only for circular/masked ones, contain for others)
+		// Force object-fit: cover on all image widgets to prevent distortion and stretch
 		if (obj.elType === "widget" && obj.widgetType === "image" && obj.settings) {
-			const isCircular = obj.settings.image_border_radius?.top === "50" || 
-			                   (obj.settings.image?.url && obj.settings.image.url.includes("masked"));
-			obj.settings["object-fit"] = isCircular ? "cover" : "contain";
+			obj.settings["object-fit"] = "cover";
 		}
 
-		// Force background-size: contain on all containers/columns/sections with background images
+		// Force background-size: cover on all containers/columns/sections with background images
 		if (obj.settings && obj.settings.background_image && obj.settings.background_image.url) {
-			obj.settings.background_size = "contain";
+			obj.settings.background_size = "cover";
 			obj.settings.background_repeat = "no-repeat";
 			obj.settings.background_position = "center center";
 			obj.settings.background_color = "#E8E6DF";

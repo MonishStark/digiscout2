@@ -1222,7 +1222,14 @@ $global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !imp
 	'.elementor-widget-call-to-action .elementor-cta__button { margin: 0 auto !important; display: inline-block !important; } ' .
 	'.elementor-element-3b58bec7, .elementor-element-69be47e, .elementor-element-5a62107a, .elementor-element-44b1aa0b, .elementor-element-3b58bec7 .elementor-widget-container, .elementor-element-69be47e .elementor-widget-container, .elementor-element-5a62107a .elementor-widget-container, .elementor-element-44b1aa0b .elementor-widget-container { background-color: transparent !important; background: transparent !important; } ' .
 	'.elementor-element-3b58bec7 img, .elementor-element-69be47e img, .elementor-widget-theme-site-logo img, .elementor-widget-image img[src*="gen_logo"], header img[src*="gen_logo"], .site-header img[src*="gen_logo"] { mix-blend-mode: multiply !important; background-color: transparent !important; } ' .
-	'.elementor-element-5a62107a img, .elementor-element-44b1aa0b img, [data-elementor-type="footer"] img[src*="gen_logo"], footer img[src*="gen_logo"], .site-footer img[src*="gen_logo"] { filter: invert(1) !important; mix-blend-mode: screen !important; background-color: transparent !important; }';
+	'.elementor-element-5a62107a img, .elementor-element-44b1aa0b img, [data-elementor-type="footer"] img[src*="gen_logo"], footer img[src*="gen_logo"], .site-footer img[src*="gen_logo"] { filter: invert(1) !important; mix-blend-mode: screen !important; background-color: transparent !important; } ' .
+	'@media (min-width: 768px) { ' .
+	'  .elementor-element-49f8bd39 { height: auto !important; min-height: auto !important; } ' .
+	'  .elementor-element-35a4f6fb, .elementor-element-39f1fa01 { aspect-ratio: 3 / 4 !important; height: auto !important; min-height: auto !important; } ' .
+	'  .elementor-element-4d1645d0 { aspect-ratio: 4 / 3 !important; height: auto !important; min-height: auto !important; } ' .
+	'  .elementor-element-51305b21 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; } ' .
+	'  .elementor-element-1b226200 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; } ' .
+	'}';
 update_option('elementor_custom_css', $global_css);
 echo "GLOBAL_CSS_SET\n";
 
@@ -1278,6 +1285,14 @@ add_action("wp_head", function() {
     .elementor-element-3b58bec7, .elementor-element-69be47e, .elementor-element-5a62107a, .elementor-element-44b1aa0b, .elementor-element-3b58bec7 .elementor-widget-container, .elementor-element-69be47e .elementor-widget-container, .elementor-element-5a62107a .elementor-widget-container, .elementor-element-44b1aa0b .elementor-widget-container { background-color: transparent !important; background: transparent !important; }
     .elementor-element-3b58bec7 img, .elementor-element-69be47e img, .elementor-widget-theme-site-logo img, .elementor-widget-image img[src*="gen_logo"], header img[src*="gen_logo"], .site-header img[src*="gen_logo"] { mix-blend-mode: multiply !important; background-color: transparent !important; }
     .elementor-element-5a62107a img, .elementor-element-44b1aa0b img, [data-elementor-type="footer"] img[src*="gen_logo"], footer img[src*="gen_logo"], .site-footer img[src*="gen_logo"] { filter: invert(1) !important; mix-blend-mode: screen !important; background-color: transparent !important; }
+    
+    @media (min-width: 768px) {
+        .elementor-element-49f8bd39 { height: auto !important; min-height: auto !important; }
+        .elementor-element-35a4f6fb, .elementor-element-39f1fa01 { aspect-ratio: 3 / 4 !important; height: auto !important; min-height: auto !important; }
+        .elementor-element-4d1645d0 { aspect-ratio: 4 / 3 !important; height: auto !important; min-height: auto !important; }
+        .elementor-element-51305b21 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
+        .elementor-element-1b226200 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
+    }
     </style>
     <?php
 });';

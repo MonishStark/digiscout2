@@ -398,13 +398,13 @@ export async function resolveSectionImages(
 		});
 	}
 
-	// 2. Masked Image (square detail shot)
+	// 2. Masked Image (detail shot matching hero aspect ratio)
 	if (analysis.masked_image.action === "use_existing" && analysis.masked_image.url) {
 		resultUrls.masked_image = analysis.masked_image.url;
 	} else {
 		taskList.push({
 			run: async () => {
-				resultUrls.masked_image = await generateAndSave(analysis.masked_image.generation_prompt || "wood grain pattern detail close-up", "masked", "1:1");
+				resultUrls.masked_image = await generateAndSave(analysis.masked_image.generation_prompt || "wood grain pattern detail close-up", "masked", "3:4");
 			}
 		});
 	}
