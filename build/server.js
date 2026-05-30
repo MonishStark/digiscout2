@@ -5551,157 +5551,8 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, adminUser,
     const isElementor = schema.elementorContent !== void 0;
     if (isElementor) {
       await logCallback("Deploying Elementor template-based layout...");
-      await logCallback("Creating mu-plugins for custom site fixes and slideshow...");
+      await logCallback("Creating mu-plugins directory for custom site fixes and slideshow...");
       await runRemoteShellCommand(`mkdir -p "${docRoot}/wp-content/mu-plugins"`, logCallback);
-      await runRemoteShellCommand(`rm -f "${docRoot}/wp-content/mu-plugins/allow-svg.php"`, logCallback).catch(() => {
-      });
-      const customFixesPhp = `<?php
-/*
-Plugin Name: DigitalScout Custom Site Fixes
-Description: Handles SVG uploads, custom favicon fallback injection, and mobile hero slideshow.
-Version: 1.1
-Author: DigitalScout
-*/
-
-// 1. Allow SVG Uploads
-add_filter('upload_mimes', function($mimes) {
-    $mimes['svg'] = 'image/svg+xml';
-    $mimes['svgz'] = 'image/svg+xml';
-    return $mimes;
-});
-add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes) {
-    $filetype = wp_check_filetype($filename, $mimes);
-    if ($filetype['ext'] === 'svg') {
-        $data['ext'] = 'svg';
-        $data['type'] = 'image/svg+xml';
-    }
-    return $data;
-}, 10, 4);
-
-// 2. Custom Favicon Fallback Injection
-add_action('wp_head', function() {
-    $favicon_url = get_option('ds_favicon_url');
-    if ($favicon_url) {
-        echo '<!-- DigitalScout Custom Favicon -->\\n';
-        echo '<link rel="shortcut icon" href="' . esc_url($favicon_url) . '" />\\n';
-        echo '<link rel="icon" type="image/png" sizes="512x512" href="' . esc_url($favicon_url) . '" />\\n';
-        echo '<link rel="apple-touch-icon" href="' . esc_url($favicon_url) . '" />\\n';
-    }
-}, 1);
-
-// 3. Mobile Hero Slideshow Styles
-add_action('wp_head', function() {
-    ?>
-    <style id="ds-hero-slideshow-style">
-    @media (max-width: 767px) {
-        /* Mobile slider transition */
-        .elementor-element-4fc28b13 {
-            transition: background-image 0.5s ease-in-out !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: center !important;
-            align-items: center !important;
-            min-height: 350px !important;
-            background-size: cover !important;
-            background-position: center !important;
-            aspect-ratio: 1 / 1 !important;
-            width: 100% !important;
-            height: auto !important;
-        }
-        
-        /* Default mobile state: hide masked image widget */
-        .elementor-element-4fc28b13:not(.show-masked) .elementor-element-41484f27 {
-            display: none !important;
-        }
-        
-        /* When show-masked is active: hide the column background image */
-        .elementor-element-4fc28b13.show-masked {
-            background-image: none !important;
-        }
-        .elementor-element-4fc28b13.show-masked::before {
-            background-image: none !important;
-            display: none !important;
-        }
-        .elementor-element-4fc28b13.show-masked .elementor-widget-wrap {
-            background-image: none !important;
-        }
-        .elementor-element-4fc28b13.show-masked .elementor-background-overlay {
-            background-image: none !important;
-            display: none !important;
-        }
-        
-        /* When show-masked is active: show the masked image widget relatively positioned */
-        .elementor-element-4fc28b13.show-masked .elementor-element-41484f27 {
-            display: block !important;
-            position: relative !important;
-            left: auto !important;
-            top: auto !important;
-            margin: 0 auto !important;
-            width: 80% !important;
-            max-width: 300px !important;
-            opacity: 1 !important;
-            animation: fadeIn 0.5s ease-in-out;
-        }
-        .elementor-element-4fc28b13.show-masked .elementor-element-41484f27 img {
-            object-fit: cover !important;
-            width: 100% !important;
-            height: auto !important;
-            aspect-ratio: 1 / 1 !important;
-            border-radius: 50% !important;
-        }
-    }
-    
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    </style>
-    <?php
-});
-
-// 4. Mobile Hero Slideshow Scripts
-add_action('wp_footer', function() {
-    ?>
-    <script id="ds-hero-slideshow-script">
-    document.addEventListener("DOMContentLoaded", function() {
-        console.log("[DS Slideshow] Init mobile hero slideshow...");
-        var column = document.querySelector(".elementor-element-4fc28b13");
-        var maskedImage = document.querySelector(".elementor-element-4fc28b13 .elementor-element-41484f27");
-        
-        if (!column || !maskedImage) {
-            console.log("[DS Slideshow] Hero section components not found on this page.");
-            return;
-        }
-        
-        var isMaskedVisible = false;
-        
-        setInterval(function() {
-            // Only trigger slide toggle on mobile viewports
-            if (window.innerWidth <= 767) {
-                isMaskedVisible = !isMaskedVisible;
-                console.log("[DS Slideshow] Toggling hero image. Show masked:", isMaskedVisible);
-                if (isMaskedVisible) {
-                    column.classList.add("show-masked");
-                } else {
-                    column.classList.remove("show-masked");
-                }
-            } else {
-                // Ensure desktop shows both (default state)
-                if (column.classList.contains("show-masked")) {
-                    column.classList.remove("show-masked");
-                }
-            }
-        }, 5000); // 5 seconds interval
-    });
-    </script>
-    <?php
-});
-`;
-      const base64CustomFixes = Buffer.from(customFixesPhp).toString("base64");
-      await runRemoteShellCommand(
-        `echo "${base64CustomFixes}" | base64 -d > "${docRoot}/wp-content/mu-plugins/ds-custom-fixes.php"`,
-        logCallback
-      );
       const mediaMap = {};
       const imageSet = /* @__PURE__ */ new Set();
       const aiContent = schema.elementorContent;
@@ -5721,6 +5572,9 @@ add_action('wp_footer', function() {
       }
       if (schema.brand?.logo) {
         imageSet.add(schema.brand.logo);
+      }
+      if (schema.brand?.favicon) {
+        imageSet.add(schema.brand.favicon);
       }
       const templateDir = path4.join(process.cwd(), "elementor-kit-2");
       const templateFiles = [
@@ -5873,6 +5727,321 @@ add_action('wp_footer', function() {
           await logCallback(`Failed to import media ${imgUrl}: ${err.message}`);
         }
       }
+      if (schema.brand?.favicon && mediaMap[schema.brand.favicon]) {
+        const faviconMedia = mediaMap[schema.brand.favicon];
+        await logCallback(`Setting site icon to generated favicon: ${faviconMedia.id}`);
+        await runWpCommand(`option update site_icon ${faviconMedia.id}`, docRoot, logCallback).catch(() => {
+        });
+        await runWpCommand(`option update ds_favicon_url "${faviconMedia.url}"`, docRoot, logCallback).catch(() => {
+        });
+      } else if (schema.brand?.logo && mediaMap[schema.brand.logo]) {
+        const logoMedia = mediaMap[schema.brand.logo];
+        await logCallback(`Setting site icon to logo (no dedicated favicon): ${logoMedia.id}`);
+        await runWpCommand(`option update site_icon ${logoMedia.id}`, docRoot, logCallback).catch(() => {
+        });
+        await runWpCommand(`option update ds_favicon_url "${logoMedia.url}"`, docRoot, logCallback).catch(() => {
+        });
+      }
+      const heroImage = aiContent.hero?.hero_image || "";
+      const heroImageLocalUrl = heroImage ? mediaMap[heroImage]?.url || heroImage : "";
+      const maskedImage = aiContent.hero?.masked_image || "";
+      const maskedImageLocalUrl = maskedImage ? mediaMap[maskedImage]?.url || maskedImage : "";
+      await logCallback("Deploying consolidated mu-plugin for custom fixes and slideshow...");
+      await runRemoteShellCommand(`rm -f "${docRoot}/wp-content/mu-plugins/ds-custom-styles.php"`, logCallback).catch(() => {
+      });
+      await runRemoteShellCommand(`rm -f "${docRoot}/wp-content/mu-plugins/allow-svg.php"`, logCallback).catch(() => {
+      });
+      await runRemoteShellCommand(`rm -f "${docRoot}/wp-content/mu-plugins/ds-custom-fixes.php"`, logCallback).catch(() => {
+      });
+      const customFixesPhp = `<?php
+/*
+Plugin Name: DigitalScout Consolidated Site Fixes
+Description: Handles SVG uploads, custom favicon fallback injection, layout styles, and mobile hero slideshow.
+Version: 1.2
+Author: DigitalScout
+*/
+
+// 1. Allow SVG Uploads
+add_filter('upload_mimes', function($mimes) {
+    $mimes['svg'] = 'image/svg+xml';
+    $mimes['svgz'] = 'image/svg+xml';
+    return $mimes;
+});
+add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes) {
+    $filetype = wp_check_filetype($filename, $mimes);
+    if ($filetype['ext'] === 'svg') {
+        $data['ext'] = 'svg';
+        $data['type'] = 'image/svg+xml';
+    }
+    return $data;
+}, 10, 4);
+
+// 2. Custom Favicon Fallback Injection
+add_action('wp_head', 'ds_inject_favicon', 1);
+add_action('admin_head', 'ds_inject_favicon', 1);
+add_action('login_head', 'ds_inject_favicon', 1);
+
+function ds_inject_favicon() {
+    $favicon_url = get_option('ds_favicon_url');
+    if ($favicon_url) {
+        echo '<!-- DigitalScout Custom Favicon -->';
+        echo '<link rel="shortcut icon" href="' . esc_url($favicon_url) . '" />';
+        echo '<link rel="icon" type="image/png" sizes="32x32" href="' . esc_url($favicon_url) . '" />';
+        echo '<link rel="icon" type="image/png" sizes="192x192" href="' . esc_url($favicon_url) . '" />';
+        echo '<link rel="apple-touch-icon" href="' . esc_url($favicon_url) . '" />';
+    }
+}
+
+// 3. Global CSS Layout Styles
+add_action('wp_head', function() {
+    ?>
+    <style id="ds-custom-global-styles">
+    /* Injected layout fixes */
+    html, body { overflow-x: hidden !important; max-width: 100vw !important; }
+    .elementor-section, .e-container, .elementor-column { max-width: 100% !important; }
+    .elementor-widget-theme-site-logo img { mix-blend-mode: multiply !important; height: auto !important; max-height: 85px !important; width: auto !important; }
+    .elementor-element-1b226200, .elementor-element-1b226200 .elementor-widget-text-editor, .elementor-element-1b226200 .elementor-widget-text-editor p { color: #E9E8E6 !important; }
+    .elementor-element-1b226200 .elementor-widget-text-editor strong { color: #FFFFFF !important; }
+    .elementor-element-51305b21 .elementor-background-overlay { background-color: rgba(12, 40, 53, 0.6) !important; opacity: 1 !important; }
+    .elementor-element-51305b21::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(12, 40, 53, 0.6) !important; z-index: 0; pointer-events: none; }
+    .elementor-element-51305b21 > * { position: relative; z-index: 1; }
+    .elementor-element-39f1fa01 .elementor-background-overlay { background-color: rgba(12, 40, 53, 0.45) !important; opacity: 1 !important; }
+    .elementor-element-39f1fa01::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(12, 40, 53, 0.45) !important; z-index: 0; pointer-events: none; }
+    .elementor-element-39f1fa01 > * { position: relative; z-index: 1; }
+    [data-elementor-type="footer"] *, .elementor-element-29c6e791 *, footer *, .site-footer *, .elementor-location-footer * { color: #ffffff !important; }
+    [data-elementor-type="footer"] svg, [data-elementor-type="footer"] path, .elementor-element-29c6e791 svg, .elementor-element-29c6e791 path, footer svg, footer path, .site-footer svg, .site-footer path { fill: #ffffff !important; }
+    [data-elementor-type="footer"] a:hover, [data-elementor-type="footer"] a:hover *, .elementor-element-29c6e791 a:hover, .elementor-element-29c6e791 a:hover *, footer a:hover, footer a:hover *, .site-footer a:hover, .site-footer a:hover * { color: #ffffff !important; opacity: 0.8 !important; }
+    [data-elementor-type="footer"] ::placeholder, .elementor-element-29c6e791 ::placeholder, footer ::placeholder, .site-footer ::placeholder { color: rgba(255, 255, 255, 0.6) !important; }
+    
+    /* Call to Action Centering & Desktop/Tablet Breakout overrides */
+    .elementor-widget-call-to-action .elementor-cta__content { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; text-align: center !important; }
+    .elementor-widget-call-to-action .elementor-cta__title, .elementor-widget-call-to-action .elementor-cta__description, .elementor-widget-call-to-action .elementor-cta__content * { text-align: center !important; }
+    .elementor-widget-call-to-action .elementor-cta__button-wrapper { display: flex !important; justify-content: center !important; width: 100% !important; }
+    .elementor-widget-call-to-action .elementor-cta__button { margin: 0 auto !important; display: inline-block !important; }
+    
+    @media (min-width: 768px) {
+        .elementor-widget-call-to-action {
+            width: 100vw !important;
+            max-width: 100vw !important;
+            position: relative !important;
+            left: -50vw !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+    }
+    
+    /* Logo Background Transparency */
+    .elementor-element-3b58bec7, .elementor-element-69be47e, .elementor-element-5a62107a, .elementor-element-44b1aa0b, .elementor-element-3b58bec7 .elementor-widget-container, .elementor-element-69be47e .elementor-widget-container, .elementor-element-5a62107a .elementor-widget-container, .elementor-element-44b1aa0b .elementor-widget-container { background-color: transparent !important; background: transparent !important; }
+    .elementor-element-3b58bec7 img, .elementor-element-69be47e img, .elementor-widget-theme-site-logo img, .elementor-widget-image img[src*="gen_logo"], header img[src*="gen_logo"], .site-header img[src*="gen_logo"] { mix-blend-mode: multiply !important; background-color: transparent !important; }
+    .elementor-element-5a62107a img, .elementor-element-44b1aa0b img, [data-elementor-type="footer"] img[src*="gen_logo"], footer img[src*="gen_logo"], .site-footer img[src*="gen_logo"] { filter: invert(1) !important; mix-blend-mode: screen !important; background-color: transparent !important; }
+    
+    /* KIT 1 Hero overrides */
+    @media (min-width: 768px) {
+        .elementor-element-40a06f6 { height: auto !important; min-height: auto !important; }
+        .elementor-element-580cc436 { min-height: calc(100vh - 120px) !important; display: flex !important; flex-direction: column !important; justify-content: center !important; padding-top: 8% !important; padding-bottom: 5% !important; }
+        .elementor-element-4fc28b13 { aspect-ratio: 1 / 1 !important; height: auto !important; min-height: auto !important; max-height: calc(100vh - 120px) !important; }
+    }
+    @media (max-width: 767px) {
+        .elementor-element-40a06f6 { height: auto !important; min-height: auto !important; }
+        .elementor-element-580cc436 { padding: 50px 20px 30px 20px !important; height: auto !important; min-height: auto !important; }
+        .elementor-element-4fc28b13 { aspect-ratio: 1 / 1 !important; height: auto !important; min-height: auto !important; width: 100% !important; }
+        .elementor-element-1bc75a32 { display: none !important; }
+    }
+    .elementor-element-41484f27 { object-fit: cover !important; border-radius: 50% !important; }
+    @media (min-width: 768px) { .elementor-element-41484f27 { left: -15% !important; } }
+    
+    /* KIT 1 About & Services overrides */
+    .elementor-element-6f812967 img { aspect-ratio: 4 / 3 !important; width: 100% !important; height: auto !important; min-height: auto !important; object-fit: cover !important; }
+    .elementor-element-6f812967 { height: auto !important; min-height: auto !important; }
+    @media (max-width: 767px) { .elementor-element-6f812967 { margin-top: 0 !important; margin-bottom: 20px !important; } }
+    @media (min-width: 768px) {
+        .elementor-element-59b6e6d5 { height: auto !important; min-height: auto !important; }
+        .elementor-element-42abf8aa { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
+    }
+    @media (max-width: 767px) {
+        .elementor-element-42abf8aa { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; width: 100% !important; }
+        .elementor-element-63950d29 { display: none !important; }
+    }
+    
+    /* KIT 1 Testimonials Stretch */
+    @media (min-width: 768px) {
+        .elementor-element-331d0ffb { display: flex !important; align-items: stretch !important; }
+        .elementor-element-6e5c11f9, .elementor-element-75ba3d29 { height: auto !important; align-self: stretch !important; display: flex !important; flex-direction: column !important; }
+        .elementor-element-6e5c11f9 .elementor-widget-wrap, .elementor-element-75ba3d29 .elementor-widget-wrap { height: 100% !important; display: flex !important; flex-direction: column !important; justify-content: center !important; }
+    }
+    
+    /* KIT 2 Viewport & Aspect overrides */
+    @media (min-width: 768px) {
+        .elementor-element-49f8bd39 { height: auto !important; min-height: auto !important; }
+        .elementor-element-35a4f6fb, .elementor-element-39f1fa01 { aspect-ratio: 1 / 1 !important; height: auto !important; min-height: auto !important; max-height: calc(100vh - 120px) !important; }
+    }
+    @media (max-width: 767px) {
+        .elementor-element-49f8bd39 { height: auto !important; min-height: auto !important; flex-direction: column !important; }
+        .elementor-element-35a4f6fb { display: none !important; }
+        .elementor-element-39f1fa01 { aspect-ratio: 1 / 1 !important; height: auto !important; min-height: auto !important; width: 100% !important; }
+    }
+    .elementor-element-4d1645d0 { aspect-ratio: 4 / 3 !important; height: auto !important; min-height: auto !important; }
+    @media (max-width: 767px) { .elementor-element-4d1645d0 { aspect-ratio: auto !important; min-height: 380px !important; padding-top: 40px !important; padding-bottom: 40px !important; } }
+    
+    .elementor-element-51305b21 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
+    @media (max-width: 767px) { .elementor-element-51305b21 { aspect-ratio: auto !important; min-height: 380px !important; padding-top: 40px !important; padding-bottom: 40px !important; } }
+    
+    /* KIT 2 CTA Card Stretch */
+    @media (min-width: 1100px) {
+        .elementor-element-1b226200 { display: flex !important; flex-direction: row !important; justify-content: flex-end !important; align-items: stretch !important; padding-top: 0 !important; padding-bottom: 0 !important; aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
+        .elementor-element-56a3deab, .elementor-element-56a3deab .elementor-widget-wrap { height: 100% !important; min-height: 100% !important; align-self: stretch !important; display: flex !important; flex-direction: column !important; justify-content: center !important; margin-top: 0 !important; margin-bottom: 0 !important; }
+    }
+    @media (min-width: 768px) and (max-width: 1099px) {
+        .elementor-element-1b226200 { display: flex !important; flex-direction: row !important; justify-content: flex-end !important; align-items: stretch !important; padding-top: 40px !important; padding-bottom: 40px !important; aspect-ratio: auto !important; height: auto !important; min-height: 600px !important; }
+        .elementor-element-56a3deab, .elementor-element-56a3deab .elementor-widget-wrap { height: 100% !important; min-height: 100% !important; align-self: stretch !important; display: flex !important; flex-direction: column !important; justify-content: center !important; margin-top: 0 !important; margin-bottom: 0 !important; }
+    }
+    @media (max-width: 767px) {
+        .elementor-element-1b226200 { flex-direction: column !important; aspect-ratio: auto !important; min-height: 450px !important; }
+        .elementor-element-56a3deab { height: auto !important; min-height: auto !important; margin-top: 0 !important; margin-bottom: 0 !important; }
+    }
+    
+    /* KIT 2 Products (Recent Projects) Stack & Clear floats/absolute positioning on mobile/tablet */
+    @media (max-width: 1024px) {
+        .elementor-element-3c27eca4 .elementor-posts-container { display: flex !important; flex-direction: column !important; float: none !important; clear: both !important; height: auto !important; min-height: 1px !important; }
+        .elementor-element-3c27eca4 article.elementor-post { position: relative !important; top: auto !important; left: auto !important; float: none !important; width: 100% !important; max-width: 100% !important; margin-bottom: 30px !important; display: block !important; clear: both !important; }
+        .elementor-element-7c6a7a2 { position: relative !important; margin: 30px auto 0 auto !important; left: auto !important; transform: none !important; display: block !important; clear: both !important; }
+    }
+
+    /* Slideshow transitions */
+    @media (max-width: 767px) {
+        .elementor-element-4fc28b13 {
+            transition: background-image 0.5s ease-in-out !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            align-items: center !important;
+            min-height: 350px !important;
+            background-size: cover !important;
+            background-position: center !important;
+            aspect-ratio: 1 / 1 !important;
+            width: 100% !important;
+            height: auto !important;
+        }
+        .elementor-element-4fc28b13:not(.show-masked) .elementor-element-41484f27 {
+            display: none !important;
+        }
+        .elementor-element-4fc28b13.show-masked {
+            background-image: none !important;
+        }
+        .elementor-element-4fc28b13.show-masked::before {
+            background-image: none !important;
+            display: none !important;
+        }
+        .elementor-element-4fc28b13.show-masked .elementor-widget-wrap {
+            background-image: none !important;
+        }
+        .elementor-element-4fc28b13.show-masked .elementor-background-overlay {
+            background-image: none !important;
+            display: none !important;
+        }
+        .elementor-element-4fc28b13.show-masked .elementor-element-41484f27 {
+            display: block !important;
+            position: relative !important;
+            left: auto !important;
+            top: auto !important;
+            margin: 0 auto !important;
+            width: 80% !important;
+            max-width: 300px !important;
+            opacity: 1 !important;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .elementor-element-4fc28b13.show-masked .elementor-element-41484f27 img {
+            object-fit: cover !important;
+            width: 100% !important;
+            height: auto !important;
+            aspect-ratio: 1 / 1 !important;
+            border-radius: 50% !important;
+        }
+
+        .elementor-element-39f1fa01 {
+            transition: background-image 0.5s ease-in-out !important;
+        }
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    </style>
+    <?php
+});
+
+// 4. Mobile Hero Slideshow Scripts
+add_action('wp_footer', function() {
+    ?>
+    <script id="ds-hero-slideshow-script">
+    document.addEventListener("DOMContentLoaded", function() {
+        console.log("[DS Slideshow] Init mobile hero slideshow...");
+        
+        // Kit 1 components
+        var kit1Column = document.querySelector(".elementor-element-4fc28b13");
+        var kit1Masked = document.querySelector(".elementor-element-4fc28b13 .elementor-element-41484f27");
+        
+        // Kit 2 components
+        var kit2Column = document.querySelector(".elementor-element-39f1fa01");
+        
+        var img1Url = "${heroImageLocalUrl}";
+        var img2Url = "${maskedImageLocalUrl}";
+        
+        console.log("[DS Slideshow] Resolved Image 1:", img1Url);
+        console.log("[DS Slideshow] Resolved Image 2:", img2Url);
+        
+        if (!kit1Column && !kit2Column) {
+            console.log("[DS Slideshow] No hero column container found on page.");
+            return;
+        }
+        
+        var step = 0;
+        
+        setInterval(function() {
+            if (window.innerWidth > 767) {
+                // Desktop view - reset inline overrides
+                if (kit1Column) {
+                    kit1Column.classList.remove("show-masked");
+                }
+                if (kit2Column) {
+                    kit2Column.style.backgroundImage = "";
+                }
+                return;
+            }
+            
+            step = (step + 1) % 2;
+            console.log("[DS Slideshow] Toggle slide to step:", step);
+            
+            // Kit 1 transition logic (toggle show-masked class)
+            if (kit1Column && kit1Masked) {
+                if (step === 1) {
+                    kit1Column.classList.add("show-masked");
+                } else {
+                    kit1Column.classList.remove("show-masked");
+                }
+            }
+            
+            // Kit 2 transition logic (toggle background-image property)
+            if (kit2Column) {
+                if (step === 0) {
+                    kit2Column.style.setProperty("background-image", "url('" + img2Url + "')", "important");
+                } else {
+                    kit2Column.style.setProperty("background-image", "url('" + img1Url + "')", "important");
+                }
+            }
+        }, 5000);
+    });
+    </script>
+    <?php
+});
+`;
+      const base64CustomFixes = Buffer.from(customFixesPhp).toString("base64");
+      await runRemoteShellCommand(
+        `echo "${base64CustomFixes}" | base64 -d > "${docRoot}/wp-content/mu-plugins/ds-custom-fixes.php"`,
+        logCallback
+      ).catch(() => {
+      });
       if (Array.isArray(aiContent.projects?.posts) && aiContent.projects.posts.length > 0) {
         await logCallback(`Creating ${aiContent.projects.posts.length} project posts in WordPress...`);
         for (const post of aiContent.projects.posts) {
@@ -6228,137 +6397,6 @@ $global_css = 'html, body { overflow-x: hidden !important; max-width: 100vw !imp
 update_option('elementor_custom_css', $global_css);
 update_option('elementor_css_print_method', 'internal');
 echo "GLOBAL_CSS_SET
-";
-
-// Create Must-Use plugin to inject styles dynamically
-$mu_dir = WP_CONTENT_DIR . '/mu-plugins';
-if (!is_dir($mu_dir)) {
-    mkdir($mu_dir, 0755, true);
-}
-$mu_plugin_code = '<?php
-/*
-Plugin Name: DigitalScout Custom Layout Fixes
-Description: Dynamic layout fixes for Elementor and custom logos.
-Version: 1.1
-*/
-add_action("wp_head", function() {
-    ?>
-    <style>
-    /* Injected layout fixes */
-    html, body { overflow-x: hidden !important; max-width: 100vw !important; }
-    .elementor-section, .e-container, .elementor-column { max-width: 100% !important; }
-    .elementor-widget-theme-site-logo img { mix-blend-mode: multiply !important; height: auto !important; max-height: 85px !important; width: auto !important; }
-    .elementor-element-1b226200, .elementor-element-1b226200 .elementor-widget-text-editor, .elementor-element-1b226200 .elementor-widget-text-editor p { color: #E9E8E6 !important; }
-    .elementor-element-1b226200 .elementor-widget-text-editor strong { color: #FFFFFF !important; }
-    .elementor-element-51305b21 .elementor-background-overlay { background-color: rgba(12, 40, 53, 0.6) !important; opacity: 1 !important; }
-    .elementor-element-51305b21::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(12, 40, 53, 0.6) !important; z-index: 0; pointer-events: none; }
-    .elementor-element-51305b21 > * { position: relative; z-index: 1; }
-    .elementor-element-39f1fa01 .elementor-background-overlay { background-color: rgba(12, 40, 53, 0.45) !important; opacity: 1 !important; }
-    .elementor-element-39f1fa01::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(12, 40, 53, 0.45) !important; z-index: 0; pointer-events: none; }
-    .elementor-element-39f1fa01 > * { position: relative; z-index: 1; }
-    [data-elementor-type="footer"] *, .elementor-element-29c6e791 *, footer *, .site-footer *, .elementor-location-footer * { color: #ffffff !important; }
-    [data-elementor-type="footer"] svg, [data-elementor-type="footer"] path, .elementor-element-29c6e791 svg, .elementor-element-29c6e791 path, footer svg, footer path, .site-footer svg, .site-footer path { fill: #ffffff !important; }
-    [data-elementor-type="footer"] a:hover, [data-elementor-type="footer"] a:hover *, .elementor-element-29c6e791 a:hover, .elementor-element-29c6e791 a:hover *, footer a:hover, footer a:hover *, .site-footer a:hover, .site-footer a:hover * { color: #ffffff !important; opacity: 0.8 !important; }
-    [data-elementor-type="footer"] ::placeholder, .elementor-element-29c6e791 ::placeholder, footer ::placeholder, .site-footer ::placeholder { color: rgba(255, 255, 255, 0.6) !important; }
-    
-    /* Call to Action Centering & Desktop/Tablet Breakout overrides */
-    .elementor-widget-call-to-action .elementor-cta__content { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; text-align: center !important; }
-    .elementor-widget-call-to-action .elementor-cta__title, .elementor-widget-call-to-action .elementor-cta__description, .elementor-widget-call-to-action .elementor-cta__content * { text-align: center !important; }
-    .elementor-widget-call-to-action .elementor-cta__button-wrapper { display: flex !important; justify-content: center !important; width: 100% !important; }
-    .elementor-widget-call-to-action .elementor-cta__button { margin: 0 auto !important; display: inline-block !important; }
-    
-    @media (min-width: 768px) {
-        .elementor-widget-call-to-action {
-            width: 100vw !important;
-            max-width: 100vw !important;
-            position: relative !important;
-            left: -50vw !important;
-            margin-left: 0 !important;
-            margin-right: 0 !important;
-        }
-    }
-    
-    /* Logo Background Transparency */
-    .elementor-element-3b58bec7, .elementor-element-69be47e, .elementor-element-5a62107a, .elementor-element-44b1aa0b, .elementor-element-3b58bec7 .elementor-widget-container, .elementor-element-69be47e .elementor-widget-container, .elementor-element-5a62107a .elementor-widget-container, .elementor-element-44b1aa0b .elementor-widget-container { background-color: transparent !important; background: transparent !important; }
-    .elementor-element-3b58bec7 img, .elementor-element-69be47e img, .elementor-widget-theme-site-logo img, .elementor-widget-image img[src*="gen_logo"], header img[src*="gen_logo"], .site-header img[src*="gen_logo"] { mix-blend-mode: multiply !important; background-color: transparent !important; }
-    .elementor-element-5a62107a img, .elementor-element-44b1aa0b img, [data-elementor-type="footer"] img[src*="gen_logo"], footer img[src*="gen_logo"], .site-footer img[src*="gen_logo"] { filter: invert(1) !important; mix-blend-mode: screen !important; background-color: transparent !important; }
-    
-    /* KIT 1 Hero overrides */
-    @media (min-width: 768px) {
-        .elementor-element-40a06f6 { height: auto !important; min-height: auto !important; }
-        .elementor-element-580cc436 { min-height: calc(100vh - 120px) !important; display: flex !important; flex-direction: column !important; justify-content: center !important; padding-top: 8% !important; padding-bottom: 5% !important; }
-        .elementor-element-4fc28b13 { aspect-ratio: 1 / 1 !important; height: auto !important; min-height: auto !important; max-height: calc(100vh - 120px) !important; }
-    }
-    @media (max-width: 767px) {
-        .elementor-element-40a06f6 { height: auto !important; min-height: auto !important; }
-        .elementor-element-580cc436 { padding: 50px 20px 30px 20px !important; height: auto !important; min-height: auto !important; }
-        .elementor-element-4fc28b13 { aspect-ratio: 1 / 1 !important; height: auto !important; min-height: auto !important; width: 100% !important; }
-        .elementor-element-1bc75a32 { display: none !important; }
-    }
-    .elementor-element-41484f27 { object-fit: cover !important; border-radius: 50% !important; }
-    @media (min-width: 768px) { .elementor-element-41484f27 { left: -15% !important; } }
-    
-    /* KIT 1 About & Services overrides */
-    .elementor-element-6f812967 img { aspect-ratio: 4 / 3 !important; width: 100% !important; height: auto !important; min-height: auto !important; object-fit: cover !important; }
-    .elementor-element-6f812967 { height: auto !important; min-height: auto !important; }
-    @media (max-width: 767px) { .elementor-element-6f812967 { margin-top: 0 !important; margin-bottom: 20px !important; } }
-    @media (min-width: 768px) {
-        .elementor-element-59b6e6d5 { height: auto !important; min-height: auto !important; }
-        .elementor-element-42abf8aa { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
-    }
-    @media (max-width: 767px) {
-        .elementor-element-42abf8aa { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; width: 100% !important; }
-        .elementor-element-63950d29 { display: none !important; }
-    }
-    
-    /* KIT 1 Testimonials Stretch */
-    @media (min-width: 768px) {
-        .elementor-element-331d0ffb { display: flex !important; align-items: stretch !important; }
-        .elementor-element-6e5c11f9, .elementor-element-75ba3d29 { height: auto !important; align-self: stretch !important; display: flex !important; flex-direction: column !important; }
-        .elementor-element-6e5c11f9 .elementor-widget-wrap, .elementor-element-75ba3d29 .elementor-widget-wrap { height: 100% !important; display: flex !important; flex-direction: column !important; justify-content: center !important; }
-    }
-    
-    /* KIT 2 Viewport & Aspect overrides */
-    @media (min-width: 768px) {
-        .elementor-element-49f8bd39 { height: auto !important; min-height: auto !important; }
-        .elementor-element-35a4f6fb, .elementor-element-39f1fa01 { aspect-ratio: 1 / 1 !important; height: auto !important; min-height: auto !important; max-height: calc(100vh - 120px) !important; }
-    }
-    @media (max-width: 767px) {
-        .elementor-element-49f8bd39 { height: auto !important; min-height: auto !important; flex-direction: column !important; }
-        .elementor-element-35a4f6fb { display: none !important; }
-        .elementor-element-39f1fa01 { aspect-ratio: 1 / 1 !important; height: auto !important; min-height: auto !important; width: 100% !important; }
-    }
-    .elementor-element-4d1645d0 { aspect-ratio: 4 / 3 !important; height: auto !important; min-height: auto !important; }
-    @media (max-width: 767px) { .elementor-element-4d1645d0 { aspect-ratio: auto !important; min-height: 380px !important; padding-top: 40px !important; padding-bottom: 40px !important; } }
-    
-    .elementor-element-51305b21 { aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
-    @media (max-width: 767px) { .elementor-element-51305b21 { aspect-ratio: auto !important; min-height: 380px !important; padding-top: 40px !important; padding-bottom: 40px !important; } }
-    
-    /* KIT 2 CTA Card Stretch */
-    @media (min-width: 1100px) {
-        .elementor-element-1b226200 { display: flex !important; flex-direction: row !important; justify-content: flex-end !important; align-items: stretch !important; padding-top: 0 !important; padding-bottom: 0 !important; aspect-ratio: 16 / 9 !important; height: auto !important; min-height: auto !important; }
-        .elementor-element-56a3deab, .elementor-element-56a3deab .elementor-widget-wrap { height: 100% !important; min-height: 100% !important; align-self: stretch !important; display: flex !important; flex-direction: column !important; justify-content: center !important; margin-top: 0 !important; margin-bottom: 0 !important; }
-    }
-    @media (min-width: 768px) and (max-width: 1099px) {
-        .elementor-element-1b226200 { display: flex !important; flex-direction: row !important; justify-content: flex-end !important; align-items: stretch !important; padding-top: 40px !important; padding-bottom: 40px !important; aspect-ratio: auto !important; height: auto !important; min-height: 600px !important; }
-        .elementor-element-56a3deab, .elementor-element-56a3deab .elementor-widget-wrap { height: 100% !important; min-height: 100% !important; align-self: stretch !important; display: flex !important; flex-direction: column !important; justify-content: center !important; margin-top: 0 !important; margin-bottom: 0 !important; }
-    }
-    @media (max-width: 767px) {
-        .elementor-element-1b226200 { flex-direction: column !important; aspect-ratio: auto !important; min-height: 450px !important; }
-        .elementor-element-56a3deab { height: auto !important; min-height: auto !important; margin-top: 0 !important; margin-bottom: 0 !important; }
-    }
-    
-    /* KIT 2 Products (Recent Projects) Stack & Clear floats/absolute positioning on mobile/tablet */
-    @media (max-width: 1024px) {
-        .elementor-element-3c27eca4 .elementor-posts-container { display: flex !important; flex-direction: column !important; float: none !important; clear: both !important; height: auto !important; min-height: 1px !important; }
-        .elementor-element-3c27eca4 article.elementor-post { position: relative !important; top: auto !important; left: auto !important; float: none !important; width: 100% !important; max-width: 100% !important; margin-bottom: 30px !important; display: block !important; clear: both !important; }
-        .elementor-element-7c6a7a2 { position: relative !important; margin: 30px auto 0 auto !important; left: auto !important; transform: none !important; display: block !important; clear: both !important; }
-    }
-    </style>
-    <?php
-});';
-file_put_contents($mu_dir . '/ds-custom-styles.php', $mu_plugin_code);
-echo "MU_PLUGIN_CREATED
 ";
 `;
       const phpB64 = Buffer.from(phpCode).toString("base64");
