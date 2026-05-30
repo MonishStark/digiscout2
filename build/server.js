@@ -5340,15 +5340,15 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
           }
         }
       }
-      for (const imgUrl of imageSet) {
-        await logCallback(`Importing image: ${imgUrl}`);
+      for (const imgUrl2 of imageSet) {
+        await logCallback(`Importing image: ${imgUrl2}`);
         try {
           let mediaId = "";
           let imported = false;
-          if (imgUrl.includes("/public/generated-images/") || imgUrl.includes("/public/default/")) {
-            const isDefault = imgUrl.includes("/public/default/");
+          if (imgUrl2.includes("/public/generated-images/") || imgUrl2.includes("/public/default/")) {
+            const isDefault = imgUrl2.includes("/public/default/");
             const marker = isDefault ? "/public/default/" : "/public/generated-images/";
-            const parts = imgUrl.split(marker);
+            const parts = imgUrl2.split(marker);
             const filename = decodeURIComponent(parts[parts.length - 1]);
             const localPath = path4.join(process.cwd(), "public", isDefault ? "default" : "generated-images", filename);
             if (fs5.existsSync(localPath)) {
@@ -5373,19 +5373,19 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
                 });
               }
             } else {
-              await logCallback(`Local file not found at ${localPath} for generated image URL: ${imgUrl}. Trying direct fallback...`);
+              await logCallback(`Local file not found at ${localPath} for generated image URL: ${imgUrl2}. Trying direct fallback...`);
             }
           }
-          if (!imported && imgUrl.startsWith("http")) {
+          if (!imported && imgUrl2.startsWith("http")) {
             try {
-              await logCallback(`Downloading image locally on Node server first: ${imgUrl}`);
-              const ext = imgUrl.toLowerCase().includes(".png") ? "png" : "jpg";
+              await logCallback(`Downloading image locally on Node server first: ${imgUrl2}`);
+              const ext = imgUrl2.toLowerCase().includes(".png") ? "png" : "jpg";
               const tempLocalDir = path4.join(process.cwd(), "scratch", "downloads");
               if (!fs5.existsSync(tempLocalDir)) {
                 fs5.mkdirSync(tempLocalDir, { recursive: true });
               }
               const tempLocalPath = path4.join(tempLocalDir, `dl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`);
-              const response = await crossFetch2(imgUrl, {
+              const response = await crossFetch2(imgUrl2, {
                 headers: {
                   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                 }
@@ -5423,17 +5423,17 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
           if (!imported) {
             try {
               const mediaOut = await runWpCommand(
-                `media import "${imgUrl}" --porcelain`,
+                `media import "${imgUrl2}" --porcelain`,
                 docRoot,
                 logCallback
               );
               mediaId = mediaOut.stdout.trim();
             } catch (e) {
-              await logCallback(`Direct import failed for ${imgUrl}. Trying with curl on remote server...`);
-              const ext = imgUrl.toLowerCase().includes(".png") ? "png" : "jpg";
+              await logCallback(`Direct import failed for ${imgUrl2}. Trying with curl on remote server...`);
+              const ext = imgUrl2.toLowerCase().includes(".png") ? "png" : "jpg";
               const remoteTmpMedia = `/tmp/ds_media_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
               await runRemoteShellCommand(
-                `curl -sL -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" "${imgUrl}" -o "${remoteTmpMedia}"`,
+                `curl -sL -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" "${imgUrl2}" -o "${remoteTmpMedia}"`,
                 logCallback
               );
               const mediaOut = await runWpCommand(
@@ -5453,10 +5453,10 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
               logCallback
             );
             const localUrl = urlOut.stdout.trim();
-            mediaMap[imgUrl] = { id: parseInt(mediaId, 10), url: localUrl };
-            await logCallback(`Successfully imported: ${imgUrl} -> ID: ${mediaId}, URL: ${localUrl}`);
-            if (imgUrl === schema.brand?.logo) {
-              await logCallback(`Setting site icon to: ${mediaId}`);
+            mediaMap[imgUrl2] = { id: parseInt(mediaId, 10), url: localUrl };
+            await logCallback(`Successfully imported: ${imgUrl2} -> ID: ${mediaId}, URL: ${localUrl}`);
+            if (imgUrl2 === schema.brand?.logo && !schema.brand?.favicon) {
+              await logCallback(`Setting site icon to logo (no dedicated favicon): ${mediaId}`);
               await runWpCommand(
                 `option update site_icon ${mediaId}`,
                 docRoot,
@@ -5466,7 +5466,7 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
             }
           }
         } catch (err) {
-          await logCallback(`Failed to import media ${imgUrl}: ${err.message}`);
+          await logCallback(`Failed to import media ${imgUrl2}: ${err.message}`);
         }
       }
       if (Array.isArray(aiContent.projects?.posts) && aiContent.projects.posts.length > 0) {
@@ -6147,6 +6147,15 @@ ${content}
               logCallback
             );
             mediaId = mediaOut.stdout.trim();
+            if (imgUrl === schema.brand?.logo && !schema.brand?.favicon) {
+              await logCallback(`Setting site icon to logo (no dedicated favicon): ${mediaId}`);
+              await runWpCommand(
+                `option update site_icon ${mediaId}`,
+                docRoot,
+                logCallback
+              ).catch(() => {
+              });
+            }
             await runRemoteShellCommand(
               `rm -f "${remoteTmpMedia}"`,
               logCallback

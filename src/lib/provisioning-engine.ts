@@ -1011,8 +1011,8 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 						mediaMap[imgUrl] = { id: parseInt(mediaId, 10), url: localUrl };
 						await logCallback(`Successfully imported: ${imgUrl} -> ID: ${mediaId}, URL: ${localUrl}`);
 
-						if (imgUrl === schema.brand?.logo) {
-							await logCallback(`Setting site icon to: ${mediaId}`);
+						if (imgUrl === schema.brand?.logo && !schema.brand?.favicon) {
+							await logCallback(`Setting site icon to logo (no dedicated favicon): ${mediaId}`);
 							await runWpCommand(
 								`option update site_icon ${mediaId}`,
 								docRoot,
@@ -1771,6 +1771,14 @@ echo "MU_PLUGIN_CREATED\n";
 							logCallback,
 						);
 						mediaId = mediaOut.stdout.trim();
+						if (imgUrl === schema.brand?.logo && !schema.brand?.favicon) {
+							await logCallback(`Setting site icon to logo (no dedicated favicon): ${mediaId}`);
+							await runWpCommand(
+								`option update site_icon ${mediaId}`,
+								docRoot,
+								logCallback,
+							).catch(() => {});
+						}
 						await runRemoteShellCommand(
 							`rm -f "${remoteTmpMedia}"`,
 							logCallback,
