@@ -2850,7 +2850,7 @@ import crypto2 from "crypto";
 import cors from "cors";
 import express from "express";
 import fs7 from "fs";
-import path6, { dirname } from "path";
+import path6, { dirname as dirname2 } from "path";
 import { fileURLToPath as fileURLToPath2 } from "url";
 
 // src/lib/callhippo-service.ts
@@ -5012,6 +5012,57 @@ function decrypt(encryptedValue) {
   decrypted = Buffer.concat([decrypted, decipher.final()]);
   return decrypted.toString();
 }
+function extractMediaId(stdout) {
+  const trimmed = (stdout || "").trim();
+  if (!trimmed) return "";
+  const lines = trimmed.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i];
+    if (/^\d+$/.test(line)) {
+      return line;
+    }
+    const match = line.match(/(?:Imported media ID|Imported ID)?\s*(\d+)$/i);
+    if (match) {
+      return match[1];
+    }
+  }
+  return "";
+}
+async function syncLogsToRemote(jobId, subdomain) {
+  if (!subdomain) return;
+  try {
+    const docRootBase = process.env.WP_DOCROOT_BASE || "/home/digigesf/public_html/sites";
+    const fullDocRoot = `${docRootBase}/${subdomain}`;
+    const [rows] = await pool.query(
+      `SELECT logs FROM provisioning_jobs WHERE id = ?`,
+      [jobId]
+    );
+    if (rows && rows.length > 0 && rows[0].logs) {
+      let logs = rows[0].logs;
+      if (typeof logs === "string") {
+        logs = JSON.parse(logs);
+      }
+      if (Array.isArray(logs)) {
+        const logContent = logs.join("\n");
+        const localTmpLog = path4.join(process.cwd(), ".debug-generation", `log_${jobId}_${Date.now()}.txt`);
+        const debugGenDir = path4.dirname(localTmpLog);
+        if (!fs5.existsSync(debugGenDir)) {
+          fs5.mkdirSync(debugGenDir, { recursive: true });
+        }
+        fs5.writeFileSync(localTmpLog, logContent, "utf8");
+        await runRemoteShellCommand(`mkdir -p "${fullDocRoot}"`, () => {
+        }).catch(() => {
+        });
+        const remoteLogPath = `${fullDocRoot}/provisioning_debug.log`;
+        await copyFileToRemote(localTmpLog, remoteLogPath, () => {
+        });
+        fs5.unlinkSync(localTmpLog);
+      }
+    }
+  } catch (e) {
+    console.error(`[Job ${jobId}] Failed to sync logs to remote server: ${e.message}`);
+  }
+}
 async function appendLog(jobId, message) {
   const timestamp = (/* @__PURE__ */ new Date()).toISOString();
   const logEntry = `[${timestamp}] ${message}`;
@@ -5051,6 +5102,10 @@ async function processJob(jobId) {
         `UPDATE provisioning_jobs SET status = 'failed', locked_at = NULL WHERE id = ?`,
         [job.id]
       );
+    }
+  } finally {
+    if (job.subdomain) {
+      await syncLogsToRemote(job.id, job.subdomain);
     }
   }
 }
@@ -5156,6 +5211,7 @@ async function executeStateMachine(job) {
       }
     }
     job.status = "creating_database";
+    await syncLogsToRemote(job.id, subdomain);
   }
   if (job.status === "creating_database") {
     await pool.query(
@@ -5187,6 +5243,7 @@ async function executeStateMachine(job) {
       `Created remote database: ${dbName} and user: ${dbUser}`
     );
     job.status = "installing_wordpress";
+    await syncLogsToRemote(job.id, subdomain);
   }
   if (job.status === "installing_wordpress") {
     await pool.query(
@@ -5252,6 +5309,7 @@ async function executeStateMachine(job) {
     );
     await appendLog(job.id, `WordPress installed at ${siteUrl}`);
     job.status = "configuring_wordpress";
+    await syncLogsToRemote(job.id, subdomain);
   }
   if (job.status === "configuring_wordpress") {
     await pool.query(
@@ -5339,6 +5397,7 @@ async function executeStateMachine(job) {
     ).catch(() => {
     });
     job.status = "deploying_content";
+    await syncLogsToRemote(job.id, subdomain);
   }
   if (job.status === "deploying_content") {
     await pool.query(
@@ -5378,6 +5437,7 @@ async function executeStateMachine(job) {
       await appendLog(job.id, "WARNING: No website schema found to inject.");
     }
     job.status = "completed";
+    await syncLogsToRemote(job.id, subdomain);
   }
   if (job.status === "completed") {
     await pool.query(
@@ -5491,10 +5551,19 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, adminUser,
     const isElementor = schema.elementorContent !== void 0;
     if (isElementor) {
       await logCallback("Deploying Elementor template-based layout...");
-      await logCallback("Creating mu-plugins to allow SVG uploads...");
+      await logCallback("Creating mu-plugins for custom site fixes and slideshow...");
       await runRemoteShellCommand(`mkdir -p "${docRoot}/wp-content/mu-plugins"`, logCallback);
-      const allowSvgPhp = `<?php
-// Allow SVG uploads in WordPress
+      await runRemoteShellCommand(`rm -f "${docRoot}/wp-content/mu-plugins/allow-svg.php"`, logCallback).catch(() => {
+      });
+      const customFixesPhp = `<?php
+/*
+Plugin Name: DigitalScout Custom Site Fixes
+Description: Handles SVG uploads, custom favicon fallback injection, and mobile hero slideshow.
+Version: 1.1
+Author: DigitalScout
+*/
+
+// 1. Allow SVG Uploads
 add_filter('upload_mimes', function($mimes) {
     $mimes['svg'] = 'image/svg+xml';
     $mimes['svgz'] = 'image/svg+xml';
@@ -5508,10 +5577,129 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
     }
     return $data;
 }, 10, 4);
+
+// 2. Custom Favicon Fallback Injection
+add_action('wp_head', function() {
+    $favicon_url = get_option('ds_favicon_url');
+    if ($favicon_url) {
+        echo '<!-- DigitalScout Custom Favicon -->\\n';
+        echo '<link rel="shortcut icon" href="' . esc_url($favicon_url) . '" />\\n';
+        echo '<link rel="icon" type="image/png" sizes="512x512" href="' . esc_url($favicon_url) . '" />\\n';
+        echo '<link rel="apple-touch-icon" href="' . esc_url($favicon_url) . '" />\\n';
+    }
+}, 1);
+
+// 3. Mobile Hero Slideshow Styles
+add_action('wp_head', function() {
+    ?>
+    <style id="ds-hero-slideshow-style">
+    @media (max-width: 767px) {
+        /* Mobile slider transition */
+        .elementor-element-4fc28b13 {
+            transition: background-image 0.5s ease-in-out !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            align-items: center !important;
+            min-height: 350px !important;
+            background-size: cover !important;
+            background-position: center !important;
+            aspect-ratio: 1 / 1 !important;
+            width: 100% !important;
+            height: auto !important;
+        }
+        
+        /* Default mobile state: hide masked image widget */
+        .elementor-element-4fc28b13:not(.show-masked) .elementor-element-41484f27 {
+            display: none !important;
+        }
+        
+        /* When show-masked is active: hide the column background image */
+        .elementor-element-4fc28b13.show-masked {
+            background-image: none !important;
+        }
+        .elementor-element-4fc28b13.show-masked::before {
+            background-image: none !important;
+            display: none !important;
+        }
+        .elementor-element-4fc28b13.show-masked .elementor-widget-wrap {
+            background-image: none !important;
+        }
+        .elementor-element-4fc28b13.show-masked .elementor-background-overlay {
+            background-image: none !important;
+            display: none !important;
+        }
+        
+        /* When show-masked is active: show the masked image widget relatively positioned */
+        .elementor-element-4fc28b13.show-masked .elementor-element-41484f27 {
+            display: block !important;
+            position: relative !important;
+            left: auto !important;
+            top: auto !important;
+            margin: 0 auto !important;
+            width: 80% !important;
+            max-width: 300px !important;
+            opacity: 1 !important;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .elementor-element-4fc28b13.show-masked .elementor-element-41484f27 img {
+            object-fit: cover !important;
+            width: 100% !important;
+            height: auto !important;
+            aspect-ratio: 1 / 1 !important;
+            border-radius: 50% !important;
+        }
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    </style>
+    <?php
+});
+
+// 4. Mobile Hero Slideshow Scripts
+add_action('wp_footer', function() {
+    ?>
+    <script id="ds-hero-slideshow-script">
+    document.addEventListener("DOMContentLoaded", function() {
+        console.log("[DS Slideshow] Init mobile hero slideshow...");
+        var column = document.querySelector(".elementor-element-4fc28b13");
+        var maskedImage = document.querySelector(".elementor-element-4fc28b13 .elementor-element-41484f27");
+        
+        if (!column || !maskedImage) {
+            console.log("[DS Slideshow] Hero section components not found on this page.");
+            return;
+        }
+        
+        var isMaskedVisible = false;
+        
+        setInterval(function() {
+            // Only trigger slide toggle on mobile viewports
+            if (window.innerWidth <= 767) {
+                isMaskedVisible = !isMaskedVisible;
+                console.log("[DS Slideshow] Toggling hero image. Show masked:", isMaskedVisible);
+                if (isMaskedVisible) {
+                    column.classList.add("show-masked");
+                } else {
+                    column.classList.remove("show-masked");
+                }
+            } else {
+                // Ensure desktop shows both (default state)
+                if (column.classList.contains("show-masked")) {
+                    column.classList.remove("show-masked");
+                }
+            }
+        }, 5000); // 5 seconds interval
+    });
+    </script>
+    <?php
+});
 `;
-      const base64AllowSvg = Buffer.from(allowSvgPhp).toString("base64");
+      const base64CustomFixes = Buffer.from(customFixesPhp).toString("base64");
       await runRemoteShellCommand(
-        `echo "${base64AllowSvg}" | base64 -d > "${docRoot}/wp-content/mu-plugins/allow-svg.php"`,
+        `echo "${base64CustomFixes}" | base64 -d > "${docRoot}/wp-content/mu-plugins/ds-custom-fixes.php"`,
         logCallback
       );
       const mediaMap = {};
@@ -5555,15 +5743,15 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
           }
         }
       }
-      for (const imgUrl2 of imageSet) {
-        await logCallback(`Importing image: ${imgUrl2}`);
+      for (const imgUrl of imageSet) {
+        await logCallback(`Importing image: ${imgUrl}`);
         try {
           let mediaId = "";
           let imported = false;
-          if (imgUrl2.includes("/public/generated-images/") || imgUrl2.includes("/public/default/")) {
-            const isDefault = imgUrl2.includes("/public/default/");
+          if (imgUrl.includes("/public/generated-images/") || imgUrl.includes("/public/default/")) {
+            const isDefault = imgUrl.includes("/public/default/");
             const marker = isDefault ? "/public/default/" : "/public/generated-images/";
-            const parts = imgUrl2.split(marker);
+            const parts = imgUrl.split(marker);
             const filename = decodeURIComponent(parts[parts.length - 1]);
             const localPath = path4.join(process.cwd(), "public", isDefault ? "default" : "generated-images", filename);
             if (fs5.existsSync(localPath)) {
@@ -5577,8 +5765,8 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
                   docRoot,
                   logCallback
                 );
-                mediaId = mediaOut.stdout.trim();
-                if (/^\d+$/.test(mediaId)) {
+                mediaId = extractMediaId(mediaOut.stdout);
+                if (mediaId) {
                   imported = true;
                 }
               } catch (uploadErr) {
@@ -5588,19 +5776,19 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
                 });
               }
             } else {
-              await logCallback(`Local file not found at ${localPath} for generated image URL: ${imgUrl2}. Trying direct fallback...`);
+              await logCallback(`Local file not found at ${localPath} for generated image URL: ${imgUrl}. Trying direct fallback...`);
             }
           }
-          if (!imported && imgUrl2.startsWith("http")) {
+          if (!imported && imgUrl.startsWith("http")) {
             try {
-              await logCallback(`Downloading image locally on Node server first: ${imgUrl2}`);
-              const ext = imgUrl2.toLowerCase().includes(".png") ? "png" : "jpg";
+              await logCallback(`Downloading image locally on Node server first: ${imgUrl}`);
+              const ext = imgUrl.toLowerCase().includes(".png") ? "png" : "jpg";
               const tempLocalDir = path4.join(process.cwd(), "scratch", "downloads");
               if (!fs5.existsSync(tempLocalDir)) {
                 fs5.mkdirSync(tempLocalDir, { recursive: true });
               }
               const tempLocalPath = path4.join(tempLocalDir, `dl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`);
-              const response = await crossFetch2(imgUrl2, {
+              const response = await crossFetch2(imgUrl, {
                 headers: {
                   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                 }
@@ -5617,8 +5805,8 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
                     docRoot,
                     logCallback
                   );
-                  mediaId = mediaOut.stdout.trim();
-                  if (/^\d+$/.test(mediaId)) {
+                  mediaId = extractMediaId(mediaOut.stdout);
+                  if (mediaId) {
                     imported = true;
                   }
                 } finally {
@@ -5638,17 +5826,17 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
           if (!imported) {
             try {
               const mediaOut = await runWpCommand(
-                `media import "${imgUrl2}" --porcelain`,
+                `media import "${imgUrl}" --porcelain`,
                 docRoot,
                 logCallback
               );
-              mediaId = mediaOut.stdout.trim();
+              mediaId = extractMediaId(mediaOut.stdout);
             } catch (e) {
-              await logCallback(`Direct import failed for ${imgUrl2}. Trying with curl on remote server...`);
-              const ext = imgUrl2.toLowerCase().includes(".png") ? "png" : "jpg";
+              await logCallback(`Direct import failed for ${imgUrl}. Trying with curl on remote server...`);
+              const ext = imgUrl.toLowerCase().includes(".png") ? "png" : "jpg";
               const remoteTmpMedia = `/tmp/ds_media_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
               await runRemoteShellCommand(
-                `curl -sL -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" "${imgUrl2}" -o "${remoteTmpMedia}"`,
+                `curl -sL -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" "${imgUrl}" -o "${remoteTmpMedia}"`,
                 logCallback
               );
               const mediaOut = await runWpCommand(
@@ -5656,21 +5844,22 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
                 docRoot,
                 logCallback
               );
-              mediaId = mediaOut.stdout.trim();
+              mediaId = extractMediaId(mediaOut.stdout);
               await runRemoteShellCommand(`rm -f "${remoteTmpMedia}"`, logCallback).catch(() => {
               });
             }
           }
-          if (/^\d+$/.test(mediaId)) {
+          mediaId = extractMediaId(mediaId);
+          if (mediaId) {
             const urlOut = await runWpCommand(
               `eval "echo wp_get_attachment_url(${mediaId});"`,
               docRoot,
               logCallback
             );
             const localUrl = urlOut.stdout.trim();
-            mediaMap[imgUrl2] = { id: parseInt(mediaId, 10), url: localUrl };
-            await logCallback(`Successfully imported: ${imgUrl2} -> ID: ${mediaId}, URL: ${localUrl}`);
-            if (imgUrl2 === schema.brand?.logo && !schema.brand?.favicon) {
+            mediaMap[imgUrl] = { id: parseInt(mediaId, 10), url: localUrl };
+            await logCallback(`Successfully imported: ${imgUrl} -> ID: ${mediaId}, URL: ${localUrl}`);
+            if (imgUrl === schema.brand?.logo && !schema.brand?.favicon) {
               await logCallback(`Setting site icon to logo (no dedicated favicon): ${mediaId}`);
               await runWpCommand(
                 `option update site_icon ${mediaId}`,
@@ -5681,7 +5870,7 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
             }
           }
         } catch (err) {
-          await logCallback(`Failed to import media ${imgUrl2}: ${err.message}`);
+          await logCallback(`Failed to import media ${imgUrl}: ${err.message}`);
         }
       }
       if (Array.isArray(aiContent.projects?.posts) && aiContent.projects.posts.length > 0) {
@@ -5696,9 +5885,9 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
               docRoot,
               logCallback
             );
-            const newPostId = postCreateOut.stdout.trim();
+            const newPostId = extractMediaId(postCreateOut.stdout);
             await logCallback(`Created project post ID: ${newPostId}`);
-            if (newPostId && /^\d+$/.test(newPostId) && localMedia?.id) {
+            if (newPostId && localMedia?.id) {
               try {
                 await runWpCommand(
                   `post meta set ${newPostId} _thumbnail_id ${localMedia.id}`,
@@ -5709,7 +5898,7 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
               } catch (thumbErr) {
                 await logCallback(`Warning: Failed to set thumbnail for post ${newPostId}: ${thumbErr.message}`);
               }
-            } else if (newPostId && /^\d+$/.test(newPostId) && !localMedia?.id) {
+            } else if (newPostId && !localMedia?.id) {
               await logCallback(`Warning: No media found in mediaMap for project URL: ${post.url}. Post created without thumbnail.`);
             }
           } catch (postErr) {
@@ -6326,8 +6515,8 @@ ${content}
                 docRoot,
                 logCallback
               );
-              mediaId = mediaOut.stdout.trim();
-              if (/^\d+$/.test(mediaId)) {
+              mediaId = extractMediaId(mediaOut.stdout);
+              if (mediaId) {
                 imported = true;
               }
             } catch (uploadErr) {
@@ -6345,7 +6534,7 @@ ${content}
               docRoot,
               logCallback
             );
-            mediaId = mediaOut.stdout.trim();
+            mediaId = extractMediaId(mediaOut.stdout);
           } catch (e) {
             await logCallback(
               "Direct import failed. Retrying with local temp file..."
@@ -6361,8 +6550,8 @@ ${content}
               docRoot,
               logCallback
             );
-            mediaId = mediaOut.stdout.trim();
-            if (imgUrl === schema.brand?.logo && !schema.brand?.favicon) {
+            mediaId = extractMediaId(mediaOut.stdout);
+            if (!schema.brand?.favicon) {
               await logCallback(`Setting site icon to logo (no dedicated favicon): ${mediaId}`);
               await runWpCommand(
                 `option update site_icon ${mediaId}`,
@@ -6378,7 +6567,8 @@ ${content}
             });
           }
         }
-        if (/^\d+$/.test(mediaId)) {
+        mediaId = extractMediaId(mediaId);
+        if (mediaId) {
           await logCallback(
             `Logo imported successfully (ID: ${mediaId}). Setting as custom logo (theme mod).`
           );
@@ -6388,6 +6578,18 @@ ${content}
               docRoot,
               logCallback
             );
+            try {
+              const urlOut = await runWpCommand(
+                `eval "echo wp_get_attachment_url(${mediaId});"`,
+                docRoot,
+                logCallback
+              );
+              const logoUrl = urlOut.stdout.trim();
+              if (logoUrl && logoUrl.startsWith("http")) {
+                await runWpCommand(`option update ds_favicon_url "${logoUrl}"`, docRoot, logCallback);
+              }
+            } catch (urlErr) {
+            }
           }
         }
       } catch (e) {
@@ -6411,7 +6613,7 @@ ${content}
                 docRoot,
                 logCallback
               );
-              faviconMediaId = mediaOut.stdout.trim();
+              faviconMediaId = extractMediaId(mediaOut.stdout);
             } catch (uploadErr) {
               await logCallback(`Failed to copy/import local favicon: ${uploadErr.message}. Trying direct import...`);
             } finally {
@@ -6434,16 +6636,31 @@ ${content}
               docRoot,
               logCallback
             );
-            faviconMediaId = mediaOut.stdout.trim();
+            faviconMediaId = extractMediaId(mediaOut.stdout);
             await runRemoteShellCommand(`rm -f "${remoteTmpFavicon}"`, logCallback).catch(() => {
             });
           } catch (e2) {
             await logCallback(`Favicon direct import failed: ${e2.message}`);
           }
         }
-        if (/^\d+$/.test(faviconMediaId)) {
+        faviconMediaId = extractMediaId(faviconMediaId);
+        if (faviconMediaId) {
           await logCallback(`Favicon imported successfully (ID: ${faviconMediaId}). Setting as site icon.`);
           await runWpCommand(`option update site_icon ${faviconMediaId}`, docRoot, logCallback);
+          try {
+            const urlOut = await runWpCommand(
+              `eval "echo wp_get_attachment_url(${faviconMediaId});"`,
+              docRoot,
+              logCallback
+            );
+            const faviconUrl = urlOut.stdout.trim();
+            if (faviconUrl && faviconUrl.startsWith("http")) {
+              await logCallback(`Retrieved absolute favicon URL: ${faviconUrl}. Updating ds_favicon_url option.`);
+              await runWpCommand(`option update ds_favicon_url "${faviconUrl}"`, docRoot, logCallback);
+            }
+          } catch (urlErr) {
+            await logCallback(`Warning: Failed to retrieve or set ds_favicon_url: ${urlErr.message}`);
+          }
         } else {
           await logCallback(`Favicon import did not return a valid media ID (got: "${faviconMediaId}"). Site icon not set.`);
         }
@@ -7051,7 +7268,7 @@ fs7.writeSync(2, `[BOOT] CWD: ${process.cwd()}
 fs7.writeSync(2, `[BOOT] DB_USER: ${process.env.DB_USER || "NOT SET"}
 `);
 var __filename2 = fileURLToPath2(import.meta.url);
-var __dirname2 = dirname(__filename2);
+var __dirname2 = dirname2(__filename2);
 var GoogleGenerativeAI = null;
 var app = express();
 var PORT = process.env.PORT || 5001;
