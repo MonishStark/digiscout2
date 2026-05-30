@@ -400,6 +400,22 @@ async function generateFaviconFromLogo(logo, log, businessName, generateFaviconS
   try {
     log(`[FaviconFromLogo] Trimming white background from extracted icon...`);
     const trimmedBuffer = await sharp(extractedIconBuffer).trim().toBuffer();
+    const { data: rawData, info: rawInfo } = await sharp(trimmedBuffer).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    for (let i = 0; i < rawData.length; i += 4) {
+      const r = rawData[i];
+      const g = rawData[i + 1];
+      const b = rawData[i + 2];
+      if (r > 240 && g > 240 && b > 240) {
+        rawData[i + 3] = 0;
+      }
+    }
+    const transparentIconBuffer = await sharp(rawData, {
+      raw: {
+        width: rawInfo.width,
+        height: rawInfo.height,
+        channels: 4
+      }
+    }).png().toBuffer();
     const canvasSize = 512;
     const padding = 46;
     const maxIconSize = canvasSize - padding * 2;
@@ -412,7 +428,7 @@ async function generateFaviconFromLogo(logo, log, businessName, generateFaviconS
       }
     }).composite([
       {
-        input: await sharp(trimmedBuffer).resize(maxIconSize, maxIconSize, {
+        input: await sharp(transparentIconBuffer).resize(maxIconSize, maxIconSize, {
           fit: "inside",
           withoutEnlargement: true
         }).toBuffer(),

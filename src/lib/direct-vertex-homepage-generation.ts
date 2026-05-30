@@ -341,6 +341,33 @@ async function generateFaviconFromLogo(
 			.trim()
 			.toBuffer();
 
+		// Convert solid white background pixels to transparent
+		const { data: rawData, info: rawInfo } = await sharp(trimmedBuffer)
+			.ensureAlpha()
+			.raw()
+			.toBuffer({ resolveWithObject: true });
+
+		// Iterate over the RGBA channels and set alpha to 0 for white/near-white pixels
+		for (let i = 0; i < rawData.length; i += 4) {
+			const r = rawData[i];
+			const g = rawData[i + 1];
+			const b = rawData[i + 2];
+			if (r > 240 && g > 240 && b > 240) {
+				rawData[i + 3] = 0; // set alpha channel to 0
+			}
+		}
+
+		// Recreate the transparent icon image buffer
+		const transparentIconBuffer = await sharp(rawData, {
+			raw: {
+				width: rawInfo.width,
+				height: rawInfo.height,
+				channels: 4
+			}
+		})
+		.png()
+		.toBuffer();
+
 		const canvasSize = 512;
 		const padding = 46;
 		const maxIconSize = canvasSize - (padding * 2);
@@ -355,7 +382,7 @@ async function generateFaviconFromLogo(
 		})
 		.composite([
 			{
-				input: await sharp(trimmedBuffer)
+				input: await sharp(transparentIconBuffer)
 					.resize(maxIconSize, maxIconSize, {
 						fit: "inside",
 						withoutEnlargement: true
