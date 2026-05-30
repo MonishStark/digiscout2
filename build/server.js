@@ -175,6 +175,7 @@ __export(direct_vertex_homepage_generation_exports, {
 });
 import fs4 from "fs";
 import path3 from "path";
+import sharp from "sharp";
 import crossFetch from "cross-fetch";
 function optimizeGooglePhotoUrl(url, size = 1600) {
   if (!url || typeof url !== "string") return url;
@@ -529,10 +530,37 @@ async function resolveSectionImages(analysis, log, logoAnalysis, business, optio
   } else {
     resultUrls.logo_image = getFallbackPlaceholder("logo");
   }
-  const faviconPrompt = `A premium minimalist square icon for "${business?.name || "Business"}", single letter monogram or small abstract icon, clean flat vector design, solid pure white background, sharp crisp lines, no text except a single initial letter, suitable for favicon use, high contrast dark ink on white`;
+  const generateFaviconSet = async () => {
+    try {
+      const businessName = business?.name || "Business";
+      const iconPrompt = `A perfectly square minimal logo icon for "${businessName}": extract ONLY the symbol/monogram/icon element (NOT the full text name), centered with generous padding on a solid pure white background. The icon should be a single clean graphic mark \u2014 a stylized letter initial, abstract geometric symbol, or simple pictogram. Flat vector illustration style, no gradients, no shadows, no text labels, crisp black or dark-colored icon on white, suitable for use as a tiny 16px browser favicon. Square format, icon centered, large white margins all around.`;
+      log(`[FaviconGen] Generating master icon image for favicon set...`);
+      const iconBase64 = await generateCustomImage(iconPrompt, { aspectRatio: "1:1", logStderr: log });
+      const iconBuffer = Buffer.from(iconBase64, "base64");
+      const publicDir2 = path3.join(process.cwd(), "public");
+      const imagesDir2 = path3.join(publicDir2, "generated-images");
+      const faviconDir = path3.join(imagesDir2, "favicons");
+      if (!fs4.existsSync(faviconDir)) fs4.mkdirSync(faviconDir, { recursive: true });
+      const uid = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const baseUrl = process.env.API_URL || "https://api.digiscout.online";
+      const sizes = [16, 32, 48, 180, 192, 512];
+      for (const size of sizes) {
+        const filename = `favicon-${size}x${size}-${uid}.png`;
+        const filePath = path3.join(faviconDir, filename);
+        await sharp(iconBuffer).resize(size, size, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 1 } }).png().toFile(filePath);
+        log(`[FaviconGen] Saved ${size}x${size} favicon: ${filename}`);
+      }
+      const favicon512 = `${baseUrl}/public/generated-images/favicons/favicon-512x512-${uid}.png`;
+      log(`[FaviconGen] Favicon set generated. Primary (512px): ${favicon512}`);
+      return favicon512;
+    } catch (err) {
+      log(`[FaviconGen] Favicon generation failed: ${err.message || err}. Skipping.`);
+      return "";
+    }
+  };
   taskList.push({
     run: async () => {
-      resultUrls.favicon_image = await generateAndSave(faviconPrompt, "favicon", "1:1");
+      resultUrls.favicon_image = await generateFaviconSet();
     }
   });
   if (taskList.length > 0) {
@@ -6184,17 +6212,15 @@ ${content}
         await logCallback(`Attempting to import favicon: ${schema.brand.favicon}`);
         let faviconMediaId = "";
         if (schema.brand.favicon.includes("/public/generated-images/")) {
-          const parts = schema.brand.favicon.split("/public/generated-images/");
-          const filename = parts[parts.length - 1];
-          const localPath = path4.join(process.cwd(), "public", "generated-images", filename);
+          const relPath = schema.brand.favicon.split("/public/generated-images/")[1];
+          const localPath = path4.join(process.cwd(), "public", "generated-images", relPath);
           if (fs5.existsSync(localPath)) {
-            await logCallback(`Detected local generated favicon: ${filename}. Copying to remote server...`);
-            const ext = filename.toLowerCase().endsWith(".png") ? "png" : "jpg";
-            const remoteTmpFavicon = `/tmp/ds_favicon_${Date.now()}.${ext}`;
+            await logCallback(`Detected local generated favicon: ${relPath}. Copying to remote server...`);
+            const remoteTmpFavicon = `/tmp/ds_favicon_${Date.now()}.png`;
             try {
               await copyFileToRemote(localPath, remoteTmpFavicon, logCallback);
               const mediaOut = await runWpCommand(
-                `media import "${remoteTmpFavicon}" --porcelain`,
+                `media import "${remoteTmpFavicon}" --title="Site Favicon" --porcelain`,
                 docRoot,
                 logCallback
               );
@@ -6205,18 +6231,19 @@ ${content}
               await runRemoteShellCommand(`rm -f "${remoteTmpFavicon}"`, logCallback).catch(() => {
               });
             }
+          } else {
+            await logCallback(`Local favicon not found at ${localPath}, trying direct URL import...`);
           }
         }
         if (!faviconMediaId) {
           try {
-            const ext = schema.brand.favicon.toLowerCase().includes(".png") ? "png" : "jpg";
-            const remoteTmpFavicon = `/tmp/ds_favicon_${Date.now()}.${ext}`;
+            const remoteTmpFavicon = `/tmp/ds_favicon_${Date.now()}.png`;
             await runRemoteShellCommand(
               `curl -sL -A "Mozilla/5.0" "${schema.brand.favicon}" -o "${remoteTmpFavicon}"`,
               logCallback
             );
             const mediaOut = await runWpCommand(
-              `media import "${remoteTmpFavicon}" --porcelain`,
+              `media import "${remoteTmpFavicon}" --title="Site Favicon" --porcelain`,
               docRoot,
               logCallback
             );
@@ -6230,6 +6257,8 @@ ${content}
         if (/^\d+$/.test(faviconMediaId)) {
           await logCallback(`Favicon imported successfully (ID: ${faviconMediaId}). Setting as site icon.`);
           await runWpCommand(`option update site_icon ${faviconMediaId}`, docRoot, logCallback);
+        } else {
+          await logCallback(`Favicon import did not return a valid media ID (got: "${faviconMediaId}"). Site icon not set.`);
         }
       } catch (e) {
         await logCallback(`Warning: favicon import failed: ${e.message}`);

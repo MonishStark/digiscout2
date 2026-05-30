@@ -1812,18 +1812,17 @@ echo "MU_PLUGIN_CREATED\n";
 				let faviconMediaId = "";
 
 				// 1. Try local generated favicon transfer first
+				// Favicon URL format: {API_URL}/public/generated-images/favicons/favicon-512x512-{uid}.png
 				if (schema.brand.favicon.includes("/public/generated-images/")) {
-					const parts = schema.brand.favicon.split("/public/generated-images/");
-					const filename = parts[parts.length - 1];
-					const localPath = path.join(process.cwd(), "public", "generated-images", filename);
+					const relPath = schema.brand.favicon.split("/public/generated-images/")[1]; // e.g. "favicons/favicon-512x512-xxx.png"
+					const localPath = path.join(process.cwd(), "public", "generated-images", relPath);
 					if (fs.existsSync(localPath)) {
-						await logCallback(`Detected local generated favicon: ${filename}. Copying to remote server...`);
-						const ext = filename.toLowerCase().endsWith(".png") ? "png" : "jpg";
-						const remoteTmpFavicon = `/tmp/ds_favicon_${Date.now()}.${ext}`;
+						await logCallback(`Detected local generated favicon: ${relPath}. Copying to remote server...`);
+						const remoteTmpFavicon = `/tmp/ds_favicon_${Date.now()}.png`;
 						try {
 							await copyFileToRemote(localPath, remoteTmpFavicon, logCallback);
 							const mediaOut = await runWpCommand(
-								`media import "${remoteTmpFavicon}" --porcelain`,
+								`media import "${remoteTmpFavicon}" --title="Site Favicon" --porcelain`,
 								docRoot,
 								logCallback,
 							);
@@ -1833,20 +1832,21 @@ echo "MU_PLUGIN_CREATED\n";
 						} finally {
 							await runRemoteShellCommand(`rm -f "${remoteTmpFavicon}"`, logCallback).catch(() => {});
 						}
+					} else {
+						await logCallback(`Local favicon not found at ${localPath}, trying direct URL import...`);
 					}
 				}
 
-				// 2. Direct import fallback
+				// 2. Direct URL import fallback
 				if (!faviconMediaId) {
 					try {
-						const ext = schema.brand.favicon.toLowerCase().includes(".png") ? "png" : "jpg";
-						const remoteTmpFavicon = `/tmp/ds_favicon_${Date.now()}.${ext}`;
+						const remoteTmpFavicon = `/tmp/ds_favicon_${Date.now()}.png`;
 						await runRemoteShellCommand(
 							`curl -sL -A "Mozilla/5.0" "${schema.brand.favicon}" -o "${remoteTmpFavicon}"`,
 							logCallback,
 						);
 						const mediaOut = await runWpCommand(
-							`media import "${remoteTmpFavicon}" --porcelain`,
+							`media import "${remoteTmpFavicon}" --title="Site Favicon" --porcelain`,
 							docRoot,
 							logCallback,
 						);
@@ -1860,6 +1860,8 @@ echo "MU_PLUGIN_CREATED\n";
 				if (/^\d+$/.test(faviconMediaId)) {
 					await logCallback(`Favicon imported successfully (ID: ${faviconMediaId}). Setting as site icon.`);
 					await runWpCommand(`option update site_icon ${faviconMediaId}`, docRoot, logCallback);
+				} else {
+					await logCallback(`Favicon import did not return a valid media ID (got: "${faviconMediaId}"). Site icon not set.`);
 				}
 			} catch (e: any) {
 				await logCallback(`Warning: favicon import failed: ${e.message}`);

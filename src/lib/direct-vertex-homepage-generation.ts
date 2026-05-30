@@ -11,6 +11,7 @@
 
 import fs from "fs";
 import path from "path";
+import sharp from "sharp";
 import {
 	VERTEX_HOMEPAGE_GENERATION_PROMPT,
 	HomepageGenerationRequest,
@@ -498,11 +499,50 @@ export async function resolveSectionImages(
 		resultUrls.logo_image = getFallbackPlaceholder("logo");
 	}
 
-	// 8. Favicon — separate 1:1 square icon image with clean white/transparent background
-	const faviconPrompt = `A premium minimalist square icon for "${business?.name || "Business"}", single letter monogram or small abstract icon, clean flat vector design, solid pure white background, sharp crisp lines, no text except a single initial letter, suitable for favicon use, high contrast dark ink on white`;
+	// 8. Favicon — AI-extract icon from logo, then generate all sizes with sharp
+	const generateFaviconSet = async (): Promise<string> => {
+		try {
+			const businessName = business?.name || "Business";
+			// Use the same logo prompt context to generate a clean square icon version
+			const iconPrompt = `A perfectly square minimal logo icon for "${businessName}": extract ONLY the symbol/monogram/icon element (NOT the full text name), centered with generous padding on a solid pure white background. The icon should be a single clean graphic mark — a stylized letter initial, abstract geometric symbol, or simple pictogram. Flat vector illustration style, no gradients, no shadows, no text labels, crisp black or dark-colored icon on white, suitable for use as a tiny 16px browser favicon. Square format, icon centered, large white margins all around.`;
+			
+			log(`[FaviconGen] Generating master icon image for favicon set...`);
+			const iconBase64 = await generateCustomImage(iconPrompt, { aspectRatio: "1:1", logStderr: log });
+			const iconBuffer = Buffer.from(iconBase64, "base64");
+			
+			const publicDir = path.join(process.cwd(), "public");
+			const imagesDir = path.join(publicDir, "generated-images");
+			const faviconDir = path.join(imagesDir, "favicons");
+			if (!fs.existsSync(faviconDir)) fs.mkdirSync(faviconDir, { recursive: true });
+			
+			const uid = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+			const baseUrl = process.env.API_URL || "https://api.digiscout.online";
+			
+			// Resize master to all standard favicon sizes
+			const sizes = [16, 32, 48, 180, 192, 512];
+			for (const size of sizes) {
+				const filename = `favicon-${size}x${size}-${uid}.png`;
+				const filePath = path.join(faviconDir, filename);
+				await sharp(iconBuffer)
+					.resize(size, size, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 1 } })
+					.png()
+					.toFile(filePath);
+				log(`[FaviconGen] Saved ${size}x${size} favicon: ${filename}`);
+			}
+			
+			// Return the 512px version URL as the primary favicon (best quality for WP site_icon)
+			const favicon512 = `${baseUrl}/public/generated-images/favicons/favicon-512x512-${uid}.png`;
+			log(`[FaviconGen] Favicon set generated. Primary (512px): ${favicon512}`);
+			return favicon512;
+		} catch (err: any) {
+			log(`[FaviconGen] Favicon generation failed: ${err.message || err}. Skipping.`);
+			return "";
+		}
+	};
+
 	taskList.push({
 		run: async () => {
-			resultUrls.favicon_image = await generateAndSave(faviconPrompt, "favicon", "1:1");
+			resultUrls.favicon_image = await generateFaviconSet();
 		}
 	});
 
