@@ -325,9 +325,15 @@ async function analyzeAndFilterImages(business, log, options) {
   };
 }
 async function detectOrGenerateLogo(business, log, options) {
-  log(`[LogoDetector] Cabinetry focus: Returning custom cabinetry logo generation prompt for: ${business.name}`);
-  const defaultPrompt = `A premium minimalist text-based typography logo featuring the business name "${business.name}" with a elegant modern wood chisel or fine tree icon, clean modern flat design, solid white background, sharp vector lines, high-end lettermark`;
-  return { action: "generate", generation_prompt: defaultPrompt };
+  const name = business.name || "Business";
+  log(`[LogoDetector] Generating minimalist wordmark logo for: ${name}`);
+  const logoPrompt = `Premium minimalist horizontal wordmark logo design for a business called "${name}". 
+The business name "${name}" must appear as the primary typographic element \u2014 spelled out exactly, using a clean premium sans-serif or refined serif typeface in dark charcoal or black.
+Include ONE small, simple geometric icon or symbol mark to the left of or above the text \u2014 for example: a thin square bracket, a small abstract diamond, a simple leaf outline, or a minimal craft tool silhouette. The icon must be very small relative to the text.
+Solid pure white background. Horizontal layout. No gradients. No drop shadows. No decorative frames or borders around the whole logo. No taglines. No fake badge effects.
+The result must look like a real professional brand identity \u2014 clean, timeless, and suitable for a premium local business header logo.
+Output: flat vector illustration style, black/dark ink on white, high contrast, high fidelity.`;
+  return { action: "generate", generation_prompt: logoPrompt };
 }
 async function resolveSectionImages(analysis, log, logoAnalysis, business, options) {
   const resultUrls = {
@@ -533,36 +539,59 @@ async function resolveSectionImages(analysis, log, logoAnalysis, business, optio
   const generateFaviconSet = async () => {
     try {
       const businessName = business?.name || "Business";
-      const iconPrompt = `A perfectly square minimal logo icon for "${businessName}": extract ONLY the symbol/monogram/icon element (NOT the full text name), centered with generous padding on a solid pure white background. The icon should be a single clean graphic mark \u2014 a stylized letter initial, abstract geometric symbol, or simple pictogram. Flat vector illustration style, no gradients, no shadows, no text labels, crisp black or dark-colored icon on white, suitable for use as a tiny 16px browser favicon. Square format, icon centered, large white margins all around.`;
-      log(`[FaviconGen] Generating master icon image for favicon set...`);
-      const iconBase64 = await generateCustomImage(iconPrompt, { aspectRatio: "1:1", logStderr: log });
-      const iconBuffer = Buffer.from(iconBase64, "base64");
+      const words = businessName.trim().split(/\s+/);
+      const initial = words.length >= 2 ? (words[0][0] + words[1][0]).toUpperCase() : businessName[0].toUpperCase();
       const publicDir2 = path3.join(process.cwd(), "public");
       const imagesDir2 = path3.join(publicDir2, "generated-images");
       const faviconDir = path3.join(imagesDir2, "favicons");
       if (!fs4.existsSync(faviconDir)) fs4.mkdirSync(faviconDir, { recursive: true });
       const uid = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
       const baseUrl = process.env.API_URL || "https://api.digiscout.online";
+      const masterSize = 512;
+      const fontSize = Math.round(masterSize * 0.52);
+      const svgTemplate = `<svg width="${masterSize}" height="${masterSize}" xmlns="http://www.w3.org/2000/svg">
+  <rect width="${masterSize}" height="${masterSize}" rx="${Math.round(masterSize * 0.18)}" fill="#1a1a1a"/>
+  <text
+    x="50%" y="50%"
+    dominant-baseline="central"
+    text-anchor="middle"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="${fontSize}"
+    font-weight="bold"
+    fill="#ffffff"
+    letter-spacing="-4"
+  >${initial}</text>
+</svg>`;
+      const masterBuffer = await sharp(Buffer.from(svgTemplate)).png().toBuffer();
       const sizes = [16, 32, 48, 180, 192, 512];
       for (const size of sizes) {
         const filename = `favicon-${size}x${size}-${uid}.png`;
         const filePath = path3.join(faviconDir, filename);
-        await sharp(iconBuffer).resize(size, size, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 1 } }).png().toFile(filePath);
-        log(`[FaviconGen] Saved ${size}x${size} favicon: ${filename}`);
+        if (size <= 48) {
+          const smallFontSize = Math.round(size * 0.62);
+          const smallSvg = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+  <rect width="${size}" height="${size}" fill="#1a1a1a"/>
+  <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-family="Georgia, serif" font-size="${smallFontSize}" font-weight="bold" fill="#ffffff">${initial}</text>
+</svg>`;
+          await sharp(Buffer.from(smallSvg)).png().toFile(filePath);
+        } else {
+          await sharp(masterBuffer).resize(size, size).png().toFile(filePath);
+        }
+        log(`[FaviconGen] Saved ${size}x${size} favicon (initial: "${initial}"): ${filename}`);
       }
-      const favicon512 = `${baseUrl}/public/generated-images/favicons/favicon-512x512-${uid}.png`;
-      log(`[FaviconGen] Favicon set generated. Primary (512px): ${favicon512}`);
-      return favicon512;
+      const favicon512Url = `${baseUrl}/public/generated-images/favicons/favicon-512x512-${uid}.png`;
+      log(`[FaviconGen] Complete favicon set generated for "${businessName}" (initial: "${initial}"). Primary: ${favicon512Url}`);
+      return favicon512Url;
     } catch (err) {
       log(`[FaviconGen] Favicon generation failed: ${err.message || err}. Skipping.`);
       return "";
     }
   };
-  taskList.push({
-    run: async () => {
-      resultUrls.favicon_image = await generateFaviconSet();
-    }
-  });
+  try {
+    resultUrls.favicon_image = await generateFaviconSet();
+  } catch (err) {
+    log(`[FaviconGen] Error: ${err.message || err}`);
+  }
   if (taskList.length > 0) {
     log(`[ImageGenerator] Queueing ${taskList.length} AI image generation tasks with concurrency limit of 2...`);
     let nextIndex = 0;
