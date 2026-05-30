@@ -1135,10 +1135,15 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
     return $data;
 }, 10, 4);
 
-// 2. Custom Favicon Fallback Injection
-add_action('wp_head', 'ds_inject_favicon', 1);
-add_action('admin_head', 'ds_inject_favicon', 1);
-add_action('login_head', 'ds_inject_favicon', 1);
+// 2. Custom Favicon Fallback Injection & Native Overrides
+remove_action('wp_head', 'wp_site_icon', 99);
+add_action('wp_head', 'ds_inject_favicon', 9999);
+
+remove_action('admin_head', 'wp_site_icon', 99);
+add_action('admin_head', 'ds_inject_favicon', 9999);
+
+remove_action('login_head', 'wp_site_icon', 99);
+add_action('login_head', 'ds_inject_favicon', 9999);
 
 function ds_inject_favicon() {
     $favicon_url = get_option('ds_favicon_url');
@@ -1461,14 +1466,31 @@ add_action('wp_footer', function() {
 			let footerMenuId = "";
 			let custServiceMenuId = "";
 
+			const getMenuIdByName = async (name: string): Promise<string> => {
+				try {
+					const menusJson = await runWpCommand(`menu list --format=json`, docRoot, logCallback);
+					const menus = JSON.parse(menusJson.stdout.trim());
+					const found = menus.find((m: any) => m.name === name);
+					return found ? String(found.term_id) : "";
+				} catch (err: any) {
+					await logCallback(`Warning: Failed to fetch menu list: ${err.message}`);
+					return "";
+				}
+			};
+
 			try {
 				await logCallback("Creating Main Menu...");
-				const menuCreateOut = await runWpCommand(
-					`menu create "Main Menu" --porcelain`,
-					docRoot,
-					logCallback,
-				);
-				menuId = menuCreateOut.stdout.trim();
+				try {
+					const menuCreateOut = await runWpCommand(
+						`menu create "Main Menu" --porcelain`,
+						docRoot,
+						logCallback,
+					);
+					menuId = menuCreateOut.stdout.trim();
+				} catch (err: any) {
+					await logCallback(`Main Menu creation failed or menu already exists, retrieving existing ID...`);
+					menuId = await getMenuIdByName("Main Menu");
+				}
 				await logCallback(`Main Menu ID: ${menuId}`);
 
 				if (menuId) {
@@ -1524,12 +1546,17 @@ add_action('wp_footer', function() {
 			// Create Footer Menu (Legal & Privacy)
 			try {
 				await logCallback("Creating Footer Menu (Legal & Privacy)...");
-				const fmCreateOut = await runWpCommand(
-					`menu create "Footer Menu" --porcelain`,
-					docRoot,
-					logCallback,
-				);
-				footerMenuId = fmCreateOut.stdout.trim();
+				try {
+					const fmCreateOut = await runWpCommand(
+						`menu create "Footer Menu" --porcelain`,
+						docRoot,
+						logCallback,
+					);
+					footerMenuId = fmCreateOut.stdout.trim();
+				} catch (err: any) {
+					await logCallback(`Footer Menu already exists, retrieving existing ID...`);
+					footerMenuId = await getMenuIdByName("Footer Menu");
+				}
 				if (footerMenuId) {
 					// Clear existing items
 					try {
@@ -1554,12 +1581,17 @@ add_action('wp_footer', function() {
 			// Create Customer Service Menu
 			try {
 				await logCallback("Creating Customer Service Menu...");
-				const csCreateOut = await runWpCommand(
-					`menu create "Customer Service" --porcelain`,
-					docRoot,
-					logCallback,
-				);
-				custServiceMenuId = csCreateOut.stdout.trim();
+				try {
+					const csCreateOut = await runWpCommand(
+						`menu create "Customer Service" --porcelain`,
+						docRoot,
+						logCallback,
+					);
+					custServiceMenuId = csCreateOut.stdout.trim();
+				} catch (err: any) {
+					await logCallback(`Customer Service menu already exists, retrieving existing ID...`);
+					custServiceMenuId = await getMenuIdByName("Customer Service");
+				}
 				if (custServiceMenuId) {
 					// Clear existing items
 					try {
