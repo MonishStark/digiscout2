@@ -335,6 +335,108 @@ The result must look like a real professional brand identity \u2014 clean, timel
 Output: flat vector illustration style, black/dark ink on white, high contrast, high fidelity.`;
   return { action: "generate", generation_prompt: logoPrompt };
 }
+async function downloadImageToBuffer(url) {
+  const res = await crossFetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to download image from ${url}: ${res.statusText}`);
+  }
+  const arrayBuffer = await res.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+async function generateFaviconFromLogo(logo, log, businessName, generateFaviconSetFallback) {
+  log(`[FaviconFromLogo] Starting extraction for "${businessName}"...`);
+  let logoBuffer;
+  if (logo.buffer) {
+    logoBuffer = logo.buffer;
+  } else if (logo.path) {
+    logoBuffer = fs4.readFileSync(logo.path);
+  } else {
+    throw new Error("No logo path or buffer provided");
+  }
+  let extractedIconBuffer = null;
+  const googleCloudApiKey = process.env.GOOGLE_CLOUD_API_KEY;
+  if (googleCloudApiKey) {
+    try {
+      log(`[FaviconFromLogo] Sending logo to Vertex for icon extraction...`);
+      const base64Logo = logoBuffer.toString("base64");
+      const prompt = "Extract ONLY the symbol/icon part from this logo image (located on the left side). Generate a clean, high-resolution version containing only that symbol/icon, centered on a solid white background. Absolutely NO text, NO wordmark, and NO letters.";
+      const base64Result = await generateCustomImage(prompt, {
+        aspectRatio: "1:1",
+        logStderr: log,
+        inputImageBase64: base64Logo,
+        inputImageMimeType: "image/png"
+      });
+      extractedIconBuffer = Buffer.from(base64Result, "base64");
+      log(`[FaviconFromLogo] Vertex successfully extracted icon.`);
+    } catch (err) {
+      log(`[FaviconFromLogo] Vertex extraction failed: ${err.message || err}. Falling back to programmatic crop.`);
+    }
+  } else {
+    log(`[FaviconFromLogo] No GOOGLE_CLOUD_API_KEY available. Using programmatic crop directly.`);
+  }
+  if (!extractedIconBuffer) {
+    try {
+      log(`[FaviconFromLogo] Performing programmatic crop of the logo's left section...`);
+      const metadata = await sharp(logoBuffer).metadata();
+      const width = metadata.width || 1024;
+      const height = metadata.height || 576;
+      const cropSize = Math.min(width, height);
+      const leftCropBuffer = await sharp(logoBuffer).extract({
+        left: 0,
+        top: 0,
+        width: cropSize,
+        height: cropSize
+      }).toBuffer();
+      extractedIconBuffer = leftCropBuffer;
+      log(`[FaviconFromLogo] Programmatic crop successful (size: ${cropSize}x${cropSize}).`);
+    } catch (err) {
+      log(`[FaviconFromLogo] Programmatic crop failed: ${err.message || err}`);
+      throw err;
+    }
+  }
+  try {
+    log(`[FaviconFromLogo] Trimming white background from extracted icon...`);
+    const trimmedBuffer = await sharp(extractedIconBuffer).trim().toBuffer();
+    const canvasSize = 512;
+    const padding = 46;
+    const maxIconSize = canvasSize - padding * 2;
+    const masterFaviconBuffer = await sharp({
+      create: {
+        width: canvasSize,
+        height: canvasSize,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 }
+      }
+    }).composite([
+      {
+        input: await sharp(trimmedBuffer).resize(maxIconSize, maxIconSize, {
+          fit: "inside",
+          withoutEnlargement: true
+        }).toBuffer(),
+        gravity: "center"
+      }
+    ]).png().toBuffer();
+    const publicDir2 = path3.join(process.cwd(), "public");
+    const imagesDir2 = path3.join(publicDir2, "generated-images");
+    const faviconDir = path3.join(imagesDir2, "favicons");
+    if (!fs4.existsSync(faviconDir)) fs4.mkdirSync(faviconDir, { recursive: true });
+    const uid = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const baseUrl = process.env.API_URL || "https://api.digiscout.online";
+    const sizes = [16, 32, 48, 180, 192, 512];
+    for (const size of sizes) {
+      const filename = `favicon-${size}x${size}-${uid}.png`;
+      const filePath = path3.join(faviconDir, filename);
+      await sharp(masterFaviconBuffer).resize(size, size).png().toFile(filePath);
+      log(`[FaviconFromLogo] Saved ${size}x${size} favicon: ${filename}`);
+    }
+    const favicon512Url = `${baseUrl}/public/generated-images/favicons/favicon-512x512-${uid}.png`;
+    log(`[FaviconFromLogo] Complete favicon set generated from logo. Primary: ${favicon512Url}`);
+    return favicon512Url;
+  } catch (err) {
+    log(`[FaviconFromLogo] Post-processing or saving failed: ${err.message || err}`);
+    throw err;
+  }
+}
 async function resolveSectionImages(analysis, log, logoAnalysis, business, options) {
   const resultUrls = {
     hero_image: "",
@@ -525,17 +627,6 @@ async function resolveSectionImages(analysis, log, logoAnalysis, business, optio
       };
     }
   }
-  if (logoAnalysis && logoAnalysis.action === "use_existing" && logoAnalysis.url) {
-    resultUrls.logo_image = logoAnalysis.url;
-  } else if (logoAnalysis && logoAnalysis.generation_prompt) {
-    taskList.push({
-      run: async () => {
-        resultUrls.logo_image = await generateAndSave(logoAnalysis.generation_prompt, "logo", "16:9");
-      }
-    });
-  } else {
-    resultUrls.logo_image = getFallbackPlaceholder("logo");
-  }
   const generateFaviconSet = async () => {
     try {
       const businessName = business?.name || "Business";
@@ -587,11 +678,67 @@ async function resolveSectionImages(analysis, log, logoAnalysis, business, optio
       return "";
     }
   };
-  try {
-    resultUrls.favicon_image = await generateFaviconSet();
-  } catch (err) {
-    log(`[FaviconGen] Error: ${err.message || err}`);
-  }
+  taskList.push({
+    run: async () => {
+      log(`[LogoFaviconTask] Starting logo and favicon generation...`);
+      let logoPathOrBuffer = null;
+      if (logoAnalysis && logoAnalysis.action === "use_existing" && logoAnalysis.url) {
+        resultUrls.logo_image = logoAnalysis.url;
+        log(`[LogoFaviconTask] Using existing logo URL: ${logoAnalysis.url}`);
+        try {
+          if (logoAnalysis.url.startsWith("http")) {
+            log(`[LogoFaviconTask] Downloading existing logo for favicon extraction...`);
+            const buffer = await downloadImageToBuffer(logoAnalysis.url);
+            logoPathOrBuffer = { buffer };
+          } else {
+            const relativePath = logoAnalysis.url.replace(/^https?:\/\/[^\/]+/, "");
+            const localPath = path3.join(process.cwd(), relativePath);
+            if (fs4.existsSync(localPath)) {
+              logoPathOrBuffer = { path: localPath };
+            }
+          }
+        } catch (err) {
+          log(`[LogoFaviconTask] Failed to fetch existing logo: ${err.message || err}`);
+        }
+      } else if (logoAnalysis && logoAnalysis.generation_prompt) {
+        log(`[LogoFaviconTask] Generating new logo via AI...`);
+        try {
+          let prompt = logoAnalysis.generation_prompt;
+          const base64Bytes = await generateCustomImage(prompt, { aspectRatio: "16:9", logStderr: log });
+          const filename = `gen_logo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.png`;
+          const publicDir2 = path3.join(process.cwd(), "public");
+          const imagesDir2 = path3.join(publicDir2, "generated-images");
+          if (!fs4.existsSync(imagesDir2)) {
+            fs4.mkdirSync(imagesDir2, { recursive: true });
+          }
+          const filePath = path3.join(imagesDir2, filename);
+          const buffer = Buffer.from(base64Bytes, "base64");
+          fs4.writeFileSync(filePath, buffer);
+          const baseUrl = process.env.API_URL || "https://api.digiscout.online";
+          resultUrls.logo_image = `${baseUrl}/public/generated-images/${filename}`;
+          logoPathOrBuffer = { path: filePath, buffer };
+          log(`[LogoFaviconTask] Generated and saved logo to: ${resultUrls.logo_image}`);
+        } catch (err) {
+          log(`[LogoFaviconTask] Error generating logo: ${err.message || err}. Falling back to default.`);
+          resultUrls.logo_image = getFallbackPlaceholder("logo");
+        }
+      } else {
+        log(`[LogoFaviconTask] No logo configuration, using fallback logo.`);
+        resultUrls.logo_image = getFallbackPlaceholder("logo");
+      }
+      if (logoPathOrBuffer) {
+        try {
+          resultUrls.favicon_image = await generateFaviconFromLogo(logoPathOrBuffer, log, business?.name || "Business", generateFaviconSet);
+        } catch (err) {
+          log(`[LogoFaviconTask] Favicon extraction from logo failed: ${err.message || err}. Falling back to letter-mark.`);
+          resultUrls.favicon_image = await generateFaviconSet();
+        }
+      } else {
+        log(`[LogoFaviconTask] No logo image available, using letter-mark favicon fallback.`);
+        resultUrls.favicon_image = await generateFaviconSet();
+      }
+    }
+  });
   if (taskList.length > 0) {
     log(`[ImageGenerator] Queueing ${taskList.length} AI image generation tasks with concurrency limit of 2...`);
     let nextIndex = 0;
@@ -1568,15 +1715,23 @@ async function generateCustomImage(prompt, options) {
     while (attempt < maxAttempts) {
       attempt++;
       try {
+        const parts = [];
+        if (options?.inputImageBase64) {
+          parts.push({
+            inlineData: {
+              mimeType: options.inputImageMimeType || "image/png",
+              data: options.inputImageBase64
+            }
+          });
+        }
+        parts.push({
+          text: prompt
+        });
         const payload = {
           contents: [
             {
               role: "user",
-              parts: [
-                {
-                  text: prompt
-                }
-              ]
+              parts
             }
           ],
           generationConfig: {
@@ -1623,9 +1778,9 @@ async function generateCustomImage(prompt, options) {
           const chunks = await res.json();
           let imageBytes = "";
           for (const chunk of chunks) {
-            const parts = chunk.candidates?.[0]?.content?.parts;
-            if (parts) {
-              for (const part of parts) {
+            const parts2 = chunk.candidates?.[0]?.content?.parts;
+            if (parts2) {
+              for (const part of parts2) {
                 if (part.inlineData && part.inlineData.data) {
                   imageBytes = part.inlineData.data;
                 }

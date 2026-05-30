@@ -253,6 +253,147 @@ Output: flat vector illustration style, black/dark ink on white, high contrast, 
 	return { action: "generate", generation_prompt: logoPrompt };
 }
 
+async function downloadImageToBuffer(url: string): Promise<Buffer> {
+	const res = await crossFetch(url);
+	if (!res.ok) {
+		throw new Error(`Failed to download image from ${url}: ${res.statusText}`);
+	}
+	const arrayBuffer = await res.arrayBuffer();
+	return Buffer.from(arrayBuffer);
+}
+
+async function generateFaviconFromLogo(
+	logo: { path?: string; buffer?: Buffer },
+	log: (msg: string) => void,
+	businessName: string,
+	generateFaviconSetFallback: () => Promise<string>
+): Promise<string> {
+	log(`[FaviconFromLogo] Starting extraction for "${businessName}"...`);
+	let logoBuffer: Buffer;
+	if (logo.buffer) {
+		logoBuffer = logo.buffer;
+	} else if (logo.path) {
+		logoBuffer = fs.readFileSync(logo.path);
+	} else {
+		throw new Error("No logo path or buffer provided");
+	}
+
+	let extractedIconBuffer: Buffer | null = null;
+
+	// 1. Try Vertex extraction
+	const googleCloudApiKey = process.env.GOOGLE_CLOUD_API_KEY;
+	if (googleCloudApiKey) {
+		try {
+			log(`[FaviconFromLogo] Sending logo to Vertex for icon extraction...`);
+			const base64Logo = logoBuffer.toString("base64");
+			const prompt = "Extract ONLY the symbol/icon part from this logo image (located on the left side). Generate a clean, high-resolution version containing only that symbol/icon, centered on a solid white background. Absolutely NO text, NO wordmark, and NO letters.";
+			const base64Result = await generateCustomImage(prompt, {
+				aspectRatio: "1:1",
+				logStderr: log,
+				inputImageBase64: base64Logo,
+				inputImageMimeType: "image/png"
+			});
+
+			extractedIconBuffer = Buffer.from(base64Result, "base64");
+			log(`[FaviconFromLogo] Vertex successfully extracted icon.`);
+		} catch (err: any) {
+			log(`[FaviconFromLogo] Vertex extraction failed: ${err.message || err}. Falling back to programmatic crop.`);
+		}
+	} else {
+		log(`[FaviconFromLogo] No GOOGLE_CLOUD_API_KEY available. Using programmatic crop directly.`);
+	}
+
+	// 2. Programmatic Crop Fallback
+	if (!extractedIconBuffer) {
+		try {
+			log(`[FaviconFromLogo] Performing programmatic crop of the logo's left section...`);
+			const metadata = await sharp(logoBuffer).metadata();
+			const width = metadata.width || 1024;
+			const height = metadata.height || 576;
+
+			// Crop the left-most square area (where the icon resides in a 16:9 wordmark)
+			const cropSize = Math.min(width, height);
+			const leftCropBuffer = await sharp(logoBuffer)
+				.extract({
+					left: 0,
+					top: 0,
+					width: cropSize,
+					height: cropSize
+				})
+				.toBuffer();
+
+			extractedIconBuffer = leftCropBuffer;
+			log(`[FaviconFromLogo] Programmatic crop successful (size: ${cropSize}x${cropSize}).`);
+		} catch (err: any) {
+			log(`[FaviconFromLogo] Programmatic crop failed: ${err.message || err}`);
+			throw err;
+		}
+	}
+
+	// 3. Post-process the extracted icon buffer: Trim white space and center on a 512x512 transparent canvas
+	try {
+		log(`[FaviconFromLogo] Trimming white background from extracted icon...`);
+		const trimmedBuffer = await sharp(extractedIconBuffer)
+			.trim()
+			.toBuffer();
+
+		const canvasSize = 512;
+		const padding = 46;
+		const maxIconSize = canvasSize - (padding * 2);
+
+		const masterFaviconBuffer = await sharp({
+			create: {
+				width: canvasSize,
+				height: canvasSize,
+				channels: 4,
+				background: { r: 0, g: 0, b: 0, alpha: 0 }
+			}
+		})
+		.composite([
+			{
+				input: await sharp(trimmedBuffer)
+					.resize(maxIconSize, maxIconSize, {
+						fit: "inside",
+						withoutEnlargement: true
+					})
+					.toBuffer(),
+				gravity: "center"
+			}
+		])
+		.png()
+		.toBuffer();
+
+		const publicDir = path.join(process.cwd(), "public");
+		const imagesDir = path.join(publicDir, "generated-images");
+		const faviconDir = path.join(imagesDir, "favicons");
+		if (!fs.existsSync(faviconDir)) fs.mkdirSync(faviconDir, { recursive: true });
+
+		const uid = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+		const baseUrl = process.env.API_URL || "https://api.digiscout.online";
+
+		const sizes = [16, 32, 48, 180, 192, 512];
+		for (const size of sizes) {
+			const filename = `favicon-${size}x${size}-${uid}.png`;
+			const filePath = path.join(faviconDir, filename);
+
+			await sharp(masterFaviconBuffer)
+				.resize(size, size)
+				.png()
+				.toFile(filePath);
+
+			log(`[FaviconFromLogo] Saved ${size}x${size} favicon: ${filename}`);
+		}
+
+		const favicon512Url = `${baseUrl}/public/generated-images/favicons/favicon-512x512-${uid}.png`;
+		log(`[FaviconFromLogo] Complete favicon set generated from logo. Primary: ${favicon512Url}`);
+		return favicon512Url;
+
+	} catch (err: any) {
+		log(`[FaviconFromLogo] Post-processing or saving failed: ${err.message || err}`);
+		throw err;
+	}
+}
+
 export async function resolveSectionImages(
 	analysis: ImageAnalysisResult,
 	log: (msg: string) => void,
@@ -493,25 +634,10 @@ export async function resolveSectionImages(
 		}
 	}
 
-	// 7. Logo
-	if (logoAnalysis && logoAnalysis.action === "use_existing" && logoAnalysis.url) {
-		resultUrls.logo_image = logoAnalysis.url;
-	} else if (logoAnalysis && logoAnalysis.generation_prompt) {
-		taskList.push({
-			run: async () => {
-				resultUrls.logo_image = await generateAndSave(logoAnalysis.generation_prompt, "logo", "16:9");
-			}
-		});
-	} else {
-		resultUrls.logo_image = getFallbackPlaceholder("logo");
-	}
-
-	// 8. Favicon — Generate programmatically using sharp: letter-mark on brand-colored square
-	// This is fast, reliable, and looks perfect at all sizes without needing an AI call
+	// 7. Logo & Favicon Task
 	const generateFaviconSet = async (): Promise<string> => {
 		try {
 			const businessName = business?.name || "Business";
-			// Pick initial letter(s) — 1 char for simple names, 2 for compound names
 			const words = businessName.trim().split(/\s+/);
 			const initial = words.length >= 2
 				? (words[0][0] + words[1][0]).toUpperCase()
@@ -525,8 +651,6 @@ export async function resolveSectionImages(
 			const uid = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 			const baseUrl = process.env.API_URL || "https://api.digiscout.online";
 
-			// Generate the master 512x512 letter-mark favicon using sharp's SVG input
-			// Use a dark charcoal background with white initial letter — elegant & readable at all sizes
 			const masterSize = 512;
 			const fontSize = Math.round(masterSize * 0.52);
 			const svgTemplate = `<svg width="${masterSize}" height="${masterSize}" xmlns="http://www.w3.org/2000/svg">
@@ -547,15 +671,11 @@ export async function resolveSectionImages(
 				.png()
 				.toBuffer();
 
-			// Save all standard favicon sizes
 			const sizes = [16, 32, 48, 180, 192, 512];
 			for (const size of sizes) {
 				const filename = `favicon-${size}x${size}-${uid}.png`;
 				const filePath = path.join(faviconDir, filename);
-				// Smaller sizes: use cover fit so the letter fills the square
-				// Larger sizes: keep the full rounded square with padding
 				if (size <= 48) {
-					// For tiny sizes, regenerate SVG without rounded corners (cleaner at small sizes)
 					const smallFontSize = Math.round(size * 0.62);
 					const smallSvg = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
   <rect width="${size}" height="${size}" fill="#1a1a1a"/>
@@ -577,12 +697,72 @@ export async function resolveSectionImages(
 		}
 	};
 
-	// Run favicon generation synchronously (no AI call needed — uses sharp only)
-	try {
-		resultUrls.favicon_image = await generateFaviconSet();
-	} catch (err: any) {
-		log(`[FaviconGen] Error: ${err.message || err}`);
-	}
+	taskList.push({
+		run: async () => {
+			log(`[LogoFaviconTask] Starting logo and favicon generation...`);
+			let logoPathOrBuffer: { path?: string; buffer?: Buffer } | null = null;
+
+			// 1. Resolve or generate logo
+			if (logoAnalysis && logoAnalysis.action === "use_existing" && logoAnalysis.url) {
+				resultUrls.logo_image = logoAnalysis.url;
+				log(`[LogoFaviconTask] Using existing logo URL: ${logoAnalysis.url}`);
+				try {
+					if (logoAnalysis.url.startsWith("http")) {
+						log(`[LogoFaviconTask] Downloading existing logo for favicon extraction...`);
+						const buffer = await downloadImageToBuffer(logoAnalysis.url);
+						logoPathOrBuffer = { buffer };
+					} else {
+						const relativePath = logoAnalysis.url.replace(/^https?:\/\/[^\/]+/, "");
+						const localPath = path.join(process.cwd(), relativePath);
+						if (fs.existsSync(localPath)) {
+							logoPathOrBuffer = { path: localPath };
+						}
+					}
+				} catch (err: any) {
+					log(`[LogoFaviconTask] Failed to fetch existing logo: ${err.message || err}`);
+				}
+			} else if (logoAnalysis && logoAnalysis.generation_prompt) {
+				log(`[LogoFaviconTask] Generating new logo via AI...`);
+				try {
+					let prompt = logoAnalysis.generation_prompt;
+					const base64Bytes = await generateCustomImage(prompt, { aspectRatio: "16:9", logStderr: log });
+					const filename = `gen_logo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.png`;
+					const publicDir = path.join(process.cwd(), "public");
+					const imagesDir = path.join(publicDir, "generated-images");
+					if (!fs.existsSync(imagesDir)) {
+						fs.mkdirSync(imagesDir, { recursive: true });
+					}
+					const filePath = path.join(imagesDir, filename);
+					const buffer = Buffer.from(base64Bytes, "base64");
+					fs.writeFileSync(filePath, buffer);
+
+					const baseUrl = process.env.API_URL || "https://api.digiscout.online";
+					resultUrls.logo_image = `${baseUrl}/public/generated-images/${filename}`;
+					logoPathOrBuffer = { path: filePath, buffer };
+					log(`[LogoFaviconTask] Generated and saved logo to: ${resultUrls.logo_image}`);
+				} catch (err: any) {
+					log(`[LogoFaviconTask] Error generating logo: ${err.message || err}. Falling back to default.`);
+					resultUrls.logo_image = getFallbackPlaceholder("logo");
+				}
+			} else {
+				log(`[LogoFaviconTask] No logo configuration, using fallback logo.`);
+				resultUrls.logo_image = getFallbackPlaceholder("logo");
+			}
+
+			// 2. Generate favicon from logo if logoPathOrBuffer is available
+			if (logoPathOrBuffer) {
+				try {
+					resultUrls.favicon_image = await generateFaviconFromLogo(logoPathOrBuffer, log, business?.name || "Business", generateFaviconSet);
+				} catch (err: any) {
+					log(`[LogoFaviconTask] Favicon extraction from logo failed: ${err.message || err}. Falling back to letter-mark.`);
+					resultUrls.favicon_image = await generateFaviconSet();
+				}
+			} else {
+				log(`[LogoFaviconTask] No logo image available, using letter-mark favicon fallback.`);
+				resultUrls.favicon_image = await generateFaviconSet();
+			}
+		}
+	});
 
 	// Run remaining 5 image tasks with a concurrency limit of 2 to keep speed high and stay safe from rate limits
 	if (taskList.length > 0) {

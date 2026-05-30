@@ -802,6 +802,8 @@ export async function generateCustomImage(
 	options?: {
 		aspectRatio?: "1:1" | "3:4" | "4:3" | "9:16" | "16:9";
 		logStderr?: (msg: string) => void;
+		inputImageBase64?: string;
+		inputImageMimeType?: string;
 	},
 ): Promise<string> {
 	const log = options?.logStderr || ((msg: string) => console.error(msg));
@@ -824,15 +826,24 @@ export async function generateCustomImage(
 		while (attempt < maxAttempts) {
 			attempt++;
 			try {
+				const parts: any[] = [];
+				if (options?.inputImageBase64) {
+					parts.push({
+						inlineData: {
+							mimeType: options.inputImageMimeType || "image/png",
+							data: options.inputImageBase64,
+						},
+					});
+				}
+				parts.push({
+					text: prompt,
+				});
+
 				const payload = {
 					contents: [
 						{
 							role: "user",
-							parts: [
-								{
-									text: prompt,
-								},
-							],
+							parts: parts,
 						},
 					],
 					generationConfig: {
