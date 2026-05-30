@@ -1214,6 +1214,8 @@ html, body {
         justify-content: center !important;
         margin-top: 0 !important;
         margin-bottom: 0 !important;
+        height: 100% !important;
+        min-height: 100% !important;
     }
     .elementor-element-56a3deab .elementor-widget-wrap {
         height: 100% !important;
