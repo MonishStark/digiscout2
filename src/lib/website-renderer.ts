@@ -253,12 +253,49 @@ function renderHeader(schema: WebsiteSchema) {
 </header>`;
 }
 
+function renderHeroMedia(primaryImage: string, allImages: string[], altText: string) {
+	if (allImages.length <= 1) {
+		return `<img src="${escapeHtml(primaryImage)}" alt="${escapeHtml(altText)}" />`;
+	}
+	return `
+<div class="hero-slideshow-container">
+  ${allImages.map((src, idx) => `
+    <img src="${escapeHtml(src)}" alt="${escapeHtml(altText)}" class="hero-slideshow-img ${idx === 0 ? "active" : ""}" />
+  `).join("")}
+</div>`;
+}
+
 function renderHero(section: HeroSection, schema: WebsiteSchema) {
 	const layout = ((section as any).layout || section.variant || "split")
 		.toString()
 		.toLowerCase();
 	const image =
 		section.media?.src || fallbackImageForCategory(schema.brand.category);
+
+	// Collect images from other sections for the slideshow
+	const allImages: string[] = [];
+	if (image) allImages.push(image);
+	for (const sec of schema.sections) {
+		if (sec.type === "gallery") {
+			const gallery = sec as GallerySection;
+			const items = gallery.items || gallery.media || [];
+			for (const item of items) {
+				const src = item.src || item.url;
+				if (src) allImages.push(src);
+			}
+		} else if (sec.type === "features") {
+			const feat = sec as any;
+			if (feat.media?.src) allImages.push(feat.media.src);
+		}
+	}
+	const uniqueImages = [...new Set(allImages)].filter(Boolean);
+	if (uniqueImages.length < 2) {
+		uniqueImages.push(
+			"https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=1800&q=80",
+			"https://images.unsplash.com/photo-1539922980492-38f6673af8dd?auto=format&fit=crop&w=1800&q=80"
+		);
+	}
+
 	const voice = getSiteVoice(schema);
 	const stats = [
 		schema.brand.category,
@@ -292,7 +329,7 @@ function renderHero(section: HeroSection, schema: WebsiteSchema) {
 		return `
 <section class="site-section hero hero-immersive hero-layout-immersive" id="top" data-layout="hero-immersive">
   <div class="hero-media immersive-media">
-    <img src="${escapeHtml(image)}" alt="${escapeHtml(section.media?.alt || schema.brand.businessName)}" />
+    ${renderHeroMedia(image, uniqueImages, section.media?.alt || schema.brand.businessName)}
     <div class="hero-overlay"></div>
   </div>
   <div class="hero-copy hero-copy-overlay">
@@ -321,7 +358,7 @@ function renderHero(section: HeroSection, schema: WebsiteSchema) {
     </div>
   </div>
   <div class="hero-media hero-media-centered">
-    <img src="${escapeHtml(image)}" alt="${escapeHtml(section.media?.alt || schema.brand.businessName)}" />
+    ${renderHeroMedia(image, uniqueImages, section.media?.alt || schema.brand.businessName)}
   </div>
 </section>`;
 	}
@@ -344,7 +381,7 @@ function renderHero(section: HeroSection, schema: WebsiteSchema) {
       ${stats.map((stat) => `<span>${escapeHtml(stat)}</span>`).join("")}
     </div>
     <div class="hero-media hero-media-sidecar">
-      <img src="${escapeHtml(image)}" alt="${escapeHtml(section.media?.alt || schema.brand.businessName)}" />
+      ${renderHeroMedia(image, uniqueImages, section.media?.alt || schema.brand.businessName)}
     </div>
   </aside>
 </section>`;
@@ -371,7 +408,7 @@ function renderHero(section: HeroSection, schema: WebsiteSchema) {
     </div>
   </div>
   <div class="hero-media">
-    <img src="${escapeHtml(image)}" alt="${escapeHtml(section.media?.alt || schema.brand.businessName)}" />
+    ${renderHeroMedia(image, uniqueImages, section.media?.alt || schema.brand.businessName)}
   </div>
 </section>`;
 }
@@ -1103,6 +1140,27 @@ img { display: block; width: 100%; max-width: 100%; }
 }
 .hero-media img { object-fit: cover; width: 100%; height: 100%; transition: transform .6s cubic-bezier(.4, 0, .2, 1); }
 .hero:hover .hero-media img { transform: scale(1.04); }
+.hero-slideshow-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.hero-slideshow-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1.2s ease-in-out, transform .6s cubic-bezier(.4, 0, .2, 1);
+  z-index: 1;
+}
+.hero-slideshow-img.active {
+  opacity: 1;
+  z-index: 2;
+}
+.hero:hover .hero-slideshow-img.active { transform: scale(1.04); }
 .hero-immersive {
   position: relative;
   min-height: 76vh;
@@ -1582,6 +1640,21 @@ img { display: block; width: 100%; max-width: 100%; }
 
 const buildJs = () => `
 (() => {
+  // === MOBILE HERO SLIDESHOW ===
+  const slideshowImages = document.querySelectorAll('.hero-slideshow-img');
+  if (slideshowImages.length > 1) {
+    let currentIndex = 0;
+    const isMobile = () => window.innerWidth <= 768;
+    
+    setInterval(() => {
+      if (!isMobile()) return;
+      
+      slideshowImages[currentIndex].classList.remove('active');
+      currentIndex = (currentIndex + 1) % slideshowImages.length;
+      slideshowImages[currentIndex].classList.add('active');
+    }, 5000);
+  }
+
   // === SMOOTH SCROLL REVEAL ANIMATIONS ===
   const revealElements = document.querySelectorAll('.site-section, .feature-card, .testimonial-card, .gallery-item, .faq-item, .contact-card, .pill, .button');
   revealElements.forEach((el) => el.setAttribute('data-reveal', ''));

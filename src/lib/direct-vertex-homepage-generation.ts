@@ -242,12 +242,13 @@ export async function detectOrGenerateLogo(
 	}
 ): Promise<{ action: "use_existing" | "generate"; url?: string; generation_prompt?: string }> {
 	const name = business.name || "Business";
-	log(`[LogoDetector] Generating minimalist wordmark logo for: ${name}`);
-	// Always generate a clean horizontal wordmark — business name in premium typography
-	const logoPrompt = `Premium minimalist horizontal wordmark logo design for a business called "${name}". 
-The business name "${name}" must appear as the primary typographic element — spelled out exactly, using a clean premium sans-serif or refined serif typeface in dark charcoal or black.
-Include ONE small, simple geometric icon or symbol mark to the left of or above the text — for example: a thin square bracket, a small abstract diamond, a simple leaf outline, or a minimal craft tool silhouette. The icon must be very small relative to the text.
-Solid pure white background. Horizontal layout. No gradients. No drop shadows. No decorative frames or borders around the whole logo. No taglines. No fake badge effects.
+	log(`[LogoDetector] Generating minimalist stacked logo for: ${name}`);
+	// Always generate a clean stacked logo — symbol on top, business name centered below
+	const logoPrompt = `Premium minimalist stacked logo design for a business called "${name}". 
+Layout: Vertical stacked layout. Place ONE beautiful, clean, prominent geometric icon or symbol mark on top (centered), and place the business name "${name}" centered directly below the symbol.
+The business name "${name}" must use a clean, refined premium sans-serif or elegant serif typeface in dark charcoal or black.
+The symbol on top should be larger, clean, and highly visible — for example: a refined craft tool silhouette, a geometric emblem, or a simple abstract outline.
+Solid pure white background. No gradients. No drop shadows. No decorative frames or borders around the whole logo. No taglines.
 The result must look like a real professional brand identity — clean, timeless, and suitable for a premium local business header logo.
 Output: flat vector illustration style, black/dark ink on white, high contrast, high fidelity.`;
 	return { action: "generate", generation_prompt: logoPrompt };
@@ -306,24 +307,27 @@ async function generateFaviconFromLogo(
 	// 2. Programmatic Crop Fallback
 	if (!extractedIconBuffer) {
 		try {
-			log(`[FaviconFromLogo] Performing programmatic crop of the logo's left section...`);
+			log(`[FaviconFromLogo] Performing programmatic crop of the logo's top-center section...`);
 			const metadata = await sharp(logoBuffer).metadata();
 			const width = metadata.width || 1024;
 			const height = metadata.height || 576;
 
-			// Crop the left-most square area (where the icon resides in a 16:9 wordmark)
+			// Crop a top-centered square (since the logo layout is stacked: symbol on top, text below)
 			const cropSize = Math.min(width, height);
-			const leftCropBuffer = await sharp(logoBuffer)
+			const left = Math.max(0, Math.floor((width - cropSize) / 2));
+			const top = 0;
+
+			const topCenterCropBuffer = await sharp(logoBuffer)
 				.extract({
-					left: 0,
-					top: 0,
+					left,
+					top,
 					width: cropSize,
 					height: cropSize
 				})
 				.toBuffer();
 
-			extractedIconBuffer = leftCropBuffer;
-			log(`[FaviconFromLogo] Programmatic crop successful (size: ${cropSize}x${cropSize}).`);
+			extractedIconBuffer = topCenterCropBuffer;
+			log(`[FaviconFromLogo] Programmatic crop successful (region: ${left},${top} size: ${cropSize}x${cropSize}).`);
 		} catch (err: any) {
 			log(`[FaviconFromLogo] Programmatic crop failed: ${err.message || err}`);
 			throw err;

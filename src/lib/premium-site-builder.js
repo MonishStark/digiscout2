@@ -72,7 +72,7 @@ function selectBestImages(curated, count, minScore = 50) {
 // ==========================================
 // 2. CINEMATIC IMAGE ENHANCEMENT PIPELINE
 // ==========================================
-function getCinematicImageHtml(img, treatment, ctx, customStyle = "") {
+function getCinematicImageHtml(imgOrList, treatment, ctx, customStyle = "") {
     const enhanceType = ctx.visualAtmosphere || "architectural-minimalism";
     let filterStyle = "";
     let overlayHtml = "";
@@ -95,6 +95,18 @@ function getCinematicImageHtml(img, treatment, ctx, customStyle = "") {
         overlayHtml = `<div style="position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(180deg, transparent 40%, rgba(12,13,18,0.7) 100%);pointer-events:none;"></div>`;
     }
     const shapeStyle = getImageTreatmentStyles(treatment, ctx);
+
+    if (Array.isArray(imgOrList)) {
+        return `
+<div class="hero-slideshow-container" style="position:relative;overflow:hidden;display:inline-block;width:100%;${customStyle} ${shapeStyle.container}">
+  ${imgOrList.map((img, idx) => `
+    <img src="${esc(img.src)}" alt="${esc(img.alt)}" class="hero-slideshow-img ${idx === 0 ? "active" : ""}" style="position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover;transition:transform 0.8s var(--ease-expo), opacity 1.2s ease-in-out;${filterStyle} ${shapeStyle.image}" />
+  `).join("")}
+  ${overlayHtml}
+</div>`;
+    }
+
+    const img = imgOrList;
     return `
 <div style="position:relative;overflow:hidden;display:inline-block;width:100%;${customStyle} ${shapeStyle.container}">
   <img src="${esc(img.src)}" alt="${esc(img.alt)}" style="display:block;width:100%;height:100%;object-fit:cover;transition:transform 0.8s var(--ease-expo);${filterStyle} ${shapeStyle.image}" />
@@ -526,6 +538,27 @@ html,body{margin:0!important;padding:0!important;background:var(--bg)!important;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='${dna.atmosphereIntensity > 70 ? "0.02" : "0.012"}'/%3E%3C/svg%3E");
 }
 
+.hero-slideshow-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.hero-slideshow-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1.2s ease-in-out, transform 0.8s var(--reveal-duration) var(--ease-expo);
+  z-index: 1;
+}
+.hero-slideshow-img.active {
+  opacity: 1;
+  z-index: 2;
+}
+
 .text-gradient {
   background: linear-gradient(135deg, var(--primary), var(--accent));
   -webkit-background-clip: text;
@@ -669,6 +702,19 @@ html,body{margin:0!important;padding:0!important;background:var(--bg)!important;
     const revealScript = `<!-- wp:html -->
 <script>
 document.addEventListener("DOMContentLoaded", () => {
+  // Mobile Hero Slideshow loop
+  const slideshowImages = document.querySelectorAll('.hero-slideshow-img');
+  if (slideshowImages.length > 1) {
+    let currentIndex = 0;
+    const isMobile = () => window.innerWidth <= 768;
+    setInterval(() => {
+      if (!isMobile()) return;
+      slideshowImages[currentIndex].classList.remove('active');
+      currentIndex = (currentIndex + 1) % slideshowImages.length;
+      slideshowImages[currentIndex].classList.add('active');
+    }, 5000);
+  }
+
   const obs = new IntersectionObserver((es) => {
     es.forEach(e => {
       if (e.isIntersecting) {
@@ -895,7 +941,8 @@ function renderAdaptiveHero(section, ctx) {
 </section>
 <!-- /wp:html -->\n\n`;
     }
-    const imgHtml = getCinematicImageHtml(curatedList[0], imgTreatment, ctx, "width:100%;height:520px;");
+    const allHeroImages = (ctx.curatedImages || []).filter(img => img && img.src);
+    const imgHtml = getCinematicImageHtml(allHeroImages.length > 0 ? allHeroImages : [curatedList[0]], imgTreatment, ctx, "width:100%;height:520px;");
     // 1. Cinematic Bleed Layout
     if (ctx.layoutBehavior === "split-grid" || ctx.dna.cinematicScore > 65) {
         return `<!-- wp:html -->

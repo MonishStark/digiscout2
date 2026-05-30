@@ -326,11 +326,12 @@ async function analyzeAndFilterImages(business, log, options) {
 }
 async function detectOrGenerateLogo(business, log, options) {
   const name = business.name || "Business";
-  log(`[LogoDetector] Generating minimalist wordmark logo for: ${name}`);
-  const logoPrompt = `Premium minimalist horizontal wordmark logo design for a business called "${name}". 
-The business name "${name}" must appear as the primary typographic element \u2014 spelled out exactly, using a clean premium sans-serif or refined serif typeface in dark charcoal or black.
-Include ONE small, simple geometric icon or symbol mark to the left of or above the text \u2014 for example: a thin square bracket, a small abstract diamond, a simple leaf outline, or a minimal craft tool silhouette. The icon must be very small relative to the text.
-Solid pure white background. Horizontal layout. No gradients. No drop shadows. No decorative frames or borders around the whole logo. No taglines. No fake badge effects.
+  log(`[LogoDetector] Generating minimalist stacked logo for: ${name}`);
+  const logoPrompt = `Premium minimalist stacked logo design for a business called "${name}". 
+Layout: Vertical stacked layout. Place ONE beautiful, clean, prominent geometric icon or symbol mark on top (centered), and place the business name "${name}" centered directly below the symbol.
+The business name "${name}" must use a clean, refined premium sans-serif or elegant serif typeface in dark charcoal or black.
+The symbol on top should be larger, clean, and highly visible \u2014 for example: a refined craft tool silhouette, a geometric emblem, or a simple abstract outline.
+Solid pure white background. No gradients. No drop shadows. No decorative frames or borders around the whole logo. No taglines.
 The result must look like a real professional brand identity \u2014 clean, timeless, and suitable for a premium local business header logo.
 Output: flat vector illustration style, black/dark ink on white, high contrast, high fidelity.`;
   return { action: "generate", generation_prompt: logoPrompt };
@@ -376,19 +377,21 @@ async function generateFaviconFromLogo(logo, log, businessName, generateFaviconS
   }
   if (!extractedIconBuffer) {
     try {
-      log(`[FaviconFromLogo] Performing programmatic crop of the logo's left section...`);
+      log(`[FaviconFromLogo] Performing programmatic crop of the logo's top-center section...`);
       const metadata = await sharp(logoBuffer).metadata();
       const width = metadata.width || 1024;
       const height = metadata.height || 576;
       const cropSize = Math.min(width, height);
-      const leftCropBuffer = await sharp(logoBuffer).extract({
-        left: 0,
-        top: 0,
+      const left = Math.max(0, Math.floor((width - cropSize) / 2));
+      const top = 0;
+      const topCenterCropBuffer = await sharp(logoBuffer).extract({
+        left,
+        top,
         width: cropSize,
         height: cropSize
       }).toBuffer();
-      extractedIconBuffer = leftCropBuffer;
-      log(`[FaviconFromLogo] Programmatic crop successful (size: ${cropSize}x${cropSize}).`);
+      extractedIconBuffer = topCenterCropBuffer;
+      log(`[FaviconFromLogo] Programmatic crop successful (region: ${left},${top} size: ${cropSize}x${cropSize}).`);
     } catch (err) {
       log(`[FaviconFromLogo] Programmatic crop failed: ${err.message || err}`);
       throw err;

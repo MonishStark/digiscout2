@@ -651,6 +651,27 @@ img { display: block; width: 100%; max-width: 100%; }
 }
 .hero-media img { object-fit: cover; width: 100%; height: 100%; transition: transform .6s cubic-bezier(.4, 0, .2, 1); }
 .hero:hover .hero-media img { transform: scale(1.04); }
+.hero-slideshow-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.hero-slideshow-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1.2s ease-in-out, transform .6s cubic-bezier(.4, 0, .2, 1);
+  z-index: 1;
+}
+.hero-slideshow-img.active {
+  opacity: 1;
+  z-index: 2;
+}
+.hero:hover .hero-slideshow-img.active { transform: scale(1.04); }
 .hero-immersive {
   position: relative;
   min-height: 76vh;
@@ -1127,6 +1148,21 @@ img { display: block; width: 100%; max-width: 100%; }
 }
 `},SO=()=>`
 (() => {
+  // === MOBILE HERO SLIDESHOW ===
+  const slideshowImages = document.querySelectorAll('.hero-slideshow-img');
+  if (slideshowImages.length > 1) {
+    let currentIndex = 0;
+    const isMobile = () => window.innerWidth <= 768;
+    
+    setInterval(() => {
+      if (!isMobile()) return;
+      
+      slideshowImages[currentIndex].classList.remove('active');
+      currentIndex = (currentIndex + 1) % slideshowImages.length;
+      slideshowImages[currentIndex].classList.add('active');
+    }, 5000);
+  }
+
   // === SMOOTH SCROLL REVEAL ANIMATIONS ===
   const revealElements = document.querySelectorAll('.site-section, .feature-card, .testimonial-card, .gallery-item, .faq-item, .contact-card, .pill, .button');
   revealElements.forEach((el) => el.setAttribute('data-reveal', ''));
