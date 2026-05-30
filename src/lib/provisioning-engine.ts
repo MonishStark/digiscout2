@@ -911,6 +911,10 @@ async function injectWebsiteContent(
 
 			if (schema.brand?.favicon) {
 				imageSet.add(schema.brand.favicon);
+				if (schema.brand.favicon.includes("/public/generated-images/")) {
+					const lightFavicon = schema.brand.favicon.replace("favicon-512x512-", "favicon-512x512-light-");
+					imageSet.add(lightFavicon);
+				}
 			}
 
 			// Scan template JSON files for library.elementor.com URLs to download/import
@@ -1083,6 +1087,12 @@ async function injectWebsiteContent(
 				await logCallback(`Setting site icon to generated favicon: ${faviconMedia.id}`);
 				await runWpCommand(`option update site_icon ${faviconMedia.id}`, docRoot, logCallback).catch(() => {});
 				await runWpCommand(`option update ds_favicon_url "${faviconMedia.url}"`, docRoot, logCallback).catch(() => {});
+				
+				// Set ds_favicon_url_light option if it exists in mediaMap
+				const lightFavicon = schema.brand.favicon.replace("favicon-512x512-", "favicon-512x512-light-");
+				if (mediaMap[lightFavicon]) {
+					await runWpCommand(`option update ds_favicon_url_light "${mediaMap[lightFavicon].url}"`, docRoot, logCallback).catch(() => {});
+				}
 			} else if (schema.brand?.logo && mediaMap[schema.brand.logo]) {
 				const logoMedia = mediaMap[schema.brand.logo];
 				await logCallback(`Setting site icon to logo (no dedicated favicon): ${logoMedia.id}`);
@@ -1132,12 +1142,25 @@ add_action('login_head', 'ds_inject_favicon', 1);
 
 function ds_inject_favicon() {
     $favicon_url = get_option('ds_favicon_url');
+    $favicon_url_light = get_option('ds_favicon_url_light');
     if ($favicon_url) {
         echo '<!-- DigitalScout Custom Favicon -->';
-        echo '<link rel="shortcut icon" href="' . esc_url($favicon_url) . '" />';
-        echo '<link rel="icon" type="image/png" sizes="32x32" href="' . esc_url($favicon_url) . '" />';
-        echo '<link rel="icon" type="image/png" sizes="192x192" href="' . esc_url($favicon_url) . '" />';
-        echo '<link rel="apple-touch-icon" href="' . esc_url($favicon_url) . '" />';
+        if ($favicon_url_light) {
+            echo '<link rel="shortcut icon" href="' . esc_url($favicon_url) . '" media="(prefers-color-scheme: light)" />';
+            echo '<link rel="icon" type="image/png" sizes="32x32" href="' . esc_url($favicon_url) . '" media="(prefers-color-scheme: light)" />';
+            echo '<link rel="icon" type="image/png" sizes="192x192" href="' . esc_url($favicon_url) . '" media="(prefers-color-scheme: light)" />';
+            echo '<link rel="apple-touch-icon" href="' . esc_url($favicon_url) . '" media="(prefers-color-scheme: light)" />';
+            
+            echo '<link rel="shortcut icon" href="' . esc_url($favicon_url_light) . '" media="(prefers-color-scheme: dark)" />';
+            echo '<link rel="icon" type="image/png" sizes="32x32" href="' . esc_url($favicon_url_light) . '" media="(prefers-color-scheme: dark)" />';
+            echo '<link rel="icon" type="image/png" sizes="192x192" href="' . esc_url($favicon_url_light) . '" media="(prefers-color-scheme: dark)" />';
+            echo '<link rel="apple-touch-icon" href="' . esc_url($favicon_url_light) . '" media="(prefers-color-scheme: dark)" />';
+        } else {
+            echo '<link rel="shortcut icon" href="' . esc_url($favicon_url) . '" />';
+            echo '<link rel="icon" type="image/png" sizes="32x32" href="' . esc_url($favicon_url) . '" />';
+            echo '<link rel="icon" type="image/png" sizes="192x192" href="' . esc_url($favicon_url) . '" />';
+            echo '<link rel="apple-touch-icon" href="' . esc_url($favicon_url) . '" />';
+        }
     }
 }
 
@@ -2062,12 +2085,16 @@ echo "GLOBAL_CSS_SET\n";
 			try {
 				await logCallback(`Attempting to import favicon: ${schema.brand.favicon}`);
 				let faviconMediaId = "";
+				let lightFaviconMediaId = "";
 
 				// 1. Try local generated favicon transfer first
 				// Favicon URL format: {API_URL}/public/generated-images/favicons/favicon-512x512-{uid}.png
 				if (schema.brand.favicon.includes("/public/generated-images/")) {
 					const relPath = schema.brand.favicon.split("/public/generated-images/")[1]; // e.g. "favicons/favicon-512x512-xxx.png"
 					const localPath = path.join(process.cwd(), "public", "generated-images", relPath);
+					const lightRelPath = relPath.replace("favicon-512x512-", "favicon-512x512-light-");
+					const localLightPath = path.join(process.cwd(), "public", "generated-images", lightRelPath);
+
 					if (fs.existsSync(localPath)) {
 						await logCallback(`Detected local generated favicon: ${relPath}. Copying to remote server...`);
 						const remoteTmpFavicon = `/tmp/ds_favicon_${Date.now()}.png`;
@@ -2084,8 +2111,24 @@ echo "GLOBAL_CSS_SET\n";
 						} finally {
 							await runRemoteShellCommand(`rm -f "${remoteTmpFavicon}"`, logCallback).catch(() => {});
 						}
-					} else {
-						await logCallback(`Local favicon not found at ${localPath}, trying direct URL import...`);
+					}
+
+					if (fs.existsSync(localLightPath)) {
+						await logCallback(`Detected local light favicon: ${lightRelPath}. Copying to remote server...`);
+						const remoteTmpLightFavicon = `/tmp/ds_favicon_light_${Date.now()}.png`;
+						try {
+							await copyFileToRemote(localLightPath, remoteTmpLightFavicon, logCallback);
+							const mediaOut = await runWpCommand(
+								`media import "${remoteTmpLightFavicon}" --title="Site Favicon Light" --porcelain`,
+								docRoot,
+								logCallback,
+							);
+							lightFaviconMediaId = extractMediaId(mediaOut.stdout);
+						} catch (uploadErr: any) {
+							await logCallback(`Failed to copy/import local light favicon: ${uploadErr.message}`);
+						} finally {
+							await runRemoteShellCommand(`rm -f "${remoteTmpLightFavicon}"`, logCallback).catch(() => {});
+						}
 					}
 				}
 
@@ -2109,6 +2152,26 @@ echo "GLOBAL_CSS_SET\n";
 					}
 				}
 
+				if (!lightFaviconMediaId && schema.brand.favicon.includes("favicon-512x512-")) {
+					try {
+						const lightUrl = schema.brand.favicon.replace("favicon-512x512-", "favicon-512x512-light-");
+						const remoteTmpLightFavicon = `/tmp/ds_favicon_light_${Date.now()}.png`;
+						await runRemoteShellCommand(
+							`curl -sL -A "Mozilla/5.0" "${lightUrl}" -o "${remoteTmpLightFavicon}"`,
+							logCallback,
+						);
+						const mediaOut = await runWpCommand(
+							`media import "${remoteTmpLightFavicon}" --title="Site Favicon Light" --porcelain`,
+							docRoot,
+							logCallback,
+						);
+						lightFaviconMediaId = extractMediaId(mediaOut.stdout);
+						await runRemoteShellCommand(`rm -f "${remoteTmpLightFavicon}"`, logCallback).catch(() => {});
+					} catch (e2: any) {
+						await logCallback(`Light favicon direct import failed: ${e2.message}`);
+					}
+				}
+
 				faviconMediaId = extractMediaId(faviconMediaId);
 				if (faviconMediaId) {
 					await logCallback(`Favicon imported successfully (ID: ${faviconMediaId}). Setting as site icon.`);
@@ -2127,8 +2190,24 @@ echo "GLOBAL_CSS_SET\n";
 					} catch (urlErr: any) {
 						await logCallback(`Warning: Failed to retrieve or set ds_favicon_url: ${urlErr.message}`);
 					}
-				} else {
-					await logCallback(`Favicon import did not return a valid media ID (got: "${faviconMediaId}"). Site icon not set.`);
+				}
+
+				lightFaviconMediaId = extractMediaId(lightFaviconMediaId);
+				if (lightFaviconMediaId) {
+					try {
+						const urlOut = await runWpCommand(
+							`eval "echo wp_get_attachment_url(${lightFaviconMediaId});"`,
+							docRoot,
+							logCallback,
+						);
+						const faviconUrlLight = urlOut.stdout.trim();
+						if (faviconUrlLight && faviconUrlLight.startsWith("http")) {
+							await logCallback(`Retrieved absolute light favicon URL: ${faviconUrlLight}. Updating ds_favicon_url_light option.`);
+							await runWpCommand(`option update ds_favicon_url_light "${faviconUrlLight}"`, docRoot, logCallback);
+						}
+					} catch (urlErr: any) {
+						await logCallback(`Warning: Failed to retrieve or set ds_favicon_url_light: ${urlErr.message}`);
+					}
 				}
 			} catch (e: any) {
 				await logCallback(`Warning: favicon import failed: ${e.message}`);

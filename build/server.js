@@ -447,6 +447,10 @@ async function generateFaviconFromLogo(logo, log, businessName, generateFaviconS
       const filePath = path3.join(faviconDir, filename);
       await sharp(masterFaviconBuffer).resize(size, size).png().toFile(filePath);
       log(`[FaviconFromLogo] Saved ${size}x${size} favicon: ${filename}`);
+      const lightFilename = `favicon-${size}x${size}-light-${uid}.png`;
+      const lightFilePath = path3.join(faviconDir, lightFilename);
+      await sharp(masterFaviconBuffer).resize(size, size).negate({ alpha: false }).png().toFile(lightFilePath);
+      log(`[FaviconFromLogo] Saved ${size}x${size} light favicon: ${lightFilename}`);
     }
     const favicon512Url = `${baseUrl}/public/generated-images/favicons/favicon-512x512-${uid}.png`;
     log(`[FaviconFromLogo] Complete favicon set generated from logo. Primary: ${favicon512Url}`);
@@ -677,6 +681,8 @@ async function resolveSectionImages(analysis, log, logoAnalysis, business, optio
       for (const size of sizes) {
         const filename = `favicon-${size}x${size}-${uid}.png`;
         const filePath = path3.join(faviconDir, filename);
+        const lightFilename = `favicon-${size}x${size}-light-${uid}.png`;
+        const lightFilePath = path3.join(faviconDir, lightFilename);
         if (size <= 48) {
           const smallFontSize = Math.round(size * 0.62);
           const smallSvg = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
@@ -684,10 +690,13 @@ async function resolveSectionImages(analysis, log, logoAnalysis, business, optio
   <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-family="Georgia, serif" font-size="${smallFontSize}" font-weight="bold" fill="#ffffff">${initial}</text>
 </svg>`;
           await sharp(Buffer.from(smallSvg)).png().toFile(filePath);
+          await sharp(Buffer.from(smallSvg)).negate({ alpha: false }).png().toFile(lightFilePath);
         } else {
           await sharp(masterBuffer).resize(size, size).png().toFile(filePath);
+          await sharp(masterBuffer).resize(size, size).negate({ alpha: false }).png().toFile(lightFilePath);
         }
         log(`[FaviconGen] Saved ${size}x${size} favicon (initial: "${initial}"): ${filename}`);
+        log(`[FaviconGen] Saved ${size}x${size} light favicon (initial: "${initial}"): ${lightFilename}`);
       }
       const favicon512Url = `${baseUrl}/public/generated-images/favicons/favicon-512x512-${uid}.png`;
       log(`[FaviconGen] Complete favicon set generated for "${businessName}" (initial: "${initial}"). Primary: ${favicon512Url}`);
@@ -3747,6 +3756,42 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
   const processSection = (section, title) => {
     if (!section.elements || !Array.isArray(section.elements)) return;
     const { columns, containers, widgets } = collectElements(section.elements);
+    if (!section.settings) {
+      section.settings = {};
+    }
+    if (isKit2) {
+      if (title === "Hero") {
+        section.settings.css_id = "hero";
+      } else if (title === "Home Goods") {
+        section.settings.css_id = "about";
+      } else if (title === "Tablewear") {
+        section.settings.css_id = "services";
+      } else if (title === "Products") {
+        section.settings.css_id = "projects";
+      } else if (title === "CTA") {
+        section.settings.css_id = "process";
+      } else if (title === "Footer") {
+        section.settings.css_id = "contact";
+      }
+    } else {
+      if (title === "Hero section") {
+        section.settings.css_id = "hero";
+      } else if (title === "Highest level") {
+        section.settings.css_id = "about";
+      } else if (title === "What we do") {
+        section.settings.css_id = "services";
+      } else if (title === "Exceptional quality") {
+        section.settings.css_id = "features";
+      } else if (title === "Recent projects") {
+        section.settings.css_id = "projects";
+      } else if (title === "Work Process") {
+        section.settings.css_id = "process";
+      } else if (title === "Client testimonials") {
+        section.settings.css_id = "testimonials";
+      } else if (title === "Let's discuss") {
+        section.settings.css_id = "contact";
+      }
+    }
     if (isKit2) {
       if (title === "Hero") {
         if (containers[0] && containers[0].settings) {
@@ -3799,7 +3844,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
           cta.settings.align = "center";
           cta.settings.alignment = "center";
           cta.settings.link = {
-            url: "#products",
+            url: "#about",
             is_external: "",
             nofollow: "",
             custom_attributes: ""
@@ -3852,7 +3897,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
         if (widgets.button?.[0] && widgets.button[0].settings) {
           widgets.button[0].settings.text = `${aiContent.about?.button_text || "Learn More"}`;
           widgets.button[0].settings.link = {
-            url: "#products",
+            url: "#services",
             is_external: "",
             nofollow: "",
             custom_attributes: ""
@@ -3890,7 +3935,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
         if (widgets.button?.[0] && widgets.button[0].settings) {
           widgets.button[0].settings.text = `Our Services`;
           widgets.button[0].settings.link = {
-            url: "#products",
+            url: "#projects",
             is_external: "",
             nofollow: "",
             custom_attributes: ""
@@ -4100,7 +4145,7 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
         if (widgets.button?.[0] && widgets.button[0].settings) {
           widgets.button[0].settings.text = `${aiContent.hero?.button_text || "Get Started"}`;
           widgets.button[0].settings.link = {
-            url: "#services",
+            url: "#about",
             is_external: "",
             nofollow: "",
             custom_attributes: ""
@@ -4877,12 +4922,25 @@ html, body {
       const isAboutContainer = obj.settings?._title === "Home Goods" || obj.id === "4d1645d0";
       obj.settings.background_color = isAboutContainer ? "#ffffff" : "#E8E6DF";
     }
-    if (obj.url && typeof obj.url === "string" && obj.url.includes("library.elementor.com")) {
-      const local = getLocalMedia(obj.url);
-      if (local) {
-        obj.url = local.url;
-        if (obj.id !== void 0) {
-          obj.id = String(local.id);
+    if (obj.url && typeof obj.url === "string") {
+      if (obj.url.includes("library.elementor.com")) {
+        const local = getLocalMedia(obj.url);
+        if (local) {
+          obj.url = local.url;
+          if (obj.id !== void 0) {
+            obj.id = String(local.id);
+          }
+        }
+      }
+      const trimmedUrl = obj.url.trim();
+      const isMediaUrl = trimmedUrl.includes("wp-content") || trimmedUrl.includes("/generated-images/") || trimmedUrl.includes("/favicons/") || /\.(jpg|jpeg|png|gif|svg|webp|ico|css|js)(?:\?.*)?$/i.test(trimmedUrl);
+      if (!isMediaUrl) {
+        const isAnchor = trimmedUrl.startsWith("#");
+        const isTel = trimmedUrl.startsWith("tel:");
+        const isMailto = trimmedUrl.startsWith("mailto:");
+        const isEmpty = trimmedUrl === "" || trimmedUrl === "#";
+        if (!isAnchor && !isTel && !isMailto && !isEmpty) {
+          obj.url = "#";
         }
       }
     }
@@ -4897,10 +4955,25 @@ html, body {
     }
     for (const key of Object.keys(obj)) {
       const val = obj[key];
-      if (typeof val === "string" && val.includes("library.elementor.com")) {
-        const local = getLocalMedia(val);
-        if (local) {
-          obj[key] = local.url;
+      if (typeof val === "string") {
+        if (val.includes("library.elementor.com")) {
+          const local = getLocalMedia(val);
+          if (local) {
+            obj[key] = local.url;
+          }
+        }
+        if (key === "link" || key === "url") {
+          const trimmedUrl = val.trim();
+          const isMediaUrl = trimmedUrl.includes("wp-content") || trimmedUrl.includes("/generated-images/") || trimmedUrl.includes("/favicons/") || /\.(jpg|jpeg|png|gif|svg|webp|ico|css|js)(?:\?.*)?$/i.test(trimmedUrl);
+          if (!isMediaUrl) {
+            const isAnchor = trimmedUrl.startsWith("#");
+            const isTel = trimmedUrl.startsWith("tel:");
+            const isMailto = trimmedUrl.startsWith("mailto:");
+            const isEmpty = trimmedUrl === "" || trimmedUrl === "#";
+            if (!isAnchor && !isTel && !isMailto && !isEmpty) {
+              obj[key] = "#";
+            }
+          }
         }
       } else if (val && typeof val === "object") {
         mapLibraryUrlsAndFixStretch(val);
@@ -5591,6 +5664,10 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, adminUser,
       }
       if (schema.brand?.favicon) {
         imageSet.add(schema.brand.favicon);
+        if (schema.brand.favicon.includes("/public/generated-images/")) {
+          const lightFavicon = schema.brand.favicon.replace("favicon-512x512-", "favicon-512x512-light-");
+          imageSet.add(lightFavicon);
+        }
       }
       const templateDir = path4.join(process.cwd(), "elementor-kit-2");
       const templateFiles = [
@@ -5750,6 +5827,11 @@ async function injectWebsiteContent(docRoot, schema, _homepageBlocks, adminUser,
         });
         await runWpCommand(`option update ds_favicon_url "${faviconMedia.url}"`, docRoot, logCallback).catch(() => {
         });
+        const lightFavicon = schema.brand.favicon.replace("favicon-512x512-", "favicon-512x512-light-");
+        if (mediaMap[lightFavicon]) {
+          await runWpCommand(`option update ds_favicon_url_light "${mediaMap[lightFavicon].url}"`, docRoot, logCallback).catch(() => {
+          });
+        }
       } else if (schema.brand?.logo && mediaMap[schema.brand.logo]) {
         const logoMedia = mediaMap[schema.brand.logo];
         await logCallback(`Setting site icon to logo (no dedicated favicon): ${logoMedia.id}`);
@@ -5799,12 +5881,25 @@ add_action('login_head', 'ds_inject_favicon', 1);
 
 function ds_inject_favicon() {
     $favicon_url = get_option('ds_favicon_url');
+    $favicon_url_light = get_option('ds_favicon_url_light');
     if ($favicon_url) {
         echo '<!-- DigitalScout Custom Favicon -->';
-        echo '<link rel="shortcut icon" href="' . esc_url($favicon_url) . '" />';
-        echo '<link rel="icon" type="image/png" sizes="32x32" href="' . esc_url($favicon_url) . '" />';
-        echo '<link rel="icon" type="image/png" sizes="192x192" href="' . esc_url($favicon_url) . '" />';
-        echo '<link rel="apple-touch-icon" href="' . esc_url($favicon_url) . '" />';
+        if ($favicon_url_light) {
+            echo '<link rel="shortcut icon" href="' . esc_url($favicon_url) . '" media="(prefers-color-scheme: light)" />';
+            echo '<link rel="icon" type="image/png" sizes="32x32" href="' . esc_url($favicon_url) . '" media="(prefers-color-scheme: light)" />';
+            echo '<link rel="icon" type="image/png" sizes="192x192" href="' . esc_url($favicon_url) . '" media="(prefers-color-scheme: light)" />';
+            echo '<link rel="apple-touch-icon" href="' . esc_url($favicon_url) . '" media="(prefers-color-scheme: light)" />';
+            
+            echo '<link rel="shortcut icon" href="' . esc_url($favicon_url_light) . '" media="(prefers-color-scheme: dark)" />';
+            echo '<link rel="icon" type="image/png" sizes="32x32" href="' . esc_url($favicon_url_light) . '" media="(prefers-color-scheme: dark)" />';
+            echo '<link rel="icon" type="image/png" sizes="192x192" href="' . esc_url($favicon_url_light) . '" media="(prefers-color-scheme: dark)" />';
+            echo '<link rel="apple-touch-icon" href="' . esc_url($favicon_url_light) . '" media="(prefers-color-scheme: dark)" />';
+        } else {
+            echo '<link rel="shortcut icon" href="' . esc_url($favicon_url) . '" />';
+            echo '<link rel="icon" type="image/png" sizes="32x32" href="' . esc_url($favicon_url) . '" />';
+            echo '<link rel="icon" type="image/png" sizes="192x192" href="' . esc_url($favicon_url) . '" />';
+            echo '<link rel="apple-touch-icon" href="' . esc_url($favicon_url) . '" />';
+        }
     }
 }
 
@@ -6654,9 +6749,12 @@ ${content}
       try {
         await logCallback(`Attempting to import favicon: ${schema.brand.favicon}`);
         let faviconMediaId = "";
+        let lightFaviconMediaId = "";
         if (schema.brand.favicon.includes("/public/generated-images/")) {
           const relPath = schema.brand.favicon.split("/public/generated-images/")[1];
           const localPath = path4.join(process.cwd(), "public", "generated-images", relPath);
+          const lightRelPath = relPath.replace("favicon-512x512-", "favicon-512x512-light-");
+          const localLightPath = path4.join(process.cwd(), "public", "generated-images", lightRelPath);
           if (fs5.existsSync(localPath)) {
             await logCallback(`Detected local generated favicon: ${relPath}. Copying to remote server...`);
             const remoteTmpFavicon = `/tmp/ds_favicon_${Date.now()}.png`;
@@ -6674,8 +6772,24 @@ ${content}
               await runRemoteShellCommand(`rm -f "${remoteTmpFavicon}"`, logCallback).catch(() => {
               });
             }
-          } else {
-            await logCallback(`Local favicon not found at ${localPath}, trying direct URL import...`);
+          }
+          if (fs5.existsSync(localLightPath)) {
+            await logCallback(`Detected local light favicon: ${lightRelPath}. Copying to remote server...`);
+            const remoteTmpLightFavicon = `/tmp/ds_favicon_light_${Date.now()}.png`;
+            try {
+              await copyFileToRemote(localLightPath, remoteTmpLightFavicon, logCallback);
+              const mediaOut = await runWpCommand(
+                `media import "${remoteTmpLightFavicon}" --title="Site Favicon Light" --porcelain`,
+                docRoot,
+                logCallback
+              );
+              lightFaviconMediaId = extractMediaId(mediaOut.stdout);
+            } catch (uploadErr) {
+              await logCallback(`Failed to copy/import local light favicon: ${uploadErr.message}`);
+            } finally {
+              await runRemoteShellCommand(`rm -f "${remoteTmpLightFavicon}"`, logCallback).catch(() => {
+              });
+            }
           }
         }
         if (!faviconMediaId) {
@@ -6697,6 +6811,26 @@ ${content}
             await logCallback(`Favicon direct import failed: ${e2.message}`);
           }
         }
+        if (!lightFaviconMediaId && schema.brand.favicon.includes("favicon-512x512-")) {
+          try {
+            const lightUrl = schema.brand.favicon.replace("favicon-512x512-", "favicon-512x512-light-");
+            const remoteTmpLightFavicon = `/tmp/ds_favicon_light_${Date.now()}.png`;
+            await runRemoteShellCommand(
+              `curl -sL -A "Mozilla/5.0" "${lightUrl}" -o "${remoteTmpLightFavicon}"`,
+              logCallback
+            );
+            const mediaOut = await runWpCommand(
+              `media import "${remoteTmpLightFavicon}" --title="Site Favicon Light" --porcelain`,
+              docRoot,
+              logCallback
+            );
+            lightFaviconMediaId = extractMediaId(mediaOut.stdout);
+            await runRemoteShellCommand(`rm -f "${remoteTmpLightFavicon}"`, logCallback).catch(() => {
+            });
+          } catch (e2) {
+            await logCallback(`Light favicon direct import failed: ${e2.message}`);
+          }
+        }
         faviconMediaId = extractMediaId(faviconMediaId);
         if (faviconMediaId) {
           await logCallback(`Favicon imported successfully (ID: ${faviconMediaId}). Setting as site icon.`);
@@ -6715,8 +6849,23 @@ ${content}
           } catch (urlErr) {
             await logCallback(`Warning: Failed to retrieve or set ds_favicon_url: ${urlErr.message}`);
           }
-        } else {
-          await logCallback(`Favicon import did not return a valid media ID (got: "${faviconMediaId}"). Site icon not set.`);
+        }
+        lightFaviconMediaId = extractMediaId(lightFaviconMediaId);
+        if (lightFaviconMediaId) {
+          try {
+            const urlOut = await runWpCommand(
+              `eval "echo wp_get_attachment_url(${lightFaviconMediaId});"`,
+              docRoot,
+              logCallback
+            );
+            const faviconUrlLight = urlOut.stdout.trim();
+            if (faviconUrlLight && faviconUrlLight.startsWith("http")) {
+              await logCallback(`Retrieved absolute light favicon URL: ${faviconUrlLight}. Updating ds_favicon_url_light option.`);
+              await runWpCommand(`option update ds_favicon_url_light "${faviconUrlLight}"`, docRoot, logCallback);
+            }
+          } catch (urlErr) {
+            await logCallback(`Warning: Failed to retrieve or set ds_favicon_url_light: ${urlErr.message}`);
+          }
         }
       } catch (e) {
         await logCallback(`Warning: favicon import failed: ${e.message}`);

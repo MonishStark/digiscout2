@@ -99,6 +99,45 @@ export function mergeElementorTemplate(
 		if (!section.elements || !Array.isArray(section.elements)) return;
 		const { columns, containers, widgets } = collectElements(section.elements);
 
+		if (!section.settings) {
+			section.settings = {};
+		}
+
+		// Inject CSS IDs for smooth anchor scrolling
+		if (isKit2) {
+			if (title === "Hero") {
+				section.settings.css_id = "hero";
+			} else if (title === "Home Goods") {
+				section.settings.css_id = "about";
+			} else if (title === "Tablewear") {
+				section.settings.css_id = "services";
+			} else if (title === "Products") {
+				section.settings.css_id = "projects";
+			} else if (title === "CTA") {
+				section.settings.css_id = "process";
+			} else if (title === "Footer") {
+				section.settings.css_id = "contact";
+			}
+		} else {
+			if (title === "Hero section") {
+				section.settings.css_id = "hero";
+			} else if (title === "Highest level") {
+				section.settings.css_id = "about";
+			} else if (title === "What we do") {
+				section.settings.css_id = "services";
+			} else if (title === "Exceptional quality") {
+				section.settings.css_id = "features";
+			} else if (title === "Recent projects") {
+				section.settings.css_id = "projects";
+			} else if (title === "Work Process") {
+				section.settings.css_id = "process";
+			} else if (title === "Client testimonials") {
+				section.settings.css_id = "testimonials";
+			} else if (title === "Let's discuss") {
+				section.settings.css_id = "contact";
+			}
+		}
+
 		if (isKit2) {
 			if (title === "Hero") {
 				// Hero Container 1 background image
@@ -154,7 +193,7 @@ export function mergeElementorTemplate(
 					cta.settings.align = "center";
 					cta.settings.alignment = "center";
 					cta.settings.link = {
-						url: "#products",
+						url: "#about",
 						is_external: "",
 						nofollow: "",
 						custom_attributes: "",
@@ -211,7 +250,7 @@ export function mergeElementorTemplate(
 				if (widgets.button?.[0] && widgets.button[0].settings) {
 					widgets.button[0].settings.text = `${aiContent.about?.button_text || "Learn More"}`;
 					widgets.button[0].settings.link = {
-						url: "#products",
+						url: "#services",
 						is_external: "",
 						nofollow: "",
 						custom_attributes: "",
@@ -250,7 +289,7 @@ export function mergeElementorTemplate(
 				if (widgets.button?.[0] && widgets.button[0].settings) {
 					widgets.button[0].settings.text = `Our Services`;
 					widgets.button[0].settings.link = {
-						url: "#products",
+						url: "#projects",
 						is_external: "",
 						nofollow: "",
 						custom_attributes: "",
@@ -488,7 +527,7 @@ export function mergeElementorTemplate(
 				if (widgets.button?.[0] && widgets.button[0].settings) {
 					widgets.button[0].settings.text = `${aiContent.hero?.button_text || "Get Started"}`;
 					widgets.button[0].settings.link = {
-						url: "#services",
+						url: "#about",
 						is_external: "",
 						nofollow: "",
 						custom_attributes: "",
@@ -1325,12 +1364,33 @@ html, body {
 		}
 
 		// Handle object structure: { url: "...", id: "..." }
-		if (obj.url && typeof obj.url === "string" && obj.url.includes("library.elementor.com")) {
-			const local = getLocalMedia(obj.url);
-			if (local) {
-				obj.url = local.url;
-				if (obj.id !== undefined) {
-					obj.id = String(local.id);
+		if (obj.url && typeof obj.url === "string") {
+			if (obj.url.includes("library.elementor.com")) {
+				const local = getLocalMedia(obj.url);
+				if (local) {
+					obj.url = local.url;
+					if (obj.id !== undefined) {
+						obj.id = String(local.id);
+					}
+				}
+			}
+			
+			// Sanitize links to prevent 404
+			const trimmedUrl = obj.url.trim();
+			const isMediaUrl =
+				trimmedUrl.includes("wp-content") ||
+				trimmedUrl.includes("/generated-images/") ||
+				trimmedUrl.includes("/favicons/") ||
+				/\.(jpg|jpeg|png|gif|svg|webp|ico|css|js)(?:\?.*)?$/i.test(trimmedUrl);
+
+			if (!isMediaUrl) {
+				const isAnchor = trimmedUrl.startsWith("#");
+				const isTel = trimmedUrl.startsWith("tel:");
+				const isMailto = trimmedUrl.startsWith("mailto:");
+				const isEmpty = trimmedUrl === "" || trimmedUrl === "#";
+
+				if (!isAnchor && !isTel && !isMailto && !isEmpty) {
+					obj.url = "#";
 				}
 			}
 		}
@@ -1349,10 +1409,32 @@ html, body {
 		// Recurse for nested fields
 		for (const key of Object.keys(obj)) {
 			const val = obj[key];
-			if (typeof val === "string" && val.includes("library.elementor.com")) {
-				const local = getLocalMedia(val);
-				if (local) {
-					obj[key] = local.url;
+			if (typeof val === "string") {
+				if (val.includes("library.elementor.com")) {
+					const local = getLocalMedia(val);
+					if (local) {
+						obj[key] = local.url;
+					}
+				}
+				// Sanitize key "link" or "url" string values
+				if (key === "link" || key === "url") {
+					const trimmedUrl = val.trim();
+					const isMediaUrl =
+						trimmedUrl.includes("wp-content") ||
+						trimmedUrl.includes("/generated-images/") ||
+						trimmedUrl.includes("/favicons/") ||
+						/\.(jpg|jpeg|png|gif|svg|webp|ico|css|js)(?:\?.*)?$/i.test(trimmedUrl);
+
+					if (!isMediaUrl) {
+						const isAnchor = trimmedUrl.startsWith("#");
+						const isTel = trimmedUrl.startsWith("tel:");
+						const isMailto = trimmedUrl.startsWith("mailto:");
+						const isEmpty = trimmedUrl === "" || trimmedUrl === "#";
+
+						if (!isAnchor && !isTel && !isMailto && !isEmpty) {
+							obj[key] = "#";
+						}
+					}
 				}
 			} else if (val && typeof val === "object") {
 				mapLibraryUrlsAndFixStretch(val);

@@ -413,6 +413,17 @@ async function generateFaviconFromLogo(
 				.toFile(filePath);
 
 			log(`[FaviconFromLogo] Saved ${size}x${size} favicon: ${filename}`);
+
+			// Also save an inverted/light version for dark browser tabs
+			const lightFilename = `favicon-${size}x${size}-light-${uid}.png`;
+			const lightFilePath = path.join(faviconDir, lightFilename);
+			await sharp(masterFaviconBuffer)
+				.resize(size, size)
+				.negate({ alpha: false })
+				.png()
+				.toFile(lightFilePath);
+
+			log(`[FaviconFromLogo] Saved ${size}x${size} light favicon: ${lightFilename}`);
 		}
 
 		const favicon512Url = `${baseUrl}/public/generated-images/favicons/favicon-512x512-${uid}.png`;
@@ -706,6 +717,9 @@ export async function resolveSectionImages(
 			for (const size of sizes) {
 				const filename = `favicon-${size}x${size}-${uid}.png`;
 				const filePath = path.join(faviconDir, filename);
+				const lightFilename = `favicon-${size}x${size}-light-${uid}.png`;
+				const lightFilePath = path.join(faviconDir, lightFilename);
+
 				if (size <= 48) {
 					const smallFontSize = Math.round(size * 0.62);
 					const smallSvg = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
@@ -713,10 +727,13 @@ export async function resolveSectionImages(
   <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-family="Georgia, serif" font-size="${smallFontSize}" font-weight="bold" fill="#ffffff">${initial}</text>
 </svg>`;
 					await sharp(Buffer.from(smallSvg)).png().toFile(filePath);
+					await sharp(Buffer.from(smallSvg)).negate({ alpha: false }).png().toFile(lightFilePath);
 				} else {
 					await sharp(masterBuffer).resize(size, size).png().toFile(filePath);
+					await sharp(masterBuffer).resize(size, size).negate({ alpha: false }).png().toFile(lightFilePath);
 				}
 				log(`[FaviconGen] Saved ${size}x${size} favicon (initial: "${initial}"): ${filename}`);
+				log(`[FaviconGen] Saved ${size}x${size} light favicon (initial: "${initial}"): ${lightFilename}`);
 			}
 
 			const favicon512Url = `${baseUrl}/public/generated-images/favicons/favicon-512x512-${uid}.png`;
