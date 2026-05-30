@@ -262,6 +262,7 @@ export async function resolveSectionImages(
 	testimonials_slideshow: string[];
 	project_posts: Array<{ title: string; url: string }>;
 	logo_image: string;
+	favicon_image: string;
 }> {
 	const resultUrls: any = {
 		hero_image: "",
@@ -271,6 +272,7 @@ export async function resolveSectionImages(
 		testimonials_slideshow: [],
 		project_posts: [],
 		logo_image: "",
+		favicon_image: "",
 	};
 
 	const getFallbackPlaceholder = (role: string): string => {
@@ -495,6 +497,14 @@ export async function resolveSectionImages(
 	} else {
 		resultUrls.logo_image = getFallbackPlaceholder("logo");
 	}
+
+	// 8. Favicon — separate 1:1 square icon image with clean white/transparent background
+	const faviconPrompt = `A premium minimalist square icon for "${business?.name || "Business"}", single letter monogram or small abstract icon, clean flat vector design, solid pure white background, sharp crisp lines, no text except a single initial letter, suitable for favicon use, high contrast dark ink on white`;
+	taskList.push({
+		run: async () => {
+			resultUrls.favicon_image = await generateAndSave(faviconPrompt, "favicon", "1:1");
+		}
+	});
 
 	// Run remaining 5 image tasks with a concurrency limit of 2 to keep speed high and stay safe from rate limits
 	if (taskList.length > 0) {
@@ -816,6 +826,8 @@ export async function generateHomepageViaDirectVertexPrompt(
 
 			// Add logo image
 			response.elementorContent.logo_image = resolvedImages.logo_image;
+			// Add favicon image
+			(response.elementorContent as any).favicon_image = resolvedImages.favicon_image;
 		}
 
 		persist("02-vertex-response.json", response);
@@ -846,6 +858,7 @@ export async function generateHomepageViaDirectVertexPrompt(
 				email: business.email || "",
 				websiteUri: business.websiteUri || "",
 				logo: resolvedImages.logo_image || business.logo || "",
+				favicon: resolvedImages.favicon_image || "",
 				hours: business.hours || business.businessHours || "",
 			},
 			seo: {

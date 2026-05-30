@@ -336,7 +336,8 @@ async function resolveSectionImages(analysis, log, logoAnalysis, business, optio
     services_image: "",
     testimonials_slideshow: [],
     project_posts: [],
-    logo_image: ""
+    logo_image: "",
+    favicon_image: ""
   };
   const getFallbackPlaceholder = (role) => {
     if (role.startsWith("project_")) {
@@ -528,6 +529,12 @@ async function resolveSectionImages(analysis, log, logoAnalysis, business, optio
   } else {
     resultUrls.logo_image = getFallbackPlaceholder("logo");
   }
+  const faviconPrompt = `A premium minimalist square icon for "${business?.name || "Business"}", single letter monogram or small abstract icon, clean flat vector design, solid pure white background, sharp crisp lines, no text except a single initial letter, suitable for favicon use, high contrast dark ink on white`;
+  taskList.push({
+    run: async () => {
+      resultUrls.favicon_image = await generateAndSave(faviconPrompt, "favicon", "1:1");
+    }
+  });
   if (taskList.length > 0) {
     log(`[ImageGenerator] Queueing ${taskList.length} AI image generation tasks with concurrency limit of 2...`);
     let nextIndex = 0;
@@ -747,6 +754,7 @@ async function generateHomepageViaDirectVertexPrompt(business, options) {
       if (!response.elementorContent.projects) response.elementorContent.projects = {};
       response.elementorContent.projects.posts = resolvedImages.project_posts;
       response.elementorContent.logo_image = resolvedImages.logo_image;
+      response.elementorContent.favicon_image = resolvedImages.favicon_image;
     }
     persist("02-vertex-response.json", response);
     const schema = {
@@ -770,6 +778,7 @@ async function generateHomepageViaDirectVertexPrompt(business, options) {
         email: business.email || "",
         websiteUri: business.websiteUri || "",
         logo: resolvedImages.logo_image || business.logo || "",
+        favicon: resolvedImages.favicon_image || "",
         hours: business.hours || business.businessHours || ""
       },
       seo: {
@@ -3665,10 +3674,11 @@ function mergeElementorTemplate(templateDir, aiContent, mediaMap, businessInfo, 
           pWidget.widgetType = "posts";
           pWidget.settings = {
             classic_columns: "3",
-            classic_thumbnail_size_size: "large",
-            classic_item_ratio: { unit: "px", size: "0.8", sizes: [] },
+            classic_thumbnail_size_size: "medium",
+            classic_item_ratio: { unit: "px", size: "0.66", sizes: [] },
             classic_meta_data: [],
             classic_show_excerpt: "",
+            classic_show_read_more: "",
             classic_posts_per_page: "3",
             classic_column_gap: { unit: "px", size: "30", sizes: [] },
             classic_row_gap: { unit: "px", size: "30", sizes: [] },
@@ -4581,6 +4591,34 @@ html, body {
         clear: both !important;
         z-index: 1 !important;
     }
+}
+/* Section 4 \u2013 Recent Projects: compact title + "Request A Quote" CTA */
+/* Shrink post title to match template compact size */
+.elementor-element-3c27eca4 .elementor-post__title,
+.elementor-element-3c27eca4 .elementor-post__title a {
+    font-size: 14px !important;
+    line-height: 1.3 !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    margin-bottom: 4px !important;
+}
+/* Hide the default "READ MORE \xBB" link */
+.elementor-element-3c27eca4 .elementor-post__read-more {
+    display: none !important;
+}
+/* Inject "REQUEST A QUOTE" button via pseudo-element on each post excerpt area */
+.elementor-element-3c27eca4 .elementor-post__text::after {
+    content: "REQUEST A QUOTE" !important;
+    display: inline-block !important;
+    margin-top: 10px !important;
+    font-size: 11px !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+    color: inherit !important;
+    border-bottom: 1px solid currentColor !important;
+    padding-bottom: 1px !important;
+    cursor: pointer !important;
+    font-family: inherit !important;
 }
 </style>`
         },
@@ -6118,16 +6156,74 @@ ${content}
         }
         if (/^\d+$/.test(mediaId)) {
           await logCallback(
-            `Logo imported successfully (ID: ${mediaId}). Setting as site icon.`
+            `Logo imported successfully (ID: ${mediaId}). Setting as custom logo (theme mod).`
           );
-          await runWpCommand(
-            `option update site_icon ${mediaId}`,
-            docRoot,
-            logCallback
-          );
+          if (!schema.brand?.favicon) {
+            await runWpCommand(
+              `option update site_icon ${mediaId}`,
+              docRoot,
+              logCallback
+            );
+          }
         }
       } catch (e) {
         await logCallback(`Warning: logo import failed: ${e.message}`);
+      }
+    }
+    if (schema.brand?.favicon) {
+      try {
+        await logCallback(`Attempting to import favicon: ${schema.brand.favicon}`);
+        let faviconMediaId = "";
+        if (schema.brand.favicon.includes("/public/generated-images/")) {
+          const parts = schema.brand.favicon.split("/public/generated-images/");
+          const filename = parts[parts.length - 1];
+          const localPath = path4.join(process.cwd(), "public", "generated-images", filename);
+          if (fs5.existsSync(localPath)) {
+            await logCallback(`Detected local generated favicon: ${filename}. Copying to remote server...`);
+            const ext = filename.toLowerCase().endsWith(".png") ? "png" : "jpg";
+            const remoteTmpFavicon = `/tmp/ds_favicon_${Date.now()}.${ext}`;
+            try {
+              await copyFileToRemote(localPath, remoteTmpFavicon, logCallback);
+              const mediaOut = await runWpCommand(
+                `media import "${remoteTmpFavicon}" --porcelain`,
+                docRoot,
+                logCallback
+              );
+              faviconMediaId = mediaOut.stdout.trim();
+            } catch (uploadErr) {
+              await logCallback(`Failed to copy/import local favicon: ${uploadErr.message}. Trying direct import...`);
+            } finally {
+              await runRemoteShellCommand(`rm -f "${remoteTmpFavicon}"`, logCallback).catch(() => {
+              });
+            }
+          }
+        }
+        if (!faviconMediaId) {
+          try {
+            const ext = schema.brand.favicon.toLowerCase().includes(".png") ? "png" : "jpg";
+            const remoteTmpFavicon = `/tmp/ds_favicon_${Date.now()}.${ext}`;
+            await runRemoteShellCommand(
+              `curl -sL -A "Mozilla/5.0" "${schema.brand.favicon}" -o "${remoteTmpFavicon}"`,
+              logCallback
+            );
+            const mediaOut = await runWpCommand(
+              `media import "${remoteTmpFavicon}" --porcelain`,
+              docRoot,
+              logCallback
+            );
+            faviconMediaId = mediaOut.stdout.trim();
+            await runRemoteShellCommand(`rm -f "${remoteTmpFavicon}"`, logCallback).catch(() => {
+            });
+          } catch (e2) {
+            await logCallback(`Favicon direct import failed: ${e2.message}`);
+          }
+        }
+        if (/^\d+$/.test(faviconMediaId)) {
+          await logCallback(`Favicon imported successfully (ID: ${faviconMediaId}). Setting as site icon.`);
+          await runWpCommand(`option update site_icon ${faviconMediaId}`, docRoot, logCallback);
+        }
+      } catch (e) {
+        await logCallback(`Warning: favicon import failed: ${e.message}`);
       }
     }
     await logCallback("Premium WordPress site injection complete \u2713");

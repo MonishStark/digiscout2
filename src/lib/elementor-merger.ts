@@ -267,10 +267,11 @@ export function mergeElementorTemplate(
 					pWidget.widgetType = "posts";
 					pWidget.settings = {
 						classic_columns: "3",
-						classic_thumbnail_size_size: "large",
-						classic_item_ratio: { unit: "px", size: "0.8", sizes: [] },
+						classic_thumbnail_size_size: "medium",
+						classic_item_ratio: { unit: "px", size: "0.66", sizes: [] },
 						classic_meta_data: [],
 						classic_show_excerpt: "",
+						classic_show_read_more: "",
 						classic_posts_per_page: "3",
 						classic_column_gap: { unit: "px", size: "30", sizes: [] },
 						classic_row_gap: { unit: "px", size: "30", sizes: [] },
@@ -1256,6 +1257,34 @@ html, body {
         clear: both !important;
         z-index: 1 !important;
     }
+}
+/* Section 4 – Recent Projects: compact title + "Request A Quote" CTA */
+/* Shrink post title to match template compact size */
+.elementor-element-3c27eca4 .elementor-post__title,
+.elementor-element-3c27eca4 .elementor-post__title a {
+    font-size: 14px !important;
+    line-height: 1.3 !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    margin-bottom: 4px !important;
+}
+/* Hide the default "READ MORE »" link */
+.elementor-element-3c27eca4 .elementor-post__read-more {
+    display: none !important;
+}
+/* Inject "REQUEST A QUOTE" button via pseudo-element on each post excerpt area */
+.elementor-element-3c27eca4 .elementor-post__text::after {
+    content: "REQUEST A QUOTE" !important;
+    display: inline-block !important;
+    margin-top: 10px !important;
+    font-size: 11px !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+    color: inherit !important;
+    border-bottom: 1px solid currentColor !important;
+    padding-bottom: 1px !important;
+    cursor: pointer !important;
+    font-family: inherit !important;
 }
 </style>`
 				},
